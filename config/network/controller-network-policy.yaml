@@ -1,0 +1,172 @@
+# Network Policy for ScriptRunner Controller
+#
+# This policy restricts network access for the controller deployment.
+# The controller only needs to communicate with the Kubernetes API server.
+#
+# Requirements:
+# - CNI plugin with NetworkPolicy support (Calico, Cilium, Weave, etc.)
+#
+# Usage:
+#   kubectl apply -f controller-network-policy.yaml
+
+---
+# Default Deny All Ingress for Controller Namespace
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: deny-all-ingress
+  namespace: scriptrunner-system
+  labels:
+    app.kubernetes.io/name: scriptrunner
+    app.kubernetes.io/component: network-policy
+spec:
+  podSelector: {}  # Applies to all pods in scriptrunner-system
+  policyTypes:
+  - Ingress
+  # No ingress rules = deny all ingress
+
+---
+# Allow Controller Egress to Kubernetes API
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: controller-allow-api
+  namespace: scriptrunner-system
+  labels:
+    app.kubernetes.io/name: scriptrunner-controller
+    app.kubernetes.io/component: network-policy
+spec:
+  podSelector:
+    matchLabels:
+      app: scriptrunner-controller
+  policyTypes:
+  - Egress
+  egress:
+  # Allow DNS
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: kube-system
+    - podSelector:
+        matchLabels:
+          k8s-app: kube-dns
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+
+  # Allow Kubernetes API
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: default
+    ports:
+    - protocol: TCP
+      port: 443
+    - protocol: TCP
+      port: 6443
+
+---
+# Allow Webhook Ingress from Kubernetes API
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: webhook-allow-api-ingress
+  namespace: scriptrunner-system
+  labels:
+    app.kubernetes.io/name: scriptrunner-webhook
+    app.kubernetes.io/component: network-policy
+spec:
+  podSelector:
+    matchLabels:
+      app: scriptrunner-webhook
+  policyTypes:
+  - Ingress
+  ingress:
+  # Allow HTTPS from Kubernetes API server
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: default
+    - podSelector:
+        matchLabels:
+          component: apiserver
+    ports:
+    - protocol: TCP
+      port: 8443
+
+---
+# Allow Webhook Egress to Kubernetes API
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: webhook-allow-api-egress
+  namespace: scriptrunner-system
+  labels:
+    app.kubernetes.io/name: scriptrunner-webhook
+    app.kubernetes.io/component: network-policy
+spec:
+  podSelector:
+    matchLabels:
+      app: scriptrunner-webhook
+  policyTypes:
+  - Egress
+  egress:
+  # Allow DNS
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: kube-system
+    - podSelector:
+        matchLabels:
+          k8s-app: kube-dns
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+
+  # Allow Kubernetes API
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: default
+    ports:
+    - protocol: TCP
+      port: 443
+    - protocol: TCP
+      port: 6443
+
+---
+# Notes:
+#
+# 1. Controller Network Requirements:
+#    - Egress to Kubernetes API (watch ScriptRunners, create Jobs)
+#    - Egress to DNS (resolve service names)
+#    - NO ingress required (controller initiates all connections)
+#
+# 2. Webhook Network Requirements:
+#    - Ingress from Kubernetes API server on port 8443 (admission requests)
+#    - Egress to Kubernetes API (validate ScriptRunners)
+#    - Egress to DNS (resolve service names)
+#
+# 3. Testing:
+#    - Verify controller can watch ScriptRunners:
+#      kubectl logs -n scriptrunner-system deployment/scriptrunner-controller
+#    - Verify controller can create Jobs:
+#      kubectl apply -f config/samples/scriptrunner_v1alpha1_scriptrunner.yaml
+#    - Verify webhook receives admission requests:
+#      kubectl logs -n scriptrunner-system deployment/scriptrunner-webhook
+#
+# 4. Troubleshooting:
+#    - If controller can't create Jobs: Check egress to API server
+#    - If webhook denies all requests: Check ingress from API server
+#    - View policies: kubectl get networkpolicy -n scriptrunner-system
+#    - Describe policies: kubectl describe networkpolicy -n scriptrunner-system
+#
+# 5. Security Considerations:
+#    - Controller has no ingress (defense-in-depth)
+#    - Webhook only accepts traffic from API server
+#    - No egress to external networks
+#    - DNS limited to kube-system namespace

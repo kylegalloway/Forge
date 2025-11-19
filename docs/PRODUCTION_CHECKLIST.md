@@ -58,32 +58,32 @@ Use this checklist to track your progress toward production-ready ScriptRunner d
 
 ---
 
-## BATCH 2: Validation & Multi-Tenancy Setup
-**Priority: P0 | Status: 0/17 items | Estimated: 1-2 weeks**
+## BATCH 2: Validation & Multi-Tenancy Setup (COMPLETED ✅)
+**Priority: P0 | Status: 17/17 items | Estimated: 1-2 weeks**
 **Goal: Secure multi-tenant environment with admission control**
 
 ### Admission Webhook (Critical - enables all validation)
-- [ ] ⏸️ **B2.1** Validating webhook deployed
-- [ ] ⏸️ **B2.2** Webhook has TLS certificates (cert-manager)
-- [ ] ⏸️ **B2.3** Script whitelist enforced
-- [ ] ⏸️ **B2.4** Image registry whitelist enforced
-- [ ] ⏸️ **B2.5** Input validation implemented
-- [ ] ⏸️ **B2.6** Inline scripts blocked in production
-- [ ] ⏸️ **B2.7** Mutating webhook sets defaults
+- [x] ✅ **B2.1** Validating webhook deployed
+- [x] ✅ **B2.2** Webhook has TLS certificates (cert-manager)
+- [x] ✅ **B2.3** Script whitelist enforced
+- [x] ✅ **B2.4** Image registry whitelist enforced
+- [x] ✅ **B2.5** Input validation implemented
+- [x] ✅ **B2.6** Inline scripts blocked in production
+- [x] ✅ **B2.7** Mutating webhook sets defaults
 
 ### Namespace Isolation (Work in parallel with webhook)
-- [ ] ⏸️ **B2.8** Namespace template created
-- [ ] ⏸️ **B2.9** ResourceQuota defined per namespace
-- [ ] ⏸️ **B2.10** LimitRange configured
-- [ ] ⏸️ **B2.11** Pod security labels on namespaces
-- [ ] ⏸️ **B2.12** Onboarding script created
+- [x] ✅ **B2.8** Namespace template created
+- [x] ✅ **B2.9** ResourceQuota defined per namespace
+- [x] ✅ **B2.10** LimitRange configured
+- [x] ✅ **B2.11** Pod security labels on namespaces
+- [x] ✅ **B2.12** Onboarding script created
 
 ### User RBAC (After namespace template ready)
-- [ ] ⏸️ **B2.13** User roles defined (view, create, delete)
-- [ ] ⏸️ **B2.14** RoleBindings created per user
-- [ ] ⏸️ **B2.15** Users can only access their namespace
-- [ ] ⏸️ **B2.16** Users cannot escalate privileges
-- [ ] ⏸️ **B2.17** Users cannot modify controller or CRD
+- [x] ✅ **B2.13** User roles defined (view, create, delete)
+- [x] ✅ **B2.14** RoleBindings created per user
+- [x] ✅ **B2.15** Users can only access their namespace
+- [x] ✅ **B2.16** Users cannot escalate privileges
+- [x] ✅ **B2.17** Users cannot modify controller or CRD
 
 **Dependencies:**
 - Webhook TLS certs → cert-manager installation

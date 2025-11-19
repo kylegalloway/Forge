@@ -727,3 +727,109 @@ For most development, the simple dynamic client controller is sufficient.
 - [client-go Examples](https://github.com/kubernetes/client-go/tree/master/examples)
 
 Happy contributing!
+
+## Working with Pre-built Scripts
+
+ScriptRunner supports two modes for scripts:
+
+1. **Inline scripts** - Defined directly in the ScriptRunner YAML (`spec.script`)
+2. **Pre-built scripts** - Referenced from container images (`spec.scriptRef`)
+
+### Creating a Container with Pre-built Scripts
+
+For complex scripts or when you need reusability, build a container image with your scripts:
+
+**Step 1: Create a Dockerfile**
+
+```dockerfile
+FROM alpine:3.18
+
+# Install dependencies your scripts need
+RUN apk add --no-cache bash curl jq python3
+
+# Copy scripts
+COPY scripts/ /scripts/
+
+# Make executable
+RUN chmod +x /scripts/*.sh /scripts/*.py
+
+# Add to PATH (optional)
+ENV PATH="/scripts:${PATH}"
+```
+
+**Step 2: Build and Load**
+
+```bash
+# Build the image
+podman build -t my-scripts:v1.0 .
+
+# Load into kind for testing
+kind load docker-image my-scripts:v1.0 --name scriptrunner-dev
+```
+
+**Step 3: Use in ScriptRunner**
+
+```yaml
+apiVersion: scriptrunner.io/v1alpha1
+kind: ScriptRunner
+metadata:
+  name: use-prebuilt-script
+spec:
+  image: my-scripts:v1.0
+  scriptRef: /scripts/my-script.sh
+  scriptArgs:
+    - "arg1"
+    - "arg2"
+  inputs:
+    key: "value"
+```
+
+### Benefits of Pre-built Scripts
+
+- **Reusability**: One script, many ScriptRunners
+- **Version Control**: Tag images to version your scripts
+- **Testing**: Test scripts in containers before deploying
+- **Dependencies**: Install complex dependencies in the image
+- **Performance**: Large scripts don't inflate YAML size
+- **Multiple Languages**: Python, Ruby, compiled binaries, etc.
+- **Security**: Scripts are part of the image build and scanning process
+
+### Complete Example
+
+See [examples/prebuilt-scripts-image/](examples/prebuilt-scripts-image/) for a working example including:
+
+- Bash scripts with argument handling
+- Python scripts for complex logic
+- Input validation scripts
+- Makefile for building and testing
+- Sample ScriptRunner manifests
+
+### Testing Pre-built Scripts
+
+Test your scripts locally before using with ScriptRunner:
+
+```bash
+# Test directly in the container
+podman run --rm my-scripts:v1.0 /scripts/my-script.sh arg1 arg2
+
+# Test with environment variables
+podman run --rm \
+  -e INPUT_key=value \
+  -e SCRIPTRUNNER_NAME=test \
+  my-scripts:v1.0 /scripts/my-script.sh
+```
+
+### scriptRef vs script
+
+| Aspect | `script` (inline) | `scriptRef` (pre-built) |
+|--------|------------------|------------------------|
+| Definition | Inline in YAML | Built into container |
+| Versioning | Via ScriptRunner resource | Via container tag |
+| Size | Limited by YAML size | No practical limit |
+| Testing | Must deploy to test | Can test locally |
+| Reusability | Copy/paste YAML | Reference same image |
+| Languages | Shell scripts | Any executable |
+| Dependencies | Limited to image | Full control |
+
+Choose `script` for simple, one-off tasks. Choose `scriptRef` for production workloads with complex logic.
+

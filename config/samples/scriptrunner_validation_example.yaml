@@ -1,0 +1,17 @@
+apiVersion: scriptrunner.io/v1alpha1
+kind: ScriptRunner
+metadata:
+  name: scriptref-validation
+  namespace: default
+spec:
+  # Use a custom image with pre-built validation script
+  image: scriptrunner-scripts:latest
+
+  # Reference the validation script
+  scriptRef: /scripts/validate-inputs.sh
+
+  # Required inputs for validation script
+  inputs:
+    environment: "staging"
+    version: "2.1.0"
+    service_name: "my-service"

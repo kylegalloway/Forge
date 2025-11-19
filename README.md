@@ -162,7 +162,7 @@ spec:
 
 The default script will print all environment variables with the `INPUT_` prefix.
 
-### Custom Script Example
+### Custom Inline Script Example
 
 ```yaml
 apiVersion: scriptrunner.io/v1alpha1
@@ -185,6 +185,36 @@ spec:
     done
     echo "Complete!"
 ```
+
+### Pre-built Script Reference Example
+
+Instead of inline scripts, you can reference scripts built into your container image:
+
+```yaml
+apiVersion: scriptrunner.io/v1alpha1
+kind: ScriptRunner
+metadata:
+  name: prebuilt-script
+  namespace: default
+spec:
+  # Custom image with pre-built scripts
+  image: scriptrunner-scripts:latest
+
+  # Reference a script in the container
+  scriptRef: /scripts/process-data.sh
+
+  # Pass arguments to the script
+  scriptArgs:
+    - "batch-process"
+    - "20"
+
+  # Input variables still work
+  inputs:
+    environment: "production"
+    source: "database"
+```
+
+See [examples/prebuilt-scripts-image/](examples/prebuilt-scripts-image/) for a complete example of building a container with pre-built scripts.
 
 ### Environment Variables Available in Scripts
 
@@ -284,7 +314,9 @@ The controller can be configured using command-line flags:
 |-------|------|----------|---------|-------------|
 | `inputs` | map[string]string | No | {} | Key-value pairs passed as environment variables |
 | `image` | string | No | `busybox:latest` | Container image to use |
-| `script` | string | No | Default echo script | Shell script to execute |
+| `script` | string | No | Default echo script | Inline shell script to execute (mutually exclusive with `scriptRef`) |
+| `scriptRef` | string | No | - | Path to pre-built script in container (mutually exclusive with `script`) |
+| `scriptArgs` | []string | No | [] | Arguments to pass when using `scriptRef` |
 
 ### ScriptRunner Status
 
@@ -296,6 +328,66 @@ The controller can be configured using command-line flags:
 | `lastUpdateTime` | Last status update timestamp |
 
 ## Advanced Usage
+
+### Using Pre-built Scripts
+
+ScriptRunner supports two ways to provide scripts:
+
+1. **Inline Scripts** (`script` field): Define the script directly in the ScriptRunner YAML
+2. **Pre-built Scripts** (`scriptRef` field): Reference scripts built into your container image
+
+#### Why Use Pre-built Scripts?
+
+- **Reusability**: Share scripts across multiple ScriptRunners
+- **Version Control**: Scripts are versioned with container images
+- **Testing**: Test scripts independently before deploying
+- **Performance**: No need to inline large scripts in YAML
+- **Security**: Scripts can be reviewed and scanned during image build
+- **Complex Dependencies**: Support multiple languages and libraries
+
+#### Creating a Container with Pre-built Scripts
+
+See the complete example in [examples/prebuilt-scripts-image/](examples/prebuilt-scripts-image/):
+
+```dockerfile
+FROM alpine:3.18
+RUN apk add --no-cache bash curl jq python3
+COPY scripts/ /scripts/
+RUN chmod +x /scripts/*.sh
+ENV PATH="/scripts:${PATH}"
+```
+
+Build and load into kind:
+```bash
+cd examples/prebuilt-scripts-image
+make build
+make load  # Loads into kind cluster
+```
+
+#### Using Pre-built Scripts
+
+```yaml
+apiVersion: scriptrunner.io/v1alpha1
+kind: ScriptRunner
+metadata:
+  name: my-prebuilt-script
+spec:
+  image: scriptrunner-scripts:latest
+  scriptRef: /scripts/process-data.sh
+  scriptArgs:
+    - "arg1"
+    - "arg2"
+  inputs:
+    key: "value"
+```
+
+**Script Execution:**
+- If `scriptRef` is specified, it's executed directly with `scriptArgs` as arguments
+- INPUT_ environment variables are still available
+- If `script` is specified instead, it's passed to `/bin/sh -c`
+- Only one of `script` or `scriptRef` can be used
+
+See the [examples](config/samples/) directory for more scriptRef examples.
 
 ### Using with Code-Generated Clients
 

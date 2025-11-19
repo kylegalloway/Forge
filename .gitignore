@@ -36,3 +36,16 @@ go.work.sum
 
 # Binaries
 bin/
+
+# Kubernetes
+kubeconfig
+
+# Build artifacts
+dist/
+
+# macOS
+.DS_Store
+
+# Test coverage
+cover.out
+coverage.out

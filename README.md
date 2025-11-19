@@ -2,6 +2,8 @@
 
 A Kubernetes controller that allows you to run scripts in isolated Jobs using Custom Resources. This controller watches for `ScriptRunner` custom resources and automatically creates Kubernetes Jobs to execute scripts with provided inputs.
 
+> **Quick Start**: New to ScriptRunner? Check out [QUICKSTART.md](QUICKSTART.md) for a 5-minute getting started guide!
+
 ## Overview
 
 ScriptRunner is designed for high-throughput script execution in Kubernetes. Instead of the controller processing tasks directly, it creates Jobs for each ScriptRunner resource, allowing for better parallelization and resource management.
@@ -51,37 +53,64 @@ ScriptRunner CR → Controller watches → Creates Job → Pod runs script
 ## Prerequisites
 
 - Go 1.21 or later
-- Kubernetes cluster (v1.28+)
+- Kubernetes cluster (v1.28+) or [kind](https://kind.sigs.k8s.io/) for local development
 - kubectl configured to access your cluster
-- Docker (for building the controller image)
+- Podman or Docker (for building the controller image)
+
+> **Note**: The project uses podman by default if available, falling back to docker. All commands work with either container runtime.
 
 ## Quick Start
 
-### 1. Install the CRD
+### Local Development with Kind (Recommended)
+
+The fastest way to get started is using [kind](https://kind.sigs.k8s.io/):
+
+```bash
+# Complete setup: create cluster, build, and deploy
+make kind-setup
+
+# Create a sample ScriptRunner
+make apply-sample
+
+# Check status
+make status
+
+# View logs
+make dev-logs
+```
+
+That's it! See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed development workflows.
+
+### Manual Setup (Existing Cluster)
+
+If you have an existing Kubernetes cluster:
+
+#### 1. Install the CRD
 
 ```bash
 make install-crd
 ```
 
-### 2. Build and Load the Controller Image
+#### 2. Build and Load the Controller Image
 
 ```bash
-# Build the Docker image
-make docker-build
+# Build the container image (uses podman if available, otherwise docker)
+make container-build
 
-# If using kind or minikube, load the image
-kind load docker-image scriptrunner-controller:latest
-# OR
+# If using kind, load the image
+kind load docker-image scriptrunner-controller:latest --name scriptrunner-dev
+
+# If using minikube
 minikube image load scriptrunner-controller:latest
 ```
 
-### 3. Deploy the Controller
+#### 3. Deploy the Controller
 
 ```bash
 make deploy
 ```
 
-### 4. Create a ScriptRunner Resource
+#### 4. Create a ScriptRunner Resource
 
 ```bash
 # Apply the sample
@@ -101,7 +130,7 @@ spec:
 EOF
 ```
 
-### 5. Check the Results
+#### 5. Check the Results
 
 ```bash
 # View ScriptRunner resources
@@ -199,15 +228,43 @@ make vet
 
 ## Makefile Targets
 
+### Development
 - `make build` - Build the controller binary
-- `make docker-build` - Build the Docker image
+- `make run` - Run controller locally (outside cluster)
+- `make test` - Run tests
+- `make fmt` - Format code
+- `make vet` - Run go vet
+
+### Container Images
+- `make container-build` - Build container image (podman/docker)
+- `make container-push` - Push container image
+- `make docker-build` - Legacy alias for container-build
+- `make docker-push` - Legacy alias for container-push
+
+### Deployment
 - `make install-crd` - Install CRDs
-- `make deploy` - Deploy the controller
+- `make deploy` - Deploy controller
 - `make install` - Install CRDs and deploy controller
 - `make uninstall` - Remove everything
+
+### Kind (Local Development)
+- `make kind-setup` - Complete kind setup (create cluster + deploy)
+- `make kind-create` - Create kind cluster
+- `make kind-delete` - Delete kind cluster
+- `make kind-load` - Build and load image into kind
+- `make kind-deploy` - Build, load, and deploy to kind
+- `make kind-redeploy` - Quick rebuild and restart (for iteration)
+
+### Samples & Status
 - `make apply-sample` - Apply sample ScriptRunner
+- `make apply-custom-sample` - Apply custom script sample
+- `make delete-samples` - Delete sample resources
 - `make status` - Show status of controller and resources
-- `make logs` - Show controller logs
+- `make logs` - Show controller logs (follow mode)
+- `make dev-logs` - Show controller and latest job logs
+
+### Cleanup
+- `make clean` - Clean built binaries
 - `make help` - Display all available targets
 
 ## Configuration
@@ -309,9 +366,36 @@ kubectl get jobs -l app=scriptrunner
 kubectl logs -l app=scriptrunner
 ```
 
+## Development Scripts
+
+The `scripts/` directory contains helpful utilities for development:
+
+- **[scripts/dev-setup.sh](scripts/dev-setup.sh)** - Automated setup of complete dev environment
+  ```bash
+  ./scripts/dev-setup.sh
+  ```
+
+- **[scripts/quick-test.sh](scripts/quick-test.sh)** - Quick smoke test to verify controller works
+  ```bash
+  ./scripts/quick-test.sh [namespace]
+  ```
+
+- **[scripts/test-e2e.sh](scripts/test-e2e.sh)** - Comprehensive end-to-end test suite
+  ```bash
+  ./scripts/test-e2e.sh [namespace]
+  ```
+
 ## Contributing
 
-This is a learning/experimental project. Feel free to fork and modify for your needs.
+Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for detailed information on:
+
+- Setting up your development environment
+- Local testing with kind
+- Modifying the CRD
+- Modifying controller logic
+- Testing workflows
+- Code style guidelines
+- Submitting pull requests
 
 ## License
 

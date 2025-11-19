@@ -2,6 +2,8 @@
 IMG ?= scriptrunner-controller:latest
 # Kubernetes namespace for deployment
 NAMESPACE ?= scriptrunner-system
+# Container runtime (docker or podman)
+CONTAINER_RUNTIME ?= $(shell command -v podman 2>/dev/null || command -v docker 2>/dev/null || echo docker)
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
@@ -9,6 +11,9 @@ GOBIN=$(shell go env GOPATH)/bin
 else
 GOBIN=$(shell go env GOBIN)
 endif
+
+# Kind cluster name for local development
+KIND_CLUSTER_NAME ?= scriptrunner-dev
 
 .PHONY: all
 all: build
@@ -47,13 +52,20 @@ build: fmt vet ## Build controller binary.
 run: fmt vet ## Run controller from your host.
 	go run cmd/controller/main.go -kubeconfig=${HOME}/.kube/config -v=2
 
+.PHONY: container-build
+container-build: ## Build container image with the controller.
+	$(CONTAINER_RUNTIME) build -t ${IMG} .
+
+.PHONY: container-push
+container-push: ## Push container image with the controller.
+	$(CONTAINER_RUNTIME) push ${IMG}
+
+# Legacy aliases for backwards compatibility
 .PHONY: docker-build
-docker-build: ## Build docker image with the controller.
-	docker build -t ${IMG} .
+docker-build: container-build ## Alias for container-build (legacy).
 
 .PHONY: docker-push
-docker-push: ## Push docker image with the controller.
-	docker push ${IMG}
+docker-push: container-push ## Alias for container-push (legacy).
 
 ##@ Deployment
 
@@ -118,3 +130,83 @@ logs: ## Show controller logs.
 clean: ## Clean up built binaries and temporary files.
 	rm -rf bin/
 	rm -f cover.out
+
+##@ Testing Scripts
+
+.PHONY: dev-setup
+dev-setup: ## Run automated development environment setup script.
+	@./scripts/dev-setup.sh
+
+.PHONY: quick-test
+quick-test: ## Run quick smoke test to verify controller works.
+	@./scripts/quick-test.sh
+
+.PHONY: e2e-test
+e2e-test: ## Run comprehensive end-to-end test suite.
+	@./scripts/test-e2e.sh
+
+##@ Local Development (Kind)
+
+.PHONY: kind-create
+kind-create: ## Create a kind cluster for local development.
+	@if kind get clusters | grep -q "^$(KIND_CLUSTER_NAME)$$"; then \
+		echo "Kind cluster '$(KIND_CLUSTER_NAME)' already exists"; \
+	else \
+		echo "Creating kind cluster '$(KIND_CLUSTER_NAME)'..."; \
+		kind create cluster --name $(KIND_CLUSTER_NAME); \
+	fi
+
+.PHONY: kind-delete
+kind-delete: ## Delete the kind cluster.
+	kind delete cluster --name $(KIND_CLUSTER_NAME)
+
+.PHONY: kind-load
+kind-load: container-build ## Build and load the controller image into kind.
+	@echo "Loading image $(IMG) into kind cluster $(KIND_CLUSTER_NAME)..."
+	kind load docker-image $(IMG) --name $(KIND_CLUSTER_NAME)
+
+.PHONY: kind-deploy
+kind-deploy: kind-load install ## Build, load image to kind, and deploy controller.
+	@echo "Deployment complete. Checking status..."
+	@sleep 3
+	@$(MAKE) status
+
+.PHONY: kind-redeploy
+kind-redeploy: ## Rebuild, reload, and restart controller in kind (for iterative development).
+	@echo "Rebuilding controller..."
+	@$(MAKE) container-build
+	@echo "Loading new image into kind..."
+	@$(MAKE) kind-load
+	@echo "Restarting controller pods..."
+	@kubectl delete pods -n $(NAMESPACE) -l app=scriptrunner-controller --ignore-not-found=true
+	@echo "Waiting for new pods to start..."
+	@sleep 5
+	@$(MAKE) status
+
+.PHONY: kind-setup
+kind-setup: kind-create kind-deploy ## Complete setup: create kind cluster and deploy controller.
+	@echo ""
+	@echo "==============================================="
+	@echo "Kind cluster setup complete!"
+	@echo "Cluster name: $(KIND_CLUSTER_NAME)"
+	@echo "==============================================="
+	@echo ""
+	@echo "Try creating a sample ScriptRunner:"
+	@echo "  make apply-sample"
+	@echo ""
+	@echo "Check status:"
+	@echo "  make status"
+	@echo ""
+
+.PHONY: dev-logs
+dev-logs: ## Tail logs from controller and latest job.
+	@echo "=== Controller Logs ==="
+	@kubectl logs -n $(NAMESPACE) -l app=scriptrunner-controller --tail=20 --prefix=true 2>/dev/null || echo "No controller logs"
+	@echo ""
+	@echo "=== Latest Job Logs ==="
+	@JOB=$$(kubectl get jobs -l app=scriptrunner --sort-by=.metadata.creationTimestamp -o jsonpath='{.items[-1].metadata.name}' 2>/dev/null); \
+	if [ -n "$$JOB" ]; then \
+		kubectl logs job/$$JOB 2>/dev/null || echo "Job not yet started"; \
+	else \
+		echo "No jobs found"; \
+	fi

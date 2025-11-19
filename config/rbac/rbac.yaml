@@ -9,7 +9,7 @@ kind: ClusterRole
 metadata:
   name: scriptrunner-controller-role
 rules:
-# Permissions for ScriptRunner resources
+# Permissions for ScriptRunner resources - read only
 - apiGroups:
   - scriptrunner.io
   resources:
@@ -18,8 +18,7 @@ rules:
   - get
   - list
   - watch
-  - update
-  - patch
+# Permissions to update ScriptRunner status
 - apiGroups:
   - scriptrunner.io
   resources:
@@ -28,7 +27,7 @@ rules:
   - get
   - update
   - patch
-# Permissions for Jobs
+# Permissions for Jobs - create and read only (cleanup handled by TTL and owner references)
 - apiGroups:
   - batch
   resources:
@@ -38,10 +37,7 @@ rules:
   - get
   - list
   - watch
-  - update
-  - patch
-  - delete
-# Permissions for Pods (to check job status if needed)
+# Permissions for Pods - read only (for debugging/status checking)
 - apiGroups:
   - ""
   resources:
@@ -50,6 +46,14 @@ rules:
   - get
   - list
   - watch
+# Permissions for Events - create for better observability
+- apiGroups:
+  - ""
+  resources:
+  - events
+  verbs:
+  - create
+  - patch
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding

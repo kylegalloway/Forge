@@ -3,9 +3,12 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/dynamic"
@@ -18,9 +21,11 @@ import (
 )
 
 var (
-	masterURL  string
-	kubeconfig string
-	namespace  string
+	masterURL   string
+	kubeconfig  string
+	namespace   string
+	healthAddr  string
+	metricsAddr string
 )
 
 func main() {
@@ -28,6 +33,8 @@ func main() {
 	flag.StringVar(&kubeconfig, "kubeconfig", "", "Path to a kubeconfig. Only required if out-of-cluster.")
 	flag.StringVar(&masterURL, "master", "", "The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster.")
 	flag.StringVar(&namespace, "namespace", "", "Namespace to watch. Empty string means all namespaces.")
+	flag.StringVar(&healthAddr, "health-addr", ":8081", "The address for health check endpoints.")
+	flag.StringVar(&metricsAddr, "metrics-addr", ":8080", "The address for metrics endpoints.")
 	flag.Parse()
 
 	// Set up signals so we handle the first shutdown signal gracefully
@@ -69,12 +76,61 @@ func main() {
 		klog.Infof("Watching namespace: %s", watchNamespace)
 	}
 
-	// Create and run the controller
-	controller := controller.NewSimpleController(kubeClient, dynamicClient, watchNamespace)
+	// Create the controller
+	ctrl := controller.NewSimpleController(kubeClient, dynamicClient, watchNamespace)
 
+	// Start health check server
+	healthMux := http.NewServeMux()
+	healthMux.HandleFunc("/healthz", ctrl.HealthzHandler())
+	healthMux.HandleFunc("/readyz", ctrl.ReadyzHandler())
+
+	healthServer := &http.Server{
+		Addr:    healthAddr,
+		Handler: healthMux,
+	}
+
+	go func() {
+		klog.InfoS("Starting health check server", "addr", healthAddr)
+		if err := healthServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			klog.ErrorS(err, "Health check server failed")
+		}
+	}()
+
+	// Start metrics server (placeholder for future metrics implementation)
+	metricsMux := http.NewServeMux()
+	metricsMux.HandleFunc("/metrics", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprintf(w, "# Metrics endpoint - implementation pending\n")
+	})
+
+	metricsServer := &http.Server{
+		Addr:    metricsAddr,
+		Handler: metricsMux,
+	}
+
+	go func() {
+		klog.InfoS("Starting metrics server", "addr", metricsAddr)
+		if err := metricsServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			klog.ErrorS(err, "Metrics server failed")
+		}
+	}()
+
+	// Run the controller
 	klog.Info("Starting ScriptRunner controller")
-	if err := controller.Run(ctx); err != nil {
+	if err := ctrl.Run(ctx); err != nil {
 		klog.Fatalf("Error running controller: %v", err)
+	}
+
+	// Graceful shutdown of servers
+	klog.Info("Shutting down servers")
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer shutdownCancel()
+
+	if err := healthServer.Shutdown(shutdownCtx); err != nil {
+		klog.ErrorS(err, "Health server shutdown error")
+	}
+	if err := metricsServer.Shutdown(shutdownCtx); err != nil {
+		klog.ErrorS(err, "Metrics server shutdown error")
 	}
 
 	klog.Info("ScriptRunner controller stopped")

@@ -2,6 +2,10 @@ apiVersion: v1
 kind: Namespace
 metadata:
   name: scriptrunner-system
+  labels:
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -10,6 +14,9 @@ metadata:
   namespace: scriptrunner-system
   labels:
     app: scriptrunner-controller
+    app.kubernetes.io/name: scriptrunner-controller
+    app.kubernetes.io/component: controller
+    app.kubernetes.io/part-of: scriptrunner
 spec:
   replicas: 1
   selector:
@@ -19,8 +26,18 @@ spec:
     metadata:
       labels:
         app: scriptrunner-controller
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: "/metrics"
     spec:
       serviceAccountName: scriptrunner-controller
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        fsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
       containers:
       - name: controller
         image: scriptrunner-controller:latest
@@ -29,13 +46,17 @@ spec:
         - /controller
         args:
         - -v=2
+        ports:
+        - name: metrics
+          containerPort: 8080
+          protocol: TCP
         resources:
           limits:
-            cpu: 500m
-            memory: 256Mi
+            cpu: "1"
+            memory: 512Mi
           requests:
-            cpu: 100m
-            memory: 128Mi
+            cpu: 250m
+            memory: 256Mi
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
@@ -43,6 +64,19 @@ spec:
             - ALL
           runAsNonRoot: true
           runAsUser: 65532
+          readOnlyRootFilesystem: true
           seccompProfile:
             type: RuntimeDefault
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8081
+          initialDelaySeconds: 15
+          periodSeconds: 20
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: 8081
+          initialDelaySeconds: 5
+          periodSeconds: 10
       terminationGracePeriodSeconds: 10

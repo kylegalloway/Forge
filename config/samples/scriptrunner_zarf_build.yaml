@@ -1,0 +1,47 @@
+# Example: Using ScriptRunner to build a Zarf package
+#
+# This ScriptRunner uses the Zarf builder image to build a Zarf package
+# from a user-provided Git repository containing a zarf.yaml file.
+#
+# Prerequisites:
+# 1. Build the Zarf builder image:
+#    cd examples/zarf-package-builder && make build && make load
+# 2. Ensure your repository contains a valid zarf.yaml
+# 3. Apply this manifest
+
+apiVersion: scriptrunner.io/v1alpha1
+kind: ScriptRunner
+metadata:
+  name: build-my-zarf-package
+  namespace: default
+spec:
+  # Use the Zarf builder image
+  image: scriptrunner-zarf-builder:latest
+
+  # Reference the build script
+  scriptRef: /scripts/build-package.sh
+
+  # Provide your repository and build configuration
+  inputs:
+    # REQUIRED: Git repository containing zarf.yaml
+    SOURCE_REPO: "https://github.com/your-org/your-zarf-package"
+
+    # OPTIONAL: Git branch, tag, or commit SHA (default: main)
+    SOURCE_REF: "v1.0.0"
+
+    # OPTIONAL: Where to write the built package (default: /output)
+    OUTPUT_PATH: "/tmp/packages"
+
+---
+# Example: Validate a built Zarf package
+apiVersion: scriptrunner.io/v1alpha1
+kind: ScriptRunner
+metadata:
+  name: validate-zarf-package
+  namespace: default
+spec:
+  image: scriptrunner-zarf-builder:latest
+  scriptRef: /scripts/validate-package.sh
+  inputs:
+    # Path to the package file to validate
+    PACKAGE_PATH: "/tmp/packages/zarf-package-example-amd64-v1.0.0.tar.zst"

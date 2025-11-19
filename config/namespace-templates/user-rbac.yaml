@@ -1,0 +1,169 @@
+# User RBAC Template for ScriptRunner Multi-Tenancy
+#
+# This template creates RBAC roles and bindings for ScriptRunner users.
+# Users get scoped permissions within their own namespace:
+# - Create/read/update/delete ScriptRunners
+# - Read Jobs and Pods (for monitoring execution)
+# - Cannot modify the controller, CRD, or cluster-wide resources
+#
+# Usage:
+#   Replace {{ .Username }} with the actual username
+#   kubectl apply -f user-rbac.yaml
+#
+# Or use the onboarding script:
+#   ./scripts/onboard-user.sh <username>
+
+---
+# Role: ScriptRunner Creator
+# Allows users to manage ScriptRunner resources in their namespace
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: scriptrunner-user
+  namespace: user-{{ .Username }}
+  labels:
+    scriptrunner.io/tenant: "{{ .Username }}"
+    scriptrunner.io/rbac: "user"
+rules:
+# Full access to ScriptRunner resources
+- apiGroups:
+  - scriptrunner.io
+  resources:
+  - scriptrunners
+  verbs:
+  - create
+  - get
+  - list
+  - watch
+  - update
+  - patch
+  - delete
+
+# Read-only access to ScriptRunner status
+- apiGroups:
+  - scriptrunner.io
+  resources:
+  - scriptrunners/status
+  verbs:
+  - get
+  - list
+  - watch
+
+# Read-only access to Jobs (created by controller)
+- apiGroups:
+  - batch
+  resources:
+  - jobs
+  verbs:
+  - get
+  - list
+  - watch
+
+# Read-only access to Job status
+- apiGroups:
+  - batch
+  resources:
+  - jobs/status
+  verbs:
+  - get
+  - list
+  - watch
+
+# Read-only access to Pods (for debugging)
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  verbs:
+  - get
+  - list
+  - watch
+
+# Read-only access to Pod logs (for debugging)
+- apiGroups:
+  - ""
+  resources:
+  - pods/log
+  verbs:
+  - get
+  - list
+
+# Read events (for debugging)
+- apiGroups:
+  - ""
+  resources:
+  - events
+  verbs:
+  - get
+  - list
+  - watch
+
+---
+# RoleBinding: Bind the user to the scriptrunner-user role
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ .Username }}-scriptrunner-user
+  namespace: user-{{ .Username }}
+  labels:
+    scriptrunner.io/tenant: "{{ .Username }}"
+    scriptrunner.io/rbac: "user"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: scriptrunner-user
+subjects:
+- kind: User
+  name: {{ .Username }}
+  apiGroup: rbac.authorization.k8s.io
+
+---
+# Optional: ServiceAccount for CI/CD or automation
+# Uncomment to create a ServiceAccount with the same permissions
+#
+# apiVersion: v1
+# kind: ServiceAccount
+# metadata:
+#   name: {{ .Username }}-automation
+#   namespace: user-{{ .Username }}
+#   labels:
+#     scriptrunner.io/tenant: "{{ .Username }}"
+#     scriptrunner.io/rbac: "automation"
+# ---
+# apiVersion: rbac.authorization.k8s.io/v1
+# kind: RoleBinding
+# metadata:
+#   name: {{ .Username }}-automation-scriptrunner-user
+#   namespace: user-{{ .Username }}
+#   labels:
+#     scriptrunner.io/tenant: "{{ .Username }}"
+#     scriptrunner.io/rbac: "automation"
+# roleRef:
+#   apiGroup: rbac.authorization.k8s.io
+#   kind: Role
+#   name: scriptrunner-user
+# subjects:
+# - kind: ServiceAccount
+#   name: {{ .Username }}-automation
+#   namespace: user-{{ .Username }}
+
+---
+# ClusterRole: Prevent privilege escalation
+# This ClusterRole explicitly denies access to sensitive resources
+# NOTE: Kubernetes RBAC is additive, so this only documents what users CANNOT do
+# Actual enforcement relies on NOT granting these permissions in the first place
+#
+# Users CANNOT:
+# - Modify CRDs (scriptrunners.scriptrunner.io)
+# - Access controller namespace (scriptrunner-system)
+# - Create/modify ClusterRoles or ClusterRoleBindings
+# - Create/modify Roles or RoleBindings outside their namespace
+# - Access other user namespaces
+# - Modify admission webhooks
+# - Access secrets in other namespaces
+
+# No ClusterRole is granted to users - they only have Role permissions in their namespace
+# This ensures:
+# - Users cannot escalate privileges (B2.16)
+# - Users cannot modify controller or CRD (B2.17)
+# - Users can only access their namespace (B2.15)

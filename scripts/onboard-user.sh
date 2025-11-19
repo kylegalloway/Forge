@@ -203,31 +203,37 @@ metadata:
   namespace: user-$USERNAME
   labels:
     scriptrunner.io/tenant: "$USERNAME"
+    scriptrunner.io/rbac: "user"
 rules:
-# Allow creating and managing ScriptRunner resources
+# Full access to ScriptRunner resources
 - apiGroups: ["scriptrunner.io"]
   resources: ["scriptrunners"]
-  verbs: ["create", "get", "list", "watch", "delete"]
-# Allow viewing ScriptRunner status
+  verbs: ["create", "get", "list", "watch", "update", "patch", "delete"]
+# Read-only access to ScriptRunner status
 - apiGroups: ["scriptrunner.io"]
   resources: ["scriptrunners/status"]
   verbs: ["get", "list", "watch"]
-# Allow viewing Jobs (read-only)
+# Read-only access to Jobs (created by controller)
 - apiGroups: ["batch"]
-  resources: ["jobs"]
+  resources: ["jobs", "jobs/status"]
   verbs: ["get", "list", "watch"]
-# Allow viewing Pods (for debugging)
+# Read-only access to Pods (for debugging)
 - apiGroups: [""]
   resources: ["pods", "pods/log"]
+  verbs: ["get", "list", "watch"]
+# Read events (for debugging)
+- apiGroups: [""]
+  resources: ["events"]
   verbs: ["get", "list", "watch"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  name: scriptrunner-user-binding
+  name: $USERNAME-scriptrunner-user
   namespace: user-$USERNAME
   labels:
     scriptrunner.io/tenant: "$USERNAME"
+    scriptrunner.io/rbac: "user"
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role

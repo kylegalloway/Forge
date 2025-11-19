@@ -1,0 +1,156 @@
+# User Namespace Template for ScriptRunner Multi-Tenancy
+#
+# This template creates an isolated namespace for a ScriptRunner user with:
+# - Pod Security Standards (restricted)
+# - ResourceQuota to limit resource consumption
+# - LimitRange to set default resource limits
+# - NetworkPolicy for network isolation (optional)
+#
+# Usage:
+#   Replace {{ .Username }} with the actual username
+#   kubectl apply -f user-namespace.yaml
+#
+# Or use the onboarding script:
+#   ./scripts/onboard-user.sh <username>
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: user-{{ .Username }}
+  labels:
+    # Pod Security Standards - enforce restricted profile
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted
+
+    # ScriptRunner labels
+    scriptrunner.io/tenant: "{{ .Username }}"
+    scriptrunner.io/managed: "true"
+
+    # Enable webhook validation (remove to disable)
+    scriptrunner.io/webhook: enabled
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: scriptrunner-quota
+  namespace: user-{{ .Username }}
+  labels:
+    scriptrunner.io/tenant: "{{ .Username }}"
+spec:
+  hard:
+    # Limit total ScriptRunner resources
+    count/scriptrunners.scriptrunner.io: "{{ .MaxScriptRunners | default 50 }}"
+
+    # Limit concurrent Jobs
+    count/jobs.batch: "{{ .MaxJobs | default 20 }}"
+
+    # Limit Pods (Jobs create Pods)
+    pods: "{{ .MaxPods | default 20 }}"
+
+    # CPU limits
+    requests.cpu: "{{ .CPURequest | default 5 }}"
+    limits.cpu: "{{ .CPULimit | default 10 }}"
+
+    # Memory limits
+    requests.memory: "{{ .MemoryRequest | default 10Gi }}"
+    limits.memory: "{{ .MemoryLimit | default 20Gi }}"
+
+    # Storage (for logs, temporary files)
+    requests.storage: "{{ .StorageRequest | default 10Gi }}"
+
+    # Persistent Volume Claims (if needed)
+    persistentvolumeclaims: "{{ .MaxPVCs | default 5 }}"
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: scriptrunner-limits
+  namespace: user-{{ .Username }}
+  labels:
+    scriptrunner.io/tenant: "{{ .Username }}"
+spec:
+  limits:
+  # Default limits for Pods (Jobs)
+  - type: Pod
+    max:
+      cpu: "{{ .PodMaxCPU | default 4 }}"
+      memory: "{{ .PodMaxMemory | default 8Gi }}"
+    min:
+      cpu: "{{ .PodMinCPU | default 50m }}"
+      memory: "{{ .PodMinMemory | default 64Mi }}"
+
+  # Default limits for Containers (inside Pods)
+  - type: Container
+    max:
+      cpu: "{{ .ContainerMaxCPU | default 2 }}"
+      memory: "{{ .ContainerMaxMemory | default 4Gi }}"
+    min:
+      cpu: "{{ .ContainerMinCPU | default 50m }}"
+      memory: "{{ .ContainerMinMemory | default 64Mi }}"
+    default:
+      # Default limits (if not specified in ScriptRunner)
+      cpu: "{{ .ContainerDefaultLimitCPU | default 1 }}"
+      memory: "{{ .ContainerDefaultLimitMemory | default 1Gi }}"
+    defaultRequest:
+      # Default requests (if not specified in ScriptRunner)
+      cpu: "{{ .ContainerDefaultRequestCPU | default 250m }}"
+      memory: "{{ .ContainerDefaultRequestMemory | default 256Mi }}"
+
+  # Storage limits
+  - type: PersistentVolumeClaim
+    max:
+      storage: "{{ .PVCMaxStorage | default 5Gi }}"
+    min:
+      storage: "{{ .PVCMinStorage | default 1Gi }}"
+---
+# Optional: Network Policy for isolation
+# Uncomment to restrict network access
+#
+# apiVersion: networking.k8s.io/v1
+# kind: NetworkPolicy
+# metadata:
+#   name: scriptrunner-network-policy
+#   namespace: user-{{ .Username }}
+#   labels:
+#     scriptrunner.io/tenant: "{{ .Username }}"
+# spec:
+#   podSelector:
+#     matchLabels:
+#       app: scriptrunner
+#   policyTypes:
+#   - Ingress
+#   - Egress
+#
+#   # Deny all ingress by default
+#   ingress: []
+#
+#   # Allow egress to:
+#   egress:
+#   # - DNS
+#   - to:
+#     - namespaceSelector:
+#         matchLabels:
+#           name: kube-system
+#     ports:
+#     - protocol: UDP
+#       port: 53
+#
+#   # - Kubernetes API (for Job status updates)
+#   - to:
+#     - namespaceSelector: {}
+#       podSelector:
+#         matchLabels:
+#           component: apiserver
+#     ports:
+#     - protocol: TCP
+#       port: 443
+#
+#   # - Add other allowed destinations here
+#   # - to:
+#   #   - namespaceSelector:
+#   #       matchLabels:
+#   #         name: production-services
+#   #   ports:
+#   #   - protocol: TCP
+#   #     port: 8080

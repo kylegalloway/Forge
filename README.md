@@ -1,53 +1,128 @@
-# ScriptRunner - Kubernetes Controller
+# ScriptRunner - Production-Ready Kubernetes Script Execution Platform
 
-A Kubernetes controller that allows you to run scripts in isolated Jobs using Custom Resources. This controller watches for `ScriptRunner` custom resources and automatically creates Kubernetes Jobs to execute scripts with provided inputs.
+A secure, multi-tenant Kubernetes controller for running scripts in isolated Jobs. ScriptRunner provides enterprise-grade script execution with comprehensive security, multi-tenancy, and observability features.
 
 > **Quick Start**: New to ScriptRunner? Check out [QUICKSTART.md](QUICKSTART.md) for a 5-minute getting started guide!
 
 ## Overview
 
-ScriptRunner is designed for high-throughput script execution in Kubernetes. Instead of the controller processing tasks directly, it creates Jobs for each ScriptRunner resource, allowing for better parallelization and resource management.
+ScriptRunner enables declarative script execution in Kubernetes with production-ready security controls. Users define script executions as custom resources, and the controller creates isolated Jobs with comprehensive security hardening, resource quotas, and network policies.
 
 ### Key Features
 
+**Core Functionality:**
 - **Custom Resource-based**: Define script executions declaratively using Kubernetes CRs
 - **Job-based Execution**: Each ScriptRunner creates a Job, enabling high throughput and parallel processing
-- **Flexible Input**: Pass key-value pairs as environment variables to your scripts
-- **Customizable**: Override default container images and scripts per resource
-- **Owner References**: Jobs are owned by their ScriptRunner resources for automatic cleanup
+- **Flexible Input**: Pass key-value pairs as environment variables with automatic validation
+- **Pre-built Scripts**: Reference versioned scripts in container images (scriptRef)
+- **Owner References**: Automatic cleanup with TTL-based Job deletion
+
+**Security & Multi-Tenancy (Production-Ready):**
+- **Admission Webhook**: Validates scripts, images, and inputs before execution
+- **Multi-tenant Isolation**: Namespace-based tenancy with ResourceQuotas and RBAC
+- **Network Policies**: Default-deny networking with explicit DNS and API access
+- **Image Security**: Registry whitelisting, vulnerability scanning, and pull policy enforcement
+- **Pod Security Standards**: Restricted profile with non-root users and dropped capabilities
+
+**Observability:**
+- **Health Checks**: Liveness and readiness probes on controller and webhook
+- **Structured Logging**: klog-based logging with InfoS/ErrorS patterns
+- **Metrics Ready**: Prometheus annotations and placeholder endpoints
 
 ## Architecture
 
+### Basic Flow
+
 ```
-ScriptRunner CR → Controller watches → Creates Job → Pod runs script
+User → Admission Webhook → ScriptRunner CR → Controller → Job → Pod
+         (validates)         (namespace)      (watches) (creates) (executes)
 ```
 
-1. User creates a `ScriptRunner` custom resource with inputs
-2. Controller detects the new resource and creates a Kubernetes Job
-3. Job spawns a Pod that runs the script with inputs as environment variables
-4. Controller updates the ScriptRunner status with Job information
+1. **User creates ScriptRunner** in their namespace with inputs
+2. **Admission Webhook validates**:
+   - Image from approved registry
+   - Script in whitelist (if using scriptRef)
+   - Inputs sanitized (no command injection patterns)
+   - Mutations applied (default values)
+3. **Controller watches** and detects new ScriptRunner
+4. **Job created** with security context and resource limits
+5. **Pod executes script** in isolated environment with NetworkPolicy
+6. **Controller updates status** with Job information and completion state
+
+### Security Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                  Admission Webhook Layer                     │
+│  ✓ Registry whitelist  ✓ Input sanitization                 │
+│  ✓ Script whitelist    ✓ Image validation                   │
+└─────────────────────────────────────────────────────────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────────┐
+│                   Namespace Isolation                        │
+│  ✓ RBAC (user-scoped)   ✓ ResourceQuota                     │
+│  ✓ LimitRange           ✓ NetworkPolicy (default-deny)      │
+└─────────────────────────────────────────────────────────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────────┐
+│                    Job Pod Security                          │
+│  ✓ Non-root user        ✓ Read-only filesystem              │
+│  ✓ Dropped capabilities ✓ Seccomp profile                   │
+│  ✓ Resource limits      ✓ TTL cleanup (1 hour)              │
+└─────────────────────────────────────────────────────────────┘
+```
 
 ## Project Structure
 
 ```
 .
 ├── cmd/
-│   └── controller/
-│       └── main.go                 # Controller entry point
+│   ├── controller/
+│   │   └── main.go                        # Controller entry point
+│   └── webhook/
+│       └── main.go                        # Admission webhook server
 ├── pkg/
-│   ├── apis/
-│   │   └── scriptrunner/
-│   │       └── v1alpha1/           # API types and registration
-│   └── controller/
-│       ├── simple_controller.go    # Controller implementation
-│       └── controller.go.example   # Example with generated clients
+│   ├── apis/scriptrunner/v1alpha1/       # API types and registration
+│   ├── controller/
+│   │   └── simple_controller.go          # Controller with smart ImagePullPolicy
+│   └── webhook/
+│       └── validator.go                   # Validation logic
 ├── config/
-│   ├── crd/                        # Custom Resource Definition
-│   ├── rbac/                       # RBAC manifests
-│   ├── manager/                    # Controller deployment
-│   └── samples/                    # Sample ScriptRunner resources
-├── Dockerfile                      # Multi-stage build for controller
-└── Makefile                        # Build and deployment targets
+│   ├── crd/                               # Custom Resource Definition
+│   ├── rbac/                              # Controller RBAC
+│   ├── manager/                           # Controller deployment
+│   ├── samples/                           # Sample ScriptRunner resources
+│   ├── namespace-templates/               # Multi-tenancy templates
+│   │   ├── user-namespace.yaml            # ResourceQuota, LimitRange, PSS
+│   │   ├── user-rbac.yaml                 # User roles and bindings
+│   │   └── network-policy.yaml            # Default-deny networking
+│   └── network/
+│       ├── controller-network-policy.yaml # Controller network policies
+│       └── README.md                      # NetworkPolicy documentation
+├── webhook/
+│   ├── deploy/                            # Webhook deployment manifests
+│   │   ├── webhook-deployment.yaml        # HA deployment (2 replicas)
+│   │   ├── webhook-configuration.yaml     # ValidatingWebhook + MutatingWebhook
+│   │   ├── webhook-config.yaml            # ConfigMap (registry whitelist, etc.)
+│   │   └── certificate.yaml               # cert-manager Certificate + Issuer
+│   ├── Dockerfile                         # Webhook container build
+│   └── README.md                          # Webhook documentation
+├── scripts/
+│   ├── onboard-user.sh                    # Automated user onboarding
+│   ├── dev-setup.sh                       # Dev environment setup
+│   ├── quick-test.sh                      # Smoke tests
+│   └── test-e2e.sh                        # E2E test suite
+├── docs/
+│   ├── PRODUCTION_CHECKLIST.md            # 160-item production tracker
+│   ├── PRODUCTION.md                      # Production deployment guide
+│   ├── RBAC_SECURITY.md                   # RBAC security model
+│   ├── IMAGE_SECURITY.md                  # Container image security
+│   ├── USER_GUIDE.md                      # End-user documentation
+│   └── CLIENT_VALIDATION.md               # IDE integration and validation
+├── examples/
+│   └── prebuilt-scripts-image/            # Example container with scripts
+├── Dockerfile                             # Controller multi-stage build
+└── Makefile                               # Build and deployment targets
 ```
 
 ## Prerequisites
@@ -479,24 +554,60 @@ The `scripts/` directory contains helpful utilities for development:
 
 ## Production Deployment
 
-For running ScriptRunner in production environments where users execute your scripts:
+ScriptRunner is designed for production use with comprehensive security and multi-tenancy features.
 
-- **[Production Readiness Checklist](docs/PRODUCTION_CHECKLIST.md)** - Comprehensive, batch-organized tracker with:
+### Documentation
+
+- **[Production Readiness Checklist](docs/PRODUCTION_CHECKLIST.md)** - Comprehensive tracker with:
   - 10 batches from Foundation to Launch Readiness
   - 160 checklist items with priorities and dependencies
-  - Time estimates and execution plan (10-12 weeks)
-  - Current progress: Batch 1 (Foundation) ✅ Complete - 42/160 items (26%)
+  - Current progress: **56/160 items (35%)** complete
+  - ✅ Batch 1: Foundation (Health checks, security, docs)
+  - ✅ Batch 2: Validation & Multi-Tenancy (Webhook, RBAC, namespaces)
+  - ✅ Batch 3: Network & Image Security (NetworkPolicy, image scanning)
 
-- **[Production Guide](docs/PRODUCTION.md)** - Complete production deployment guide covering:
-  - Security model and admission webhooks
-  - Multi-tenancy setup with namespaces and RBAC
-  - Resource management and quotas
-  - Monitoring and observability
-  - User onboarding
+- **[Production Guide](docs/PRODUCTION.md)** - Complete deployment guide covering security, multi-tenancy, and monitoring
 
-- **[User Guide](docs/USER_GUIDE.md)** - Documentation for end users running scripts
+- **[RBAC Security Model](docs/RBAC_SECURITY.md)** - Comprehensive RBAC documentation:
+  - Security architecture and boundaries
+  - User roles and privilege escalation prevention
+  - Threat model with 6 attack scenarios
+  - Audit and monitoring recommendations
 
-- **[Webhook Implementation](webhook/)** - Admission webhook for validation and defaults
+- **[Image Security](docs/IMAGE_SECURITY.md)** - Container image security guide:
+  - Vulnerability scanning (Trivy, Clair, cloud providers)
+  - Image signing (cosign, notary)
+  - Registry whitelisting and authentication
+  - Smart ImagePullPolicy enforcement
+
+- **[Network Policies](config/network/README.md)** - Network isolation guide:
+  - Default-deny networking with explicit allow rules
+  - CNI compatibility matrix
+  - Testing and troubleshooting
+
+- **[User Guide](docs/USER_GUIDE.md)** - Documentation for end users
+
+- **[Webhook Implementation](webhook/README.md)** - Admission webhook for validation and defaults
+
+### Quick Production Setup
+
+```bash
+# 1. Deploy controller with security hardening
+make install
+
+# 2. Deploy admission webhook (validates scripts and images)
+kubectl apply -f webhook/deploy/
+
+# 3. Onboard a user with quotas, RBAC, and network policies
+./scripts/onboard-user.sh alice \
+  --max-scriptrunners 50 \
+  --max-jobs 20 \
+  --cpu-limit 10 \
+  --memory-limit 20Gi
+
+# 4. User creates ScriptRunner in their namespace
+kubectl apply -f my-script.yaml -n user-alice
+```
 
 ## Contributing
 

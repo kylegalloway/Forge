@@ -179,11 +179,6 @@ func (c *SimpleController) createJob(scriptRunner *scriptrunnerv1alpha1.ScriptRu
 		image = DefaultImage
 	}
 
-	script := scriptRunner.Spec.Script
-	if script == "" {
-		script = DefaultScript
-	}
-
 	// Convert inputs to environment variables
 	envVars := []corev1.EnvVar{
 		{
@@ -201,6 +196,26 @@ func (c *SimpleController) createJob(scriptRunner *scriptrunnerv1alpha1.ScriptRu
 			Name:  fmt.Sprintf("INPUT_%s", key),
 			Value: value,
 		})
+	}
+
+	// Determine command and args based on whether using inline script or scriptRef
+	var command []string
+	var args []string
+
+	if scriptRunner.Spec.ScriptRef != "" {
+		// Using a pre-built script in the container
+		klog.V(4).Infof("Using pre-built script: %s", scriptRunner.Spec.ScriptRef)
+		command = []string{scriptRunner.Spec.ScriptRef}
+		args = scriptRunner.Spec.ScriptArgs
+	} else {
+		// Using inline script
+		script := scriptRunner.Spec.Script
+		if script == "" {
+			script = DefaultScript
+		}
+		klog.V(4).Infof("Using inline script (%d bytes)", len(script))
+		command = []string{"/bin/sh", "-c"}
+		args = []string{script}
 	}
 
 	backoffLimit := int32(0)
@@ -232,8 +247,8 @@ func (c *SimpleController) createJob(scriptRunner *scriptrunnerv1alpha1.ScriptRu
 						{
 							Name:    "script-runner",
 							Image:   image,
-							Command: []string{"/bin/sh", "-c"},
-							Args:    []string{script},
+							Command: command,
+							Args:    args,
 							Env:     envVars,
 						},
 					},

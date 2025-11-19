@@ -24,8 +24,15 @@ type ScriptRunnerSpec struct {
 	// Image is the container image to use for the job (optional, defaults to hardcoded value)
 	Image string `json:"image,omitempty"`
 
-	// Script is the shell script to run (optional, defaults to hardcoded value)
+	// Script is the shell script to run inline (optional, mutually exclusive with ScriptRef)
 	Script string `json:"script,omitempty"`
+
+	// ScriptRef is a reference to a pre-built script in the container (optional, mutually exclusive with Script)
+	// The path should be absolute or relative to the container's working directory
+	ScriptRef string `json:"scriptRef,omitempty"`
+
+	// ScriptArgs are arguments to pass to the script when using ScriptRef (optional)
+	ScriptArgs []string `json:"scriptArgs,omitempty"`
 }
 
 // ScriptRunnerStatus is the status for a ScriptRunner resource

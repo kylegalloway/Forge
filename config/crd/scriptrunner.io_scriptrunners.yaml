@@ -33,7 +33,15 @@ spec:
                 description: Container image to use for the job (defaults to busybox:latest)
               script:
                 type: string
-                description: Shell script to execute (defaults to a simple echo script)
+                description: Inline shell script to execute (mutually exclusive with scriptRef)
+              scriptRef:
+                type: string
+                description: Path to a pre-built script in the container image (mutually exclusive with script)
+              scriptArgs:
+                type: array
+                items:
+                  type: string
+                description: Arguments to pass to the script when using scriptRef
           status:
             type: object
             properties:

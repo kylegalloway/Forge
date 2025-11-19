@@ -78,6 +78,11 @@ func (in *ScriptRunnerSpec) DeepCopyInto(out *ScriptRunnerSpec) {
 			(*out)[key] = val
 		}
 	}
+	if in.ScriptArgs != nil {
+		in, out := &in.ScriptArgs, &out.ScriptArgs
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
 	return
 }
 

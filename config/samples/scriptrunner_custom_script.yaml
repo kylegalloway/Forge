@@ -1,0 +1,31 @@
+apiVersion: scriptrunner.io/v1alpha1
+kind: ScriptRunner
+metadata:
+  name: custom-script-example
+  namespace: default
+spec:
+  inputs:
+    name: "John Doe"
+    task: "data-processing"
+    count: "100"
+  image: "alpine:3.18"
+  script: |
+    #!/bin/sh
+    echo "================================================"
+    echo "ScriptRunner: $SCRIPTRUNNER_NAME"
+    echo "Namespace: $SCRIPTRUNNER_NAMESPACE"
+    echo "================================================"
+    echo ""
+    echo "Processing task: $INPUT_task"
+    echo "User: $INPUT_name"
+    echo "Count: $INPUT_count"
+    echo ""
+    echo "Starting processing..."
+    for i in $(seq 1 ${INPUT_count:-10}); do
+      if [ $((i % 10)) -eq 0 ]; then
+        echo "Processed $i items..."
+      fi
+    done
+    echo ""
+    echo "Processing complete!"
+    echo "All $INPUT_count items processed successfully"

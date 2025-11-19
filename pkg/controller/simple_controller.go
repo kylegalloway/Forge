@@ -3,11 +3,14 @@ package controller
 import (
 	"context"
 	"fmt"
+	"net/http"
+	"sync/atomic"
 	"time"
 
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -39,6 +42,7 @@ type SimpleController struct {
 	dynamicClient      dynamic.Interface
 	namespace          string
 	processedResources map[string]bool
+	ready              atomic.Bool // Tracks controller readiness
 }
 
 // NewSimpleController creates a new simple controller
@@ -59,6 +63,9 @@ func NewSimpleController(
 func (c *SimpleController) Run(ctx context.Context) error {
 	klog.Info("Starting SimpleController")
 
+	// Mark controller as ready once we start watching
+	defer c.ready.Store(false)
+
 	// Define the GVR for ScriptRunner
 	gvr := schema.GroupVersionResource{
 		Group:    scriptrunnerv1alpha1.GroupName,
@@ -75,10 +82,14 @@ func (c *SimpleController) Run(ctx context.Context) error {
 		default:
 			watcher, err := c.dynamicClient.Resource(gvr).Namespace(c.namespace).Watch(ctx, metav1.ListOptions{})
 			if err != nil {
-				klog.Errorf("Error creating watcher: %v", err)
+				klog.ErrorS(err, "Error creating watcher")
+				c.ready.Store(false)
 				time.Sleep(5 * time.Second)
 				continue
 			}
+
+			// Successfully created watcher, mark as ready
+			c.ready.Store(true)
 
 			c.watchResources(ctx, watcher)
 			watcher.Stop()
@@ -102,17 +113,17 @@ func (c *SimpleController) watchResources(ctx context.Context, watcher watch.Int
 			case watch.Added, watch.Modified:
 				unstructuredObj, ok := event.Object.(*unstructured.Unstructured)
 				if !ok {
-					klog.Errorf("Unexpected object type: %T", event.Object)
+					klog.ErrorS(fmt.Errorf("unexpected type"), "Unexpected object type", "type", fmt.Sprintf("%T", event.Object))
 					continue
 				}
 
 				if err := c.handleScriptRunner(ctx, unstructuredObj); err != nil {
-					klog.Errorf("Error handling ScriptRunner: %v", err)
+					klog.ErrorS(err, "Error handling ScriptRunner")
 				}
 			case watch.Deleted:
 				klog.Info("ScriptRunner deleted")
 			case watch.Error:
-				klog.Errorf("Watch error: %v", event.Object)
+				klog.ErrorS(fmt.Errorf("watch error"), "Watch error", "object", event.Object)
 				return
 			}
 		}
@@ -131,7 +142,7 @@ func (c *SimpleController) handleScriptRunner(ctx context.Context, obj *unstruct
 		return nil
 	}
 
-	klog.Infof("Processing ScriptRunner: %s", key)
+	klog.InfoS("Processing ScriptRunner", "key", key)
 
 	// Convert unstructured to ScriptRunner
 	var scriptRunner scriptrunnerv1alpha1.ScriptRunner
@@ -142,7 +153,7 @@ func (c *SimpleController) handleScriptRunner(ctx context.Context, obj *unstruct
 
 	// Check if Job already exists in status
 	if scriptRunner.Status.JobName != "" {
-		klog.Infof("Job already exists for ScriptRunner %s: %s", key, scriptRunner.Status.JobName)
+		klog.InfoS("Job already exists for ScriptRunner", "key", key, "job", scriptRunner.Status.JobName)
 		c.processedResources[key] = true
 		return nil
 	}
@@ -151,11 +162,11 @@ func (c *SimpleController) handleScriptRunner(ctx context.Context, obj *unstruct
 	jobName := fmt.Sprintf("%s-job-%d", scriptRunner.Name, time.Now().Unix())
 	job := c.createJob(&scriptRunner, jobName)
 
-	klog.Infof("Creating Job %s for ScriptRunner %s", jobName, key)
+	klog.InfoS("Creating Job for ScriptRunner", "job", jobName, "key", key)
 	_, err = c.kubeclientset.BatchV1().Jobs(namespace).Create(ctx, job, metav1.CreateOptions{})
 	if err != nil {
 		if errors.IsAlreadyExists(err) {
-			klog.Infof("Job %s already exists", jobName)
+			klog.InfoS("Job already exists", "job", jobName)
 		} else {
 			return fmt.Errorf("error creating job: %v", err)
 		}
@@ -167,7 +178,7 @@ func (c *SimpleController) handleScriptRunner(ctx context.Context, obj *unstruct
 	}
 
 	c.processedResources[key] = true
-	klog.Infof("Successfully created Job %s for ScriptRunner %s", jobName, key)
+	klog.InfoS("Successfully created Job", "job", jobName, "key", key)
 
 	return nil
 }
@@ -219,6 +230,8 @@ func (c *SimpleController) createJob(scriptRunner *scriptrunnerv1alpha1.ScriptRu
 	}
 
 	backoffLimit := int32(0)
+	ttlSecondsAfterFinished := int32(3600) // Clean up Jobs after 1 hour
+	activeDeadlineSeconds := int64(600)    // Kill Jobs running longer than 10 minutes
 
 	job := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
@@ -239,10 +252,20 @@ func (c *SimpleController) createJob(scriptRunner *scriptrunnerv1alpha1.ScriptRu
 			},
 		},
 		Spec: batchv1.JobSpec{
-			BackoffLimit: &backoffLimit,
+			BackoffLimit:            &backoffLimit,
+			TTLSecondsAfterFinished: &ttlSecondsAfterFinished,
+			ActiveDeadlineSeconds:   &activeDeadlineSeconds,
 			Template: corev1.PodTemplateSpec{
 				Spec: corev1.PodSpec{
 					RestartPolicy: corev1.RestartPolicyNever,
+					SecurityContext: &corev1.PodSecurityContext{
+						RunAsNonRoot: &[]bool{true}[0],
+						RunAsUser:    &[]int64{1000}[0],
+						FSGroup:      &[]int64{1000}[0],
+						SeccompProfile: &corev1.SeccompProfile{
+							Type: corev1.SeccompProfileTypeRuntimeDefault,
+						},
+					},
 					Containers: []corev1.Container{
 						{
 							Name:    "script-runner",
@@ -250,6 +273,25 @@ func (c *SimpleController) createJob(scriptRunner *scriptrunnerv1alpha1.ScriptRu
 							Command: command,
 							Args:    args,
 							Env:     envVars,
+							Resources: corev1.ResourceRequirements{
+								Requests: corev1.ResourceList{
+									corev1.ResourceCPU:    mustParseQuantity("250m"),
+									corev1.ResourceMemory: mustParseQuantity("256Mi"),
+								},
+								Limits: corev1.ResourceList{
+									corev1.ResourceCPU:    mustParseQuantity("1000m"),
+									corev1.ResourceMemory: mustParseQuantity("1Gi"),
+								},
+							},
+							SecurityContext: &corev1.SecurityContext{
+								AllowPrivilegeEscalation: &[]bool{false}[0],
+								RunAsNonRoot:             &[]bool{true}[0],
+								RunAsUser:                &[]int64{1000}[0],
+								Capabilities: &corev1.Capabilities{
+									Drop: []corev1.Capability{"ALL"},
+								},
+								ReadOnlyRootFilesystem: &[]bool{true}[0],
+							},
 						},
 					},
 				},
@@ -285,4 +327,36 @@ func (c *SimpleController) updateStatus(ctx context.Context, obj *unstructured.U
 	)
 
 	return err
+}
+
+// mustParseQuantity parses a resource quantity or panics (for compile-time constants)
+func mustParseQuantity(s string) resource.Quantity {
+	q, err := resource.ParseQuantity(s)
+	if err != nil {
+		panic(fmt.Sprintf("invalid quantity %q: %v", s, err))
+	}
+	return q
+}
+
+// HealthzHandler returns an HTTP handler for the /healthz endpoint
+// This endpoint indicates if the controller process is alive
+func (c *SimpleController) HealthzHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("ok"))
+	}
+}
+
+// ReadyzHandler returns an HTTP handler for the /readyz endpoint
+// This endpoint indicates if the controller is ready to process resources
+func (c *SimpleController) ReadyzHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if c.ready.Load() {
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("ready"))
+		} else {
+			w.WriteHeader(http.StatusServiceUnavailable)
+			w.Write([]byte("not ready"))
+		}
+	}
 }

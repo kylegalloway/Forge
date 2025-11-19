@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"regexp"
+	"strings"
 	"sync/atomic"
 	"time"
 
@@ -268,11 +270,12 @@ func (c *SimpleController) createJob(scriptRunner *scriptrunnerv1alpha1.ScriptRu
 					},
 					Containers: []corev1.Container{
 						{
-							Name:    "script-runner",
-							Image:   image,
-							Command: command,
-							Args:    args,
-							Env:     envVars,
+							Name:            "script-runner",
+							Image:           image,
+							ImagePullPolicy: getImagePullPolicy(image),
+							Command:         command,
+							Args:            args,
+							Env:             envVars,
 							Resources: corev1.ResourceRequirements{
 								Requests: corev1.ResourceList{
 									corev1.ResourceCPU:    mustParseQuantity("250m"),
@@ -359,4 +362,36 @@ func (c *SimpleController) ReadyzHandler() http.HandlerFunc {
 			w.Write([]byte("not ready"))
 		}
 	}
+}
+
+// getImagePullPolicy determines the appropriate ImagePullPolicy based on image tag
+// - :latest or no tag → Always (mutable, always pull)
+// - @sha256:... → IfNotPresent (immutable, can cache)
+// - :vX.Y.Z (semver) → IfNotPresent (immutable, can cache)
+// - Other tags → Always (conservative, assume mutable)
+func getImagePullPolicy(image string) corev1.PullPolicy {
+	// If image uses :latest tag or no tag, always pull
+	if strings.HasSuffix(image, ":latest") || !strings.Contains(image, ":") {
+		return corev1.PullAlways
+	}
+
+	// If image uses SHA digest, can cache (immutable)
+	if strings.Contains(image, "@sha256:") {
+		return corev1.PullIfNotPresent
+	}
+
+	// If image uses semver tag (v1.2.3 or 1.2.3), can cache
+	// Extract tag portion
+	parts := strings.Split(image, ":")
+	if len(parts) > 1 {
+		tag := parts[len(parts)-1]
+		// Match vX.Y.Z or X.Y.Z pattern
+		matched, _ := regexp.MatchString(`^v?\d+\.\d+\.\d+(-[a-zA-Z0-9.-]+)?$`, tag)
+		if matched {
+			return corev1.PullIfNotPresent
+		}
+	}
+
+	// Default: always pull (conservative, assume tag is mutable)
+	return corev1.PullAlways
 }

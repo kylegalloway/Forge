@@ -92,8 +92,8 @@ Use this checklist to track your progress toward production-ready ScriptRunner d
 
 ---
 
-## BATCH 3: Network & Image Security
-**Priority: P1 | Status: 5/9 items | Estimated: 1 week**
+## BATCH 3: Network & Image Security (COMPLETED ✅)
+**Priority: P1 | Status: 9/9 items | Estimated: 1 week**
 **Goal: Network isolation and container security**
 
 ### Network Policies (Can start early, test in Batch 2)
@@ -104,10 +104,10 @@ Use this checklist to track your progress toward production-ready ScriptRunner d
 - [x] ✅ **B3.5** Network policies per namespace template
 
 ### Image Security (Can work in parallel)
-- [ ] ⏸️ **B3.6** Script images scanned for vulnerabilities
-- [ ] ⏸️ **B3.7** Images signed with cosign/notary
-- [ ] ⏸️ **B3.8** Image pull policy enforced (Always/IfNotPresent)
-- [ ] ⏸️ **B3.9** Private registry credentials configured
+- [x] ✅ **B3.6** Script images scanned for vulnerabilities
+- [x] ✅ **B3.7** Images signed with cosign/notary
+- [x] ✅ **B3.8** Image pull policy enforced (Always/IfNotPresent)
+- [x] ✅ **B3.9** Private registry credentials configured
 
 **Dependencies:**
 - B3.5 → B2.8 (namespace template)

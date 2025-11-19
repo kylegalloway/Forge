@@ -1,0 +1,25 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: scriptrunner-webhook-config
+  namespace: scriptrunner-system
+  labels:
+    app: scriptrunner-webhook
+data:
+  config.json: |
+    {
+      "approvedScripts": [
+        "/scripts/process-data.sh",
+        "/scripts/validate-inputs.sh",
+        "/scripts/report-status.py"
+      ],
+      "approvedImagePrefix": "",
+      "maxInputs": 20,
+      "maxInputValueLength": 1000,
+      "maxScriptArgs": 10,
+      "maxScriptArgLength": 200,
+      "allowInlineScripts": false,
+      "defaults": {
+        "image": "busybox:latest"
+      }
+    }

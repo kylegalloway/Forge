@@ -1,0 +1,33 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: scriptrunner-webhook-cert
+  namespace: scriptrunner-system
+  labels:
+    app: scriptrunner-webhook
+spec:
+  secretName: scriptrunner-webhook-certs
+  duration: 8760h # 1 year
+  renewBefore: 720h # 30 days
+  subject:
+    organizations:
+    - scriptrunner
+  commonName: scriptrunner-webhook.scriptrunner-system.svc
+  dnsNames:
+  - scriptrunner-webhook
+  - scriptrunner-webhook.scriptrunner-system
+  - scriptrunner-webhook.scriptrunner-system.svc
+  - scriptrunner-webhook.scriptrunner-system.svc.cluster.local
+  issuerRef:
+    name: scriptrunner-webhook-issuer
+    kind: Issuer
+---
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: scriptrunner-webhook-issuer
+  namespace: scriptrunner-system
+  labels:
+    app: scriptrunner-webhook
+spec:
+  selfSigned: {}

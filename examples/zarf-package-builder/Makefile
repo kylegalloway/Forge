@@ -1,4 +1,4 @@
-.PHONY: help build load test clean
+.PHONY: help build load test test-local clean
 
 # Detect container runtime
 CONTAINER_RUNTIME ?= $(shell command -v podman 2>/dev/null || command -v docker 2>/dev/null)
@@ -17,11 +17,18 @@ load: build ## Build and load image into kind cluster
 	kind load docker-image $(IMAGE_NAME):$(IMAGE_TAG) --name scriptrunner-dev
 	@echo "Loaded $(IMAGE_NAME):$(IMAGE_TAG) into kind cluster"
 
-test: ## Test the Zarf builder image locally
-	$(CONTAINER_RUNTIME) run --rm -it \
-		-v $(PWD)/test:/workspace \
+test: build ## Run full test suite
+	./test.sh
+
+test-local: build ## Quick test: build test package locally
+	$(CONTAINER_RUNTIME) run --rm \
+		-v $(PWD)/output:/output \
+		-e INPUT_SOURCE_TYPE=local \
+		-e INPUT_SOURCE_LOCATION=/workspace/test-package \
+		-e INPUT_OUTPUT_TYPE=local \
+		-e INPUT_OUTPUT_PATH=/output \
 		$(IMAGE_NAME):$(IMAGE_TAG) \
-		zarf version
+		/scripts/build-package.sh
 
 shell: ## Open a shell in the builder container
 	$(CONTAINER_RUNTIME) run --rm -it \

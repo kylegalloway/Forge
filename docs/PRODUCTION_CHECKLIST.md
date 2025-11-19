@@ -93,15 +93,15 @@ Use this checklist to track your progress toward production-ready ScriptRunner d
 ---
 
 ## BATCH 3: Network & Image Security
-**Priority: P1 | Status: 0/9 items | Estimated: 1 week**
+**Priority: P1 | Status: 5/9 items | Estimated: 1 week**
 **Goal: Network isolation and container security**
 
 ### Network Policies (Can start early, test in Batch 2)
-- [ ] ⏸️ **B3.1** NetworkPolicy restricts job pod egress
-- [ ] ⏸️ **B3.2** NetworkPolicy allows only DNS
-- [ ] ⏸️ **B3.3** NetworkPolicy allows only approved services
-- [ ] ⏸️ **B3.4** Controller network policy configured
-- [ ] ⏸️ **B3.5** Network policies per namespace template
+- [x] ✅ **B3.1** NetworkPolicy restricts job pod egress
+- [x] ✅ **B3.2** NetworkPolicy allows only DNS
+- [x] ✅ **B3.3** NetworkPolicy allows only approved services
+- [x] ✅ **B3.4** Controller network policy configured
+- [x] ✅ **B3.5** Network policies per namespace template
 
 ### Image Security (Can work in parallel)
 - [ ] ⏸️ **B3.6** Script images scanned for vulnerabilities

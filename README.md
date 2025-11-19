@@ -477,6 +477,27 @@ The `scripts/` directory contains helpful utilities for development:
   ./scripts/test-e2e.sh [namespace]
   ```
 
+## Production Deployment
+
+For running ScriptRunner in production environments where users execute your scripts:
+
+- **[Production Readiness Checklist](docs/PRODUCTION_CHECKLIST.md)** - Comprehensive, batch-organized tracker with:
+  - 10 batches from Foundation to Launch Readiness
+  - 160 checklist items with priorities and dependencies
+  - Time estimates and execution plan (10-12 weeks)
+  - Current progress: Batch 1 (Foundation) ✅ Complete - 42/160 items (26%)
+
+- **[Production Guide](docs/PRODUCTION.md)** - Complete production deployment guide covering:
+  - Security model and admission webhooks
+  - Multi-tenancy setup with namespaces and RBAC
+  - Resource management and quotas
+  - Monitoring and observability
+  - User onboarding
+
+- **[User Guide](docs/USER_GUIDE.md)** - Documentation for end users running scripts
+
+- **[Webhook Implementation](webhook/)** - Admission webhook for validation and defaults
+
 ## Contributing
 
 Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for detailed information on:
@@ -499,3 +520,39 @@ See LICENSE file for details.
 - [Kubernetes Jobs](https://kubernetes.io/docs/concepts/workloads/controllers/job/)
 - [sample-controller](https://github.com/kubernetes/sample-controller)
 - [controller-runtime](https://github.com/kubernetes-sigs/controller-runtime)
+
+## Client-Side Validation
+
+For better developer experience, ScriptRunner provides client-side validation options:
+
+### Quick Validation with kubectl
+
+```bash
+# Validate before applying
+kubectl apply --dry-run=server -f my-scriptrunner.yaml
+```
+
+### IDE Integration (Recommended)
+
+Get autocomplete and real-time validation in VS Code, IntelliJ, and other editors:
+
+```bash
+# Generate JSON schema
+./scripts/generate-json-schema.sh
+
+# Configure VS Code (one-time)
+cp .vscode/settings.json.example .vscode/settings.json
+```
+
+Now your IDE will provide:
+- Autocomplete for field names
+- Inline documentation
+- Real-time validation
+- Type checking
+
+See [CLIENT_VALIDATION.md](docs/CLIENT_VALIDATION.md) for complete setup options including:
+- JSON Schema generation and hosting
+- Pre-commit hooks
+- kubeconform for offline validation
+- Custom CLI tools
+

@@ -16,9 +16,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **RBAC improvements**: Removed unnecessary permissions, following least privilege principle
   - Removed delete/update/patch on Jobs (cleanup via TTL and owner references)
   - Added events create/patch for better observability
+- **Admission webhook** (Batch 2: B2.1-B2.7):
+  - Validating webhook rejects unapproved scripts and malformed inputs
+  - Mutating webhook sets default values automatically
+  - ScriptRef whitelist enforcement
+  - Image registry prefix validation
+  - Input sanitization with suspicious pattern detection
+  - TLS certificate management via cert-manager
+  - Dual webhook configuration (validating + mutating)
+  - HA deployment with 2 replicas
+  - Health check endpoints (/healthz, /readyz)
+- **Multi-tenancy namespace templates** (Batch 2: B2.8-B2.12):
+  - Automated user onboarding script (onboard-user.sh)
+  - Namespace templates with ResourceQuota and LimitRange
+  - Pod Security Standards (restricted) enforced per namespace
+  - User RBAC roles (create/view ScriptRunners, view Jobs/Pods)
+  - Customizable quotas via CLI flags
+  - Default limits: 50 ScriptRunners, 20 Jobs, 10 cores, 20Gi memory
+  - Tenant isolation and resource management
+- **Production readiness tracking**:
+  - Comprehensive PRODUCTION_CHECKLIST.md with 10 batches
+  - 160 total checklist items with priorities and dependencies
+  - Batch-organized execution plan (10-12 weeks to production)
+  - Progress tracking (Batch 1: 100%, Batch 2: 71%)
 
 ### Planned
-- Admission webhook implementation for production validation
 - Prometheus metrics exporter implementation
 - Multi-replica controller support with leader election
 - Custom resource status conditions (Ready, JobCreated, Failed)
@@ -26,6 +48,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Configurable TTL and timeout values via CRD
 - Support for ConfigMap/Secret volume mounts in jobs
 - Retry logic for failed jobs
+- Network policies for job pod isolation
+- Image scanning and signing pipeline
 
 ## [0.2.0] - 2024-01-15
 

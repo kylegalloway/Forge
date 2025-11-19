@@ -1,47 +1,173 @@
-# Example: Using ScriptRunner to build a Zarf package
+# Examples: Building Zarf packages with ScriptRunner
 #
-# This ScriptRunner uses the Zarf builder image to build a Zarf package
-# from a user-provided Git repository containing a zarf.yaml file.
+# The Zarf builder supports multiple input sources and output destinations:
+#
+# Input Sources:  git, oci, helm, local
+# Output Destinations: local, s3, oci
 #
 # Prerequisites:
 # 1. Build the Zarf builder image:
 #    cd examples/zarf-package-builder && make build && make load
-# 2. Ensure your repository contains a valid zarf.yaml
-# 3. Apply this manifest
 
+---
+# Example 1: Build from Git repository (most common)
 apiVersion: scriptrunner.io/v1alpha1
 kind: ScriptRunner
 metadata:
-  name: build-my-zarf-package
+  name: zarf-build-from-git
   namespace: default
 spec:
-  # Use the Zarf builder image
   image: scriptrunner-zarf-builder:latest
-
-  # Reference the build script
   scriptRef: /scripts/build-package.sh
-
-  # Provide your repository and build configuration
   inputs:
-    # REQUIRED: Git repository containing zarf.yaml
-    SOURCE_REPO: "https://github.com/your-org/your-zarf-package"
+    # Source configuration
+    SOURCE_TYPE: "git"
+    SOURCE_LOCATION: "https://github.com/defenseunicorns/zarf"
+    SOURCE_REF: "v0.35.0"  # branch, tag, or commit
 
-    # OPTIONAL: Git branch, tag, or commit SHA (default: main)
-    SOURCE_REF: "v1.0.0"
-
-    # OPTIONAL: Where to write the built package (default: /output)
+    # Output configuration
+    OUTPUT_TYPE: "local"
     OUTPUT_PATH: "/tmp/packages"
 
 ---
-# Example: Validate a built Zarf package
+# Example 2: Build Helm chart and output to S3
 apiVersion: scriptrunner.io/v1alpha1
 kind: ScriptRunner
 metadata:
-  name: validate-zarf-package
+  name: zarf-helm-to-s3
   namespace: default
 spec:
   image: scriptrunner-zarf-builder:latest
-  scriptRef: /scripts/validate-package.sh
+  scriptRef: /scripts/build-package.sh
   inputs:
-    # Path to the package file to validate
-    PACKAGE_PATH: "/tmp/packages/zarf-package-example-amd64-v1.0.0.tar.zst"
+    # Source: Helm chart
+    SOURCE_TYPE: "helm"
+    SOURCE_LOCATION: "https://charts.bitnami.com/bitnami"
+    SOURCE_REF: "15.0.0"  # chart version
+    PACKAGE_NAME: "postgresql"  # chart name
+
+    # Output: S3
+    OUTPUT_TYPE: "s3"
+    OUTPUT_PATH: "my-zarf-packages"  # S3 bucket name
+    AWS_REGION: "us-east-1"
+    S3_PREFIX: "postgres"  # optional: packages/postgres/
+
+  # Note: AWS credentials should be injected via environment or IRSA
+  # env:
+  #   - name: AWS_ACCESS_KEY_ID
+  #     valueFrom:
+  #       secretKeyRef:
+  #         name: aws-credentials
+  #         key: access-key-id
+  #   - name: AWS_SECRET_ACCESS_KEY
+  #     valueFrom:
+  #       secretKeyRef:
+  #         name: aws-credentials
+  #         key: secret-access-key
+
+---
+# Example 3: Build and publish to OCI registry
+apiVersion: scriptrunner.io/v1alpha1
+kind: ScriptRunner
+metadata:
+  name: zarf-build-to-oci
+  namespace: default
+spec:
+  image: scriptrunner-zarf-builder:latest
+  scriptRef: /scripts/build-package.sh
+  inputs:
+    # Source: Git
+    SOURCE_TYPE: "git"
+    SOURCE_LOCATION: "https://github.com/your-org/your-package"
+    SOURCE_REF: "main"
+
+    # Output: OCI registry
+    OUTPUT_TYPE: "oci"
+    OUTPUT_REGISTRY: "ghcr.io/your-org/zarf-packages"
+    OCI_USERNAME: "your-username"
+    # OCI_PASSWORD should be from secret
+
+  # Note: OCI credentials from secret
+  # env:
+  #   - name: INPUT_OCI_PASSWORD
+  #     valueFrom:
+  #       secretKeyRef:
+  #         name: oci-credentials
+  #         key: password
+
+---
+# Example 4: Pull from OCI, rebuild, push to different registry
+apiVersion: scriptrunner.io/v1alpha1
+kind: ScriptRunner
+metadata:
+  name: zarf-oci-mirror
+  namespace: default
+spec:
+  image: scriptrunner-zarf-builder:latest
+  scriptRef: /scripts/build-package.sh
+  inputs:
+    # Source: OCI
+    SOURCE_TYPE: "oci"
+    SOURCE_LOCATION: "ghcr.io/defenseunicorns/packages/init"
+    SOURCE_REF: "v0.35.0"
+
+    # Output: Different OCI registry
+    OUTPUT_TYPE: "oci"
+    OUTPUT_REGISTRY: "your-registry.io/zarf/init"
+
+---
+# Example 5: Build from local directory (for testing)
+apiVersion: scriptrunner.io/v1alpha1
+kind: ScriptRunner
+metadata:
+  name: zarf-build-local
+  namespace: default
+spec:
+  image: scriptrunner-zarf-builder:latest
+  scriptRef: /scripts/build-package.sh
+  inputs:
+    SOURCE_TYPE: "local"
+    SOURCE_LOCATION: "/workspace/my-package"
+    OUTPUT_TYPE: "local"
+    OUTPUT_PATH: "/tmp/output"
+
+---
+# Example 6: Advanced - Custom build args
+apiVersion: scriptrunner.io/v1alpha1
+kind: ScriptRunner
+metadata:
+  name: zarf-build-advanced
+  namespace: default
+spec:
+  image: scriptrunner-zarf-builder:latest
+  scriptRef: /scripts/build-package.sh
+  inputs:
+    SOURCE_TYPE: "git"
+    SOURCE_LOCATION: "https://github.com/your-org/package"
+    SOURCE_REF: "v1.0.0"
+
+    OUTPUT_TYPE: "local"
+    OUTPUT_PATH: "/output"
+
+    # Custom build arguments passed to zarf create
+    BUILD_ARGS: "--set VAR=value --max-package-size 500000000"
+
+---
+# Example 7: Scheduled nightly builds
+# Use this with a CronJob to build packages on a schedule
+apiVersion: scriptrunner.io/v1alpha1
+kind: ScriptRunner
+metadata:
+  name: zarf-nightly-build
+  namespace: default
+spec:
+  image: scriptrunner-zarf-builder:latest
+  scriptRef: /scripts/build-package.sh
+  inputs:
+    SOURCE_TYPE: "git"
+    SOURCE_LOCATION: "https://github.com/your-org/package"
+    SOURCE_REF: "main"  # Always build from main
+
+    OUTPUT_TYPE: "s3"
+    OUTPUT_PATH: "nightly-builds"
+    S3_PREFIX: "zarf/$(date +%Y-%m-%d)"  # Date-based prefix

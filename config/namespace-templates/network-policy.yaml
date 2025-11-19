@@ -1,0 +1,216 @@
+# Network Policy Template for ScriptRunner Multi-Tenancy
+#
+# This template creates NetworkPolicies to restrict network access for job pods.
+# By default, Kubernetes allows all traffic - these policies implement deny-by-default.
+#
+# Requirements:
+# - CNI plugin with NetworkPolicy support (Calico, Cilium, Weave, etc.)
+# - NOT supported by: Flannel (without additional components)
+#
+# Usage:
+#   Replace {{ .Username }} with the actual username
+#   kubectl apply -f network-policy.yaml
+#
+# Or use the onboarding script:
+#   ./scripts/onboard-user.sh <username>
+
+---
+# Default Deny All Ingress
+# Job pods should not receive any incoming connections
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: deny-all-ingress
+  namespace: user-{{ .Username }}
+  labels:
+    scriptrunner.io/tenant: "{{ .Username }}"
+    scriptrunner.io/network-policy: "default-deny"
+spec:
+  podSelector: {}  # Applies to all pods in namespace
+  policyTypes:
+  - Ingress
+  # No ingress rules = deny all ingress
+
+---
+# Allow Egress to DNS
+# Job pods need DNS to resolve service names
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-dns
+  namespace: user-{{ .Username }}
+  labels:
+    scriptrunner.io/tenant: "{{ .Username }}"
+    scriptrunner.io/network-policy: "dns"
+spec:
+  podSelector: {}  # Applies to all pods in namespace
+  policyTypes:
+  - Egress
+  egress:
+  # Allow DNS queries to kube-dns/CoreDNS
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: kube-system
+    - podSelector:
+        matchLabels:
+          k8s-app: kube-dns
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+
+---
+# Allow Egress to Kubernetes API
+# Job pods may need to read their own status or update ScriptRunner status
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-kubernetes-api
+  namespace: user-{{ .Username }}
+  labels:
+    scriptrunner.io/tenant: "{{ .Username }}"
+    scriptrunner.io/network-policy: "api-access"
+spec:
+  podSelector: {}  # Applies to all pods in namespace
+  policyTypes:
+  - Egress
+  egress:
+  # Allow HTTPS to Kubernetes API server
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: default
+    ports:
+    - protocol: TCP
+      port: 443
+    - protocol: TCP
+      port: 6443
+
+---
+# Allow Egress to Approved Services (EXAMPLE - customize based on your needs)
+# Uncomment and modify to allow access to specific services
+#
+# Example: Allow access to an internal metrics service
+# apiVersion: networking.k8s.io/v1
+# kind: NetworkPolicy
+# metadata:
+#   name: allow-metrics-service
+#   namespace: user-{{ .Username }}
+#   labels:
+#     scriptrunner.io/tenant: "{{ .Username }}"
+#     scriptrunner.io/network-policy: "metrics"
+# spec:
+#   podSelector:
+#     matchLabels:
+#       app: scriptrunner
+#   policyTypes:
+#   - Egress
+#   egress:
+#   - to:
+#     - namespaceSelector:
+#         matchLabels:
+#           name: monitoring
+#     - podSelector:
+#         matchLabels:
+#           app: prometheus
+#     ports:
+#     - protocol: TCP
+#       port: 9090
+
+---
+# Example: Allow egress to external HTTPS endpoints
+# Uncomment to allow job pods to make HTTPS requests to the internet
+#
+# apiVersion: networking.k8s.io/v1
+# kind: NetworkPolicy
+# metadata:
+#   name: allow-external-https
+#   namespace: user-{{ .Username }}
+#   labels:
+#     scriptrunner.io/tenant: "{{ .Username }}"
+#     scriptrunner.io/network-policy: "external-https"
+# spec:
+#   podSelector:
+#     matchLabels:
+#       app: scriptrunner
+#   policyTypes:
+#   - Egress
+#   egress:
+#   # Allow HTTPS to any destination (use with caution)
+#   - to:
+#     - podSelector: {}
+#     - namespaceSelector: {}
+#     - ipBlock:
+#         cidr: 0.0.0.0/0
+#         except:
+#         - 169.254.169.254/32  # Block AWS metadata service
+#         - 10.0.0.0/8          # Block internal RFC1918
+#         - 172.16.0.0/12       # Block internal RFC1918
+#         - 192.168.0.0/16      # Block internal RFC1918
+#     ports:
+#     - protocol: TCP
+#       port: 443
+
+---
+# Example: Allow egress to specific CIDR ranges (databases, APIs, etc.)
+# Uncomment and customize based on your infrastructure
+#
+# apiVersion: networking.k8s.io/v1
+# kind: NetworkPolicy
+# metadata:
+#   name: allow-database-access
+#   namespace: user-{{ .Username }}
+#   labels:
+#     scriptrunner.io/tenant: "{{ .Username }}"
+#     scriptrunner.io/network-policy: "database"
+# spec:
+#   podSelector:
+#     matchLabels:
+#       app: scriptrunner
+#   policyTypes:
+#   - Egress
+#   egress:
+#   - to:
+#     - ipBlock:
+#         cidr: 10.100.0.0/16  # Example: Database subnet
+#     ports:
+#     - protocol: TCP
+#       port: 5432  # PostgreSQL
+#     - protocol: TCP
+#       port: 3306  # MySQL
+
+---
+# Notes:
+#
+# 1. Default Behavior:
+#    - With these policies, job pods can:
+#      - Query DNS (kube-system/kube-dns)
+#      - Access Kubernetes API (default namespace, ports 443/6443)
+#      - NO access to other pods, services, or external IPs
+#
+# 2. Customization:
+#    - Uncomment example policies above to allow specific traffic
+#    - Add new NetworkPolicy resources for your specific requirements
+#    - Use namespaceSelector + podSelector for service-to-service access
+#    - Use ipBlock for external IPs (databases, APIs, etc.)
+#
+# 3. Testing:
+#    - Deploy a test job pod: kubectl run test --image=alpine -n user-{{ .Username }}
+#    - Test DNS: kubectl exec -n user-{{ .Username }} test -- nslookup kubernetes
+#    - Test blocked traffic: kubectl exec -n user-{{ .Username }} test -- wget https://google.com
+#      (Should fail if external HTTPS is not allowed)
+#
+# 4. Troubleshooting:
+#    - View policies: kubectl get networkpolicy -n user-{{ .Username }}
+#    - Describe policy: kubectl describe networkpolicy <name> -n user-{{ .Username }}
+#    - Check CNI: kubectl get pods -n kube-system | grep -E 'calico|cilium|weave'
+#    - Test connectivity: kubectl run test --rm -it --image=alpine -n user-{{ .Username }} -- sh
+#
+# 5. Security Considerations:
+#    - These policies use podSelector: {} to apply to ALL pods
+#    - Consider using more specific selectors (app: scriptrunner) if needed
+#    - Block cloud metadata services (169.254.169.254) to prevent credential leaks
+#    - Review and approve all NetworkPolicy changes in production
+#    - Network policies are additive - multiple policies are OR'd together

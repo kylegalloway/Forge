@@ -242,6 +242,68 @@ subjects:
 - kind: User
   name: "$USERNAME"
   apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: deny-all-ingress
+  namespace: user-$USERNAME
+  labels:
+    scriptrunner.io/tenant: "$USERNAME"
+    scriptrunner.io/network-policy: "default-deny"
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-dns
+  namespace: user-$USERNAME
+  labels:
+    scriptrunner.io/tenant: "$USERNAME"
+    scriptrunner.io/network-policy: "dns"
+spec:
+  podSelector: {}
+  policyTypes:
+  - Egress
+  egress:
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: kube-system
+    - podSelector:
+        matchLabels:
+          k8s-app: kube-dns
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-kubernetes-api
+  namespace: user-$USERNAME
+  labels:
+    scriptrunner.io/tenant: "$USERNAME"
+    scriptrunner.io/network-policy: "api-access"
+spec:
+  podSelector: {}
+  policyTypes:
+  - Egress
+  egress:
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: default
+    ports:
+    - protocol: TCP
+      port: 443
+    - protocol: TCP
+      port: 6443
 EOF
 
 # Apply manifest

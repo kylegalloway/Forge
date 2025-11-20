@@ -1,0 +1,56 @@
+package destinations
+
+import (
+	"fmt"
+
+	zarfv1alpha1 "github.com/kylegalloway/forge/pkg/apis/zarf/v1alpha1"
+	corev1 "k8s.io/api/core/v1"
+)
+
+// OCIDestination handles OCI registry destinations
+type OCIDestination struct{}
+
+// GetPublishCommand returns the zarf package publish command
+func (d *OCIDestination) GetPublishCommand(pkg *zarfv1alpha1.ZarfPackage, artifactPath string) (string, error) {
+	dest := pkg.Spec.Publish.Destination.OCI
+	if dest == nil {
+		return "", fmt.Errorf("oci destination configuration is missing")
+	}
+
+	ociRef := fmt.Sprintf("oci://%s/%s:%s",
+		dest.Registry,
+		dest.Repository,
+		dest.Tag,
+	)
+	return fmt.Sprintf("zarf package publish %s %s --confirm", artifactPath, ociRef), nil
+}
+
+// GetJobConfiguration returns the docker config volume mount
+func (d *OCIDestination) GetJobConfiguration(pkg *zarfv1alpha1.ZarfPackage) (*JobConfig, error) {
+	dest := pkg.Spec.Publish.Destination.OCI
+	if dest == nil {
+		return nil, fmt.Errorf("oci destination configuration is missing")
+	}
+
+	config := &JobConfig{}
+
+	if dest.CredentialsSecretRef != nil {
+		secretName := dest.CredentialsSecretRef.Name
+		config.Volumes = append(config.Volumes, corev1.Volume{
+			Name: "registry-creds",
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: secretName,
+				},
+			},
+		})
+
+		config.VolumeMounts = append(config.VolumeMounts, corev1.VolumeMount{
+			Name:      "registry-creds",
+			MountPath: "/home/zarf/.docker",
+			ReadOnly:  true,
+		})
+	}
+
+	return config, nil
+}

@@ -1,6 +1,8 @@
 # Production Deployment Checklist
 
-Use this checklist to track your progress toward production-ready ScriptRunner deployment.
+Use this checklist to track your progress toward production-ready Forge deployment.
+
+**Note**: This checklist references the old ScriptRunner implementation. Most items will need to be re-evaluated for the new Forge architecture based on ZarfPackage operations.
 
 ## Status Legend
 

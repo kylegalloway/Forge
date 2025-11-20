@@ -1,24 +1,21 @@
-# ScriptRunner → Zarf/UDS Controller Refactor Plan
+# Forge Architecture Plan
 
 ## Overview
 
-This document outlines the architectural refactor to transform ScriptRunner from a generic script execution controller into a purpose-built Zarf Package and UDS Bundle deployment controller with restricted, policy-driven actions.
+This document outlines the architecture for Forge, a Kubernetes controller that provides declarative operations for Zarf packages and UDS bundles with built-in policy enforcement.
 
-## Current State (v1alpha1)
+## Design Philosophy
 
-**What it does:**
-- Executes arbitrary scripts in containers
-- Users provide: image, script (inline or ref), inputs
-- No restrictions on what scripts can do
-- Generic and open-ended
+**From generic to specific:**
+- Old approach: Run any script in any container
+- New approach: Declarative build/publish/deploy operations with semantic meaning
 
-**Problems:**
-- Too permissive - users can run anything
-- No semantic understanding of operations
-- Difficult to enforce policies
-- No built-in Zarf/UDS knowledge
+**Security by default:**
+- Policy enforcement at admission webhook level
+- RBAC controls on actions, sources, and destinations
+- Defense in depth with NetworkPolicies and PodSecurity
 
-## Target State (v1alpha2)
+## Architecture (v1alpha1)
 
 **What it will do:**
 - Build, publish, and deploy Zarf packages and UDS bundles

@@ -1,10 +1,10 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: scriptrunner-webhook-config
+  name: forge-webhook-config
   namespace: forge-system
   labels:
-    app: scriptrunner-webhook
+    app: forge-webhook
 data:
   config.json: |
     {

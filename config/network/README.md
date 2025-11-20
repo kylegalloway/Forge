@@ -1,6 +1,6 @@
-# Network Policies for ScriptRunner
+# Network Policies for Forge
 
-This directory contains NetworkPolicy resources to secure ScriptRunner deployments.
+This directory contains NetworkPolicy resources to secure Forge deployments.
 
 ## Overview
 
@@ -31,7 +31,7 @@ If you don't have a supported CNI, NetworkPolicies will be **accepted but not en
 
 ## Policies
 
-### Controller Namespace (`scriptrunner-system`)
+### Controller Namespace (`forge-system`)
 
 **File:** `controller-network-policy.yaml`
 
@@ -49,15 +49,15 @@ kubectl apply -f config/network/controller-network-policy.yaml
 **Verify:**
 ```bash
 # Check policies exist
-kubectl get networkpolicy -n scriptrunner-system
+kubectl get networkpolicy -n forge-system
 
 # Test controller can create Jobs
-kubectl apply -f config/samples/scriptrunner_v1alpha1_scriptrunner.yaml
+kubectl apply -f config/samples/forge_v1alpha1_forge.yaml
 kubectl get jobs -A
 
 # Check logs for errors
-kubectl logs -n scriptrunner-system deployment/scriptrunner-controller
-kubectl logs -n scriptrunner-system deployment/scriptrunner-webhook
+kubectl logs -n forge-system deployment/forge-controller
+kubectl logs -n forge-system deployment/forge-webhook
 ```
 
 ### User Namespaces
@@ -123,7 +123,7 @@ metadata:
 spec:
   podSelector:
     matchLabels:
-      app: scriptrunner
+      app: forge
   policyTypes:
   - Egress
   egress:
@@ -226,14 +226,14 @@ kubectl run test --rm -it --image=curlimages/curl -n user-alice -- curl http://s
 
 ### 5. Verify Controller Still Works
 ```bash
-# Create a ScriptRunner
-kubectl apply -f config/samples/scriptrunner_v1alpha1_scriptrunner.yaml
+# Create a Forge
+kubectl apply -f config/samples/forge_v1alpha1_forge.yaml
 
 # Check Job was created
 kubectl get jobs -A
 
 # Check controller logs
-kubectl logs -n scriptrunner-system deployment/scriptrunner-controller
+kubectl logs -n forge-system deployment/forge-controller
 ```
 
 **Expected:** Job created successfully
@@ -262,26 +262,26 @@ kubectl apply -f https://docs.projectcalico.org/manifests/canal.yaml
 
 **Diagnosis:**
 ```bash
-kubectl logs -n scriptrunner-system deployment/scriptrunner-controller
+kubectl logs -n forge-system deployment/forge-controller
 ```
 
 **Fix:** Verify controller egress allows Kubernetes API
 ```bash
-kubectl get networkpolicy controller-allow-api -n scriptrunner-system -o yaml
+kubectl get networkpolicy controller-allow-api -n forge-system -o yaml
 ```
 
 ### Webhook Rejecting All Requests
 
-**Symptom:** All ScriptRunner creations fail with webhook timeout
+**Symptom:** All Forge creations fail with webhook timeout
 
 **Diagnosis:**
 ```bash
-kubectl logs -n scriptrunner-system deployment/scriptrunner-webhook
+kubectl logs -n forge-system deployment/forge-webhook
 ```
 
 **Fix:** Verify webhook ingress allows API server
 ```bash
-kubectl get networkpolicy webhook-allow-api-ingress -n scriptrunner-system -o yaml
+kubectl get networkpolicy webhook-allow-api-ingress -n forge-system -o yaml
 ```
 
 ### Job Pods Can't Resolve DNS
@@ -338,7 +338,7 @@ All layers work together. NetworkPolicy failure doesn't compromise RBAC or other
 ### Best Practices
 
 1. **Start with deny-all, add only required access**
-2. **Use specific selectors (app: scriptrunner) over empty selectors where possible**
+2. **Use specific selectors (app: forge) over empty selectors where possible**
 3. **Block cloud metadata services (169.254.169.254)**
 4. **Log NetworkPolicy violations** (if CNI supports it - Cilium, Calico Enterprise)
 5. **Audit policies regularly**

@@ -1,6 +1,6 @@
-# ScriptRunner Namespace Templates
+# Forge Namespace Templates
 
-Templates for creating isolated, multi-tenant namespaces for ScriptRunner users.
+Templates for creating isolated, multi-tenant namespaces for Forge users.
 
 ## Quick Start
 
@@ -10,7 +10,7 @@ Templates for creating isolated, multi-tenant namespaces for ScriptRunner users.
 
 # Onboard with custom quotas
 ./scripts/onboard-user.sh bob \
-  --max-scriptrunners 100 \
+  --max-forges 100 \
   --max-jobs 50 \
   --cpu-limit 20 \
   --memory-limit 40Gi
@@ -30,7 +30,7 @@ Each user namespace includes:
 
 ### 2. ResourceQuota
 Limits total resource consumption:
-- ScriptRunner resources (default: 50)
+- Forge resources (default: 50)
 - Concurrent Jobs (default: 20)
 - Pods (default: 20)
 - CPU requests/limits (default: 5/10 cores)
@@ -47,7 +47,7 @@ Sets default and maximum limits for containers:
 
 ### 4. RBAC Role
 User permissions within their namespace:
-- **ScriptRunners**: create, get, list, watch, delete
+- **Forges**: create, get, list, watch, delete
 - **Jobs**: get, list, watch (read-only)
 - **Pods**: get, list, watch, logs (read-only)
 - **Status**: get, list, watch
@@ -59,7 +59,7 @@ Binds the user to their namespace role.
 
 | Resource | Default Value | Configurable |
 |----------|---------------|--------------|
-| Max ScriptRunners | 50 | `--max-scriptrunners` |
+| Max Forges | 50 | `--max-forges` |
 | Max Jobs | 20 | `--max-jobs` |
 | Max Pods | 20 | (matches max-jobs) |
 | CPU Request | 5 cores | `--cpu-request` |
@@ -88,7 +88,7 @@ cp config/namespace-templates/user-namespace.yaml /tmp/alice-namespace.yaml
 
 # 2. Replace template variables
 sed -i 's/{{ .Username }}/alice/g' /tmp/alice-namespace.yaml
-sed -i 's/{{ .MaxScriptRunners | default 50 }}/100/g' /tmp/alice-namespace.yaml
+sed -i 's/{{ .MaxForges | default 50 }}/100/g' /tmp/alice-namespace.yaml
 # ... (replace other variables as needed)
 
 # 3. Apply
@@ -102,7 +102,7 @@ kubectl apply -f /tmp/alice-namespace.yaml
 High-usage users (e.g., CI/CD):
 ```bash
 ./scripts/onboard-user.sh ci-pipeline \
-  --max-scriptrunners 500 \
+  --max-forges 500 \
   --max-jobs 100 \
   --cpu-limit 50 \
   --memory-limit 100Gi
@@ -111,7 +111,7 @@ High-usage users (e.g., CI/CD):
 Low-usage users (e.g., testing):
 ```bash
 ./scripts/onboard-user.sh test-user \
-  --max-scriptrunners 10 \
+  --max-forges 10 \
   --max-jobs 5 \
   --cpu-limit 2 \
   --memory-limit 4Gi
@@ -134,13 +134,13 @@ Edit the template variables in `user-namespace.yaml` or override in the onboardi
 
 ```bash
 # View quota status
-kubectl describe resourcequota scriptrunner-quota -n user-alice
+kubectl describe resourcequota forge-quota -n user-alice
 
 # View all user namespaces
-kubectl get namespaces -l scriptrunner.io/managed=true
+kubectl get namespaces -l forge.io/managed=true
 
 # View quota across all users
-kubectl get resourcequota --all-namespaces -l scriptrunner.io/managed=true
+kubectl get resourcequota --all-namespaces -l forge.io/managed=true
 ```
 
 ## Offboarding a User
@@ -165,15 +165,15 @@ kubectl delete namespace user-alice
 
 ## Troubleshooting
 
-### User Cannot Create ScriptRunners
+### User Cannot Create Forges
 
 Check quota:
 ```bash
-kubectl describe resourcequota scriptrunner-quota -n user-alice
+kubectl describe resourcequota forge-quota -n user-alice
 ```
 
 Look for:
-- `count/scriptrunners.scriptrunner.io` exceeded
+- `count/forges.forge.io` exceeded
 - `count/jobs.batch` exceeded
 - CPU/memory limits exceeded
 
@@ -181,27 +181,27 @@ Look for:
 
 Check LimitRange:
 ```bash
-kubectl describe limitrange scriptrunner-limits -n user-alice
+kubectl describe limitrange forge-limits -n user-alice
 ```
 
-Ensure ScriptRunner resource requests fit within container limits.
+Ensure Forge resource requests fit within container limits.
 
 ### Permission Denied
 
 Check RoleBinding:
 ```bash
-kubectl get rolebinding scriptrunner-user-binding -n user-alice -o yaml
+kubectl get rolebinding forge-user-binding -n user-alice -o yaml
 ```
 
 Verify user is listed in subjects.
 
 ## Integration with Admission Webhook
 
-Namespaces with `scriptrunner.io/webhook: enabled` label will have ScriptRunner resources validated by the admission webhook.
+Namespaces with `forge.io/webhook: enabled` label will have Forge resources validated by the admission webhook.
 
 To disable webhook for a namespace:
 ```bash
-kubectl label namespace user-alice scriptrunner.io/webhook=disabled --overwrite
+kubectl label namespace user-alice forge.io/webhook=disabled --overwrite
 ```
 
 ## See Also

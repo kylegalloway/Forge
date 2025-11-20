@@ -1,75 +1,75 @@
-# Prometheus Alerts for ScriptRunner
+# Prometheus Alerts for Forge
 
-This directory contains PrometheusRule CRDs defining alerts for ScriptRunner.
+This directory contains PrometheusRule CRDs defining alerts for Forge.
 
 ## Alert Overview
 
 ### Controller Health Alerts
 
-**ScriptRunnerControllerDown** (Critical)
+**ForgeControllerDown** (Critical)
 - **Condition**: Controller metrics endpoint is unreachable for 5 minutes
-- **Impact**: No ScriptRunner resources will be reconciled
+- **Impact**: No Forge resources will be reconciled
 - **Action**: Check controller pod status, restart if necessary
 - **False positives**: Network issues, pod restarts
 
-**ScriptRunnerNoActivity** (Warning)
-- **Condition**: No new ScriptRunners created in 30 minutes, but active count > 0
+**ForgeNoActivity** (Warning)
+- **Condition**: No new Forges created in 30 minutes, but active count > 0
 - **Impact**: Controller may be stuck in a watch loop
 - **Action**: Check controller logs, restart controller
-- **False positives**: Low activity periods, all ScriptRunners already processed
+- **False positives**: Low activity periods, all Forges already processed
 
 ### Error Rate Alerts
 
-**ScriptRunnerHighErrorRate** (Warning)
+**ForgeHighErrorRate** (Warning)
 - **Condition**: > 10% of reconciliations failing for 10 minutes
-- **Impact**: Some ScriptRunners may not create Jobs
-- **Action**: Check controller logs for error patterns, review recent ScriptRunner changes
+- **Impact**: Some Forges may not create Jobs
+- **Action**: Check controller logs for error patterns, review recent Forge changes
 - **False positives**: Brief spike in invalid resources
 
-**ScriptRunnerCriticalErrorRate** (Critical)
+**ForgeCriticalErrorRate** (Critical)
 - **Condition**: > 50% of reconciliations failing for 5 minutes
 - **Impact**: Controller is effectively broken
 - **Action**: Immediate investigation required, consider rollback
 - **False positives**: Deployment in progress, API server issues
 
-**ScriptRunnerJobCreationFailures** (Warning)
+**ForgeJobCreationFailures** (Warning)
 - **Condition**: Job creation errors > 0.1/sec for 10 minutes
-- **Impact**: ScriptRunners exist but Jobs aren't being created
+- **Impact**: Forges exist but Jobs aren't being created
 - **Action**: Check RBAC permissions, API server health, resource quotas
 - **False positives**: Namespace quota exhaustion (expected behavior)
 
 ### Performance Alerts
 
-**ScriptRunnerSlowReconciliation** (Warning)
+**ForgeSlowReconciliation** (Warning)
 - **Condition**: p95 reconciliation latency > 5 seconds for 15 minutes
 - **Impact**: Slow Job creation, degraded user experience
 - **Action**: Check controller resource usage, API server latency, consider scaling
-- **False positives**: Large ScriptRunner specs, complex validation
+- **False positives**: Large Forge specs, complex validation
 
 ### Webhook Alerts
 
-**ScriptRunnerWebhookDown** (Warning)
+**ForgeWebhookDown** (Warning)
 - **Condition**: Webhook metrics endpoint unreachable for 5 minutes
-- **Impact**: New ScriptRunners cannot be validated (may be rejected by fail-closed policy)
+- **Impact**: New Forges cannot be validated (may be rejected by fail-closed policy)
 - **Action**: Check webhook pod status, certificate validity
 - **False positives**: Webhook deployment rollout
 
-**ScriptRunnerWebhookHighRejectionRate** (Info)
+**ForgeWebhookHighRejectionRate** (Info)
 - **Condition**: Webhook rejecting > 1 request/second for 10 minutes
-- **Impact**: Users may be submitting invalid ScriptRunners
+- **Impact**: Users may be submitting invalid Forges
 - **Action**: Review webhook logs, educate users on validation rules
 - **False positives**: Load testing, CI/CD pipeline issues
 
 ### Capacity Alerts
 
-**ScriptRunnerHighResourceCount** (Info)
-- **Condition**: > 1000 active ScriptRunners for 10 minutes
+**ForgeHighResourceCount** (Info)
+- **Condition**: > 1000 active Forges for 10 minutes
 - **Impact**: Informational, may need capacity planning
-- **Action**: Review trends, consider controller scaling, audit old ScriptRunners
+- **Action**: Review trends, consider controller scaling, audit old Forges
 - **False positives**: Expected in large clusters
 
-**ScriptRunnerVeryHighResourceCount** (Warning)
-- **Condition**: > 5000 active ScriptRunners for 10 minutes
+**ForgeVeryHighResourceCount** (Warning)
+- **Condition**: > 5000 active Forges for 10 minutes
 - **Impact**: Controller may struggle, watch loop overhead
 - **Action**: Scale controller, implement namespace sharding, review TTLs
 - **False positives**: None, this is genuinely high
@@ -79,7 +79,7 @@ This directory contains PrometheusRule CRDs defining alerts for ScriptRunner.
 ### Deploy PrometheusRule
 
 ```bash
-kubectl apply -f scriptrunner-alerts.yaml
+kubectl apply -f forge-alerts.yaml
 ```
 
 The PrometheusRule CRD requires Prometheus Operator to be installed.
@@ -88,7 +88,7 @@ The PrometheusRule CRD requires Prometheus Operator to be installed.
 
 ```bash
 # Check PrometheusRule exists
-kubectl get prometheusrule -n scriptrunner-system
+kubectl get prometheusrule -n forge-system
 
 # Check Prometheus has loaded rules
 kubectl port-forward -n monitoring svc/prometheus-operated 9090:9090
@@ -104,17 +104,17 @@ route:
   routes:
   - match:
       component: controller
-    receiver: scriptrunner-team
+    receiver: forge-team
     group_by: ['alertname', 'severity']
     group_wait: 30s
     group_interval: 5m
     repeat_interval: 4h
 
 receivers:
-- name: scriptrunner-team
+- name: forge-team
   slack_configs:
   - api_url: https://hooks.slack.com/services/YOUR/WEBHOOK/URL
-    channel: '#scriptrunner-alerts'
+    channel: '#forge-alerts'
     title: '{{ range .Alerts }}{{ .Labels.severity }}: {{ .Annotations.summary }}{{ end }}'
     text: '{{ range .Alerts }}{{ .Annotations.description }}{{ end }}'
 ```
@@ -140,7 +140,7 @@ amtool silence add \
   --author="SRE Team" \
   --duration=24h \
   --comment="Known issue, ticket #123" \
-  alertname=ScriptRunnerHighErrorRate
+  alertname=ForgeHighErrorRate
 ```
 
 ## Tuning Alerts
@@ -152,18 +152,18 @@ Common adjustments based on your environment:
 **For high-traffic clusters:**
 ```yaml
 # Increase error rate threshold
-ScriptRunnerHighErrorRate:
+ForgeHighErrorRate:
   expr: ... > 0.20  # Was 0.10
 
 # Increase resource count thresholds
-ScriptRunnerHighResourceCount:
+ForgeHighResourceCount:
   expr: ... > 5000  # Was 1000
 ```
 
 **For low-latency requirements:**
 ```yaml
 # Decrease reconciliation latency threshold
-ScriptRunnerSlowReconciliation:
+ForgeSlowReconciliation:
   expr: ... > 2  # Was 5 seconds
 ```
 
@@ -172,14 +172,14 @@ ScriptRunnerSlowReconciliation:
 **For stable environments:**
 ```yaml
 # Require longer sustained state before alerting
-ScriptRunnerHighErrorRate:
+ForgeHighErrorRate:
   for: 30m  # Was 10m
 ```
 
 **For critical systems:**
 ```yaml
 # Alert faster
-ScriptRunnerCriticalErrorRate:
+ForgeCriticalErrorRate:
   for: 2m  # Was 5m
 ```
 
@@ -207,12 +207,12 @@ docs/runbooks/
 ### Manually Trigger Alerts
 
 ```bash
-# Stop controller to trigger ScriptRunnerControllerDown
-kubectl scale deployment scriptrunner-controller -n scriptrunner-system --replicas=0
+# Stop controller to trigger ForgeControllerDown
+kubectl scale deployment forge-controller -n forge-system --replicas=0
 
 # Wait 5 minutes, verify alert fires
 # Restore
-kubectl scale deployment scriptrunner-controller -n scriptrunner-system --replicas=1
+kubectl scale deployment forge-controller -n forge-system --replicas=1
 ```
 
 ### Alert Rule Testing
@@ -220,7 +220,7 @@ kubectl scale deployment scriptrunner-controller -n scriptrunner-system --replic
 Use promtool to validate alert syntax:
 
 ```bash
-promtool check rules scriptrunner-alerts.yaml
+promtool check rules forge-alerts.yaml
 ```
 
 ## Integration with On-Call
@@ -252,6 +252,6 @@ Example PagerDuty routing:
 ## References
 
 - [Prometheus Metrics](../../../pkg/metrics/metrics.go)
-- [Grafana Dashboard](../../grafana/scriptrunner-dashboard.json)
+- [Grafana Dashboard](../../grafana/forge-dashboard.json)
 - [Production Checklist](../../../docs/PRODUCTION_CHECKLIST.md)
 - [Prometheus Operator Docs](https://prometheus-operator.dev/)

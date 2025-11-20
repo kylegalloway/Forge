@@ -1,15 +1,15 @@
-# Grafana Dashboard for ScriptRunner
+# Grafana Dashboard for Forge
 
-This directory contains the Grafana dashboard for monitoring ScriptRunner controller.
+This directory contains the Grafana dashboard for monitoring Forge controller.
 
 ## Dashboard Overview
 
 The dashboard provides real-time visibility into:
 
-- **Active ScriptRunners**: Current number of active ScriptRunner resources
-- **Job Creation Rate**: Jobs created per minute (aggregated across all ScriptRunners)
+- **Active Forges**: Current number of active Forge resources
+- **Job Creation Rate**: Jobs created per minute (aggregated across all Forges)
 - **Error Rate**: Percentage of reconciliations that failed
-- **Job Creation by ScriptRunner**: Per-ScriptRunner job creation rates
+- **Job Creation by Forge**: Per-Forge job creation rates
 - **Reconcile Errors by Type**: Breakdown of errors (conversion, job creation, status update)
 - **Reconcile Duration**: p50 and p95 latency of reconciliation loops
 
@@ -19,7 +19,7 @@ The dashboard provides real-time visibility into:
 
 1. Open Grafana
 2. Navigate to Dashboards → Import
-3. Upload `scriptrunner-dashboard.json`
+3. Upload `forge-dashboard.json`
 4. Select your Prometheus data source
 5. Click Import
 
@@ -29,13 +29,13 @@ The dashboard provides real-time visibility into:
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: scriptrunner-grafana-dashboard
+  name: forge-grafana-dashboard
   namespace: monitoring
   labels:
     grafana_dashboard: "1"
 data:
-  scriptrunner-controller.json: |
-    <paste contents of scriptrunner-dashboard.json>
+  forge-controller.json: |
+    <paste contents of forge-dashboard.json>
 ```
 
 Grafana will automatically discover and load dashboards with the `grafana_dashboard: "1"` label.
@@ -45,8 +45,8 @@ Grafana will automatically discover and load dashboards with the `grafana_dashbo
 If using the Grafana Helm chart with sidecar dashboards:
 
 ```bash
-kubectl create configmap scriptrunner-dashboard \
-  --from-file=scriptrunner-dashboard.json \
+kubectl create configmap forge-dashboard \
+  --from-file=forge-dashboard.json \
   --namespace monitoring \
   --dry-run=client -o yaml | \
   kubectl label --local -f - grafana_dashboard=1 -o yaml | \
@@ -55,20 +55,20 @@ kubectl create configmap scriptrunner-dashboard \
 
 ## Panels Explained
 
-### Active ScriptRunners
-- **Metric**: `scriptrunner_resources_active`
+### Active Forges
+- **Metric**: `forge_resources_active`
 - **Type**: Stat (single value)
-- **Shows**: Current number of ScriptRunner resources being managed
+- **Shows**: Current number of Forge resources being managed
 - **Use**: Capacity planning, understanding load
 
 ### Job Creation Rate
-- **Metric**: `sum(rate(scriptrunner_jobs_created_total[5m])) * 60`
+- **Metric**: `sum(rate(forge_jobs_created_total[5m])) * 60`
 - **Type**: Stat (single value)
 - **Shows**: Jobs created per minute (5-minute average)
 - **Use**: Traffic monitoring, scaling decisions
 
 ### Error Rate
-- **Metric**: `sum(rate(scriptrunner_reconcile_errors_total[5m])) / sum(rate(scriptrunner_resources_created_total[5m]))`
+- **Metric**: `sum(rate(forge_reconcile_errors_total[5m])) / sum(rate(forge_resources_created_total[5m]))`
 - **Type**: Stat with thresholds
 - **Shows**: Percentage of reconciliations that failed
 - **Thresholds**:
@@ -77,22 +77,22 @@ kubectl create configmap scriptrunner-dashboard \
   - Red: > 10%
 - **Use**: SLO monitoring, alerting trigger
 
-### Job Creation Rate by ScriptRunner
-- **Metric**: `rate(scriptrunner_jobs_created_total[5m])`
+### Job Creation Rate by Forge
+- **Metric**: `rate(forge_jobs_created_total[5m])`
 - **Type**: Time series
-- **Shows**: Job creation rate for each ScriptRunner (by namespace/name)
-- **Use**: Identifying hot ScriptRunners, troubleshooting specific resources
+- **Shows**: Job creation rate for each Forge (by namespace/name)
+- **Use**: Identifying hot Forges, troubleshooting specific resources
 
 ### Reconcile Errors by Type
-- **Metric**: `rate(scriptrunner_reconcile_errors_total[5m])`
+- **Metric**: `rate(forge_reconcile_errors_total[5m])`
 - **Type**: Stacked time series
 - **Shows**: Error rate breakdown by type (conversion_error, job_creation_error, status_update_error)
 - **Use**: Targeted troubleshooting, understanding failure modes
 
 ### Reconcile Duration
 - **Metrics**:
-  - `histogram_quantile(0.95, sum(rate(scriptrunner_reconcile_duration_seconds_bucket[5m])) by (le))`
-  - `histogram_quantile(0.50, sum(rate(scriptrunner_reconcile_duration_seconds_bucket[5m])) by (le))`
+  - `histogram_quantile(0.95, sum(rate(forge_reconcile_duration_seconds_bucket[5m])) by (le))`
+  - `histogram_quantile(0.50, sum(rate(forge_reconcile_duration_seconds_bucket[5m])) by (le))`
 - **Type**: Time series (bars)
 - **Shows**: p50 and p95 reconciliation latency
 - **Use**: Performance monitoring, detecting slowdowns
@@ -118,14 +118,14 @@ This dashboard doesn't include alerts. Configure alerts via:
 
 ### No Data
 - Verify Prometheus data source is configured
-- Check ServiceMonitor is deployed: `kubectl get servicemonitor -n scriptrunner-system`
+- Check ServiceMonitor is deployed: `kubectl get servicemonitor -n forge-system`
 - Verify Prometheus is scraping: Check Prometheus UI → Status → Targets
-- Confirm controller is exposing metrics: `kubectl port-forward -n scriptrunner-system svc/scriptrunner-controller-metrics 8080:8080` then `curl localhost:8080/metrics`
+- Confirm controller is exposing metrics: `kubectl port-forward -n forge-system svc/forge-controller-metrics 8080:8080` then `curl localhost:8080/metrics`
 
 ### Missing Metrics
-- Controller may not have processed any ScriptRunners yet
+- Controller may not have processed any Forges yet
 - Metrics are only created when events occur (counters increment, histograms observe)
-- Wait for ScriptRunner activity or create a test resource
+- Wait for Forge activity or create a test resource
 
 ### Dashboard Shows Zero Values
 - Check time range (metrics may not exist in selected window)

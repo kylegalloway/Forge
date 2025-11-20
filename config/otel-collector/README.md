@@ -1,12 +1,12 @@
-# OpenTelemetry Collector for ScriptRunner
+# OpenTelemetry Collector for Forge
 
-The OpenTelemetry (OTel) Collector receives telemetry from the ScriptRunner controller and exports it to multiple backends. This provides vendor-neutral observability that works with Prometheus, Jaeger, Datadog, New Relic, Honeycomb, and more.
+The OpenTelemetry (OTel) Collector receives telemetry from the Forge controller and exports it to multiple backends. This provides vendor-neutral observability that works with Prometheus, Jaeger, Datadog, New Relic, Honeycomb, and more.
 
 ## Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                   ScriptRunner Controller                        │
+│                   Forge Controller                        │
 │  ┌──────────────┐  ┌─────────────┐  ┌──────────────┐           │
 │  │ OTel Metrics │  │ OTel Traces │  │ Prom Bridge  │           │
 │  └──────┬───────┘  └──────┬──────┘  └──────┬───────┘           │
@@ -61,8 +61,8 @@ kubectl apply -f config/otel-collector/otel-collector-config.yaml
 kubectl apply -f config/otel-collector/otel-collector-deployment.yaml
 
 # Verify deployment
-kubectl get pods -n scriptrunner-system -l app=otel-collector
-kubectl logs -n scriptrunner-system -l app=otel-collector
+kubectl get pods -n forge-system -l app=otel-collector
+kubectl logs -n forge-system -l app=otel-collector
 ```
 
 ### 2. Update Controller to Send to OTel Collector
@@ -77,7 +77,7 @@ env:
 - name: OTEL_EXPORTER_OTLP_INSECURE
   value: "true"
 - name: OTEL_SERVICE_NAME
-  value: "scriptrunner-controller"
+  value: "forge-controller"
 ```
 
 ### 3. Deploy Jaeger (for traces)
@@ -89,7 +89,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: jaeger
-  namespace: scriptrunner-system
+  namespace: forge-system
 spec:
   replicas: 1
   selector:
@@ -112,7 +112,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: jaeger-collector
-  namespace: scriptrunner-system
+  namespace: forge-system
 spec:
   ports:
   - name: otlp-grpc
@@ -126,7 +126,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: jaeger-query
-  namespace: scriptrunner-system
+  namespace: forge-system
 spec:
   type: LoadBalancer
   ports:
@@ -137,7 +137,7 @@ spec:
 EOF
 
 # Access Jaeger UI
-kubectl port-forward -n scriptrunner-system svc/jaeger-query 16686:16686
+kubectl port-forward -n forge-system svc/jaeger-query 16686:16686
 # Open http://localhost:16686
 ```
 
@@ -173,7 +173,7 @@ kubectl port-forward -n scriptrunner-system svc/jaeger-query 16686:16686
 
 **Prometheus Exporter** (enabled):
 - Exposes metrics at `:8889/metrics` for Prometheus to scrape
-- Namespace: `scriptrunner`
+- Namespace: `forge`
 - ServiceMonitor included for Prometheus Operator
 
 **Jaeger Exporter** (enabled):
@@ -195,7 +195,7 @@ kubectl port-forward -n scriptrunner-system svc/jaeger-query 16686:16686
 
 ## Hybrid Observability Approach
 
-ScriptRunner uses a **hybrid approach** combining:
+Forge uses a **hybrid approach** combining:
 
 ### 1. In-App Metrics (OTel SDK in Go)
 **What**: Controller internals, business logic
@@ -212,7 +212,7 @@ ScriptRunner uses a **hybrid approach** combining:
 **What**: Resource counts, object statuses
 **How**: Deploy kube-state-metrics (separate deployment)
 **Examples**:
-- Total ScriptRunner resources (by namespace, by phase)
+- Total Forge resources (by namespace, by phase)
 - Total Jobs (by condition: succeeded, failed, active)
 - Pod counts, container restarts
 - Resource quota usage
@@ -241,13 +241,13 @@ helm repo update
 
 # Install kube-state-metrics
 helm install kube-state-metrics prometheus-community/kube-state-metrics \
-  --namespace scriptrunner-system \
+  --namespace forge-system \
   --set customResourceState.enabled=true \
-  --set customResourceState.config.spec.resources[0].groupVersionKind.group=scriptrunner.io \
+  --set customResourceState.config.spec.resources[0].groupVersionKind.group=forge.io \
   --set customResourceState.config.spec.resources[0].groupVersionKind.version=v1alpha1 \
-  --set customResourceState.config.spec.resources[0].groupVersionKind.kind=ScriptRunner \
-  --set customResourceState.config.spec.resources[0].metrics[0].name=scriptrunner_info \
-  --set customResourceState.config.spec.resources[0].metrics[0].help="Information about ScriptRunner" \
+  --set customResourceState.config.spec.resources[0].groupVersionKind.kind=Forge \
+  --set customResourceState.config.spec.resources[0].metrics[0].name=forge_info \
+  --set customResourceState.config.spec.resources[0].metrics[0].help="Information about Forge" \
   --set customResourceState.config.spec.resources[0].metrics[0].each.type=Info \
   --set customResourceState.config.spec.resources[0].metrics[0].each.info.labelsFromPath.namespace=[metadata,namespace] \
   --set customResourceState.config.spec.resources[0].metrics[0].each.info.labelsFromPath.name=[metadata,name]
@@ -260,8 +260,8 @@ kubectl apply -f https://github.com/kubernetes/kube-state-metrics/releases/downl
 ```
 
 kube-state-metrics will expose metrics like:
-- `kube_scriptrunner_created` - Total ScriptRunners
-- `kube_scriptrunner_status_phase{phase="JobCreated"}` - ScriptRunners by phase
+- `kube_forge_created` - Total Forges
+- `kube_forge_status_phase{phase="JobCreated"}` - Forges by phase
 - `kube_job_status_succeeded` - Jobs that succeeded
 - `kube_job_status_failed` - Jobs that failed
 
@@ -287,14 +287,14 @@ kubectl apply -f config/otel-collector/otel-collector-deployment.yaml
 ```
 
 **Metrics Available**:
-- `scriptrunner_resources_created` - Counter
-- `scriptrunner_resources_active` - Gauge
-- `scriptrunner_jobs_created` - Counter (by namespace, scriptrunner)
-- `scriptrunner_jobs_completed` - Counter
-- `scriptrunner_jobs_failed` - Counter
-- `scriptrunner_job_duration_bucket` - Histogram
-- `scriptrunner_reconcile_errors` - Counter (by error_type)
-- `scriptrunner_reconcile_duration_bucket` - Histogram
+- `forge_resources_created` - Counter
+- `forge_resources_active` - Gauge
+- `forge_jobs_created` - Counter (by namespace, forge)
+- `forge_jobs_completed` - Counter
+- `forge_jobs_failed` - Counter
+- `forge_job_duration_bucket` - Histogram
+- `forge_reconcile_errors` - Counter (by error_type)
+- `forge_reconcile_duration_bucket` - Histogram
 
 ### Jaeger (Traces)
 
@@ -302,13 +302,13 @@ Jaeger receives traces from the OTel Collector and provides a UI for exploring t
 
 **Trace Structure**:
 ```
-reconcile_scriptrunner (root span)
+reconcile_forge (root span)
   └── create_job (child span)
 ```
 
 **Attributes**:
-- `scriptrunner.namespace` - Namespace
-- `scriptrunner.name` - ScriptRunner name
+- `forge.namespace` - Namespace
+- `forge.name` - Forge name
 - `job.name` - Created Job name
 - `error` - Error message (if failed)
 - `error.type` - Error type (conversion_error, job_creation_error, etc.)
@@ -318,7 +318,7 @@ reconcile_scriptrunner (root span)
 
 **Access Jaeger UI**:
 ```bash
-kubectl port-forward -n scriptrunner-system svc/jaeger-query 16686:16686
+kubectl port-forward -n forge-system svc/jaeger-query 16686:16686
 # Open http://localhost:16686
 ```
 
@@ -383,7 +383,7 @@ exporters:
 
 ```bash
 # Check collector health
-kubectl exec -n scriptrunner-system deploy/otel-collector -- \
+kubectl exec -n forge-system deploy/otel-collector -- \
   curl http://localhost:13133
 
 # Should return HTTP 200
@@ -394,7 +394,7 @@ kubectl exec -n scriptrunner-system deploy/otel-collector -- \
 The collector exports its own metrics at `:8888/metrics`:
 
 ```bash
-kubectl port-forward -n scriptrunner-system svc/otel-collector 8888:8888
+kubectl port-forward -n forge-system svc/otel-collector 8888:8888
 curl http://localhost:8888/metrics
 ```
 
@@ -409,7 +409,7 @@ curl http://localhost:8888/metrics
 
 ```bash
 # View collector logs
-kubectl logs -n scriptrunner-system -l app=otel-collector -f
+kubectl logs -n forge-system -l app=otel-collector -f
 
 # Should see lines like:
 # 2025-01-19T00:00:00.000Z info MetricsExporter {"#metrics": 42}
@@ -421,7 +421,7 @@ kubectl logs -n scriptrunner-system -l app=otel-collector -f
 The collector includes zpages for debugging:
 
 ```bash
-kubectl port-forward -n scriptrunner-system svc/otel-collector 55679:55679
+kubectl port-forward -n forge-system svc/otel-collector 55679:55679
 # Open http://localhost:55679/debug/tracez
 ```
 
@@ -434,11 +434,11 @@ kubectl port-forward -n scriptrunner-system svc/otel-collector 55679:55679
 **Check**:
 ```bash
 # Verify controller can reach collector
-kubectl exec -n scriptrunner-system deploy/scriptrunner-controller -- \
+kubectl exec -n forge-system deploy/forge-controller -- \
   nc -zv otel-collector 4317
 
 # Check controller logs for OTLP errors
-kubectl logs -n scriptrunner-system -l app=scriptrunner-controller | grep -i otlp
+kubectl logs -n forge-system -l app=forge-controller | grep -i otlp
 ```
 
 **Fix**: Ensure `OTEL_EXPORTER_OTLP_ENDPOINT` is set in controller deployment.
@@ -464,10 +464,10 @@ processors:
 ```bash
 # Verify Prometheus can reach collector
 kubectl exec -n monitoring deploy/prometheus-server -- \
-  curl http://otel-collector.scriptrunner-system:8889/metrics
+  curl http://otel-collector.forge-system:8889/metrics
 
 # Check ServiceMonitor
-kubectl get servicemonitor -n scriptrunner-system otel-collector
+kubectl get servicemonitor -n forge-system otel-collector
 ```
 
 ### Jaeger not receiving traces
@@ -477,11 +477,11 @@ kubectl get servicemonitor -n scriptrunner-system otel-collector
 **Check**:
 ```bash
 # Verify collector can reach Jaeger
-kubectl exec -n scriptrunner-system deploy/otel-collector -- \
+kubectl exec -n forge-system deploy/otel-collector -- \
   nc -zv jaeger-collector 4317
 
 # Check collector logs
-kubectl logs -n scriptrunner-system -l app=otel-collector | grep -i jaeger
+kubectl logs -n forge-system -l app=otel-collector | grep -i jaeger
 ```
 
 **Fix**: Verify Jaeger endpoint in `otel-collector-config.yaml`.
@@ -490,7 +490,7 @@ kubectl logs -n scriptrunner-system -l app=otel-collector | grep -i jaeger
 
 ### High Throughput
 
-For >1000 ScriptRunners/min:
+For >1000 Forges/min:
 
 ```yaml
 # otel-collector-config.yaml

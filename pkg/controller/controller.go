@@ -45,14 +45,15 @@ var (
 
 // Controller watches ZarfPackage resources and executes actions
 type Controller struct {
-	kubeClient    kubernetes.Interface
-	dynamicClient dynamic.Interface
-	namespace     string
-	metrics       *telemetry.Metrics
-	tracer        *telemetry.Tracer
-	buildHandler  *actions.BuildHandler
-	healthy       bool
-	ready         bool
+	kubeClient     kubernetes.Interface
+	dynamicClient  dynamic.Interface
+	namespace      string
+	metrics        *telemetry.Metrics
+	tracer         *telemetry.Tracer
+	buildHandler   *actions.BuildHandler
+	publishHandler *actions.PublishHandler
+	healthy        bool
+	ready          bool
 }
 
 // NewController creates a new Forge controller
@@ -65,16 +66,18 @@ func NewController(
 ) *Controller {
 	// Initialize action handlers
 	buildHandler := actions.NewBuildHandler(kubeClient, metrics, tracer)
+	publishHandler := actions.NewPublishHandler(kubeClient, metrics, tracer)
 
 	return &Controller{
-		kubeClient:    kubeClient,
-		dynamicClient: dynamicClient,
-		namespace:     namespace,
-		metrics:       metrics,
-		tracer:        tracer,
-		buildHandler:  buildHandler,
-		healthy:       true,
-		ready:         false,
+		kubeClient:     kubeClient,
+		dynamicClient:  dynamicClient,
+		namespace:      namespace,
+		metrics:        metrics,
+		tracer:         tracer,
+		buildHandler:   buildHandler,
+		publishHandler: publishHandler,
+		healthy:        true,
+		ready:          false,
 	}
 }
 
@@ -172,10 +175,28 @@ func (c *Controller) handleZarfPackage(ctx context.Context, obj interface{}) err
 	switch pkg.Spec.Action {
 	case zarfv1alpha1.ActionBuild:
 		result, err = c.buildHandler.Execute(ctx, pkg)
-	case zarfv1alpha1.ActionBuildPublish, zarfv1alpha1.ActionBuildDeploy, zarfv1alpha1.ActionBuildPublishDeploy:
+
+	case zarfv1alpha1.ActionPublish:
+		// For standalone publish, assume artifact is already available
+		// TODO: Implement artifact fetching from source
+		result, err = c.publishHandler.Execute(ctx, pkg, "/workspace/package.tar.zst")
+
+	case zarfv1alpha1.ActionBuildPublish:
+		// Execute build first, then publish with artifact path
+		buildResult, buildErr := c.buildHandler.Execute(ctx, pkg)
+		if buildErr != nil {
+			err = buildErr
+		} else {
+			// TODO: Wait for build to complete, then publish
+			// For now, just return build result
+			result = buildResult
+		}
+
+	case zarfv1alpha1.ActionBuildDeploy, zarfv1alpha1.ActionBuildPublishDeploy:
 		// For now, just execute the build part
-		// TODO: Implement publish and deploy handlers
+		// TODO: Implement deploy handler and chaining
 		result, err = c.buildHandler.Execute(ctx, pkg)
+
 	default:
 		err = fmt.Errorf("action %s not yet implemented", pkg.Spec.Action)
 	}

@@ -20,8 +20,8 @@ import (
 	"k8s.io/klog/v2"
 
 	"github.com/kylegalloway/forge/pkg/controller"
-	"github.com/kylegalloway/forge/pkg/telemetry"
 	"github.com/kylegalloway/forge/pkg/leaderelection"
+	"github.com/kylegalloway/forge/pkg/telemetry"
 )
 
 var (

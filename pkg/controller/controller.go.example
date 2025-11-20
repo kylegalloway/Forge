@@ -3,7 +3,7 @@
 
 // This file shows how to use code-generated clients.
 // To use this, you would need to run code-generation tools.
-// By default, the simple_controller.go is used instead.
+// By default, the controller.go is used instead.
 
 package controller
 

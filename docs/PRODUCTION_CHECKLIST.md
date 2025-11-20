@@ -116,22 +116,22 @@ Use this checklist to track your progress toward production-ready ScriptRunner d
 ---
 
 ## BATCH 4: Observability & Monitoring
-**Priority: P0-P1 | Status: 1/13 items | Estimated: 1-2 weeks**
+**Priority: P0-P1 | Status: 10/13 items | Estimated: 1-2 weeks**
 **Goal: Full observability with metrics, logs, and alerts**
 
 ### Metrics (P0 - needed for production readiness)
-- [ ] ⏸️ **B4.1** Prometheus metrics exported (replace placeholder)
-- [ ] ⏸️ **B4.2** Metrics include: scriptrunners_created, jobs_created, job_duration
-- [ ] ⏸️ **B4.3** Metrics scraped by Prometheus
-- [ ] ⏸️ **B4.4** Custom metrics for business logic
+- [x] ✅ **B4.1** OpenTelemetry metrics exported via Prometheus bridge
+- [x] ✅ **B4.2** Metrics include: scriptrunners_created, jobs_created, job_duration, reconcile_errors
+- [x] ✅ **B4.3** ServiceMonitor configured for Prometheus scraping
+- [x] ✅ **B4.4** Custom metrics with labels (namespace, error_type, job_name)
 
 ### Dashboards & Alerting (P0 - critical for operations)
-- [ ] ⏸️ **B4.5** Grafana dashboard created
-- [ ] ⏸️ **B4.6** Alerts configured for controller down
-- [ ] ⏸️ **B4.7** Alerts for high failure rate
-- [ ] ⏸️ **B4.8** Alerts for resource quota exhaustion
-- [ ] ⏸️ **B4.9** Alerts for webhook failures
-- [ ] ⏸️ **B4.10** On-call rotation configured
+- [x] ✅ **B4.5** Grafana dashboard created with 6 panels
+- [x] ✅ **B4.6** Alerts configured for controller down
+- [x] ✅ **B4.7** Alerts for high failure rate
+- [x] ✅ **B4.8** Alerts for resource quota exhaustion
+- [x] ✅ **B4.9** Alerts for webhook failures
+- [ ] ⏸️ **B4.10** On-call rotation configured (organizational, not technical)
 
 ### Logging (P1 - enhance existing structured logging)
 - [x] ✅ Structured logging implemented (klog.InfoS/ErrorS)
@@ -353,9 +353,9 @@ Use this checklist to track your progress toward production-ready ScriptRunner d
 | Batch | Name | Priority | Completed | Total | % | Status |
 |-------|------|----------|-----------|-------|---|--------|
 | 1 | Foundation | P0 | 30 | 30 | 100% | ✅ COMPLETE |
-| 2 | Validation & Multi-Tenancy | P0 | 0 | 17 | 0% | ⏸️ NOT STARTED |
-| 3 | Network & Image Security | P1 | 0 | 9 | 0% | ⏸️ NOT STARTED |
-| 4 | Observability & Monitoring | P0-P1 | 1 | 13 | 8% | ⏸️ NOT STARTED |
+| 2 | Validation & Multi-Tenancy | P0 | 17 | 17 | 100% | ✅ COMPLETE |
+| 3 | Network & Image Security | P1 | 9 | 9 | 100% | ✅ COMPLETE |
+| 4 | Observability & Monitoring | P0-P1 | 10 | 13 | 77% | 🚧 IN PROGRESS |
 | 5 | High Availability | P1 | 3 | 13 | 23% | ⏸️ NOT STARTED |
 | 6 | CI/CD & Testing | P1 | 2 | 22 | 9% | ⏸️ NOT STARTED |
 | 7 | Documentation & Training | P1 | 6 | 20 | 30% | ⏸️ NOT STARTED |
@@ -363,13 +363,13 @@ Use this checklist to track your progress toward production-ready ScriptRunner d
 | 9 | Capacity Planning | P2 | 0 | 7 | 0% | ⏸️ NOT STARTED |
 | 10 | Launch Readiness | P0 | 0 | 15 | 0% | ⏸️ NOT STARTED |
 
-### Overall Progress: 42 / 160 items (26%)
+### Overall Progress: 77 / 160 items (48%)
 
 ### By Priority
 
 | Priority | Completed | Total | % |
 |----------|-----------|-------|---|
-| P0 (Must Have) | 30 | 89 | 34% |
+| P0 (Must Have) | 65 | 89 | 73% |
 | P1 (Should Have) | 12 | 64 | 19% |
 | P2 (Nice to Have) | 0 | 7 | 0% |
 

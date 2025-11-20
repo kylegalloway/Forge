@@ -143,7 +143,7 @@ func main() {
 	}()
 
 	// Run the controller
-	klog.Info("Starting ScriptRunner controller")
+	klog.Info("Starting Forge controller")
 	if err := ctrl.Run(ctx); err != nil {
 		klog.Fatalf("Error running controller: %v", err)
 	}
@@ -160,7 +160,7 @@ func main() {
 		klog.ErrorS(err, "Metrics server shutdown error")
 	}
 
-	klog.Info("ScriptRunner controller stopped")
+	klog.Info("Forge controller stopped")
 }
 
 // buildConfig builds a Kubernetes REST config from kubeconfig or in-cluster config

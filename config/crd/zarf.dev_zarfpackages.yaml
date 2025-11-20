@@ -1,0 +1,414 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: zarfpackages.zarf.dev
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.11.0
+spec:
+  group: zarf.dev
+  names:
+    kind: ZarfPackage
+    listKind: ZarfPackageList
+    plural: zarfpackages
+    shortNames:
+    - zp
+    singular: zarfpackage
+  scope: Namespaced
+  versions:
+  - name: v1alpha1
+    served: true
+    storage: true
+    schema:
+      openAPIV3Schema:
+        description: ZarfPackage is the Schema for the zarf packages API
+        type: object
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation of an object.'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this object represents.'
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: ZarfPackageSpec defines the desired state of a ZarfPackage
+            type: object
+            required:
+            - action
+            - source
+            properties:
+              action:
+                description: Action specifies what operation(s) to perform
+                type: string
+                enum:
+                - Build
+                - Publish
+                - Deploy
+                - BuildPublish
+                - BuildDeploy
+                - PublishDeploy
+                - BuildPublishDeploy
+              source:
+                description: Source defines where the package definition or artifact comes from
+                type: object
+                required:
+                - type
+                properties:
+                  type:
+                    description: Type specifies the source type
+                    type: string
+                    enum:
+                    - Git
+                    - S3
+                    - OCI
+                    - Local
+                  git:
+                    description: Git source configuration (required if type=Git)
+                    type: object
+                    required:
+                    - url
+                    - ref
+                    properties:
+                      url:
+                        description: URL of the Git repository
+                        type: string
+                        pattern: '^https://.*'
+                      ref:
+                        description: Ref is the branch, tag, or commit to checkout
+                        type: string
+                      path:
+                        description: Path to the zarf.yaml within the repository
+                        type: string
+                        default: "."
+                      credentialsSecretRef:
+                        description: CredentialsSecretRef references a Secret with Git credentials
+                        type: object
+                        required:
+                        - name
+                        properties:
+                          name:
+                            type: string
+                          namespace:
+                            type: string
+                  s3:
+                    description: S3 source configuration (required if type=S3)
+                    type: object
+                    required:
+                    - bucket
+                    - key
+                    - region
+                    properties:
+                      bucket:
+                        description: Bucket name
+                        type: string
+                      key:
+                        description: Key is the object key (path) in the bucket
+                        type: string
+                      region:
+                        description: Region is the AWS region
+                        type: string
+                      credentialsSecretRef:
+                        description: CredentialsSecretRef references a Secret with AWS credentials
+                        type: object
+                        required:
+                        - name
+                        properties:
+                          name:
+                            type: string
+                          namespace:
+                            type: string
+                  oci:
+                    description: OCI source configuration (required if type=OCI)
+                    type: object
+                    required:
+                    - image
+                    properties:
+                      image:
+                        description: Image is the full OCI image reference
+                        type: string
+                      credentialsSecretRef:
+                        description: CredentialsSecretRef references a Secret with registry credentials
+                        type: object
+                        required:
+                        - name
+                        properties:
+                          name:
+                            type: string
+                          namespace:
+                            type: string
+                  local:
+                    description: Local source configuration (dev/testing only)
+                    type: object
+                    required:
+                    - path
+                    - devMode
+                    properties:
+                      path:
+                        description: Path to the local directory or file
+                        type: string
+                      devMode:
+                        description: DevMode must be explicitly set to true for local sources
+                        type: boolean
+              publish:
+                description: Publish defines where to publish the built package
+                type: object
+                required:
+                - destination
+                properties:
+                  destination:
+                    description: Destination specifies where to publish
+                    type: object
+                    required:
+                    - type
+                    properties:
+                      type:
+                        description: Type specifies the destination type
+                        type: string
+                        enum:
+                        - S3
+                        - OCI
+                        - Local
+                      s3:
+                        type: object
+                        required:
+                        - bucket
+                        - region
+                        properties:
+                          bucket:
+                            type: string
+                          keyPrefix:
+                            type: string
+                          region:
+                            type: string
+                          credentialsSecretRef:
+                            type: object
+                            required:
+                            - name
+                            properties:
+                              name:
+                                type: string
+                              namespace:
+                                type: string
+                      oci:
+                        type: object
+                        required:
+                        - registry
+                        - repository
+                        - tag
+                        properties:
+                          registry:
+                            type: string
+                          repository:
+                            type: string
+                          tag:
+                            type: string
+                          credentialsSecretRef:
+                            type: object
+                            required:
+                            - name
+                            properties:
+                              name:
+                                type: string
+                              namespace:
+                                type: string
+                      local:
+                        type: object
+                        required:
+                        - path
+                        - devMode
+                        properties:
+                          path:
+                            type: string
+                          devMode:
+                            type: boolean
+              deploy:
+                description: Deploy defines how to deploy the package
+                type: object
+                required:
+                - target
+                properties:
+                  target:
+                    description: Target specifies where to deploy
+                    type: string
+                    enum:
+                    - InCluster
+                    - ExternalCluster
+                  namespace:
+                    description: Namespace to deploy into
+                    type: string
+                    default: "default"
+                  timeout:
+                    description: Timeout for the deployment
+                    type: string
+                    default: "30m"
+                  components:
+                    description: Components to deploy
+                    type: array
+                    items:
+                      type: string
+                  setVariables:
+                    description: SetVariables are Zarf variables to set during deployment
+                    type: object
+                    additionalProperties:
+                      type: string
+                  externalCluster:
+                    description: ExternalCluster configuration
+                    type: object
+                    required:
+                    - kubeconfigSecretRef
+                    properties:
+                      kubeconfigSecretRef:
+                        type: object
+                        required:
+                        - name
+                        properties:
+                          name:
+                            type: string
+                          namespace:
+                            type: string
+                      context:
+                        type: string
+              rbacPolicy:
+                description: RBACPolicy defines access control rules
+                type: object
+                properties:
+                  allowedUsers:
+                    description: AllowedUsers is a list of user identifiers
+                    type: array
+                    items:
+                      type: string
+                  allowedActions:
+                    description: AllowedActions restricts which actions can be performed
+                    type: array
+                    items:
+                      type: string
+                      enum:
+                      - Build
+                      - Publish
+                      - Deploy
+                      - BuildPublish
+                      - BuildDeploy
+                      - PublishDeploy
+                      - BuildPublishDeploy
+                  allowedSourceRepos:
+                    description: AllowedSourceRepos restricts which Git repositories can be used
+                    type: array
+                    items:
+                      type: string
+                  allowedSourceBuckets:
+                    description: AllowedSourceBuckets restricts which S3 buckets can be used
+                    type: array
+                    items:
+                      type: string
+                  allowedSourceRegistries:
+                    description: AllowedSourceRegistries restricts which OCI registries can be used
+                    type: array
+                    items:
+                      type: string
+                  allowedPublishBuckets:
+                    description: AllowedPublishBuckets restricts publish S3 destinations
+                    type: array
+                    items:
+                      type: string
+                  allowedPublishRegistries:
+                    description: AllowedPublishRegistries restricts publish OCI destinations
+                    type: array
+                    items:
+                      type: string
+                  allowedDeployTargets:
+                    description: AllowedDeployTargets restricts deploy targets
+                    type: array
+                    items:
+                      type: string
+                      enum:
+                      - InCluster
+                      - ExternalCluster
+          status:
+            description: ZarfPackageStatus defines the observed state of ZarfPackage
+            type: object
+            properties:
+              phase:
+                description: Phase represents the current phase of the operation
+                type: string
+              message:
+                description: Message provides human-readable status information
+                type: string
+              buildStatus:
+                description: BuildStatus contains build operation status
+                type: object
+                required:
+                - state
+                properties:
+                  state:
+                    type: string
+                  startTime:
+                    type: string
+                    format: date-time
+                  completionTime:
+                    type: string
+                    format: date-time
+                  message:
+                    type: string
+                  artifactLocation:
+                    type: string
+              publishStatus:
+                description: PublishStatus contains publish operation status
+                type: object
+                required:
+                - state
+                properties:
+                  state:
+                    type: string
+                  startTime:
+                    type: string
+                    format: date-time
+                  completionTime:
+                    type: string
+                    format: date-time
+                  message:
+                    type: string
+                  artifactLocation:
+                    type: string
+              deployStatus:
+                description: DeployStatus contains deploy operation status
+                type: object
+                required:
+                - state
+                properties:
+                  state:
+                    type: string
+                  startTime:
+                    type: string
+                    format: date-time
+                  completionTime:
+                    type: string
+                    format: date-time
+                  message:
+                    type: string
+                  artifactLocation:
+                    type: string
+              lastUpdateTime:
+                description: LastUpdateTime is the last time the status was updated
+                type: string
+                format: date-time
+              observedGeneration:
+                description: ObservedGeneration is the generation observed by the controller
+                type: integer
+                format: int64
+    subresources:
+      status: {}
+    additionalPrinterColumns:
+    - name: Action
+      type: string
+      jsonPath: .spec.action
+    - name: Source
+      type: string
+      jsonPath: .spec.source.type
+    - name: Phase
+      type: string
+      jsonPath: .status.phase
+    - name: Age
+      type: date
+      jsonPath: .metadata.creationTimestamp

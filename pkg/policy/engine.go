@@ -9,6 +9,7 @@ import (
 	zarfv1alpha1 "github.com/kylegalloway/forge/pkg/apis/zarf/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/klog/v2"
 )
 
 const (
@@ -26,6 +27,8 @@ const (
 	AnnotationAllowedPublishRegistries = "forge.zarf.dev/allowed-publish-registries"
 	// AnnotationAllowedDeployTargets is the annotation for allowed deploy targets
 	AnnotationAllowedDeployTargets = "forge.zarf.dev/allowed-deploy-targets"
+	// AnnotationAllowLocalSources is the annotation to allow local sources (dev mode)
+	AnnotationAllowLocalSources = "forge.zarf.dev/allow-local-sources"
 )
 
 // Engine handles policy validation
@@ -61,18 +64,26 @@ func (e *Engine) Validate(ctx context.Context, pkg *zarfv1alpha1.ZarfPackage) er
 	// 2. Check Allowed Actions
 	allowedActions := parseList(annotations[AnnotationAllowedActions])
 	if !isActionAllowed(pkg.Spec.Action, allowedActions) {
-		return fmt.Errorf("action %s is not allowed by ServiceAccount %s", pkg.Spec.Action, saName)
+		return fmt.Errorf("action %s is not allowed (allowed actions: %v) for ServiceAccount %s",
+			pkg.Spec.Action, allowedActions, saName)
 	}
 
+	// Log successful policy validation
+	klog.InfoS("Policy validation passed",
+		"package", pkg.Name,
+		"namespace", pkg.Namespace,
+		"action", pkg.Spec.Action,
+		"serviceAccount", saName)
+
 	// 3. Check Allowed Sources
-	if !e.isSourceAllowed(pkg.Spec.Source, annotations) {
-		return fmt.Errorf("source type %s is not allowed by ServiceAccount %s", pkg.Spec.Source.Type, saName)
+	if err := e.validateSource(pkg.Spec.Source, annotations, saName); err != nil {
+		return err
 	}
 
 	// 4. Check Allowed Destinations
 	if pkg.Spec.Publish != nil {
-		if !e.isDestinationAllowed(pkg.Spec.Publish.Destination, annotations) {
-			return fmt.Errorf("destination type %s is not allowed by ServiceAccount %s", pkg.Spec.Publish.Destination.Type, saName)
+		if err := e.validateDestination(pkg.Spec.Publish.Destination, annotations, saName); err != nil {
+			return err
 		}
 	}
 
@@ -80,20 +91,16 @@ func (e *Engine) Validate(ctx context.Context, pkg *zarfv1alpha1.ZarfPackage) er
 	if pkg.Spec.Deploy != nil {
 		allowedTargets := parseList(annotations[AnnotationAllowedDeployTargets])
 		if !isDeployTargetAllowed(pkg.Spec.Deploy.Target, allowedTargets) {
-			return fmt.Errorf("deploy target %s is not allowed by ServiceAccount %s", pkg.Spec.Deploy.Target, saName)
+			return fmt.Errorf("deploy target %s is not allowed (allowed targets: %v) for ServiceAccount %s",
+				pkg.Spec.Deploy.Target, allowedTargets, saName)
 		}
 	}
-
-	// 6. Check embedded RBACPolicy (if present)
-	// This allows the package itself to further restrict usage, e.g. "Only Alice can use this package"
-	// But the Controller doesn't know who "Alice" is.
-	// So maybe RBACPolicy is for the Webhook to check against the requesting user?
-	// For now, we'll skip UserInfo checks in the Controller.
 
 	return nil
 }
 
-func (e *Engine) isSourceAllowed(source zarfv1alpha1.PackageSource, annotations map[string]string) bool {
+// validateSource checks if the source is allowed
+func (e *Engine) validateSource(source zarfv1alpha1.PackageSource, annotations map[string]string, saName string) error {
 	// If no restrictions are defined, is it allowed?
 	// "Security by default" implies denied. But let's assume if annotation is missing, it's denied?
 	// Or maybe if annotation is missing, it's allowed?
@@ -103,58 +110,86 @@ func (e *Engine) isSourceAllowed(source zarfv1alpha1.PackageSource, annotations 
 	case zarfv1alpha1.SourceTypeGit:
 		allowedRepos := parseList(annotations[AnnotationAllowedSourceRepos])
 		if len(allowedRepos) == 0 {
-			return false
+			return fmt.Errorf("no allowed source repos defined (annotation %s is required)", AnnotationAllowedSourceRepos)
 		}
-		if source.Git != nil {
-			return matchAny(allowedRepos, source.Git.URL)
+		if source.Git == nil {
+			return fmt.Errorf("source type is Git but Git config is nil")
+		}
+		if !matchAny(allowedRepos, source.Git.URL) {
+			return fmt.Errorf("Git repo %s is not allowed (allowed repos: %v) for ServiceAccount %s",
+				source.Git.URL, allowedRepos, saName)
 		}
 	case zarfv1alpha1.SourceTypeS3:
 		allowedBuckets := parseList(annotations[AnnotationAllowedSourceBuckets])
 		if len(allowedBuckets) == 0 {
-			return false
+			return fmt.Errorf("no allowed source buckets defined (annotation %s is required)", AnnotationAllowedSourceBuckets)
 		}
-		if source.S3 != nil {
-			return matchAny(allowedBuckets, source.S3.Bucket)
+		if source.S3 == nil {
+			return fmt.Errorf("source type is S3 but S3 config is nil")
+		}
+		if !matchAny(allowedBuckets, source.S3.Bucket) {
+			return fmt.Errorf("S3 bucket %s is not allowed (allowed buckets: %v) for ServiceAccount %s",
+				source.S3.Bucket, allowedBuckets, saName)
 		}
 	case zarfv1alpha1.SourceTypeOCI:
 		allowedRegistries := parseList(annotations[AnnotationAllowedSourceRegistries])
 		if len(allowedRegistries) == 0 {
-			return false
+			return fmt.Errorf("no allowed source registries defined (annotation %s is required)", AnnotationAllowedSourceRegistries)
 		}
-		if source.OCI != nil {
-			return matchAny(allowedRegistries, source.OCI.Image)
+		if source.OCI == nil {
+			return fmt.Errorf("source type is OCI but OCI config is nil")
+		}
+		if !matchAny(allowedRegistries, source.OCI.Image) {
+			return fmt.Errorf("OCI image %s is not allowed (allowed registries: %v) for ServiceAccount %s",
+				source.OCI.Image, allowedRegistries, saName)
 		}
 	case zarfv1alpha1.SourceTypeLocal:
-		// Local sources usually require special permission or dev mode
-		// For now, let's assume they are not allowed unless explicitly handled?
-		// Or maybe we check a "allow-local" annotation?
-		return false
+		// Local sources require explicit permission (dev mode only)
+		if annotations[AnnotationAllowLocalSources] != "true" {
+			return fmt.Errorf("local sources are not allowed (set annotation %s: true for dev mode)", AnnotationAllowLocalSources)
+		}
+	default:
+		return fmt.Errorf("unknown source type: %s", source.Type)
 	}
-	return false
+	return nil
 }
 
-func (e *Engine) isDestinationAllowed(dest zarfv1alpha1.PublishDestination, annotations map[string]string) bool {
+// validateDestination checks if the destination is allowed
+func (e *Engine) validateDestination(dest zarfv1alpha1.PublishDestination, annotations map[string]string, saName string) error {
 	switch dest.Type {
 	case zarfv1alpha1.DestinationTypeS3:
 		allowedBuckets := parseList(annotations[AnnotationAllowedPublishBuckets])
 		if len(allowedBuckets) == 0 {
-			return false
+			return fmt.Errorf("no allowed publish buckets defined (annotation %s is required)", AnnotationAllowedPublishBuckets)
 		}
-		if dest.S3 != nil {
-			return matchAny(allowedBuckets, dest.S3.Bucket)
+		if dest.S3 == nil {
+			return fmt.Errorf("destination type is S3 but S3 config is nil")
+		}
+		if !matchAny(allowedBuckets, dest.S3.Bucket) {
+			return fmt.Errorf("S3 bucket %s is not allowed (allowed buckets: %v) for ServiceAccount %s",
+				dest.S3.Bucket, allowedBuckets, saName)
 		}
 	case zarfv1alpha1.DestinationTypeOCI:
 		allowedRegistries := parseList(annotations[AnnotationAllowedPublishRegistries])
 		if len(allowedRegistries) == 0 {
-			return false
+			return fmt.Errorf("no allowed publish registries defined (annotation %s is required)", AnnotationAllowedPublishRegistries)
 		}
-		if dest.OCI != nil {
-			return matchAny(allowedRegistries, dest.OCI.Registry)
+		if dest.OCI == nil {
+			return fmt.Errorf("destination type is OCI but OCI config is nil")
+		}
+		if !matchAny(allowedRegistries, dest.OCI.Registry) {
+			return fmt.Errorf("OCI registry %s is not allowed (allowed registries: %v) for ServiceAccount %s",
+				dest.OCI.Registry, allowedRegistries, saName)
 		}
 	case zarfv1alpha1.DestinationTypeLocal:
-		return false
+		// Local destinations require explicit permission (dev mode only)
+		if annotations[AnnotationAllowLocalSources] != "true" {
+			return fmt.Errorf("local destinations are not allowed (set annotation %s: true for dev mode)", AnnotationAllowLocalSources)
+		}
+	default:
+		return fmt.Errorf("unknown destination type: %s", dest.Type)
 	}
-	return false
+	return nil
 }
 
 func isActionAllowed(action zarfv1alpha1.Action, allowed []string) bool {

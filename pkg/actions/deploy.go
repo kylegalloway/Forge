@@ -3,6 +3,7 @@ package actions
 import (
 	"context"
 	"fmt"
+	"time"
 
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -68,9 +69,21 @@ func (h *DeployHandler) createDeployJob(ctx context.Context, pkg *zarfv1alpha1.Z
 	deployCmd := h.buildDeployCommand(pkg, artifactPath)
 
 	// Build init containers for artifact retrieval (if needed)
-	initContainers := h.buildInitContainers(pkg, artifactPath)
+	initContainers, err := h.buildInitContainers(pkg, artifactPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to build init containers: %w", err)
+	}
 
+	// Parse timeout (default 30m)
 	activeDeadlineSeconds := int64(1800) // Default 30 minutes
+	if pkg.Spec.Deploy.Timeout != "" {
+		timeout, err := time.ParseDuration(pkg.Spec.Deploy.Timeout)
+		if err != nil {
+			klog.V(4).InfoS("Invalid timeout format, using default", "timeout", pkg.Spec.Deploy.Timeout, "error", err)
+		} else {
+			activeDeadlineSeconds = int64(timeout.Seconds())
+		}
+	}
 
 	// Job configuration
 	backoffLimit := int32(0)
@@ -247,24 +260,22 @@ func (h *DeployHandler) buildEnvVars(pkg *zarfv1alpha1.ZarfPackage) []corev1.Env
 }
 
 // buildInitContainers creates init containers for artifact retrieval
-func (h *DeployHandler) buildInitContainers(pkg *zarfv1alpha1.ZarfPackage, artifactPath string) []corev1.Container {
+func (h *DeployHandler) buildInitContainers(pkg *zarfv1alpha1.ZarfPackage, artifactPath string) ([]corev1.Container, error) {
 	sourceHandler, err := sources.New(pkg)
 	if err != nil {
-		klog.ErrorS(err, "Failed to create source handler", "package", pkg.Name)
-		return nil
+		return nil, fmt.Errorf("failed to create source handler: %w", err)
 	}
 
 	container, err := sourceHandler.GetInitContainer(pkg)
 	if err != nil {
-		klog.ErrorS(err, "Failed to get init container", "package", pkg.Name)
-		return nil
+		return nil, fmt.Errorf("failed to get init container: %w", err)
 	}
 
 	if container == nil {
-		return nil
+		return nil, nil
 	}
 
-	return []corev1.Container{*container}
+	return []corev1.Container{*container}, nil
 }
 
 // addServiceAccount adds the ServiceAccount to the job pod

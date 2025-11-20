@@ -80,8 +80,11 @@ func (h *BuildHandler) createBuildJob(ctx context.Context, pkg *zarfv1alpha1.Zar
 		return nil, err
 	}
 
-	// Build initContainers based on source type (for Git clone, S3 download, etc.)
-	initContainers := h.buildInitContainers(pkg)
+	// Build init containers
+	initContainers, err := h.buildInitContainers(pkg)
+	if err != nil {
+		return nil, fmt.Errorf("failed to build init containers: %w", err)
+	}
 
 	// Job configuration
 	backoffLimit := int32(0)             // Don't retry failed builds
@@ -219,23 +222,21 @@ func (h *BuildHandler) buildZarfCommand(pkg *zarfv1alpha1.ZarfPackage) (string, 
 	return cmd, workingDir, nil
 }
 
-// buildInitContainers creates init containers for source retrieval
-func (h *BuildHandler) buildInitContainers(pkg *zarfv1alpha1.ZarfPackage) []corev1.Container {
+// buildInitContainers creates init containers for source artifact retrieval
+func (h *BuildHandler) buildInitContainers(pkg *zarfv1alpha1.ZarfPackage) ([]corev1.Container, error) {
 	sourceHandler, err := sources.New(pkg)
 	if err != nil {
-		klog.ErrorS(err, "Failed to create source handler", "package", pkg.Name)
-		return nil
+		return nil, fmt.Errorf("failed to create source handler: %w", err)
 	}
 
 	container, err := sourceHandler.GetInitContainer(pkg)
 	if err != nil {
-		klog.ErrorS(err, "Failed to get init container", "package", pkg.Name)
-		return nil
+		return nil, fmt.Errorf("failed to get init container: %w", err)
 	}
 
 	if container == nil {
-		return nil
+		return nil, nil
 	}
 
-	return []corev1.Container{*container}
+	return []corev1.Container{*container}, nil
 }

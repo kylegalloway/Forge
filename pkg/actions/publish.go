@@ -77,8 +77,11 @@ func (h *PublishHandler) createPublishJob(ctx context.Context, pkg *zarfv1alpha1
 		return nil, fmt.Errorf("failed to get publish command: %w", err)
 	}
 
-	// Build init containers for artifact retrieval (if needed)
-	initContainers := h.buildInitContainers(pkg, artifactPath)
+	// Build init containers for artifact retrieval
+	initContainers, err := h.buildInitContainers(pkg)
+	if err != nil {
+		return nil, fmt.Errorf("failed to build init containers: %w", err)
+	}
 
 	// Job configuration
 	backoffLimit := int32(0)
@@ -210,22 +213,20 @@ func (h *PublishHandler) createPublishJob(ctx context.Context, pkg *zarfv1alpha1
 }
 
 // buildInitContainers creates init containers for artifact retrieval
-func (h *PublishHandler) buildInitContainers(pkg *zarfv1alpha1.ZarfPackage, artifactPath string) []corev1.Container {
+func (h *PublishHandler) buildInitContainers(pkg *zarfv1alpha1.ZarfPackage) ([]corev1.Container, error) {
 	sourceHandler, err := sources.New(pkg)
 	if err != nil {
-		klog.ErrorS(err, "Failed to create source handler", "package", pkg.Name)
-		return nil
+		return nil, fmt.Errorf("failed to create source handler: %w", err)
 	}
 
 	container, err := sourceHandler.GetInitContainer(pkg)
 	if err != nil {
-		klog.ErrorS(err, "Failed to get init container", "package", pkg.Name)
-		return nil
+		return nil, fmt.Errorf("failed to get init container: %w", err)
 	}
 
 	if container == nil {
-		return nil
+		return nil, nil
 	}
 
-	return []corev1.Container{*container}
+	return []corev1.Container{*container}, nil
 }

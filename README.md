@@ -1,804 +1,266 @@
-# ScriptRunner - Production-Ready Kubernetes Script Execution Platform
+# Forge - Kubernetes-Native Zarf Package Operations
 
-A secure, multi-tenant Kubernetes controller for running scripts in isolated Jobs. ScriptRunner provides enterprise-grade script execution with comprehensive security, multi-tenancy, and observability features.
+**Forge** where Zarf packages are built, published, and deployed with declarative ops and actual security.
 
-> **Quick Start**: New to ScriptRunner? Check out [QUICKSTART.md](QUICKSTART.md) for a 5-minute getting started guide!
+> **Status**: Under active development. API subject to change. Not yet deployed anywhere.
 
-> **⚠️ API Version**: This project uses the `v1alpha1` API version, which is in **alpha** status. The API may change in backward-incompatible ways in future releases. See [API Stability](#api-stability) for details.
+## What is Forge?
 
-## Overview
+Forge is a Kubernetes controller that brings Zarf package operations into the declarative Kubernetes world. Instead of running arbitrary scripts (security nightmare), Forge provides purpose-built operations with fine-grained RBAC controls.
 
-ScriptRunner enables declarative script execution in Kubernetes with production-ready security controls. Users define script executions as custom resources, and the controller creates isolated Jobs with comprehensive security hardening, resource quotas, and network policies.
+### What it does:
+- **Build** Zarf packages from Git repos, S3, or OCI registries
+- **Publish** artifacts to S3 or OCI registries
+- **Deploy** packages to in-cluster or external Kubernetes clusters
+- **Enforce policies** on who can do what with which resources
 
-### Key Features
+### What it doesn't do:
+- Run arbitrary scripts (use a CronJob for that)
+- Give you root access disguised as "flexibility"
+- Trust users by default
 
-**Core Functionality:**
-- **Custom Resource-based**: Define script executions declaratively using Kubernetes CRs
-- **Job-based Execution**: Each ScriptRunner creates a Job, enabling high throughput and parallel processing
-- **Flexible Input**: Pass key-value pairs as environment variables with automatic validation
-- **Pre-built Scripts**: Reference versioned scripts in container images (scriptRef)
-- **Owner References**: Automatic cleanup with TTL-based Job deletion
+## Quick Example
 
-**Security & Multi-Tenancy (Production-Ready):**
-- **Admission Webhook**: Validates scripts, images, and inputs before execution
-- **Multi-tenant Isolation**: Namespace-based tenancy with ResourceQuotas and RBAC
-- **Network Policies**: Default-deny networking with explicit DNS and API access
-- **Image Security**: Registry whitelisting, vulnerability scanning, and pull policy enforcement
-- **Pod Security Standards**: Restricted profile with non-root users and dropped capabilities
+```yaml
+apiVersion: zarf.dev/v1alpha1
+kind: ZarfPackage
+metadata:
+  name: build-and-deploy
+spec:
+  # What to do
+  action: BuildDeploy
 
-**Observability (Production-Ready):**
-- **OpenTelemetry SDK**: Vendor-neutral metrics and distributed tracing
-- **Hybrid Approach**: In-app telemetry + kube-state-metrics + OTel Collector
-- **Multiple Backends**: Export to Prometheus, Jaeger, Datadog, New Relic, Honeycomb
-- **Grafana Dashboard**: Pre-built dashboard with 6 panels for visualization
-- **Prometheus Alerts**: 10 alerts for controller health, error rates, and capacity
-- **Health Checks**: Liveness and readiness probes on controller and webhook
-- **Structured Logging**: klog-based logging with InfoS/ErrorS patterns
+  # Where to get it
+  source:
+    type: Git
+    git:
+      url: https://github.com/defenseunicorns/zarf
+      ref: v0.32.0
+      path: examples/big-bang
+
+  # Where to deploy it
+  deploy:
+    target: InCluster
+    namespace: bigbang
+    timeout: 60m
+
+  # Who can use this
+  rbacPolicy:
+    allowedUsers:
+      - group:platform-team
+    allowedActions:
+      - BuildDeploy
+    allowedDeployTargets:
+      - InCluster
+```
 
 ## Architecture
 
-### Basic Flow
+### Actions (What You Can Do)
 
-```
-User → Admission Webhook → ScriptRunner CR → Controller → Job → Pod
-         (validates)         (namespace)      (watches) (creates) (executes)
-```
+| Action | Description | Input | Output |
+|--------|-------------|-------|--------|
+| `Build` | Build Zarf package from source | Git repo or local path | Package artifact |
+| `Publish` | Publish artifact to registry | Artifact | Published location |
+| `Deploy` | Deploy package to cluster | Artifact | Deployed resources |
+| `BuildPublish` | Build + immediately publish | Source | Published location |
+| `BuildDeploy` | Build + immediately deploy | Source | Deployed resources |
+| `PublishDeploy` | Publish pre-built + deploy | Artifact | Deployed resources |
+| `BuildPublishDeploy` | Full pipeline | Source | Deployed resources |
 
-1. **User creates ScriptRunner** in their namespace with inputs
-2. **Admission Webhook validates**:
-   - Image from approved registry
-   - Script in whitelist (if using scriptRef)
-   - Inputs sanitized (no command injection patterns)
-   - Mutations applied (default values)
-3. **Controller watches** and detects new ScriptRunner
-4. **Job created** with security context and resource limits
-5. **Pod executes script** in isolated environment with NetworkPolicy
-6. **Controller updates status** with Job information and completion state
+### Source Types (Where Packages Come From)
 
-### Security Architecture
+| Type | Use Cases | Auth Required | Restrictions |
+|------|-----------|---------------|--------------|
+| `Git` | Source code repos | SSH key or token | HTTPS only, approved repos |
+| `S3` | Pre-built artifacts | AWS credentials | Approved buckets |
+| `OCI` | OCI registries | Registry credentials | Approved registries |
+| `Local` | Dev/testing ONLY | None | Must set `devMode: true` |
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                  Admission Webhook Layer                     │
-│  ✓ Registry whitelist  ✓ Input sanitization                 │
-│  ✓ Script whitelist    ✓ Image validation                   │
-└─────────────────────────────────────────────────────────────┘
-                              ↓
-┌─────────────────────────────────────────────────────────────┐
-│                   Namespace Isolation                        │
-│  ✓ RBAC (user-scoped)   ✓ ResourceQuota                     │
-│  ✓ LimitRange           ✓ NetworkPolicy (default-deny)      │
-└─────────────────────────────────────────────────────────────┘
-                              ↓
-┌─────────────────────────────────────────────────────────────┐
-│                    Job Pod Security                          │
-│  ✓ Non-root user        ✓ Read-only filesystem              │
-│  ✓ Dropped capabilities ✓ Seccomp profile                   │
-│  ✓ Resource limits      ✓ TTL cleanup (1 hour)              │
-└─────────────────────────────────────────────────────────────┘
-```
+### Destinations (Where Artifacts Go)
 
-## Project Structure
+| Type | Use Cases | Auth Required |
+|------|-----------|---------------|
+| `S3` | Artifact storage | AWS credentials |
+| `OCI` | Container registries | Registry credentials |
+| `Local` | Testing only | None (dev mode) |
 
-```
-.
-├── cmd/
-│   ├── controller/
-│   │   └── main.go                        # Controller entry point
-│   └── webhook/
-│       └── main.go                        # Admission webhook server
-├── pkg/
-│   ├── apis/scriptrunner/v1alpha1/       # API types and registration
-│   ├── controller/
-│   │   └── controller.go                 # Controller with smart ImagePullPolicy
-│   └── webhook/
-│       └── validator.go                   # Validation logic
-├── config/
-│   ├── crd/                               # Custom Resource Definition
-│   ├── rbac/                              # Controller RBAC
-│   ├── manager/                           # Controller deployment
-│   ├── samples/                           # Sample ScriptRunner resources
-│   ├── namespace-templates/               # Multi-tenancy templates
-│   │   ├── user-namespace.yaml            # ResourceQuota, LimitRange, PSS
-│   │   ├── user-rbac.yaml                 # User roles and bindings
-│   │   └── network-policy.yaml            # Default-deny networking
-│   └── network/
-│       ├── controller-network-policy.yaml # Controller network policies
-│       └── README.md                      # NetworkPolicy documentation
-├── webhook/
-│   ├── deploy/                            # Webhook deployment manifests
-│   │   ├── webhook-deployment.yaml        # HA deployment (2 replicas)
-│   │   ├── webhook-configuration.yaml     # ValidatingWebhook + MutatingWebhook
-│   │   ├── webhook-config.yaml            # ConfigMap (registry whitelist, etc.)
-│   │   └── certificate.yaml               # cert-manager Certificate + Issuer
-│   ├── Dockerfile                         # Webhook container build
-│   └── README.md                          # Webhook documentation
-├── scripts/
-│   ├── onboard-user.sh                    # Automated user onboarding
-│   ├── dev-setup.sh                       # Dev environment setup
-│   ├── quick-test.sh                      # Smoke tests
-│   └── test-e2e.sh                        # E2E test suite
-├── docs/
-│   ├── PRODUCTION_CHECKLIST.md            # 160-item production tracker
-│   ├── PRODUCTION.md                      # Production deployment guide
-│   ├── RBAC_SECURITY.md                   # RBAC security model
-│   ├── IMAGE_SECURITY.md                  # Container image security
-│   ├── USER_GUIDE.md                      # End-user documentation
-│   └── CLIENT_VALIDATION.md               # IDE integration and validation
-├── examples/
-│   └── prebuilt-scripts-image/            # Example container with scripts
-├── Dockerfile                             # Controller multi-stage build
-└── Makefile                               # Build and deployment targets
-```
+### Deploy Targets
 
-## Prerequisites
+| Type | Description | Auth Required |
+|------|-------------|---------------|
+| `InCluster` | Same cluster as Forge | ServiceAccount |
+| `ExternalCluster` | Different cluster | Kubeconfig secret |
 
-- Go 1.21 or later
-- Kubernetes cluster (v1.28+) or [kind](https://kind.sigs.k8s.io/) for local development
-- kubectl configured to access your cluster
-- Podman or Docker (for building the controller image)
+## RBAC Policy Enforcement
 
-> **Note**: The project uses podman by default if available, falling back to docker. All commands work with either container runtime.
-
-## Quick Start
-
-### Local Development with Kind (Recommended)
-
-The fastest way to get started is using [kind](https://kind.sigs.k8s.io/):
-
-```bash
-# Complete setup: create cluster, build, and deploy
-make kind-setup
-
-# Create a sample ScriptRunner
-make apply-sample
-
-# Check status
-make status
-
-# View logs
-make dev-logs
-```
-
-That's it! See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed development workflows.
-
-### Manual Setup (Existing Cluster)
-
-If you have an existing Kubernetes cluster:
-
-#### 1. Install the CRD
-
-```bash
-make install-crd
-```
-
-#### 2. Build and Load the Controller Image
-
-```bash
-# Build the container image (uses podman if available, otherwise docker)
-make container-build
-
-# If using kind, load the image
-kind load docker-image scriptrunner-controller:latest --name scriptrunner-dev
-
-# If using minikube
-minikube image load scriptrunner-controller:latest
-```
-
-#### 3. Deploy the Controller
-
-```bash
-make deploy
-```
-
-#### 4. Create a ScriptRunner Resource
-
-```bash
-# Apply the sample
-make apply-sample
-
-# Or create your own
-kubectl apply -f - <<EOF
-apiVersion: scriptrunner.io/v1alpha1
-kind: ScriptRunner
-metadata:
-  name: my-script
-  namespace: default
-spec:
-  inputs:
-    message: "Hello World"
-    user: "Alice"
-EOF
-```
-
-#### 5. Check the Results
-
-```bash
-# View ScriptRunner resources
-kubectl get scriptrunners
-
-# View created Jobs
-kubectl get jobs -l app=scriptrunner
-
-# View Job logs
-kubectl logs -l app=scriptrunner
-```
-
-## Usage Examples
-
-### Basic Example with Default Script
+Every `ZarfPackage` can define its own RBAC policy:
 
 ```yaml
-apiVersion: scriptrunner.io/v1alpha1
-kind: ScriptRunner
-metadata:
-  name: example-scriptrunner
-  namespace: default
 spec:
-  inputs:
-    message: "Hello from ScriptRunner!"
-    environment: "production"
-    value: "42"
+  rbacPolicy:
+    # Who can use this
+    allowedUsers:
+      - user:alice@example.com
+      - group:developers
+
+    # What actions they can take
+    allowedActions:
+      - Build
+      - Publish
+
+    # What sources they can use
+    allowedSourceRepos:
+      - github.com/myorg/*
+
+    # Where they can publish
+    allowedPublishRegistries:
+      - ghcr.io/myorg/*
+
+    # Where they can deploy (if allowed)
+    allowedDeployTargets:
+      - InCluster
 ```
 
-The default script will print all environment variables with the `INPUT_` prefix.
+**Policy Hierarchy:**
+1. **Cluster-level policy** (platform team) - most restrictive
+2. **Namespace-level policy** (admin-managed) - overrides resource policy
+3. **Resource-level policy** (user self-service) - least restrictive
 
-### Custom Inline Script Example
+The admission webhook enforces all three levels.
 
-```yaml
-apiVersion: scriptrunner.io/v1alpha1
-kind: ScriptRunner
-metadata:
-  name: custom-script
-  namespace: default
-spec:
-  inputs:
-    name: "John Doe"
-    task: "data-processing"
-    count: "100"
-  image: "alpine:3.18"
-  script: |
-    #!/bin/sh
-    echo "Processing task: $INPUT_task"
-    echo "User: $INPUT_name"
-    for i in $(seq 1 ${INPUT_count}); do
-      echo "Processing item $i"
-    done
-    echo "Complete!"
+## Installation
+
+```bash
+# Install CRD
+kubectl apply -f config/crd/zarf.dev_zarfpackages.yaml
+
+# Install Forge controller
+kubectl apply -f config/manager/deployment.yaml
+kubectl apply -f config/rbac/rbac.yaml
+
+# Install admission webhook (for policy enforcement)
+kubectl apply -f webhook/deploy/
 ```
 
-### Pre-built Script Reference Example
+## Observability
 
-Instead of inline scripts, you can reference scripts built into your container image:
+Forge includes production-grade observability:
 
-```yaml
-apiVersion: scriptrunner.io/v1alpha1
-kind: ScriptRunner
-metadata:
-  name: prebuilt-script
-  namespace: default
-spec:
-  # Custom image with pre-built scripts
-  image: scriptrunner-scripts:latest
+### Metrics (OpenTelemetry + Prometheus)
+- Package operations (build/publish/deploy) with status and duration
+- Policy decisions (allowed/denied) with user and reason
+- Controller health and performance
 
-  # Reference a script in the container
-  scriptRef: /scripts/process-data.sh
+### Tracing (OpenTelemetry)
+- Distributed traces for complete workflows
+- Span per action (build, publish, deploy)
+- Context propagation across operations
 
-  # Pass arguments to the script
-  scriptArgs:
-    - "batch-process"
-    - "20"
+### Dashboards & Alerts
+- Grafana dashboard for Forge operations
+- Prometheus alerts for failures and policy violations
+- OTel Collector for multi-backend export
 
-  # Input variables still work
-  inputs:
-    environment: "production"
-    source: "database"
-```
+## Security Model
 
-See [examples/prebuilt-scripts-image/](examples/prebuilt-scripts-image/) for a complete example of building a container with pre-built scripts.
+### Defense in Depth
 
-### Environment Variables Available in Scripts
+1. **Admission Webhook** - Validates resources before creation
+2. **RBAC Policies** - Fine-grained access control
+3. **Network Policies** - Limits what jobs can access
+4. **Pod Security** - Non-root, dropped capabilities, read-only filesystem
+5. **Credential Management** - Secrets never in env vars
 
-Scripts have access to:
+### What Users CAN'T Do
 
-- `INPUT_<key>`: Each key from `spec.inputs` is available as `INPUT_<KEY>`
-- `SCRIPTRUNNER_NAME`: Name of the ScriptRunner resource
-- `SCRIPTRUNNER_NAMESPACE`: Namespace of the ScriptRunner resource
+- Run arbitrary images (only Zarf CLI image)
+- Execute arbitrary commands (only build/publish/deploy)
+- Access unapproved repositories or registries
+- Deploy to production without explicit RBAC grant
+- Bypass policy enforcement
+
+### What Users CAN Do
+
+- Build packages from approved Git repos
+- Publish to approved registries
+- Deploy to approved clusters
+- Use pre-built packages
+- Self-service within policy boundaries
 
 ## Development
 
-### Running Locally
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development workflow.
 
-```bash
-# Run the controller locally (outside the cluster)
-make run
+### Project Structure
+
+```
+forge/
+├── pkg/
+│   ├── apis/zarf/v1alpha1/     # ZarfPackage CRD types
+│   ├── controller/              # Main controller (TODO)
+│   ├── actions/                 # Action handlers (TODO)
+│   ├── sources/                 # Source handlers (TODO)
+│   ├── policy/                  # Policy engine (TODO)
+│   ├── telemetry/               # OpenTelemetry integration
+│   └── webhook/                 # Admission webhook
+├── config/
+│   ├── crd/                     # CRD manifests
+│   ├── manager/                 # Controller deployment
+│   ├── rbac/                    # RBAC manifests
+│   ├── samples/                 # Example ZarfPackages
+│   ├── prometheus/              # Alerts
+│   ├── grafana/                 # Dashboards
+│   └── otel-collector/          # OTel Collector config
+└── docs/
+    ├── REFACTOR_PLAN.md         # Architectural refactor plan
+    └── PRODUCTION_CHECKLIST.md  # Production readiness tracker
 ```
 
-### Building
-
-```bash
-# Build the controller binary
-make build
-
-# Build the Docker image
-make docker-build
-```
-
-### Testing
-
-```bash
-# Run tests
-make test
-
-# Format code
-make fmt
-
-# Run linter
-make vet
-```
-
-## Makefile Targets
-
-### Development
-- `make build` - Build the controller binary
-- `make run` - Run controller locally (outside cluster)
-- `make test` - Run tests
-- `make fmt` - Format code
-- `make vet` - Run go vet
-
-### Container Images
-- `make container-build` - Build container image (podman/docker)
-- `make container-push` - Push container image
-- `make docker-build` - Legacy alias for container-build
-- `make docker-push` - Legacy alias for container-push
-
-### Deployment
-- `make install-crd` - Install CRDs
-- `make deploy` - Deploy controller
-- `make install` - Install CRDs and deploy controller
-- `make uninstall` - Remove everything
-
-### Kind (Local Development)
-- `make kind-setup` - Complete kind setup (create cluster + deploy)
-- `make kind-create` - Create kind cluster
-- `make kind-delete` - Delete kind cluster
-- `make kind-load` - Build and load image into kind
-- `make kind-deploy` - Build, load, and deploy to kind
-- `make kind-redeploy` - Quick rebuild and restart (for iteration)
-
-### Samples & Status
-- `make apply-sample` - Apply sample ScriptRunner
-- `make apply-custom-sample` - Apply custom script sample
-- `make delete-samples` - Delete sample resources
-- `make status` - Show status of controller and resources
-- `make logs` - Show controller logs (follow mode)
-- `make dev-logs` - Show controller and latest job logs
-
-### Cleanup
-- `make clean` - Clean built binaries
-- `make help` - Display all available targets
-
-## Configuration
-
-### Controller Configuration
-
-The controller can be configured using command-line flags:
-
-- `-kubeconfig`: Path to kubeconfig file (for out-of-cluster operation)
-- `-master`: Kubernetes API server address
-- `-namespace`: Namespace to watch (empty = all namespaces)
-- `-v`: Log verbosity level
-
-### ScriptRunner Spec
-
-| Field | Type | Required | Default | Description |
-|-------|------|----------|---------|-------------|
-| `inputs` | map[string]string | No | {} | Key-value pairs passed as environment variables |
-| `image` | string | No | `busybox:latest` | Container image to use |
-| `script` | string | No | Default echo script | Inline shell script to execute (mutually exclusive with `scriptRef`) |
-| `scriptRef` | string | No | - | Path to pre-built script in container (mutually exclusive with `script`) |
-| `scriptArgs` | []string | No | [] | Arguments to pass when using `scriptRef` |
-
-### ScriptRunner Status
-
-| Field | Description |
-|-------|-------------|
-| `phase` | Current phase (e.g., "JobCreated") |
-| `jobName` | Name of the created Job |
-| `message` | Additional status information |
-| `lastUpdateTime` | Last status update timestamp |
-
-## Advanced Usage
-
-### Using Pre-built Scripts
-
-ScriptRunner supports two ways to provide scripts:
-
-1. **Inline Scripts** (`script` field): Define the script directly in the ScriptRunner YAML
-2. **Pre-built Scripts** (`scriptRef` field): Reference scripts built into your container image
-
-#### Why Use Pre-built Scripts?
-
-- **Reusability**: Share scripts across multiple ScriptRunners
-- **Version Control**: Scripts are versioned with container images
-- **Testing**: Test scripts independently before deploying
-- **Performance**: No need to inline large scripts in YAML
-- **Security**: Scripts can be reviewed and scanned during image build
-- **Complex Dependencies**: Support multiple languages and libraries
-
-#### Creating a Container with Pre-built Scripts
-
-See the complete example in [examples/prebuilt-scripts-image/](examples/prebuilt-scripts-image/):
-
-```dockerfile
-FROM alpine:3.18
-RUN apk add --no-cache bash curl jq python3
-COPY scripts/ /scripts/
-RUN chmod +x /scripts/*.sh
-ENV PATH="/scripts:${PATH}"
-```
-
-Build and load into kind:
-```bash
-cd examples/prebuilt-scripts-image
-make build
-make load  # Loads into kind cluster
-```
-
-#### Using Pre-built Scripts
-
-```yaml
-apiVersion: scriptrunner.io/v1alpha1
-kind: ScriptRunner
-metadata:
-  name: my-prebuilt-script
-spec:
-  image: scriptrunner-scripts:latest
-  scriptRef: /scripts/process-data.sh
-  scriptArgs:
-    - "arg1"
-    - "arg2"
-  inputs:
-    key: "value"
-```
-
-**Script Execution:**
-- If `scriptRef` is specified, it's executed directly with `scriptArgs` as arguments
-- INPUT_ environment variables are still available
-- If `script` is specified instead, it's passed to `/bin/sh -c`
-- Only one of `script` or `scriptRef` can be used
-
-See the [examples](config/samples/) directory for more scriptRef examples.
-
-### Using with Code-Generated Clients
-
-The project includes an example (`pkg/controller/controller.go.example`) showing how to use Kubernetes code-generated clients for better type safety and performance. To use this approach:
-
-1. Set up code-generation tools
-2. Generate clientset, informers, and listers
-3. Update main.go to use the generated controller
-
-### Customizing the Default Script
-
-Edit `pkg/controller/controller.go` and modify the `DefaultScript` constant:
-
-```go
-const DefaultScript = `#!/bin/sh
-# Your custom default script here
-`
-```
-
-### High Throughput Scenarios
-
-For high-throughput scenarios with many ScriptRunner resources:
-
-1. Increase controller replicas in `config/manager/deployment.yaml`
-2. Adjust resource limits based on your needs
-3. Consider namespace-scoped controllers for better isolation
-4. Monitor Job completion and cleanup old Jobs regularly
-
-## Cleanup
-
-```bash
-# Delete sample resources
-make delete-samples
-
-# Uninstall controller and CRDs
-make uninstall
-```
-
-## Troubleshooting
-
-### Controller not starting
-
-```bash
-# Check controller logs
-make logs
-
-# Check RBAC permissions
-kubectl auth can-i create jobs --as=system:serviceaccount:scriptrunner-system:scriptrunner-controller
-```
-
-### Jobs not being created
-
-```bash
-# Check ScriptRunner status
-kubectl describe scriptrunner <name>
-
-# Check controller logs
-make logs
-```
-
-### Pods failing
-
-```bash
-# Check Job status
-kubectl get jobs -l app=scriptrunner
-
-# Check pod logs
-kubectl logs -l app=scriptrunner
-```
-
-## Development Scripts
-
-The `scripts/` directory contains helpful utilities for development:
-
-- **[scripts/dev-setup.sh](scripts/dev-setup.sh)** - Automated setup of complete dev environment
-  ```bash
-  ./scripts/dev-setup.sh
-  ```
-
-- **[scripts/quick-test.sh](scripts/quick-test.sh)** - Quick smoke test to verify controller works
-  ```bash
-  ./scripts/quick-test.sh [namespace]
-  ```
-
-- **[scripts/test-e2e.sh](scripts/test-e2e.sh)** - Comprehensive end-to-end test suite
-  ```bash
-  ./scripts/test-e2e.sh [namespace]
-  ```
-
-## Production Deployment
-
-ScriptRunner is designed for production use with comprehensive security and multi-tenancy features.
-
-### Documentation
-
-- **[Production Readiness Checklist](docs/PRODUCTION_CHECKLIST.md)** - Comprehensive tracker with:
-  - 10 batches from Foundation to Launch Readiness
-  - 160 checklist items with priorities and dependencies
-  - Current progress: **56/160 items (35%)** complete
-  - ✅ Batch 1: Foundation (Health checks, security, docs)
-  - ✅ Batch 2: Validation & Multi-Tenancy (Webhook, RBAC, namespaces)
-  - ✅ Batch 3: Network & Image Security (NetworkPolicy, image scanning)
-
-- **[Production Guide](docs/PRODUCTION.md)** - Complete deployment guide covering security, multi-tenancy, and monitoring
-
-- **[RBAC Security Model](docs/RBAC_SECURITY.md)** - Comprehensive RBAC documentation:
-  - Security architecture and boundaries
-  - User roles and privilege escalation prevention
-  - Threat model with 6 attack scenarios
-  - Audit and monitoring recommendations
-
-- **[Image Security](docs/IMAGE_SECURITY.md)** - Container image security guide:
-  - Vulnerability scanning (Trivy, Clair, cloud providers)
-  - Image signing (cosign, notary)
-  - Registry whitelisting and authentication
-  - Smart ImagePullPolicy enforcement
-
-- **[Network Policies](config/network/README.md)** - Network isolation guide:
-  - Default-deny networking with explicit allow rules
-  - CNI compatibility matrix
-  - Testing and troubleshooting
-
-- **[User Guide](docs/USER_GUIDE.md)** - Documentation for end users
-
-- **[Webhook Implementation](webhook/README.md)** - Admission webhook for validation and defaults
-
-### Observability
-
-ScriptRunner uses **OpenTelemetry** for vendor-neutral observability with a **hybrid approach**:
-
-#### 1. OpenTelemetry SDK (In-App Metrics & Traces)
-**Location**: [pkg/telemetry/](pkg/telemetry/)
-
-The controller uses OpenTelemetry SDK to emit metrics and traces:
-
-**Metrics** (10+ metrics):
-- Resource counts: `scriptrunner.resources.created`, `scriptrunner.resources.active`
-- Job lifecycle: `scriptrunner.jobs.created`, `scriptrunner.jobs.completed`, `scriptrunner.jobs.failed`
-- Performance: `scriptrunner.reconcile.duration`, `scriptrunner.job.duration` (histograms)
-- Error tracking: `scriptrunner.reconcile.errors` (by error_type)
-- Webhook metrics: `scriptrunner.webhook.validations`, `scriptrunner.webhook.mutations`
-
-**Distributed Tracing**:
-- Reconciliation spans: Full trace of ScriptRunner processing
-- Job creation spans: Track Job creation with parent-child relationships
-- Error recording: Automatic error capture with stack traces
-- Context propagation: W3C TraceContext standard
-
-**Backends**: Export to Prometheus, Jaeger, Datadog, New Relic, Honeycomb, or any OTLP-compatible backend
-
-#### 2. OpenTelemetry Collector (Aggregation & Routing)
-**Location**: [config/otel-collector/](config/otel-collector/)
-
-The OTel Collector receives telemetry and routes it to multiple backends:
-
-- **Receives**: OTLP from controller, scrapes Prometheus endpoint
-- **Processes**: Batching, sampling, filtering, attribute enrichment
-- **Exports**: Prometheus, Jaeger, Datadog, New Relic, Honeycomb, logging
-- **Monitors**: Self-monitoring with health checks, metrics, zpages
-
-**Key Features**:
-- Vendor-neutral: Switch backends without code changes
-- Multi-backend export: Send metrics to Prometheus AND Datadog simultaneously
-- Cost optimization: Sample/filter/batch before sending to expensive backends
-- High availability: Deploy multiple collectors with load balancing
-
-See [config/otel-collector/README.md](config/otel-collector/README.md) for deployment guide.
-
-#### 3. kube-state-metrics (Kubernetes Resource Metrics)
-**Free metrics for Kubernetes resources** (no code changes needed):
-
-- ScriptRunner counts by namespace, phase
-- Job counts by status (succeeded, failed, active)
-- Pod metrics, container restarts
-- Resource quota usage
-
-Deploy via Helm or manifest - see [config/otel-collector/README.md#enabling-kube-state-metrics](config/otel-collector/README.md#enabling-kube-state-metrics)
-
-#### Visualization & Alerting
-
-- **[Grafana Dashboard](config/grafana/)** - Pre-built dashboard (6 panels):
-  - Active ScriptRunners, Job creation rate, Error rate
-  - Job creation by ScriptRunner, Reconcile errors by type
-  - Reconcile duration percentiles (p50, p95)
-
-- **[Prometheus Alerts](config/prometheus/alerts/)** - 10 production alerts:
-  - Controller health (down, no activity)
-  - Error rates (10% warning, 50% critical)
-  - Performance (slow reconciliation)
-  - Webhook availability, Capacity warnings
-
-#### Quick Setup
-
-**Option 1: Prometheus-only (Simple)**
-```bash
-# Controller exposes Prometheus-compatible metrics
-kubectl apply -f config/metrics/service.yaml
-kubectl apply -f config/metrics/servicemonitor.yaml
-
-# Deploy Grafana dashboard and alerts
-kubectl apply -f config/grafana/scriptrunner-dashboard.json
-kubectl apply -f config/prometheus/alerts/scriptrunner-alerts.yaml
-```
-
-**Option 2: Full OpenTelemetry (Recommended)**
-```bash
-# Deploy OTel Collector
-kubectl apply -f config/otel-collector/otel-collector-config.yaml
-kubectl apply -f config/otel-collector/otel-collector-deployment.yaml
-
-# Deploy Jaeger for traces
-kubectl apply -f https://github.com/jaegertracing/jaeger-operator/releases/download/v1.53.0/jaeger-operator.yaml
-
-# Optional: Deploy kube-state-metrics
-helm install kube-state-metrics prometheus-community/kube-state-metrics \
-  --namespace scriptrunner-system
-```
-
-See [config/otel-collector/README.md](config/otel-collector/README.md) for complete setup guide.
-
-### Quick Production Setup
-
-```bash
-# 1. Deploy controller with security hardening
-make install
-
-# 2. Deploy admission webhook (validates scripts and images)
-kubectl apply -f webhook/deploy/
-
-# 3. Onboard a user with quotas, RBAC, and network policies
-./scripts/onboard-user.sh alice \
-  --max-scriptrunners 50 \
-  --max-jobs 20 \
-  --cpu-limit 10 \
-  --memory-limit 20Gi
-
-# 4. User creates ScriptRunner in their namespace
-kubectl apply -f my-script.yaml -n user-alice
-```
-
-## API Stability
-
-### Current Version: v1alpha1 (Alpha)
-
-The ScriptRunner API is currently in **alpha** status. This means:
-
-**What "alpha" means:**
-- The API may change in backward-incompatible ways in future releases
-- Fields may be added, removed, or changed without maintaining compatibility
-- Not recommended for production-critical workloads without accepting the risk of breaking changes
-- No guarantees of upgrade paths from v1alpha1 to future versions
-
-**What's stable:**
-- Core functionality (ScriptRunner → Job creation)
-- Security features (RBAC, NetworkPolicy, Pod Security)
-- Observability integration (OpenTelemetry)
-
-**What may change:**
-- CRD field names and structure
-- Default values and behavior
-- Webhook validation rules
-- Status fields and conditions
-
-**Migration plan:**
-- v1beta1 (planned): Stabilize core API, provide automated migration from v1alpha1
-- v1 (future): Production-ready API with long-term support and compatibility guarantees
-
-**Recommendations:**
-- Pin to specific image versions (avoid `latest` tag)
-- Test upgrades in non-production environments first
-- Review CHANGELOG for breaking changes before upgrading
-- Consider using GitOps tools (ArgoCD, Flux) for controlled rollouts
-
-**Feedback welcome:** If you're using ScriptRunner, please share your use cases to help stabilize the most important features for v1beta1.
-
-## Contributing
-
-Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for detailed information on:
-
-- Setting up your development environment
-- Local testing with kind
-- Modifying the CRD
-- Modifying controller logic
-- Testing workflows
-- Code style guidelines
-- Submitting pull requests
+## Roadmap
+
+See [REFACTOR_PLAN.md](docs/REFACTOR_PLAN.md) for detailed implementation plan.
+
+**Phase 1: Core Operations** (Current)
+- [x] API design (ZarfPackage CRD)
+- [x] Sample manifests
+- [x] CRD YAML with validation
+- [ ] Controller implementation
+- [ ] Build/Publish/Deploy action handlers
+- [ ] Source handlers (Git, S3, OCI)
+
+**Phase 2: Policy Enforcement**
+- [ ] Policy evaluation engine
+- [ ] Webhook policy checks
+- [ ] User/group authorization
+- [ ] Audit logging
+
+**Phase 3: Production Ready**
+- [ ] Comprehensive testing
+- [ ] Documentation
+- [ ] Migration tooling (if needed)
+- [ ] Production deployment
+
+## Why "Forge"?
+
+Because packages aren't "run" - they're **forged** through multiple operations (build, publish, deploy). Like a blacksmith's forge where raw materials become finished products through controlled, repeatable processes.
+
+Also, "ScriptRunner" sounded like a toy. Forge sounds like where serious ops get done.
 
 ## License
 
-See LICENSE file for details.
+[Add license here]
 
-## Resources
+## Contributing
 
-- [Kubernetes Custom Resources](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/)
-- [Kubernetes Jobs](https://kubernetes.io/docs/concepts/workloads/controllers/job/)
-- [sample-controller](https://github.com/kubernetes/sample-controller)
-- [controller-runtime](https://github.com/kubernetes-sigs/controller-runtime)
+Contributions welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
-## Client-Side Validation
+## Support
 
-For better developer experience, ScriptRunner provides client-side validation options:
+- **Issues**: [GitHub Issues](https://github.com/kylegalloway/forge/issues)
+- **Docs**: Check the `docs/` directory
+- **Questions**: Open a discussion
 
-### Quick Validation with kubectl
+---
 
-```bash
-# Validate before applying
-kubectl apply --dry-run=server -f my-scriptrunner.yaml
-```
-
-### IDE Integration (Recommended)
-
-Get autocomplete and real-time validation in VS Code, IntelliJ, and other editors:
-
-```bash
-# Generate JSON schema
-./scripts/generate-json-schema.sh
-
-# Configure VS Code (one-time)
-cp .vscode/settings.json.example .vscode/settings.json
-```
-
-Now your IDE will provide:
-- Autocomplete for field names
-- Inline documentation
-- Real-time validation
-- Type checking
-
-See [CLIENT_VALIDATION.md](docs/CLIENT_VALIDATION.md) for complete setup options including:
-- JSON Schema generation and hosting
-- Pre-commit hooks
-- kubeconform for offline validation
-- Custom CLI tools
-
+*Forge: Where Zarf packages are made, not run.*

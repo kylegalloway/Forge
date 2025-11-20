@@ -1,14 +1,14 @@
 apiVersion: monitoring.coreos.com/v1
 kind: PrometheusRule
 metadata:
-  name: scriptrunner-alerts
+  name: forge-alerts
   namespace: forge-system
   labels:
     prometheus: kube-prometheus
     role: alert-rules
 spec:
   groups:
-  - name: scriptrunner.controller
+  - name: forge.controller
     interval: 30s
     rules:
     # Controller Health
@@ -21,15 +21,15 @@ spec:
       annotations:
         summary: "ScriptRunner controller is down"
         description: "ScriptRunner controller has been down for more than 5 minutes. No ScriptRunner resources will be reconciled."
-        runbook_url: "https://github.com/kylegalloway/forge/blob/main/config/prometheus/alerts/README.md#scriptrunnercontrollerdown"
+        runbook_url: "https://github.com/kylegalloway/forge/blob/main/config/prometheus/alerts/README.md#forgecontrollerdown"
 
     # High Error Rate
     - alert: ScriptRunnerHighErrorRate
       expr: |
         (
-          sum(rate(scriptrunner_reconcile_errors_total[5m]))
+          sum(rate(forge_reconcile_errors_total[5m]))
           /
-          sum(rate(scriptrunner_resources_created_total[5m]))
+          sum(rate(forge_resources_created_total[5m]))
         ) > 0.10
       for: 10m
       labels:
@@ -43,9 +43,9 @@ spec:
     - alert: ScriptRunnerCriticalErrorRate
       expr: |
         (
-          sum(rate(scriptrunner_reconcile_errors_total[5m]))
+          sum(rate(forge_reconcile_errors_total[5m]))
           /
-          sum(rate(scriptrunner_resources_created_total[5m]))
+          sum(rate(forge_resources_created_total[5m]))
         ) > 0.50
       for: 5m
       labels:
@@ -60,7 +60,7 @@ spec:
     - alert: ScriptRunnerSlowReconciliation
       expr: |
         histogram_quantile(0.95,
-          sum(rate(scriptrunner_reconcile_duration_seconds_bucket[5m])) by (le)
+          sum(rate(forge_reconcile_duration_seconds_bucket[5m])) by (le)
         ) > 5
       for: 15m
       labels:
@@ -73,7 +73,7 @@ spec:
 
     # Job Creation Failures
     - alert: ScriptRunnerJobCreationFailures
-      expr: sum(rate(scriptrunner_reconcile_errors_total{error_type="job_creation_error"}[5m])) > 0.1
+      expr: sum(rate(forge_reconcile_errors_total{error_type="job_creation_error"}[5m])) > 0.1
       for: 10m
       labels:
         severity: warning
@@ -86,9 +86,9 @@ spec:
     # No Activity (Controller may be stuck)
     - alert: ScriptRunnerNoActivity
       expr: |
-        rate(scriptrunner_resources_created_total[10m]) == 0
+        rate(forge_resources_created_total[10m]) == 0
         and
-        scriptrunner_resources_active > 0
+        forge_resources_active > 0
       for: 30m
       labels:
         severity: warning
@@ -98,12 +98,12 @@ spec:
         description: "Controller has {{ $value }} active ScriptRunners but hasn't created any new ones in 30 minutes. May be stuck."
         runbook_url: "https://github.com/kylegalloway/forge/blob/main/config/prometheus/alerts/README.md#no-activity"
 
-  - name: scriptrunner.webhook
+  - name: forge.webhook
     interval: 30s
     rules:
     # Webhook Validation Failures
     - alert: ScriptRunnerWebhookHighRejectionRate
-      expr: sum(rate(scriptrunner_webhook_validation_errors_total[5m])) > 1
+      expr: sum(rate(forge_webhook_validation_errors_total[5m])) > 1
       for: 10m
       labels:
         severity: info
@@ -115,7 +115,7 @@ spec:
 
     # Webhook Down
     - alert: ScriptRunnerWebhookDown
-      expr: up{job="scriptrunner-webhook-metrics"} == 0
+      expr: up{job="forge-webhook-metrics"} == 0
       for: 5m
       labels:
         severity: warning
@@ -125,12 +125,12 @@ spec:
         description: "Admission webhook has been down for 5 minutes. New ScriptRunner resources cannot be validated."
         runbook_url: "https://github.com/kylegalloway/forge/blob/main/config/prometheus/alerts/README.md#webhook-down"
 
-  - name: scriptrunner.capacity
+  - name: forge.capacity
     interval: 60s
     rules:
     # High Resource Usage
     - alert: ScriptRunnerHighResourceCount
-      expr: scriptrunner_resources_active > 1000
+      expr: forge_resources_active > 1000
       for: 10m
       labels:
         severity: info
@@ -141,7 +141,7 @@ spec:
         runbook_url: "https://github.com/kylegalloway/forge/blob/main/config/prometheus/alerts/README.md#high-resource-count"
 
     - alert: ScriptRunnerVeryHighResourceCount
-      expr: scriptrunner_resources_active > 5000
+      expr: forge_resources_active > 5000
       for: 10m
       labels:
         severity: warning

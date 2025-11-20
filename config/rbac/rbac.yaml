@@ -9,24 +9,59 @@ kind: ClusterRole
 metadata:
   name: forge-controller-role
 rules:
-# Permissions for ScriptRunner resources - read only
+# Permissions for ZarfPackage resources
 - apiGroups:
-  - scriptrunner.io
+  - zarf.dev
   resources:
-  - scriptrunners
+  - zarfpackages
   verbs:
   - get
   - list
   - watch
-# Permissions to update ScriptRunner status
+# Permissions to update ZarfPackage status
 - apiGroups:
-  - scriptrunner.io
+  - zarf.dev
   resources:
-  - scriptrunners/status
+  - zarfpackages/status
   verbs:
   - get
   - update
   - patch
+# Permissions for UDSBundle resources
+- apiGroups:
+  - uds.io
+  resources:
+  - udsbundles
+  verbs:
+  - get
+  - list
+  - watch
+# Permissions to update UDSBundle status
+- apiGroups:
+  - uds.io
+  resources:
+  - udsbundles/status
+  verbs:
+  - get
+  - update
+  - patch
+# Permissions to read ServiceAccounts for policy validation
+- apiGroups:
+  - ""
+  resources:
+  - serviceaccounts
+  verbs:
+  - get
+  - list
+  - watch
+# Permissions to read Secrets for credential validation
+- apiGroups:
+  - ""
+  resources:
+  - secrets
+  verbs:
+  - get
+  - list
 # Permissions for Jobs - create and read only (cleanup handled by TTL and owner references)
 - apiGroups:
   - batch

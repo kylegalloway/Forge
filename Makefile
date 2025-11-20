@@ -1,7 +1,7 @@
 # Image URL to use all building/pushing image targets
-IMG ?= scriptrunner-controller:latest
+IMG ?= forge-controller:latest
 # Kubernetes namespace for deployment
-NAMESPACE ?= scriptrunner-system
+NAMESPACE ?= forge-system
 # Container runtime (docker or podman)
 CONTAINER_RUNTIME ?= $(shell command -v podman 2>/dev/null || command -v docker 2>/dev/null || echo docker)
 
@@ -13,7 +13,7 @@ GOBIN=$(shell go env GOBIN)
 endif
 
 # Kind cluster name for local development
-KIND_CLUSTER_NAME ?= scriptrunner-dev
+KIND_CLUSTER_NAME ?= forge-dev
 
 .PHONY: all
 all: build
@@ -97,11 +97,11 @@ uninstall: undeploy uninstall-crd ## Undeploy controller and uninstall CRDs.
 
 .PHONY: apply-sample
 apply-sample: ## Apply sample ScriptRunner resource.
-	kubectl apply -f config/samples/scriptrunner_v1alpha1_scriptrunner.yaml
+	kubectl apply -f config/samples/forge_v1alpha1_forge.yaml
 
 .PHONY: apply-custom-sample
 apply-custom-sample: ## Apply custom script sample.
-	kubectl apply -f config/samples/scriptrunner_custom_script.yaml
+	kubectl apply -f config/samples/forge_custom_script.yaml
 
 .PHONY: delete-samples
 delete-samples: ## Delete sample resources.
@@ -112,17 +112,17 @@ delete-samples: ## Delete sample resources.
 .PHONY: status
 status: ## Show status of controller and samples.
 	@echo "=== Controller Status ==="
-	@kubectl get pods -n $(NAMESPACE) -l app=scriptrunner-controller 2>/dev/null || echo "Controller not deployed"
+	@kubectl get pods -n $(NAMESPACE) -l app=forge-controller 2>/dev/null || echo "Controller not deployed"
 	@echo ""
 	@echo "=== ScriptRunner Resources ==="
-	@kubectl get scriptrunners --all-namespaces 2>/dev/null || echo "No ScriptRunner resources found"
+	@kubectl get forges --all-namespaces 2>/dev/null || echo "No ScriptRunner resources found"
 	@echo ""
 	@echo "=== Jobs ==="
-	@kubectl get jobs --all-namespaces -l app=scriptrunner 2>/dev/null || echo "No jobs found"
+	@kubectl get jobs --all-namespaces -l app=forge 2>/dev/null || echo "No jobs found"
 
 .PHONY: logs
 logs: ## Show controller logs.
-	kubectl logs -n $(NAMESPACE) -l app=scriptrunner-controller --tail=50 -f
+	kubectl logs -n $(NAMESPACE) -l app=forge-controller --tail=50 -f
 
 ##@ Cleanup
 
@@ -178,7 +178,7 @@ kind-redeploy: ## Rebuild, reload, and restart controller in kind (for iterative
 	@echo "Loading new image into kind..."
 	@$(MAKE) kind-load
 	@echo "Restarting controller pods..."
-	@kubectl delete pods -n $(NAMESPACE) -l app=scriptrunner-controller --ignore-not-found=true
+	@kubectl delete pods -n $(NAMESPACE) -l app=forge-controller --ignore-not-found=true
 	@echo "Waiting for new pods to start..."
 	@sleep 5
 	@$(MAKE) status
@@ -201,10 +201,10 @@ kind-setup: kind-create kind-deploy ## Complete setup: create kind cluster and d
 .PHONY: dev-logs
 dev-logs: ## Tail logs from controller and latest job.
 	@echo "=== Controller Logs ==="
-	@kubectl logs -n $(NAMESPACE) -l app=scriptrunner-controller --tail=20 --prefix=true 2>/dev/null || echo "No controller logs"
+	@kubectl logs -n $(NAMESPACE) -l app=forge-controller --tail=20 --prefix=true 2>/dev/null || echo "No controller logs"
 	@echo ""
 	@echo "=== Latest Job Logs ==="
-	@JOB=$$(kubectl get jobs -l app=scriptrunner --sort-by=.metadata.creationTimestamp -o jsonpath='{.items[-1].metadata.name}' 2>/dev/null); \
+	@JOB=$$(kubectl get jobs -l app=forge --sort-by=.metadata.creationTimestamp -o jsonpath='{.items[-1].metadata.name}' 2>/dev/null); \
 	if [ -n "$$JOB" ]; then \
 		kubectl logs job/$$JOB 2>/dev/null || echo "Job not yet started"; \
 	else \

@@ -52,6 +52,7 @@ type Controller struct {
 	tracer         *telemetry.Tracer
 	buildHandler   *actions.BuildHandler
 	publishHandler *actions.PublishHandler
+	deployHandler  *actions.DeployHandler
 	healthy        bool
 	ready          bool
 }
@@ -67,6 +68,7 @@ func NewController(
 	// Initialize action handlers
 	buildHandler := actions.NewBuildHandler(kubeClient, metrics, tracer)
 	publishHandler := actions.NewPublishHandler(kubeClient, metrics, tracer)
+	deployHandler := actions.NewDeployHandler(kubeClient, metrics, tracer)
 
 	return &Controller{
 		kubeClient:     kubeClient,
@@ -76,6 +78,7 @@ func NewController(
 		tracer:         tracer,
 		buildHandler:   buildHandler,
 		publishHandler: publishHandler,
+		deployHandler:  deployHandler,
 		healthy:        true,
 		ready:          false,
 	}
@@ -181,6 +184,11 @@ func (c *Controller) handleZarfPackage(ctx context.Context, obj interface{}) err
 		// TODO: Implement artifact fetching from source
 		result, err = c.publishHandler.Execute(ctx, pkg, "/workspace/package.tar.zst")
 
+	case zarfv1alpha1.ActionDeploy:
+		// For standalone deploy, assume artifact is already available
+		// TODO: Implement artifact fetching from source
+		result, err = c.deployHandler.Execute(ctx, pkg, "/workspace/package.tar.zst")
+
 	case zarfv1alpha1.ActionBuildPublish:
 		// Execute build first, then publish with artifact path
 		buildResult, buildErr := c.buildHandler.Execute(ctx, pkg)
@@ -192,10 +200,38 @@ func (c *Controller) handleZarfPackage(ctx context.Context, obj interface{}) err
 			result = buildResult
 		}
 
-	case zarfv1alpha1.ActionBuildDeploy, zarfv1alpha1.ActionBuildPublishDeploy:
-		// For now, just execute the build part
-		// TODO: Implement deploy handler and chaining
-		result, err = c.buildHandler.Execute(ctx, pkg)
+	case zarfv1alpha1.ActionBuildDeploy:
+		// Execute build first, then deploy with artifact path
+		buildResult, buildErr := c.buildHandler.Execute(ctx, pkg)
+		if buildErr != nil {
+			err = buildErr
+		} else {
+			// TODO: Wait for build to complete, then deploy
+			// For now, just return build result
+			result = buildResult
+		}
+
+	case zarfv1alpha1.ActionPublishDeploy:
+		// Execute publish first, then deploy
+		publishResult, publishErr := c.publishHandler.Execute(ctx, pkg, "/workspace/package.tar.zst")
+		if publishErr != nil {
+			err = publishErr
+		} else {
+			// TODO: Wait for publish to complete, then deploy
+			// For now, just return publish result
+			result = publishResult
+		}
+
+	case zarfv1alpha1.ActionBuildPublishDeploy:
+		// Execute build first
+		buildResult, buildErr := c.buildHandler.Execute(ctx, pkg)
+		if buildErr != nil {
+			err = buildErr
+		} else {
+			// TODO: Wait for build to complete, then publish, then deploy
+			// For now, just return build result
+			result = buildResult
+		}
 
 	default:
 		err = fmt.Errorf("action %s not yet implemented", pkg.Spec.Action)

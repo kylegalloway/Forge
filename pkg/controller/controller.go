@@ -190,48 +190,20 @@ func (c *Controller) handleZarfPackage(ctx context.Context, obj interface{}) err
 		result, err = c.deployHandler.Execute(ctx, pkg, "/workspace/package.tar.zst")
 
 	case zarfv1alpha1.ActionBuildPublish:
-		// Execute build first, then publish with artifact path
-		buildResult, buildErr := c.buildHandler.Execute(ctx, pkg)
-		if buildErr != nil {
-			err = buildErr
-		} else {
-			// TODO: Wait for build to complete, then publish
-			// For now, just return build result
-			result = buildResult
-		}
+		// Execute build first, job monitor will trigger publish when build completes
+		result, err = c.buildHandler.Execute(ctx, pkg)
 
 	case zarfv1alpha1.ActionBuildDeploy:
-		// Execute build first, then deploy with artifact path
-		buildResult, buildErr := c.buildHandler.Execute(ctx, pkg)
-		if buildErr != nil {
-			err = buildErr
-		} else {
-			// TODO: Wait for build to complete, then deploy
-			// For now, just return build result
-			result = buildResult
-		}
+		// Execute build first, job monitor will trigger deploy when build completes
+		result, err = c.buildHandler.Execute(ctx, pkg)
 
 	case zarfv1alpha1.ActionPublishDeploy:
-		// Execute publish first, then deploy
-		publishResult, publishErr := c.publishHandler.Execute(ctx, pkg, "/workspace/package.tar.zst")
-		if publishErr != nil {
-			err = publishErr
-		} else {
-			// TODO: Wait for publish to complete, then deploy
-			// For now, just return publish result
-			result = publishResult
-		}
+		// Execute publish first, job monitor will trigger deploy when publish completes
+		result, err = c.publishHandler.Execute(ctx, pkg, "/workspace/package.tar.zst")
 
 	case zarfv1alpha1.ActionBuildPublishDeploy:
-		// Execute build first
-		buildResult, buildErr := c.buildHandler.Execute(ctx, pkg)
-		if buildErr != nil {
-			err = buildErr
-		} else {
-			// TODO: Wait for build to complete, then publish, then deploy
-			// For now, just return build result
-			result = buildResult
-		}
+		// Execute build first, job monitor will chain publish → deploy
+		result, err = c.buildHandler.Execute(ctx, pkg)
 
 	default:
 		err = fmt.Errorf("action %s not yet implemented", pkg.Spec.Action)

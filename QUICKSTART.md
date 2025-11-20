@@ -96,7 +96,7 @@ kubectl logs job/<job-name>
 
 ```bash
 # 1. Edit controller code
-vim pkg/controller/simple_controller.go
+vim pkg/controller/controller.go
 
 # 2. Rebuild and redeploy
 make kind-redeploy
@@ -119,7 +119,7 @@ vim pkg/apis/scriptrunner/v1alpha1/types.go
 vim config/crd/scriptrunner.io_scriptrunners.yaml
 
 # 3. Update controller to use new fields
-vim pkg/controller/simple_controller.go
+vim pkg/controller/controller.go
 
 # 4. Reinstall CRD and redeploy
 make install-crd

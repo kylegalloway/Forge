@@ -4,6 +4,8 @@ A secure, multi-tenant Kubernetes controller for running scripts in isolated Job
 
 > **Quick Start**: New to ScriptRunner? Check out [QUICKSTART.md](QUICKSTART.md) for a 5-minute getting started guide!
 
+> **⚠️ API Version**: This project uses the `v1alpha1` API version, which is in **alpha** status. The API may change in backward-incompatible ways in future releases. See [API Stability](#api-stability) for details.
+
 ## Overview
 
 ScriptRunner enables declarative script execution in Kubernetes with production-ready security controls. Users define script executions as custom resources, and the controller creates isolated Jobs with comprehensive security hardening, resource quotas, and network policies.
@@ -24,10 +26,14 @@ ScriptRunner enables declarative script execution in Kubernetes with production-
 - **Image Security**: Registry whitelisting, vulnerability scanning, and pull policy enforcement
 - **Pod Security Standards**: Restricted profile with non-root users and dropped capabilities
 
-**Observability:**
+**Observability (Production-Ready):**
+- **OpenTelemetry SDK**: Vendor-neutral metrics and distributed tracing
+- **Hybrid Approach**: In-app telemetry + kube-state-metrics + OTel Collector
+- **Multiple Backends**: Export to Prometheus, Jaeger, Datadog, New Relic, Honeycomb
+- **Grafana Dashboard**: Pre-built dashboard with 6 panels for visualization
+- **Prometheus Alerts**: 10 alerts for controller health, error rates, and capacity
 - **Health Checks**: Liveness and readiness probes on controller and webhook
 - **Structured Logging**: klog-based logging with InfoS/ErrorS patterns
-- **Metrics Ready**: Prometheus annotations and placeholder endpoints
 
 ## Architecture
 
@@ -84,7 +90,7 @@ User → Admission Webhook → ScriptRunner CR → Controller → Job → Pod
 ├── pkg/
 │   ├── apis/scriptrunner/v1alpha1/       # API types and registration
 │   ├── controller/
-│   │   └── simple_controller.go          # Controller with smart ImagePullPolicy
+│   │   └── controller.go                 # Controller with smart ImagePullPolicy
 │   └── webhook/
 │       └── validator.go                   # Validation logic
 ├── config/
@@ -474,7 +480,7 @@ The project includes an example (`pkg/controller/controller.go.example`) showing
 
 ### Customizing the Default Script
 
-Edit `pkg/controller/simple_controller.go` and modify the `DefaultScript` constant:
+Edit `pkg/controller/controller.go` and modify the `DefaultScript` constant:
 
 ```go
 const DefaultScript = `#!/bin/sh
@@ -589,6 +595,100 @@ ScriptRunner is designed for production use with comprehensive security and mult
 
 - **[Webhook Implementation](webhook/README.md)** - Admission webhook for validation and defaults
 
+### Observability
+
+ScriptRunner uses **OpenTelemetry** for vendor-neutral observability with a **hybrid approach**:
+
+#### 1. OpenTelemetry SDK (In-App Metrics & Traces)
+**Location**: [pkg/telemetry/](pkg/telemetry/)
+
+The controller uses OpenTelemetry SDK to emit metrics and traces:
+
+**Metrics** (10+ metrics):
+- Resource counts: `scriptrunner.resources.created`, `scriptrunner.resources.active`
+- Job lifecycle: `scriptrunner.jobs.created`, `scriptrunner.jobs.completed`, `scriptrunner.jobs.failed`
+- Performance: `scriptrunner.reconcile.duration`, `scriptrunner.job.duration` (histograms)
+- Error tracking: `scriptrunner.reconcile.errors` (by error_type)
+- Webhook metrics: `scriptrunner.webhook.validations`, `scriptrunner.webhook.mutations`
+
+**Distributed Tracing**:
+- Reconciliation spans: Full trace of ScriptRunner processing
+- Job creation spans: Track Job creation with parent-child relationships
+- Error recording: Automatic error capture with stack traces
+- Context propagation: W3C TraceContext standard
+
+**Backends**: Export to Prometheus, Jaeger, Datadog, New Relic, Honeycomb, or any OTLP-compatible backend
+
+#### 2. OpenTelemetry Collector (Aggregation & Routing)
+**Location**: [config/otel-collector/](config/otel-collector/)
+
+The OTel Collector receives telemetry and routes it to multiple backends:
+
+- **Receives**: OTLP from controller, scrapes Prometheus endpoint
+- **Processes**: Batching, sampling, filtering, attribute enrichment
+- **Exports**: Prometheus, Jaeger, Datadog, New Relic, Honeycomb, logging
+- **Monitors**: Self-monitoring with health checks, metrics, zpages
+
+**Key Features**:
+- Vendor-neutral: Switch backends without code changes
+- Multi-backend export: Send metrics to Prometheus AND Datadog simultaneously
+- Cost optimization: Sample/filter/batch before sending to expensive backends
+- High availability: Deploy multiple collectors with load balancing
+
+See [config/otel-collector/README.md](config/otel-collector/README.md) for deployment guide.
+
+#### 3. kube-state-metrics (Kubernetes Resource Metrics)
+**Free metrics for Kubernetes resources** (no code changes needed):
+
+- ScriptRunner counts by namespace, phase
+- Job counts by status (succeeded, failed, active)
+- Pod metrics, container restarts
+- Resource quota usage
+
+Deploy via Helm or manifest - see [config/otel-collector/README.md#enabling-kube-state-metrics](config/otel-collector/README.md#enabling-kube-state-metrics)
+
+#### Visualization & Alerting
+
+- **[Grafana Dashboard](config/grafana/)** - Pre-built dashboard (6 panels):
+  - Active ScriptRunners, Job creation rate, Error rate
+  - Job creation by ScriptRunner, Reconcile errors by type
+  - Reconcile duration percentiles (p50, p95)
+
+- **[Prometheus Alerts](config/prometheus/alerts/)** - 10 production alerts:
+  - Controller health (down, no activity)
+  - Error rates (10% warning, 50% critical)
+  - Performance (slow reconciliation)
+  - Webhook availability, Capacity warnings
+
+#### Quick Setup
+
+**Option 1: Prometheus-only (Simple)**
+```bash
+# Controller exposes Prometheus-compatible metrics
+kubectl apply -f config/metrics/service.yaml
+kubectl apply -f config/metrics/servicemonitor.yaml
+
+# Deploy Grafana dashboard and alerts
+kubectl apply -f config/grafana/scriptrunner-dashboard.json
+kubectl apply -f config/prometheus/alerts/scriptrunner-alerts.yaml
+```
+
+**Option 2: Full OpenTelemetry (Recommended)**
+```bash
+# Deploy OTel Collector
+kubectl apply -f config/otel-collector/otel-collector-config.yaml
+kubectl apply -f config/otel-collector/otel-collector-deployment.yaml
+
+# Deploy Jaeger for traces
+kubectl apply -f https://github.com/jaegertracing/jaeger-operator/releases/download/v1.53.0/jaeger-operator.yaml
+
+# Optional: Deploy kube-state-metrics
+helm install kube-state-metrics prometheus-community/kube-state-metrics \
+  --namespace scriptrunner-system
+```
+
+See [config/otel-collector/README.md](config/otel-collector/README.md) for complete setup guide.
+
 ### Quick Production Setup
 
 ```bash
@@ -608,6 +708,41 @@ kubectl apply -f webhook/deploy/
 # 4. User creates ScriptRunner in their namespace
 kubectl apply -f my-script.yaml -n user-alice
 ```
+
+## API Stability
+
+### Current Version: v1alpha1 (Alpha)
+
+The ScriptRunner API is currently in **alpha** status. This means:
+
+**What "alpha" means:**
+- The API may change in backward-incompatible ways in future releases
+- Fields may be added, removed, or changed without maintaining compatibility
+- Not recommended for production-critical workloads without accepting the risk of breaking changes
+- No guarantees of upgrade paths from v1alpha1 to future versions
+
+**What's stable:**
+- Core functionality (ScriptRunner → Job creation)
+- Security features (RBAC, NetworkPolicy, Pod Security)
+- Observability integration (OpenTelemetry)
+
+**What may change:**
+- CRD field names and structure
+- Default values and behavior
+- Webhook validation rules
+- Status fields and conditions
+
+**Migration plan:**
+- v1beta1 (planned): Stabilize core API, provide automated migration from v1alpha1
+- v1 (future): Production-ready API with long-term support and compatibility guarantees
+
+**Recommendations:**
+- Pin to specific image versions (avoid `latest` tag)
+- Test upgrades in non-production environments first
+- Review CHANGELOG for breaking changes before upgrading
+- Consider using GitOps tools (ArgoCD, Flux) for controlled rollouts
+
+**Feedback welcome:** If you're using ScriptRunner, please share your use cases to help stabilize the most important features for v1beta1.
 
 ## Contributing
 

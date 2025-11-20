@@ -291,7 +291,7 @@ docker pull myregistry.io/scriptrunner/process-data:v1.0.0
 The controller sets `imagePullPolicy` when creating Jobs:
 
 ```go
-// pkg/controller/simple_controller.go
+// pkg/controller/controller.go
 container := corev1.Container{
     Name:            "script-executor",
     Image:           image,

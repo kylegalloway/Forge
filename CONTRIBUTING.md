@@ -181,7 +181,7 @@ For rapid development, use the `kind-redeploy` target:
 
 ```bash
 # Make changes to controller code
-vim pkg/controller/simple_controller.go
+vim pkg/controller/controller.go
 
 # Rebuild, reload, and restart in one command
 make kind-redeploy
@@ -198,7 +198,7 @@ This command:
 
 ```bash
 # 1. Make code changes
-vim pkg/controller/simple_controller.go
+vim pkg/controller/controller.go
 
 # 2. Test locally (optional but fast)
 make test
@@ -308,10 +308,10 @@ spec:
 
 #### Step 4: Update Controller Logic
 
-Edit `pkg/controller/simple_controller.go` to use the timeout:
+Edit `pkg/controller/controller.go` to use the timeout:
 
 ```go
-func (c *SimpleController) createJob(scriptRunner *scriptrunnerv1alpha1.ScriptRunner, jobName string) *batchv1.Job {
+func (c *Controller) createJob(scriptRunner *scriptrunnerv1alpha1.ScriptRunner, jobName string) *batchv1.Job {
 	// ... existing code ...
 
 	backoffLimit := int32(0)
@@ -361,11 +361,11 @@ kubectl get job -o yaml | grep activeDeadlineSeconds
 
 ## Modifying Controller Logic
 
-The controller logic is in [pkg/controller/simple_controller.go](pkg/controller/simple_controller.go).
+The controller logic is in [pkg/controller/controller.go](pkg/controller/controller.go).
 
 ### Key Components
 
-1. **SimpleController struct** - Main controller with clients and state
+1. **Controller struct** - Main controller with clients and state
 2. **Run()** - Main loop that watches ScriptRunner resources
 3. **handleScriptRunner()** - Processes each ScriptRunner resource
 4. **createJob()** - Creates a Kubernetes Job from a ScriptRunner
@@ -380,7 +380,7 @@ Let's add logic to update the status when a Job completes.
 This would require switching to the informer-based controller in `controller.go.example`, but for the simple controller, you could poll Job status:
 
 ```go
-func (c *SimpleController) handleScriptRunner(ctx context.Context, obj *unstructured.Unstructured) error {
+func (c *Controller) handleScriptRunner(ctx context.Context, obj *unstructured.Unstructured) error {
 	// ... existing code to create job ...
 
 	// After creating the job, optionally check its status
@@ -406,7 +406,7 @@ func (c *SimpleController) handleScriptRunner(ctx context.Context, obj *unstruct
 
 ```bash
 # Make your changes
-vim pkg/controller/simple_controller.go
+vim pkg/controller/controller.go
 
 # Run tests
 make test
@@ -545,7 +545,7 @@ Example:
 // createJob creates a Kubernetes Job from a ScriptRunner resource.
 // The Job will have owner references set to ensure it's cleaned up
 // when the ScriptRunner is deleted.
-func (c *SimpleController) createJob(scriptRunner *scriptrunnerv1alpha1.ScriptRunner, jobName string) *batchv1.Job {
+func (c *Controller) createJob(scriptRunner *scriptrunnerv1alpha1.ScriptRunner, jobName string) *batchv1.Job {
 	// Use default image if not specified to maintain backwards compatibility
 	image := scriptRunner.Spec.Image
 	if image == "" {

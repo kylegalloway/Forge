@@ -4,7 +4,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: otel-collector
-  namespace: scriptrunner-system
+  namespace: forge-system
   labels:
     app: otel-collector
     component: observability
@@ -97,7 +97,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: otel-collector
-  namespace: scriptrunner-system
+  namespace: forge-system
   labels:
     app: otel-collector
     component: observability
@@ -132,7 +132,7 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: otel-collector
-  namespace: scriptrunner-system
+  namespace: forge-system
   labels:
     app: otel-collector
 ---
@@ -175,14 +175,14 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: otel-collector
-  namespace: scriptrunner-system
+  namespace: forge-system
 ---
 # ServiceMonitor for Prometheus to scrape OTel Collector metrics
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
   name: otel-collector
-  namespace: scriptrunner-system
+  namespace: forge-system
   labels:
     app: otel-collector
 spec:

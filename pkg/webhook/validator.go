@@ -15,7 +15,7 @@ import (
 	"regexp"
 	"strings"
 
-	scriptrunnerv1alpha1 "github.com/kylegalloway/scriptrunner/pkg/apis/scriptrunner/v1alpha1"
+	scriptrunnerv1alpha1 "github.com/kylegalloway/forge/pkg/apis/scriptrunner/v1alpha1"
 	"k8s.io/klog/v2"
 )
 

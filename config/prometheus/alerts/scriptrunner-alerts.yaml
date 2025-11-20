@@ -2,7 +2,7 @@ apiVersion: monitoring.coreos.com/v1
 kind: PrometheusRule
 metadata:
   name: scriptrunner-alerts
-  namespace: scriptrunner-system
+  namespace: forge-system
   labels:
     prometheus: kube-prometheus
     role: alert-rules
@@ -13,7 +13,7 @@ spec:
     rules:
     # Controller Health
     - alert: ScriptRunnerControllerDown
-      expr: up{job="scriptrunner-controller-metrics"} == 0
+      expr: up{job="forge-controller-metrics"} == 0
       for: 5m
       labels:
         severity: critical
@@ -21,7 +21,7 @@ spec:
       annotations:
         summary: "ScriptRunner controller is down"
         description: "ScriptRunner controller has been down for more than 5 minutes. No ScriptRunner resources will be reconciled."
-        runbook_url: "https://github.com/kylegalloway/scriptrunner/blob/main/config/prometheus/alerts/README.md#scriptrunnercontrollerdown"
+        runbook_url: "https://github.com/kylegalloway/forge/blob/main/config/prometheus/alerts/README.md#scriptrunnercontrollerdown"
 
     # High Error Rate
     - alert: ScriptRunnerHighErrorRate
@@ -38,7 +38,7 @@ spec:
       annotations:
         summary: "High error rate in ScriptRunner reconciliation"
         description: "More than 10% of ScriptRunner reconciliations are failing (current: {{ $value | humanizePercentage }})"
-        runbook_url: "https://github.com/kylegalloway/scriptrunner/blob/main/config/prometheus/alerts/README.md#high-error-rate"
+        runbook_url: "https://github.com/kylegalloway/forge/blob/main/config/prometheus/alerts/README.md#high-error-rate"
 
     - alert: ScriptRunnerCriticalErrorRate
       expr: |
@@ -54,7 +54,7 @@ spec:
       annotations:
         summary: "Critical error rate in ScriptRunner reconciliation"
         description: "More than 50% of ScriptRunner reconciliations are failing (current: {{ $value | humanizePercentage }}). Controller may be broken."
-        runbook_url: "https://github.com/kylegalloway/scriptrunner/blob/main/config/prometheus/alerts/README.md#critical-error-rate"
+        runbook_url: "https://github.com/kylegalloway/forge/blob/main/config/prometheus/alerts/README.md#critical-error-rate"
 
     # Slow Reconciliation
     - alert: ScriptRunnerSlowReconciliation
@@ -69,7 +69,7 @@ spec:
       annotations:
         summary: "ScriptRunner reconciliation is slow"
         description: "p95 reconciliation latency is {{ $value | humanizeDuration }} (threshold: 5s). Controller may be overloaded."
-        runbook_url: "https://github.com/kylegalloway/scriptrunner/blob/main/config/prometheus/alerts/README.md#slow-reconciliation"
+        runbook_url: "https://github.com/kylegalloway/forge/blob/main/config/prometheus/alerts/README.md#slow-reconciliation"
 
     # Job Creation Failures
     - alert: ScriptRunnerJobCreationFailures
@@ -81,7 +81,7 @@ spec:
       annotations:
         summary: "Frequent Job creation failures"
         description: "Job creation is failing at {{ $value }} per second. May indicate API server issues or RBAC problems."
-        runbook_url: "https://github.com/kylegalloway/scriptrunner/blob/main/config/prometheus/alerts/README.md#job-creation-failures"
+        runbook_url: "https://github.com/kylegalloway/forge/blob/main/config/prometheus/alerts/README.md#job-creation-failures"
 
     # No Activity (Controller may be stuck)
     - alert: ScriptRunnerNoActivity
@@ -96,7 +96,7 @@ spec:
       annotations:
         summary: "No ScriptRunner activity detected"
         description: "Controller has {{ $value }} active ScriptRunners but hasn't created any new ones in 30 minutes. May be stuck."
-        runbook_url: "https://github.com/kylegalloway/scriptrunner/blob/main/config/prometheus/alerts/README.md#no-activity"
+        runbook_url: "https://github.com/kylegalloway/forge/blob/main/config/prometheus/alerts/README.md#no-activity"
 
   - name: scriptrunner.webhook
     interval: 30s
@@ -111,7 +111,7 @@ spec:
       annotations:
         summary: "High rate of webhook validation rejections"
         description: "Webhook is rejecting {{ $value }} ScriptRunner creates per second. Users may be submitting invalid resources."
-        runbook_url: "https://github.com/kylegalloway/scriptrunner/blob/main/config/prometheus/alerts/README.md#webhook-rejections"
+        runbook_url: "https://github.com/kylegalloway/forge/blob/main/config/prometheus/alerts/README.md#webhook-rejections"
 
     # Webhook Down
     - alert: ScriptRunnerWebhookDown
@@ -123,7 +123,7 @@ spec:
       annotations:
         summary: "ScriptRunner webhook is down"
         description: "Admission webhook has been down for 5 minutes. New ScriptRunner resources cannot be validated."
-        runbook_url: "https://github.com/kylegalloway/scriptrunner/blob/main/config/prometheus/alerts/README.md#webhook-down"
+        runbook_url: "https://github.com/kylegalloway/forge/blob/main/config/prometheus/alerts/README.md#webhook-down"
 
   - name: scriptrunner.capacity
     interval: 60s
@@ -138,7 +138,7 @@ spec:
       annotations:
         summary: "High number of active ScriptRunners"
         description: "Cluster has {{ $value }} active ScriptRunners. May need to scale controller or review capacity."
-        runbook_url: "https://github.com/kylegalloway/scriptrunner/blob/main/config/prometheus/alerts/README.md#high-resource-count"
+        runbook_url: "https://github.com/kylegalloway/forge/blob/main/config/prometheus/alerts/README.md#high-resource-count"
 
     - alert: ScriptRunnerVeryHighResourceCount
       expr: scriptrunner_resources_active > 5000
@@ -149,4 +149,4 @@ spec:
       annotations:
         summary: "Very high number of active ScriptRunners"
         description: "Cluster has {{ $value }} active ScriptRunners. Controller may struggle at this scale."
-        runbook_url: "https://github.com/kylegalloway/scriptrunner/blob/main/config/prometheus/alerts/README.md#very-high-resource-count"
+        runbook_url: "https://github.com/kylegalloway/forge/blob/main/config/prometheus/alerts/README.md#very-high-resource-count"

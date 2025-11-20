@@ -5,7 +5,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: otel-collector-config
-  namespace: scriptrunner-system
+  namespace: forge-system
   labels:
     app: otel-collector
 data:
@@ -25,12 +25,12 @@ data:
       prometheus:
         config:
           scrape_configs:
-            - job_name: 'scriptrunner-controller'
+            - job_name: 'forge-controller'
               scrape_interval: 15s
               static_configs:
-                - targets: ['scriptrunner-controller-metrics:8080']
+                - targets: ['forge-controller-metrics:8080']
                   labels:
-                    service: 'scriptrunner-controller'
+                    service: 'forge-controller'
 
     # Processors: Transform and filter telemetry
     processors:
@@ -49,10 +49,10 @@ data:
       resource:
         attributes:
           - key: service.name
-            value: scriptrunner-controller
+            value: forge-controller
             action: upsert
           - key: service.namespace
-            value: scriptrunner-system
+            value: forge-system
             action: upsert
           - key: deployment.environment
             value: production
@@ -75,7 +75,7 @@ data:
         endpoint: "0.0.0.0:8889"
         namespace: scriptrunner
         const_labels:
-          service: scriptrunner-controller
+          service: forge-controller
 
       # Jaeger exporter for traces
       otlp/jaeger:

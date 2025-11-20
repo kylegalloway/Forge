@@ -18,8 +18,8 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/klog/v2"
 
-	scriptrunnerv1alpha1 "github.com/kylegalloway/scriptrunner/pkg/apis/scriptrunner/v1alpha1"
-	"github.com/kylegalloway/scriptrunner/pkg/webhook"
+	scriptrunnerv1alpha1 "github.com/kylegalloway/forge/pkg/apis/scriptrunner/v1alpha1"
+	"github.com/kylegalloway/forge/pkg/webhook"
 )
 
 var (

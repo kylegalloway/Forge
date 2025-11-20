@@ -292,4 +292,4 @@ Special thanks to all contributors who have helped make ScriptRunner better!
 
 ---
 
-*For detailed information about each release, see the [GitHub Releases](https://github.com/kylegalloway/scriptrunner/releases) page.*
+*For detailed information about each release, see the [GitHub Releases](https://github.com/kylegalloway/forge/releases) page.*

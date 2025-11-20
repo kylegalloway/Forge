@@ -1,15 +1,15 @@
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
-  name: scriptrunner-controller
-  namespace: scriptrunner-system
+  name: forge-controller
+  namespace: forge-system
   labels:
-    app: scriptrunner-controller
+    app: forge-controller
     prometheus: kube-prometheus
 spec:
   selector:
     matchLabels:
-      app: scriptrunner-controller
+      app: forge-controller
       component: metrics
   endpoints:
   - port: metrics

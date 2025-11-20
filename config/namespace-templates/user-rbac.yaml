@@ -155,7 +155,7 @@ subjects:
 #
 # Users CANNOT:
 # - Modify CRDs (scriptrunners.scriptrunner.io)
-# - Access controller namespace (scriptrunner-system)
+# - Access controller namespace (forge-system)
 # - Create/modify ClusterRoles or ClusterRoleBindings
 # - Create/modify Roles or RoleBindings outside their namespace
 # - Access other user namespaces

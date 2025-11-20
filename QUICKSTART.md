@@ -4,7 +4,7 @@
 
 ```bash
 # 1. Clone and enter directory
-git clone https://github.com/kylegalloway/scriptrunner.git
+git clone https://github.com/kylegalloway/forge.git
 cd scriptrunner
 
 # 2. One-command setup (creates cluster, builds, deploys)

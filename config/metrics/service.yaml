@@ -1,10 +1,10 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: scriptrunner-controller-metrics
-  namespace: scriptrunner-system
+  name: forge-controller-metrics
+  namespace: forge-system
   labels:
-    app: scriptrunner-controller
+    app: forge-controller
     component: metrics
 spec:
   ports:
@@ -13,5 +13,5 @@ spec:
     protocol: TCP
     targetPort: 8080
   selector:
-    app: scriptrunner-controller
+    app: forge-controller
   type: ClusterIP

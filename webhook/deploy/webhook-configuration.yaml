@@ -5,14 +5,14 @@ metadata:
   labels:
     app: scriptrunner-webhook
   annotations:
-    cert-manager.io/inject-ca-from: scriptrunner-system/scriptrunner-webhook-cert
+    cert-manager.io/inject-ca-from: forge-system/scriptrunner-webhook-cert
 webhooks:
 - name: validate.scriptrunner.io
   admissionReviewVersions: ["v1"]
   clientConfig:
     service:
       name: scriptrunner-webhook
-      namespace: scriptrunner-system
+      namespace: forge-system
       path: /validate
     caBundle: Cg==  # Will be injected by cert-manager
   rules:
@@ -37,14 +37,14 @@ metadata:
   labels:
     app: scriptrunner-webhook
   annotations:
-    cert-manager.io/inject-ca-from: scriptrunner-system/scriptrunner-webhook-cert
+    cert-manager.io/inject-ca-from: forge-system/scriptrunner-webhook-cert
 webhooks:
 - name: mutate.scriptrunner.io
   admissionReviewVersions: ["v1"]
   clientConfig:
     service:
       name: scriptrunner-webhook
-      namespace: scriptrunner-system
+      namespace: forge-system
       path: /mutate
     caBundle: Cg==  # Will be injected by cert-manager
   rules:

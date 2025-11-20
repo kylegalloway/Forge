@@ -29,7 +29,7 @@ import (
 )
 
 const (
-	serviceName    = "scriptrunner-controller"
+	serviceName    = "forge-controller"
 	serviceVersion = "v1alpha1"
 )
 

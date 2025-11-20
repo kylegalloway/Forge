@@ -2,7 +2,7 @@ apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
   name: scriptrunner-webhook-cert
-  namespace: scriptrunner-system
+  namespace: forge-system
   labels:
     app: scriptrunner-webhook
 spec:
@@ -12,12 +12,12 @@ spec:
   subject:
     organizations:
     - scriptrunner
-  commonName: scriptrunner-webhook.scriptrunner-system.svc
+  commonName: scriptrunner-webhook.forge-system.svc
   dnsNames:
   - scriptrunner-webhook
-  - scriptrunner-webhook.scriptrunner-system
-  - scriptrunner-webhook.scriptrunner-system.svc
-  - scriptrunner-webhook.scriptrunner-system.svc.cluster.local
+  - scriptrunner-webhook.forge-system
+  - scriptrunner-webhook.forge-system.svc
+  - scriptrunner-webhook.forge-system.svc.cluster.local
   issuerRef:
     name: scriptrunner-webhook-issuer
     kind: Issuer
@@ -26,7 +26,7 @@ apiVersion: cert-manager.io/v1
 kind: Issuer
 metadata:
   name: scriptrunner-webhook-issuer
-  namespace: scriptrunner-system
+  namespace: forge-system
   labels:
     app: scriptrunner-webhook
 spec:

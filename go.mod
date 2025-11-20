@@ -1,4 +1,4 @@
-module github.com/kylegalloway/scriptrunner
+module github.com/kylegalloway/forge
 
 go 1.25.4
 

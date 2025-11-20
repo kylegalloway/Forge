@@ -69,7 +69,7 @@ Install the following tools:
 ### Clone the Repository
 
 ```bash
-git clone https://github.com/kylegalloway/scriptrunner.git
+git clone https://github.com/kylegalloway/forge.git
 cd scriptrunner
 ```
 

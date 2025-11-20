@@ -19,8 +19,8 @@ import (
 	"go.opentelemetry.io/otel/exporters/prometheus"
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 
-	"github.com/kylegalloway/scriptrunner/pkg/controller"
-	"github.com/kylegalloway/scriptrunner/pkg/telemetry"
+	"github.com/kylegalloway/forge/pkg/controller"
+	"github.com/kylegalloway/forge/pkg/telemetry"
 )
 
 var (

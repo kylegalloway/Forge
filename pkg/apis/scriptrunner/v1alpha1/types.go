@@ -1,3 +1,10 @@
+// Package v1alpha1 defines the v1alpha1 API version for the ScriptRunner custom resource.
+//
+// This package contains the type definitions for ScriptRunner resources including
+// the spec, status, and supporting types. The v1alpha1 API is in alpha status and
+// may change in backward-incompatible ways in future releases.
+//
+// API Stability: Alpha - Subject to breaking changes without notice.
 package v1alpha1
 
 import (

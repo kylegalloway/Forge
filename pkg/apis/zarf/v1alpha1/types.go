@@ -82,6 +82,67 @@ type ZarfPackageSpec struct {
 	// Deploy defines how to deploy the package (required if action includes Deploy)
 	// +optional
 	Deploy *DeployConfig `json:"deploy,omitempty"`
+
+	// RBACPolicy defines policy restrictions for this resource
+	// +optional
+	RBACPolicy *RBACPolicy `json:"rbacPolicy,omitempty"`
+}
+
+// RBACPolicy defines policy restrictions
+type RBACPolicy struct {
+	// AllowedUsers specifies which users can use this resource
+	// +optional
+	AllowedUsers []string `json:"allowedUsers,omitempty"`
+
+	// AllowedActions specifies which actions are permitted
+	// +optional
+	AllowedActions []Action `json:"allowedActions,omitempty"`
+
+	// AllowedSources specifies which source types/patterns are permitted
+	// +optional
+	AllowedSources []AllowedSource `json:"allowedSources,omitempty"`
+
+	// AllowedDestinations specifies which destination types/patterns are permitted
+	// +optional
+	AllowedDestinations []AllowedDestination `json:"allowedDestinations,omitempty"`
+
+	// AllowedDeployTargets specifies which deploy targets are permitted
+	// +optional
+	AllowedDeployTargets []DeployTargetType `json:"allowedDeployTargets,omitempty"`
+}
+
+// AllowedSource defines a permitted source pattern
+type AllowedSource struct {
+	// Type of source allowed
+	// +kubebuilder:validation:Required
+	Type SourceType `json:"type"`
+
+	// Repos allowed (glob pattern) for Git
+	// +optional
+	Repos []string `json:"repos,omitempty"`
+
+	// Buckets allowed (glob pattern) for S3
+	// +optional
+	Buckets []string `json:"buckets,omitempty"`
+
+	// Images allowed (glob pattern) for OCI
+	// +optional
+	Images []string `json:"images,omitempty"`
+}
+
+// AllowedDestination defines a permitted destination pattern
+type AllowedDestination struct {
+	// Type of destination allowed
+	// +kubebuilder:validation:Required
+	Type DestinationType `json:"type"`
+
+	// Buckets allowed (glob pattern) for S3
+	// +optional
+	Buckets []string `json:"buckets,omitempty"`
+
+	// Registries allowed (glob pattern) for OCI
+	// +optional
+	Registries []string `json:"registries,omitempty"`
 }
 
 // PackageSource defines where to get the package from

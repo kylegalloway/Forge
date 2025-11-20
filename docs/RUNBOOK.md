@@ -2,6 +2,24 @@
 
 Operational procedures for running and maintaining Forge in production.
 
+## Deployment Modes
+
+Forge supports two deployment modes. Commands in this runbook are provided for both modes where they differ:
+
+**Cluster-Wide (Default)**:
+- Controller watches all namespaces
+- Uses ClusterRole permissions
+- Resources can be in any namespace
+- Suitable for platform teams
+
+**Namespace-Scoped (Restricted)**:
+- Controller watches only `forge-system` namespace
+- Uses Role permissions (namespace-only)
+- All resources must be in `forge-system`
+- Suitable for restricted clusters, individual teams
+
+📖 See [NAMESPACE_SCOPED_DEPLOYMENT.md](./NAMESPACE_SCOPED_DEPLOYMENT.md) for deployment mode details.
+
 ## Table of Contents
 
 - [Daily Operations](#daily-operations)
@@ -19,6 +37,7 @@ Operational procedures for running and maintaining Forge in production.
 
 Run these checks daily or as part of automated monitoring:
 
+**Cluster-Wide Deployment:**
 ```bash
 # Controller health
 kubectl get pods -n forge-system -l app=forge-controller
@@ -32,6 +51,26 @@ kubectl get crd zarfpackages.zarf.dev
 kubectl get crd udsbundles.uds.io
 
 # Recent errors in logs (last hour)
+kubectl logs -n forge-system -l app=forge-controller --since=1h | grep -i error
+
+# Leader election status (HA deployments)
+kubectl get lease -n forge-system forge-controller-lock -o yaml
+```
+
+**Namespace-Scoped Deployment:**
+```bash
+# Controller health (same namespace where deployed)
+kubectl get pods -n forge-system -l app=forge-controller
+kubectl get deployment -n forge-system forge-controller
+
+# Verify watching correct namespace
+kubectl logs -n forge-system -l app=forge-controller | grep "Watching namespace"
+# Should show: "Watching namespace: forge-system"
+
+# List resources (all in forge-system)
+kubectl get zarfpackages,serviceaccounts,secrets -n forge-system
+
+# Recent errors
 kubectl logs -n forge-system -l app=forge-controller --since=1h | grep -i error
 ```
 
@@ -55,7 +94,9 @@ kubectl logs -n forge-system -l app=forge-controller --since=1h | grep -i error
 
 #### Onboard New Team/User
 
-1. Create ServiceAccount with appropriate permissions:
+**Cluster-Wide Deployment:**
+
+1. Create ServiceAccount with appropriate permissions in team namespace:
 ```yaml
 apiVersion: v1
 kind: ServiceAccount
@@ -83,10 +124,41 @@ spec:
 
 3. Document the ServiceAccount capabilities and share with team
 
+**Namespace-Scoped Deployment:**
+
+1. Create ServiceAccount in forge-system namespace:
+```yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: team-dev-sa
+  namespace: forge-system  # Must be in forge-system
+  annotations:
+    forge.zarf.dev/allowed-actions: "Build,Publish"
+    forge.zarf.dev/allowed-source-repos: "https://github.com/myorg/*"
+    forge.zarf.dev/allowed-publish-registries: "ghcr.io/myorg/*"
+```
+
+2. Apply ResourceQuota to forge-system namespace:
+```yaml
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: forge-quota
+  namespace: forge-system
+spec:
+  hard:
+    count/zarfpackages.zarf.dev: "100"
+    count/jobs.batch: "50"
+```
+
+3. Instruct team that all ZarfPackages must be created in `forge-system` namespace
+
 #### Review Package Activity
 
+**Cluster-Wide Deployment:**
 ```bash
-# List all packages
+# List all packages across all namespaces
 kubectl get zarfpackages -A
 
 # Packages by phase
@@ -94,6 +166,18 @@ kubectl get zarfpackages -A -o json | jq -r '.items[] | select(.status.phase=="F
 
 # Recent builds
 kubectl get zarfpackages -A --sort-by=.metadata.creationTimestamp | tail -10
+```
+
+**Namespace-Scoped Deployment:**
+```bash
+# List all packages (only in forge-system)
+kubectl get zarfpackages -n forge-system
+
+# Packages by phase
+kubectl get zarfpackages -n forge-system -o json | jq -r '.items[] | select(.status.phase=="Failed") | .metadata.name'
+
+# Recent builds
+kubectl get zarfpackages -n forge-system --sort-by=.metadata.creationTimestamp | tail -10
 ```
 
 #### Clean Up Completed Packages

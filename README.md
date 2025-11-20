@@ -26,7 +26,11 @@ apiVersion: zarf.dev/v1alpha1
 kind: ZarfPackage
 metadata:
   name: build-and-deploy
+  namespace: default  # cluster-wide: any namespace; namespace-scoped: forge-system only
 spec:
+  # Who can use this (ServiceAccount with policy annotations)
+  serviceAccountName: platform-sa
+
   # What to do
   action: BuildDeploy
 
@@ -43,15 +47,6 @@ spec:
     target: InCluster
     namespace: bigbang
     timeout: 60m
-
-  # Who can use this
-  rbacPolicy:
-    allowedUsers:
-      - group:platform-team
-    allowedActions:
-      - BuildDeploy
-    allowedDeployTargets:
-      - InCluster
 ```
 
 ## Architecture
@@ -75,7 +70,7 @@ spec:
 | `Git` | Source code repos | SSH key or token | HTTPS only, approved repos |
 | `S3` | Pre-built artifacts | AWS credentials | Approved buckets |
 | `OCI` | OCI registries | Registry credentials | Approved registries |
-| `Local` | Dev/testing ONLY | None | Must set `devMode: true` |
+| `Local` | Dev/testing ONLY | None | Must set `allow-local-sources: true` |
 
 ### Destinations (Where Artifacts Go)
 
@@ -92,56 +87,79 @@ spec:
 | `InCluster` | Same cluster as Forge | ServiceAccount |
 | `ExternalCluster` | Different cluster | Kubeconfig secret |
 
-## RBAC Policy Enforcement
+## Policy Enforcement
 
-Every `ZarfPackage` can define its own RBAC policy:
+Forge uses ServiceAccount annotations for fine-grained access control. See [SERVICEACCOUNT_REFERENCE.md](docs/SERVICEACCOUNT_REFERENCE.md) for complete reference.
+
+**Quick Example:**
 
 ```yaml
-spec:
-  rbacPolicy:
-    # Who can use this
-    allowedUsers:
-      - user:alice@example.com
-      - group:developers
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: dev-team-sa
+  namespace: dev-team  # cluster-wide mode
+  # namespace: forge-system  # namespace-scoped mode (all SAs must be here)
+  annotations:
+    # What actions are allowed
+    forge.zarf.dev/allowed-actions: "Build,Publish"
 
-    # What actions they can take
-    allowedActions:
-      - Build
-      - Publish
+    # Which Git repos can be used
+    forge.zarf.dev/allowed-source-repos: "https://github.com/myorg/*"
 
-    # What sources they can use
-    allowedSourceRepos:
-      - github.com/myorg/*
-
-    # Where they can publish
-    allowedPublishRegistries:
-      - ghcr.io/myorg/*
-
-    # Where they can deploy (if allowed)
-    allowedDeployTargets:
-      - InCluster
+    # Where packages can be published
+    forge.zarf.dev/allowed-publish-registries: "ghcr.io/myorg/dev/*"
 ```
 
-**Policy Hierarchy:**
-1. **Cluster-level policy** (platform team) - most restrictive
-2. **Namespace-level policy** (admin-managed) - overrides resource policy
-3. **Resource-level policy** (user self-service) - least restrictive
-
-The admission webhook enforces all three levels.
+The admission webhook validates all operations against these policies before creation.
 
 ## Installation
 
-```bash
-# Install CRD
-kubectl apply -f config/crd/zarf.dev_zarfpackages.yaml
+### Cluster-Wide Deployment (Default)
 
-# Install Forge controller
-kubectl apply -f config/manager/deployment.yaml
+For platform teams managing multi-tenant environments with full cluster access:
+
+```bash
+# Install CRDs (requires cluster-admin)
+kubectl apply -f config/crd/zarf.dev_zarfpackages.yaml
+kubectl apply -f config/crd/uds.io_udsbundles.yaml
+
+# Install Forge controller with ClusterRole
 kubectl apply -f config/rbac/rbac.yaml
+kubectl apply -f config/manager/deployment.yaml
 
 # Install admission webhook (for policy enforcement)
 kubectl apply -f webhook/deploy/
 ```
+
+**Watches**: All namespaces
+**Permissions**: Cluster-wide (ClusterRole)
+**Use Case**: Platform teams, multi-tenant management
+
+### Namespace-Scoped Deployment (Restricted)
+
+For restricted environments where ClusterRole permissions aren't available:
+
+```bash
+# Install CRDs (requires cluster-admin - one-time setup)
+kubectl apply -f config/crd/zarf.dev_zarfpackages.yaml
+kubectl apply -f config/crd/uds.io_udsbundles.yaml
+
+# Create namespace
+kubectl create namespace forge-system
+
+# Install Forge controller with Role (namespace-only)
+kubectl apply -f config/namespace-scoped/rbac.yaml
+kubectl apply -f config/namespace-scoped/deployment.yaml
+```
+
+**Watches**: Single namespace (forge-system)
+**Permissions**: Namespace-only (Role)
+**Use Case**: Restricted clusters, individual teams, compliance-heavy environments
+
+**Important**: In namespace-scoped mode, all resources (ZarfPackages, ServiceAccounts, Secrets) must be created in the `forge-system` namespace.
+
+📖 **Full Guide**: See [NAMESPACE_SCOPED_DEPLOYMENT.md](docs/NAMESPACE_SCOPED_DEPLOYMENT.md) for detailed instructions, migration paths, and multi-tenant patterns.
 
 ## Observability
 
@@ -149,7 +167,8 @@ Forge includes production-grade observability:
 
 ### Metrics (OpenTelemetry + Prometheus)
 - Package operations (build/publish/deploy) with status and duration
-- Policy decisions (allowed/denied) with user and reason
+- Job lifecycle metrics (created, completed, failed)
+- Policy decisions (allowed/denied) with reason
 - Controller health and performance
 
 ### Tracing (OpenTelemetry)
@@ -167,7 +186,7 @@ Forge includes production-grade observability:
 ### Defense in Depth
 
 1. **Admission Webhook** - Validates resources before creation
-2. **RBAC Policies** - Fine-grained access control
+2. **ServiceAccount Policies** - Fine-grained access control via annotations
 3. **Network Policies** - Limits what jobs can access
 4. **Pod Security** - Non-root, dropped capabilities, read-only filesystem
 5. **Credential Management** - Secrets never in env vars
@@ -177,7 +196,7 @@ Forge includes production-grade observability:
 - Run arbitrary images (only Zarf CLI image)
 - Execute arbitrary commands (only build/publish/deploy)
 - Access unapproved repositories or registries
-- Deploy to production without explicit RBAC grant
+- Deploy to production without explicit policy grant
 - Bypass policy enforcement
 
 ### What Users CAN Do
@@ -187,6 +206,15 @@ Forge includes production-grade observability:
 - Deploy to approved clusters
 - Use pre-built packages
 - Self-service within policy boundaries
+
+## Documentation
+
+- **User Guide**: [USER_GUIDE.md](docs/USER_GUIDE.md) - Complete usage examples
+- **ServiceAccount Reference**: [SERVICEACCOUNT_REFERENCE.md](docs/SERVICEACCOUNT_REFERENCE.md) - Policy annotations
+- **Namespace-Scoped**: [NAMESPACE_SCOPED_DEPLOYMENT.md](docs/NAMESPACE_SCOPED_DEPLOYMENT.md) - Restricted deployment mode
+- **Runbook**: [RUNBOOK.md](docs/RUNBOOK.md) - Operations and incident response
+- **Troubleshooting**: [TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) - Common issues and solutions
+- **Production Checklist**: [PRODUCTION_CHECKLIST.md](docs/PRODUCTION_CHECKLIST.md) - Production readiness tracking
 
 ## Development
 
@@ -201,48 +229,54 @@ forge/
 │   ├── apis/uds/v1alpha1/      # UDSBundle CRD types
 │   ├── controller/              # Main controller
 │   ├── actions/                 # Action handlers
-│   ├── sources/                 # Source handlers
+│   ├── sources/                 # Source handlers (Git, S3, OCI)
 │   ├── destinations/            # Destination handlers
 │   ├── credentials/             # Credential management
 │   ├── policy/                  # Policy engine
 │   ├── telemetry/               # OpenTelemetry integration
+│   ├── leaderelection/          # HA leader election
 │   └── webhook/                 # Admission webhook
 ├── config/
 │   ├── crd/                     # CRD manifests
-│   ├── manager/                 # Controller deployment
-│   ├── rbac/                    # RBAC manifests
+│   ├── manager/                 # Controller deployment (cluster-wide)
+│   ├── rbac/                    # RBAC manifests (ClusterRole)
+│   ├── namespace-scoped/        # Namespace-scoped deployment (Role)
+│   ├── network/                 # Network policies
 │   ├── samples/                 # Example ZarfPackages
 │   ├── prometheus/              # Alerts
 │   ├── grafana/                 # Dashboards
 │   └── otel-collector/          # OTel Collector config
-└── docs/
-    ├── REFACTOR_PLAN.md         # Architectural refactor plan
-    └── PRODUCTION_CHECKLIST.md  # Production readiness tracker
+├── docs/                        # Documentation
+└── cmd/                         # Entrypoints (controller, webhook)
 ```
 
 ## Roadmap
 
-See [REFACTOR_PLAN.md](docs/REFACTOR_PLAN.md) for detailed implementation plan.
+See [PRODUCTION_CHECKLIST.md](docs/PRODUCTION_CHECKLIST.md) for detailed progress tracking.
 
-**Phase 1: Core Operations** (Completed)
-- [x] API design (ZarfPackage CRD)
-- [x] Sample manifests
-- [x] CRD YAML with validation
+**Phase 1-3: Foundation** (Completed ✅)
+- [x] API design and CRDs
 - [x] Controller implementation
-- [x] Build/Publish/Deploy action handlers
-- [x] Source handlers (Git, S3, OCI)
+- [x] Policy engine and webhook
+- [x] OpenTelemetry observability
 
-**Phase 2: Policy Enforcement** (Completed)
-- [x] Policy evaluation engine
-- [x] Webhook policy checks
-- [x] ServiceAccount-based authorization
-- [x] RBAC Policy CRD fields
+**Phase 4: Production Hardening** (Completed ✅)
+- [x] Leader election for HA
+- [x] Network policies
+- [x] Namespace-scoped deployment mode
+- [x] Image security
 
-**Phase 3: Production Ready** (In Progress)
-- [ ] Comprehensive testing
-- [x] Documentation
-- [ ] Migration tooling (if needed)
+**Phase 5-6: Testing & Documentation** (Completed ✅)
+- [x] Unit and integration tests
+- [x] Comprehensive documentation
+- [x] Operational runbooks
+
+**Phase 7-9: Launch** (Pending ⏸️)
+- [ ] CI/CD pipeline
+- [ ] Security audit
 - [ ] Production deployment
+
+**Current Status**: 93/115 items complete (81%)
 
 ## Why "Forge"?
 

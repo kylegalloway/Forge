@@ -6,20 +6,57 @@ Forge allows you to manage Zarf packages and UDS bundles using Kubernetes Custom
 
 ## Installation
 
-Ensure you have a Kubernetes cluster running.
+Forge supports two deployment modes depending on your cluster permissions and security requirements.
+
+### Option 1: Cluster-Wide Deployment (Recommended)
+
+For platform teams managing multi-tenant environments with full cluster access:
 
 ```bash
-# 1. Install Custom Resource Definitions
+# 1. Install Custom Resource Definitions (requires cluster-admin)
 kubectl apply -f config/crd/zarf.dev_zarfpackages.yaml
 kubectl apply -f config/crd/uds.io_udsbundles.yaml
 
-# 2. Install the Forge Controller
-kubectl apply -f config/manager/deployment.yaml
+# 2. Install the Forge Controller with ClusterRole
 kubectl apply -f config/rbac/rbac.yaml
+kubectl apply -f config/manager/deployment.yaml
 
 # 3. Install the Admission Webhook (Required for policy enforcement)
 kubectl apply -f webhook/deploy/
 ```
+
+**Features**:
+- Watches all namespaces
+- ZarfPackages can be created in any namespace
+- ServiceAccounts can be in any namespace
+- Suitable for platform teams
+
+### Option 2: Namespace-Scoped Deployment (Restricted)
+
+For restricted environments where ClusterRole permissions aren't available:
+
+```bash
+# 1. Install CRDs (requires cluster-admin - one-time setup)
+kubectl apply -f config/crd/zarf.dev_zarfpackages.yaml
+kubectl apply -f config/crd/uds.io_udsbundles.yaml
+
+# 2. Create namespace
+kubectl create namespace forge-system
+
+# 3. Install Forge with Role (namespace-only permissions)
+kubectl apply -f config/namespace-scoped/rbac.yaml
+kubectl apply -f config/namespace-scoped/deployment.yaml
+```
+
+**Features**:
+- Watches only forge-system namespace
+- All resources must be in forge-system
+- Minimal permissions (Role, not ClusterRole)
+- Suitable for restricted clusters, individual teams
+
+**Important**: In namespace-scoped mode, all ZarfPackages, ServiceAccounts, and Secrets must be created in the `forge-system` namespace.
+
+📖 **Detailed Guide**: See [NAMESPACE_SCOPED_DEPLOYMENT.md](./NAMESPACE_SCOPED_DEPLOYMENT.md) for complete instructions, migration paths, and multi-tenant patterns.
 
 ## Core Concepts
 
@@ -149,12 +186,15 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: restricted-builder
-  namespace: default
+  namespace: default  # cluster-wide mode
+  # namespace: forge-system  # namespace-scoped mode (all SAs must be here)
   annotations:
     forge.zarf.dev/allowed-actions: "Build,Publish"
-    forge.zarf.dev/allowed-source-repos: "github.com/myorg/*"
+    forge.zarf.dev/allowed-source-repos: "https://github.com/myorg/*"
     forge.zarf.dev/allowed-publish-registries: "ghcr.io/myorg/*"
 ```
+
+**Note**: In namespace-scoped deployments, all ServiceAccounts must be created in the `forge-system` namespace.
 
 ### Usage
 

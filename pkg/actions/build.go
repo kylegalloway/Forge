@@ -182,6 +182,24 @@ func (h *BuildHandler) createBuildJob(ctx context.Context, pkg *zarfv1alpha1.Zar
 		},
 	}
 
+	// Add docker-config volume if OCI source with credentials
+	if pkg.Spec.Source.Type == zarfv1alpha1.SourceTypeOCI && pkg.Spec.Source.OCI != nil && pkg.Spec.Source.OCI.CredentialsSecretRef != nil {
+		job.Spec.Template.Spec.Volumes = append(job.Spec.Template.Spec.Volumes, corev1.Volume{
+			Name: "docker-config",
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: pkg.Spec.Source.OCI.CredentialsSecretRef.Name,
+					Items: []corev1.KeyToPath{
+						{
+							Key:  ".dockerconfigjson",
+							Path: "config.json",
+						},
+					},
+				},
+			},
+		})
+	}
+
 	// Create the job
 	createdJob, err := h.kubeClient.BatchV1().Jobs(namespace).Create(ctx, job, metav1.CreateOptions{})
 	if err != nil {
@@ -240,12 +258,110 @@ func (h *BuildHandler) buildInitContainers(pkg *zarfv1alpha1.ZarfPackage) []core
 		})
 
 	case zarfv1alpha1.SourceTypeS3:
-		// TODO: S3 download init container
-		klog.V(4).InfoS("S3 source not yet implemented", "package", pkg.Name)
+		// S3 download init container
+		s3Source := pkg.Spec.Source.S3
+		if s3Source == nil {
+			break
+		}
+
+		// Build S3 download command
+		s3Path := fmt.Sprintf("s3://%s/%s", s3Source.Bucket, s3Source.Key)
+		downloadCmd := fmt.Sprintf("aws s3 cp %s /workspace/package.tar.zst --region %s", s3Path, s3Source.Region)
+
+		// Build environment variables for credentials
+		env := []corev1.EnvVar{}
+		if s3Source.CredentialsSecretRef != nil {
+			env = append(env,
+				corev1.EnvVar{
+					Name: "AWS_ACCESS_KEY_ID",
+					ValueFrom: &corev1.EnvVarSource{
+						SecretKeyRef: &corev1.SecretKeySelector{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: s3Source.CredentialsSecretRef.Name,
+							},
+							Key: "access-key-id",
+						},
+					},
+				},
+				corev1.EnvVar{
+					Name: "AWS_SECRET_ACCESS_KEY",
+					ValueFrom: &corev1.EnvVarSource{
+						SecretKeyRef: &corev1.SecretKeySelector{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: s3Source.CredentialsSecretRef.Name,
+							},
+							Key: "secret-access-key",
+						},
+					},
+				},
+			)
+		}
+
+		initContainers = append(initContainers, corev1.Container{
+			Name:    "s3-download",
+			Image:   "amazon/aws-cli:latest",
+			Command: []string{"/bin/sh", "-c"},
+			Args:    []string{downloadCmd},
+			Env:     env,
+			VolumeMounts: []corev1.VolumeMount{
+				{
+					Name:      "workspace",
+					MountPath: "/workspace",
+				},
+			},
+			SecurityContext: &corev1.SecurityContext{
+				RunAsNonRoot:             ptr(true),
+				RunAsUser:                ptr(int64(1000)),
+				AllowPrivilegeEscalation: ptr(false),
+				Capabilities: &corev1.Capabilities{
+					Drop: []corev1.Capability{"ALL"},
+				},
+			},
+		})
 
 	case zarfv1alpha1.SourceTypeOCI:
-		// TODO: OCI pull init container
-		klog.V(4).InfoS("OCI source not yet implemented", "package", pkg.Name)
+		// OCI pull init container
+		ociSource := pkg.Spec.Source.OCI
+		if ociSource == nil {
+			break
+		}
+
+		// Use crane (go-containerregistry) to pull OCI artifacts
+		// crane export <image> - | tar -xz -C /workspace
+		pullCmd := fmt.Sprintf("crane export %s - | tar -xz -C /workspace", ociSource.Image)
+
+		// Build volume mounts
+		volumeMounts := []corev1.VolumeMount{
+			{
+				Name:      "workspace",
+				MountPath: "/workspace",
+			},
+		}
+
+		// Add docker config volume mount if credentials provided
+		if ociSource.CredentialsSecretRef != nil {
+			volumeMounts = append(volumeMounts, corev1.VolumeMount{
+				Name:      "docker-config",
+				MountPath: "/home/nonroot/.docker",
+				ReadOnly:  true,
+			})
+		}
+
+		initContainers = append(initContainers, corev1.Container{
+			Name:         "oci-pull",
+			Image:        "gcr.io/go-containerregistry/crane:latest",
+			Command:      []string{"/bin/sh", "-c"},
+			Args:         []string{pullCmd},
+			VolumeMounts: volumeMounts,
+			SecurityContext: &corev1.SecurityContext{
+				RunAsNonRoot:             ptr(true),
+				RunAsUser:                ptr(int64(65532)), // nonroot user in crane image
+				AllowPrivilegeEscalation: ptr(false),
+				Capabilities: &corev1.Capabilities{
+					Drop: []corev1.Capability{"ALL"},
+				},
+			},
+		})
 
 	case zarfv1alpha1.SourceTypeLocal:
 		// Local source - no init container needed, but this shouldn't be used in production

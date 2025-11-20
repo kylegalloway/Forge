@@ -173,6 +173,24 @@ func (h *DeployHandler) createDeployJob(ctx context.Context, pkg *zarfv1alpha1.Z
 		h.addKubeconfigVolume(pkg, job)
 	}
 
+	// Add source credential volume if OCI source with credentials
+	if pkg.Spec.Source.Type == zarfv1alpha1.SourceTypeOCI && pkg.Spec.Source.OCI != nil && pkg.Spec.Source.OCI.CredentialsSecretRef != nil {
+		job.Spec.Template.Spec.Volumes = append(job.Spec.Template.Spec.Volumes, corev1.Volume{
+			Name: "source-docker-config",
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: pkg.Spec.Source.OCI.CredentialsSecretRef.Name,
+					Items: []corev1.KeyToPath{
+						{
+							Key:  ".dockerconfigjson",
+							Path: "config.json",
+						},
+					},
+				},
+			},
+		})
+	}
+
 	// Create the job
 	createdJob, err := h.kubeClient.BatchV1().Jobs(namespace).Create(ctx, job, metav1.CreateOptions{})
 	if err != nil {
@@ -236,18 +254,105 @@ func (h *DeployHandler) buildEnvVars(pkg *zarfv1alpha1.ZarfPackage) []corev1.Env
 func (h *DeployHandler) buildInitContainers(pkg *zarfv1alpha1.ZarfPackage, artifactPath string) []corev1.Container {
 	var initContainers []corev1.Container
 
-	// For Deploy action, we need to fetch the artifact from source
-	// This will be implemented based on source type (S3, OCI, etc.)
-	// For now, assume artifact is available or use source handlers
-
+	// Fetch artifact from source for standalone Deploy actions
 	switch pkg.Spec.Source.Type {
-	case zarfv1alpha1.SourceTypeOCI:
-		// TODO: Add OCI pull init container
-		klog.V(4).InfoS("OCI source for deploy not yet implemented", "package", pkg.Name)
-
 	case zarfv1alpha1.SourceTypeS3:
-		// TODO: Add S3 download init container
-		klog.V(4).InfoS("S3 source for deploy not yet implemented", "package", pkg.Name)
+		s3Source := pkg.Spec.Source.S3
+		if s3Source == nil {
+			break
+		}
+
+		s3Path := fmt.Sprintf("s3://%s/%s", s3Source.Bucket, s3Source.Key)
+		downloadCmd := fmt.Sprintf("aws s3 cp %s /workspace/package.tar.zst --region %s", s3Path, s3Source.Region)
+
+		env := []corev1.EnvVar{}
+		if s3Source.CredentialsSecretRef != nil {
+			env = append(env,
+				corev1.EnvVar{
+					Name: "AWS_ACCESS_KEY_ID",
+					ValueFrom: &corev1.EnvVarSource{
+						SecretKeyRef: &corev1.SecretKeySelector{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: s3Source.CredentialsSecretRef.Name,
+							},
+							Key: "access-key-id",
+						},
+					},
+				},
+				corev1.EnvVar{
+					Name: "AWS_SECRET_ACCESS_KEY",
+					ValueFrom: &corev1.EnvVarSource{
+						SecretKeyRef: &corev1.SecretKeySelector{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: s3Source.CredentialsSecretRef.Name,
+							},
+							Key: "secret-access-key",
+						},
+					},
+				},
+			)
+		}
+
+		initContainers = append(initContainers, corev1.Container{
+			Name:    "s3-download",
+			Image:   "amazon/aws-cli:latest",
+			Command: []string{"/bin/sh", "-c"},
+			Args:    []string{downloadCmd},
+			Env:     env,
+			VolumeMounts: []corev1.VolumeMount{
+				{
+					Name:      "workspace",
+					MountPath: "/workspace",
+				},
+			},
+			SecurityContext: &corev1.SecurityContext{
+				RunAsNonRoot:             ptr(true),
+				RunAsUser:                ptr(int64(1000)),
+				AllowPrivilegeEscalation: ptr(false),
+				Capabilities: &corev1.Capabilities{
+					Drop: []corev1.Capability{"ALL"},
+				},
+			},
+		})
+
+	case zarfv1alpha1.SourceTypeOCI:
+		ociSource := pkg.Spec.Source.OCI
+		if ociSource == nil {
+			break
+		}
+
+		pullCmd := fmt.Sprintf("crane export %s /workspace/package.tar.zst", ociSource.Image)
+
+		volumeMounts := []corev1.VolumeMount{
+			{
+				Name:      "workspace",
+				MountPath: "/workspace",
+			},
+		}
+
+		if ociSource.CredentialsSecretRef != nil {
+			volumeMounts = append(volumeMounts, corev1.VolumeMount{
+				Name:      "source-docker-config",
+				MountPath: "/home/nonroot/.docker",
+				ReadOnly:  true,
+			})
+		}
+
+		initContainers = append(initContainers, corev1.Container{
+			Name:         "oci-pull",
+			Image:        "gcr.io/go-containerregistry/crane:latest",
+			Command:      []string{"/bin/sh", "-c"},
+			Args:         []string{pullCmd},
+			VolumeMounts: volumeMounts,
+			SecurityContext: &corev1.SecurityContext{
+				RunAsNonRoot:             ptr(true),
+				RunAsUser:                ptr(int64(65532)),
+				AllowPrivilegeEscalation: ptr(false),
+				Capabilities: &corev1.Capabilities{
+					Drop: []corev1.Capability{"ALL"},
+				},
+			},
+		})
 	}
 
 	return initContainers

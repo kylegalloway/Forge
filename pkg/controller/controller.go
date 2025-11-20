@@ -82,6 +82,9 @@ func NewController(
 func (c *Controller) Run(ctx context.Context) error {
 	klog.Info("Starting Forge controller")
 
+	// Start Job monitoring in background
+	go c.startJobMonitoring(ctx)
+
 	// Watch ZarfPackage resources
 	watcher, err := c.dynamicClient.Resource(ZarfPackageGVR).Namespace(c.namespace).Watch(ctx, metav1.ListOptions{})
 	if err != nil {

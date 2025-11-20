@@ -198,10 +198,13 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for development workflow.
 forge/
 ├── pkg/
 │   ├── apis/zarf/v1alpha1/     # ZarfPackage CRD types
-│   ├── controller/              # Main controller (TODO)
-│   ├── actions/                 # Action handlers (TODO)
-│   ├── sources/                 # Source handlers (TODO)
-│   ├── policy/                  # Policy engine (TODO)
+│   ├── apis/uds/v1alpha1/      # UDSBundle CRD types
+│   ├── controller/              # Main controller
+│   ├── actions/                 # Action handlers
+│   ├── sources/                 # Source handlers
+│   ├── destinations/            # Destination handlers
+│   ├── credentials/             # Credential management
+│   ├── policy/                  # Policy engine
 │   ├── telemetry/               # OpenTelemetry integration
 │   └── webhook/                 # Admission webhook
 ├── config/
@@ -221,23 +224,23 @@ forge/
 
 See [REFACTOR_PLAN.md](docs/REFACTOR_PLAN.md) for detailed implementation plan.
 
-**Phase 1: Core Operations** (Current)
+**Phase 1: Core Operations** (Completed)
 - [x] API design (ZarfPackage CRD)
 - [x] Sample manifests
 - [x] CRD YAML with validation
-- [ ] Controller implementation
-- [ ] Build/Publish/Deploy action handlers
-- [ ] Source handlers (Git, S3, OCI)
+- [x] Controller implementation
+- [x] Build/Publish/Deploy action handlers
+- [x] Source handlers (Git, S3, OCI)
 
-**Phase 2: Policy Enforcement**
-- [ ] Policy evaluation engine
-- [ ] Webhook policy checks
-- [ ] User/group authorization
-- [ ] Audit logging
+**Phase 2: Policy Enforcement** (Completed)
+- [x] Policy evaluation engine
+- [x] Webhook policy checks
+- [x] ServiceAccount-based authorization
+- [x] RBAC Policy CRD fields
 
-**Phase 3: Production Ready**
+**Phase 3: Production Ready** (In Progress)
 - [ ] Comprehensive testing
-- [ ] Documentation
+- [x] Documentation
 - [ ] Migration tooling (if needed)
 - [ ] Production deployment
 

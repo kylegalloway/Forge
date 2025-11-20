@@ -13,8 +13,8 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/klog/v2"
 
-	zarfv1alpha1 "github.com/kylegalloway/forge/pkg/apis/zarf/v1alpha1"
 	"github.com/kylegalloway/forge/pkg/actions"
+	zarfv1alpha1 "github.com/kylegalloway/forge/pkg/apis/zarf/v1alpha1"
 )
 
 // startJobMonitoring starts a goroutine to monitor Job completion
@@ -234,45 +234,4 @@ func (c *Controller) handleActionChaining(ctx context.Context, u *unstructured.U
 	}
 
 	return nil
-}
-
-// getJobLogs retrieves logs from a completed job (useful for debugging)
-func (c *Controller) getJobLogs(ctx context.Context, job *batchv1.Job) (string, error) {
-	// List pods for this job
-	pods, err := c.kubeClient.CoreV1().Pods(job.Namespace).List(ctx, metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("job-name=%s", job.Name),
-	})
-	if err != nil {
-		return "", fmt.Errorf("failed to list pods for job: %w", err)
-	}
-
-	if len(pods.Items) == 0 {
-		return "", fmt.Errorf("no pods found for job %s", job.Name)
-	}
-
-	// Get logs from first pod (there should only be one for our jobs with backoffLimit=0)
-	pod := pods.Items[0]
-
-	// Try to get logs from main container
-	for _, container := range pod.Spec.Containers {
-		req := c.kubeClient.CoreV1().Pods(pod.Namespace).GetLogs(pod.Name, &corev1.PodLogOptions{
-			Container: container.Name,
-			TailLines: ptr(int64(100)), // Last 100 lines
-		})
-
-		logs, err := req.DoRaw(ctx)
-		if err != nil {
-			klog.V(4).InfoS("Failed to get logs for container", "pod", pod.Name, "container", container.Name, "error", err)
-			continue
-		}
-
-		return string(logs), nil
-	}
-
-	return "", fmt.Errorf("failed to retrieve logs from any container in pod %s", pod.Name)
-}
-
-// ptr returns a pointer to the given value
-func ptr[T any](v T) *T {
-	return &v
 }

@@ -201,11 +201,11 @@ func (ws *WebhookServer) validate(ctx context.Context, request *admissionv1.Admi
 // serveHealthz handles health check requests
 func (ws *WebhookServer) serveHealthz(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("ok"))
+	_, _ = w.Write([]byte("ok"))
 }
 
 // serveReadyz handles readiness check requests
 func (ws *WebhookServer) serveReadyz(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("ready"))
+	_, _ = w.Write([]byte("ready"))
 }

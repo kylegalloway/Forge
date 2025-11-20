@@ -20,8 +20,10 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog/v2"
 
-	zarfv1alpha1 "github.com/kylegalloway/forge/pkg/apis/zarf/v1alpha1"
 	"github.com/kylegalloway/forge/pkg/actions"
+	udsv1alpha1 "github.com/kylegalloway/forge/pkg/apis/uds/v1alpha1"
+	zarfv1alpha1 "github.com/kylegalloway/forge/pkg/apis/zarf/v1alpha1"
+	"github.com/kylegalloway/forge/pkg/policy"
 	"github.com/kylegalloway/forge/pkg/telemetry"
 )
 
@@ -41,6 +43,13 @@ var (
 		Version:  ZarfPackageVersion,
 		Resource: ZarfPackageResource,
 	}
+
+	// UDSBundleGVR is the GroupVersionResource for UDSBundle
+	UDSBundleGVR = schema.GroupVersionResource{
+		Group:    udsv1alpha1.GroupName,
+		Version:  udsv1alpha1.Version,
+		Resource: "udsbundles",
+	}
 )
 
 // Controller watches ZarfPackage resources and executes actions
@@ -50,6 +59,7 @@ type Controller struct {
 	namespace      string
 	metrics        *telemetry.Metrics
 	tracer         *telemetry.Tracer
+	policyEngine   *policy.Engine
 	buildHandler   *actions.BuildHandler
 	publishHandler *actions.PublishHandler
 	deployHandler  *actions.DeployHandler
@@ -65,6 +75,9 @@ func NewController(
 	metrics *telemetry.Metrics,
 	tracer *telemetry.Tracer,
 ) *Controller {
+	// Initialize policy engine
+	policyEngine := policy.NewEngine(kubeClient)
+
 	// Initialize action handlers
 	buildHandler := actions.NewBuildHandler(kubeClient, metrics, tracer)
 	publishHandler := actions.NewPublishHandler(kubeClient, metrics, tracer)
@@ -76,6 +89,7 @@ func NewController(
 		namespace:      namespace,
 		metrics:        metrics,
 		tracer:         tracer,
+		policyEngine:   policyEngine,
 		buildHandler:   buildHandler,
 		publishHandler: publishHandler,
 		deployHandler:  deployHandler,
@@ -97,6 +111,13 @@ func (c *Controller) Run(ctx context.Context) error {
 		return fmt.Errorf("failed to create watcher: %w", err)
 	}
 	defer watcher.Stop()
+
+	// Watch UDSBundle resources
+	udsWatcher, err := c.dynamicClient.Resource(UDSBundleGVR).Namespace(c.namespace).Watch(ctx, metav1.ListOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to create uds watcher: %w", err)
+	}
+	defer udsWatcher.Stop()
 
 	c.ready = true
 	klog.Info("Forge controller is ready")
@@ -123,6 +144,21 @@ func (c *Controller) Run(ctx context.Context) error {
 				klog.ErrorS(err, "Error handling event", "type", event.Type)
 				// Don't return error, continue processing
 			}
+
+		case event, ok := <-udsWatcher.ResultChan():
+			if !ok {
+				klog.Warning("UDS Watch channel closed, restarting watcher")
+				// Recreate watcher
+				udsWatcher, err = c.dynamicClient.Resource(UDSBundleGVR).Namespace(c.namespace).Watch(ctx, metav1.ListOptions{})
+				if err != nil {
+					return fmt.Errorf("failed to recreate uds watcher: %w", err)
+				}
+				continue
+			}
+
+			if err := c.handleEvent(ctx, event); err != nil {
+				klog.ErrorS(err, "Error handling UDS event", "type", event.Type)
+			}
 		}
 	}
 }
@@ -131,9 +167,9 @@ func (c *Controller) Run(ctx context.Context) error {
 func (c *Controller) handleEvent(ctx context.Context, event watch.Event) error {
 	switch event.Type {
 	case watch.Added:
-		return c.handleZarfPackage(ctx, event.Object)
+		return c.handleObject(ctx, event.Object)
 	case watch.Modified:
-		return c.handleZarfPackage(ctx, event.Object)
+		return c.handleObject(ctx, event.Object)
 	case watch.Deleted:
 		// Cleanup handled by owner references
 		obj := event.Object.(*unstructured.Unstructured)
@@ -147,16 +183,25 @@ func (c *Controller) handleEvent(ctx context.Context, event watch.Event) error {
 	}
 }
 
-// handleZarfPackage reconciles a ZarfPackage resource
-func (c *Controller) handleZarfPackage(ctx context.Context, obj interface{}) error {
-	startTime := time.Now()
-
-	// Convert to unstructured
+// handleObject dispatches to the appropriate handler based on kind
+func (c *Controller) handleObject(ctx context.Context, obj interface{}) error {
 	u, ok := obj.(*unstructured.Unstructured)
 	if !ok {
 		return fmt.Errorf("unexpected object type: %T", obj)
 	}
 
+	gvk := u.GroupVersionKind()
+	if gvk.Group == ZarfPackageGroup && gvk.Kind == "ZarfPackage" {
+		return c.handleZarfPackage(ctx, u)
+	} else if gvk.Group == udsv1alpha1.GroupName && gvk.Kind == "UDSBundle" {
+		return c.handleUDSBundle(ctx, u)
+	}
+
+	return fmt.Errorf("unsupported kind: %s", gvk.Kind)
+}
+
+// handleZarfPackage reconciles a ZarfPackage resource
+func (c *Controller) handleZarfPackage(ctx context.Context, u *unstructured.Unstructured) error {
 	name := u.GetName()
 	namespace := u.GetNamespace()
 
@@ -169,7 +214,52 @@ func (c *Controller) handleZarfPackage(ctx context.Context, obj interface{}) err
 		return c.updateStatus(ctx, u, "Failed", fmt.Sprintf("Invalid ZarfPackage: %v", err), nil)
 	}
 
+	return c.reconcilePackage(ctx, u, pkg)
+}
+
+// handleUDSBundle reconciles a UDSBundle resource
+func (c *Controller) handleUDSBundle(ctx context.Context, u *unstructured.Unstructured) error {
+	name := u.GetName()
+	namespace := u.GetNamespace()
+
+	klog.InfoS("Reconciling UDSBundle", "name", name, "namespace", namespace)
+
+	// Convert unstructured to typed UDSBundle
+	bundle := &udsv1alpha1.UDSBundle{}
+	if err := runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, bundle); err != nil {
+		klog.ErrorS(err, "Failed to convert unstructured to UDSBundle", "name", name, "namespace", namespace)
+		return c.updateStatus(ctx, u, "Failed", fmt.Sprintf("Invalid UDSBundle: %v", err), nil)
+	}
+
+	// Convert to ZarfPackage for processing
+	pkg := &zarfv1alpha1.ZarfPackage{
+		ObjectMeta: bundle.ObjectMeta,
+		Spec: zarfv1alpha1.ZarfPackageSpec{
+			ServiceAccountName: bundle.Spec.ServiceAccountName,
+			Action:             bundle.Spec.Action,
+			Source:             bundle.Spec.Source,
+			Publish:            bundle.Spec.Publish,
+			Deploy:             bundle.Spec.Deploy,
+			RBACPolicy:         bundle.Spec.RBACPolicy,
+		},
+	}
+
+	return c.reconcilePackage(ctx, u, pkg)
+}
+
+// reconcilePackage performs the actual reconciliation logic
+func (c *Controller) reconcilePackage(ctx context.Context, u *unstructured.Unstructured, pkg *zarfv1alpha1.ZarfPackage) error {
+	startTime := time.Now()
+	name := pkg.Name
+	namespace := pkg.Namespace
+
 	klog.InfoS("Processing ZarfPackage action", "name", name, "namespace", namespace, "action", pkg.Spec.Action)
+
+	// Validate policy
+	if err := c.policyEngine.Validate(ctx, pkg); err != nil {
+		klog.ErrorS(err, "Policy validation failed", "name", name, "namespace", namespace)
+		return c.updateStatus(ctx, u, "Failed", fmt.Sprintf("Policy violation: %v", err), nil)
+	}
 
 	// Dispatch to appropriate action handler
 	var result *actions.ActionResult
@@ -241,23 +331,26 @@ func (c *Controller) updateStatus(ctx context.Context, obj *unstructured.Unstruc
 
 	// Build status object
 	status := map[string]interface{}{
-		"phase":             phase,
-		"message":           message,
-		"lastUpdateTime":    metav1.Now().Format(time.RFC3339),
+		"phase":              phase,
+		"message":            message,
+		"lastUpdateTime":     metav1.Now().Format(time.RFC3339),
 		"observedGeneration": obj.GetGeneration(),
 	}
 
 	// Add operation-specific status if provided
-	if operationStatus != nil {
-		for key, value := range operationStatus {
-			status[key] = value
-		}
+	for key, value := range operationStatus {
+		status[key] = value
 	}
 
 	// Update status subresource
 	obj.Object["status"] = status
 
-	_, err := c.dynamicClient.Resource(ZarfPackageGVR).Namespace(namespace).UpdateStatus(ctx, obj, metav1.UpdateOptions{})
+	gvr := ZarfPackageGVR
+	if obj.GroupVersionKind().Group == udsv1alpha1.GroupName {
+		gvr = UDSBundleGVR
+	}
+
+	_, err := c.dynamicClient.Resource(gvr).Namespace(namespace).UpdateStatus(ctx, obj, metav1.UpdateOptions{})
 	if err != nil {
 		if errors.IsNotFound(err) {
 			klog.V(4).InfoS("ZarfPackage not found during status update", "name", name, "namespace", namespace)
@@ -275,10 +368,10 @@ func (c *Controller) HealthzHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if c.healthy {
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte("ok"))
+			_, _ = w.Write([]byte("ok"))
 		} else {
 			w.WriteHeader(http.StatusServiceUnavailable)
-			w.Write([]byte("unhealthy"))
+			_, _ = w.Write([]byte("unhealthy"))
 		}
 	}
 }
@@ -288,10 +381,10 @@ func (c *Controller) ReadyzHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if c.ready {
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte("ready"))
+			_, _ = w.Write([]byte("ready"))
 		} else {
 			w.WriteHeader(http.StatusServiceUnavailable)
-			w.Write([]byte("not ready"))
+			_, _ = w.Write([]byte("not ready"))
 		}
 	}
 }

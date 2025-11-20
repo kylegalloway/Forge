@@ -21,15 +21,15 @@ type Metrics struct {
 	webhookValidations  metric.Int64Counter
 
 	// Action-specific metrics
-	buildsStarted    metric.Int64Counter
-	buildsCompleted  metric.Int64Counter
-	buildsFailed     metric.Int64Counter
-	publishesStarted metric.Int64Counter
+	buildsStarted      metric.Int64Counter
+	buildsCompleted    metric.Int64Counter
+	buildsFailed       metric.Int64Counter
+	publishesStarted   metric.Int64Counter
 	publishesCompleted metric.Int64Counter
-	publishesFailed  metric.Int64Counter
-	deploysStarted   metric.Int64Counter
-	deploysCompleted metric.Int64Counter
-	deploysFailed    metric.Int64Counter
+	publishesFailed    metric.Int64Counter
+	deploysStarted     metric.Int64Counter
+	deploysCompleted   metric.Int64Counter
+	deploysFailed      metric.Int64Counter
 
 	// Gauge metrics (using UpDownCounter for current state)
 	zarfPackagesActive metric.Int64UpDownCounter

@@ -7,6 +7,9 @@ metadata:
   name: local-dev-example
   namespace: dev
 spec:
+  # ServiceAccount controls what this package is allowed to do
+  # Created by cluster admin with forge.zarf.dev/* annotations
+  serviceAccountName: developer-forge-sa
   action: BuildDeploy
 
   # Source: Local filesystem (dev only!)

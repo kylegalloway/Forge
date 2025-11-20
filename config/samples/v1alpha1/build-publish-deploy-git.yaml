@@ -6,6 +6,9 @@ metadata:
   name: full-pipeline-example
   namespace: default
 spec:
+  # ServiceAccount controls what this package is allowed to do
+  # Created by cluster admin with forge.zarf.dev/* annotations
+  serviceAccountName: developer-forge-sa
   # Perform all three actions in sequence
   action: BuildPublishDeploy
 

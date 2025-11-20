@@ -6,6 +6,10 @@ metadata:
   name: build-only-example
   namespace: default
 spec:
+  # ServiceAccount controls what this package is allowed to do
+  # Created by cluster admin with forge.zarf.dev/* annotations
+  serviceAccountName: developer-forge-sa
+
   action: Build
 
   source:

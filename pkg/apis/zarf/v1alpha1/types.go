@@ -61,6 +61,12 @@ const (
 
 // ZarfPackageSpec defines the desired state of a ZarfPackage
 type ZarfPackageSpec struct {
+	// ServiceAccountName references the ServiceAccount that defines permissions for this package
+	// The ServiceAccount must have forge.zarf.dev/* annotations defining allowed actions
+	// Cluster admins control what users can do by creating ServiceAccounts with appropriate annotations
+	// +kubebuilder:validation:Required
+	ServiceAccountName string `json:"serviceAccountName"`
+
 	// Action specifies what operation(s) to perform
 	// +kubebuilder:validation:Required
 	Action Action `json:"action"`
@@ -76,10 +82,6 @@ type ZarfPackageSpec struct {
 	// Deploy defines how to deploy the package (required if action includes Deploy)
 	// +optional
 	Deploy *DeployConfig `json:"deploy,omitempty"`
-
-	// RBACPolicy defines access control for this resource
-	// +optional
-	RBACPolicy *RBACPolicy `json:"rbacPolicy,omitempty"`
 }
 
 // PackageSource defines where to get the package from
@@ -283,42 +285,6 @@ type ExternalClusterConfig struct {
 	// Context is the kubeconfig context to use
 	// +optional
 	Context string `json:"context,omitempty"`
-}
-
-// RBACPolicy defines access control rules
-type RBACPolicy struct {
-	// AllowedUsers is a list of user identifiers allowed to use this resource
-	// Format: "user:email@example.com" or "group:groupname"
-	// +optional
-	AllowedUsers []string `json:"allowedUsers,omitempty"`
-
-	// AllowedActions restricts which actions can be performed
-	// +optional
-	AllowedActions []Action `json:"allowedActions,omitempty"`
-
-	// AllowedSourceRepos restricts which Git repositories can be used (glob patterns)
-	// +optional
-	AllowedSourceRepos []string `json:"allowedSourceRepos,omitempty"`
-
-	// AllowedSourceBuckets restricts which S3 buckets can be used (glob patterns)
-	// +optional
-	AllowedSourceBuckets []string `json:"allowedSourceBuckets,omitempty"`
-
-	// AllowedSourceRegistries restricts which OCI registries can be used (glob patterns)
-	// +optional
-	AllowedSourceRegistries []string `json:"allowedSourceRegistries,omitempty"`
-
-	// AllowedPublishBuckets restricts publish S3 destinations (glob patterns)
-	// +optional
-	AllowedPublishBuckets []string `json:"allowedPublishBuckets,omitempty"`
-
-	// AllowedPublishRegistries restricts publish OCI destinations (glob patterns)
-	// +optional
-	AllowedPublishRegistries []string `json:"allowedPublishRegistries,omitempty"`
-
-	// AllowedDeployTargets restricts deploy targets
-	// +optional
-	AllowedDeployTargets []DeployTargetType `json:"allowedDeployTargets,omitempty"`
 }
 
 // SecretReference references a Kubernetes Secret

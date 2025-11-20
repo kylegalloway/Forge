@@ -6,6 +6,9 @@ metadata:
   name: deploy-prebuilt-example
   namespace: production
 spec:
+  # ServiceAccount controls what this package is allowed to do
+  # Created by cluster admin with forge.zarf.dev/* annotations
+  serviceAccountName: developer-forge-sa
   action: Deploy
 
   # Source: Pre-built package in OCI registry

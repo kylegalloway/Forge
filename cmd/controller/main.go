@@ -3,21 +3,24 @@ package main
 import (
 	"context"
 	"flag"
-	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/klog/v2"
+	"go.opentelemetry.io/otel/exporters/prometheus"
+	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 
 	"github.com/kylegalloway/scriptrunner/pkg/controller"
+	"github.com/kylegalloway/scriptrunner/pkg/telemetry"
 )
 
 var (
@@ -76,8 +79,19 @@ func main() {
 		klog.Infof("Watching namespace: %s", watchNamespace)
 	}
 
-	// Create the controller
-	ctrl := controller.NewSimpleController(kubeClient, dynamicClient, watchNamespace)
+	// Initialize OpenTelemetry metrics
+	metrics, err := telemetry.NewMetrics()
+	if err != nil {
+		klog.Fatalf("Error creating metrics: %v", err)
+	}
+	klog.Info("OpenTelemetry metrics initialized")
+
+	// Initialize OpenTelemetry tracer
+	tracer := telemetry.NewTracer()
+	klog.Info("OpenTelemetry tracer initialized")
+
+	// Create the controller with telemetry
+	ctrl := controller.NewController(kubeClient, dynamicClient, watchNamespace, metrics, tracer)
 
 	// Start health check server
 	healthMux := http.NewServeMux()
@@ -96,12 +110,25 @@ func main() {
 		}
 	}()
 
-	// Start metrics server (placeholder for future metrics implementation)
+	// Start metrics server with Prometheus exporter
+	// Create Prometheus exporter that bridges OTel metrics to Prometheus format
+	promExporter, err := prometheus.New()
+	if err != nil {
+		klog.Fatalf("Error creating Prometheus exporter: %v", err)
+	}
+
+	// Create MeterProvider with Prometheus exporter
+	meterProvider := sdkmetric.NewMeterProvider(
+		sdkmetric.WithReader(promExporter),
+	)
+	defer func() {
+		if err := meterProvider.Shutdown(ctx); err != nil {
+			klog.ErrorS(err, "Error shutting down meter provider")
+		}
+	}()
+
 	metricsMux := http.NewServeMux()
-	metricsMux.HandleFunc("/metrics", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		fmt.Fprintf(w, "# Metrics endpoint - implementation pending\n")
-	})
+	metricsMux.Handle("/metrics", promhttp.Handler())
 
 	metricsServer := &http.Server{
 		Addr:    metricsAddr,
@@ -109,7 +136,7 @@ func main() {
 	}
 
 	go func() {
-		klog.InfoS("Starting metrics server", "addr", metricsAddr)
+		klog.InfoS("Starting metrics server (Prometheus-compatible)", "addr", metricsAddr)
 		if err := metricsServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			klog.ErrorS(err, "Metrics server failed")
 		}

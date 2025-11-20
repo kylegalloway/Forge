@@ -13,12 +13,15 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog/v2"
 
+	zarfv1alpha1 "github.com/kylegalloway/forge/pkg/apis/zarf/v1alpha1"
+	"github.com/kylegalloway/forge/pkg/actions"
 	"github.com/kylegalloway/forge/pkg/telemetry"
 )
 
@@ -47,6 +50,7 @@ type Controller struct {
 	namespace     string
 	metrics       *telemetry.Metrics
 	tracer        *telemetry.Tracer
+	buildHandler  *actions.BuildHandler
 	healthy       bool
 	ready         bool
 }
@@ -59,12 +63,16 @@ func NewController(
 	metrics *telemetry.Metrics,
 	tracer *telemetry.Tracer,
 ) *Controller {
+	// Initialize action handlers
+	buildHandler := actions.NewBuildHandler(kubeClient, metrics, tracer)
+
 	return &Controller{
 		kubeClient:    kubeClient,
 		dynamicClient: dynamicClient,
 		namespace:     namespace,
 		metrics:       metrics,
 		tracer:        tracer,
+		buildHandler:  buildHandler,
 		healthy:       true,
 		ready:         false,
 	}
@@ -145,28 +153,53 @@ func (c *Controller) handleZarfPackage(ctx context.Context, obj interface{}) err
 
 	klog.InfoS("Reconciling ZarfPackage", "name", name, "namespace", namespace)
 
-	// Extract spec
-	spec, found, err := unstructured.NestedMap(u.Object, "spec")
-	if err != nil || !found {
-		return fmt.Errorf("failed to get spec: %w", err)
+	// Convert unstructured to typed ZarfPackage
+	pkg := &zarfv1alpha1.ZarfPackage{}
+	if err := runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, pkg); err != nil {
+		klog.ErrorS(err, "Failed to convert unstructured to ZarfPackage", "name", name, "namespace", namespace)
+		return c.updateStatus(ctx, u, "Failed", fmt.Sprintf("Invalid ZarfPackage: %v", err), nil)
 	}
 
-	// Get action
-	action, found, err := unstructured.NestedString(spec, "action")
-	if err != nil || !found {
-		return c.updateStatus(ctx, u, "Failed", "No action specified", nil)
+	klog.InfoS("Processing ZarfPackage action", "name", name, "namespace", namespace, "action", pkg.Spec.Action)
+
+	// Dispatch to appropriate action handler
+	var result *actions.ActionResult
+	var err error
+
+	switch pkg.Spec.Action {
+	case zarfv1alpha1.ActionBuild:
+		result, err = c.buildHandler.Execute(ctx, pkg)
+	case zarfv1alpha1.ActionBuildPublish, zarfv1alpha1.ActionBuildDeploy, zarfv1alpha1.ActionBuildPublishDeploy:
+		// For now, just execute the build part
+		// TODO: Implement publish and deploy handlers
+		result, err = c.buildHandler.Execute(ctx, pkg)
+	default:
+		err = fmt.Errorf("action %s not yet implemented", pkg.Spec.Action)
 	}
 
-	klog.InfoS("Processing ZarfPackage action", "name", name, "namespace", namespace, "action", action)
+	// Update status based on result
+	if err != nil {
+		klog.ErrorS(err, "Action failed", "name", name, "namespace", namespace, "action", pkg.Spec.Action)
+		return c.updateStatus(ctx, u, "Failed", err.Error(), nil)
+	}
 
-	// TODO: Implement action dispatching to handlers
-	// For now, just update status to show controller is running
-	err = c.updateStatus(ctx, u, "Pending", fmt.Sprintf("Action %s not yet implemented", action), nil)
+	if result != nil {
+		opStatus := map[string]interface{}{
+			"buildStatus": map[string]interface{}{
+				"state":     result.Phase,
+				"message":   result.Message,
+				"startTime": result.StartTime.Format(time.RFC3339),
+			},
+		}
+		if err := c.updateStatus(ctx, u, result.Phase, result.Message, opStatus); err != nil {
+			klog.ErrorS(err, "Failed to update status", "name", name, "namespace", namespace)
+		}
+	}
 
 	duration := time.Since(startTime)
 	klog.InfoS("Reconciliation complete", "name", name, "namespace", namespace, "duration", duration)
 
-	return err
+	return nil
 }
 
 // updateStatus updates the status of a ZarfPackage resource

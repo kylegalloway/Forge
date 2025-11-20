@@ -1,0 +1,156 @@
+---
+# Network Policy for Forge Job Pods
+# Restricts job pod egress to only necessary destinations
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: forge-job-network-policy
+  namespace: default  # Apply to user namespaces as needed
+  labels:
+    app.kubernetes.io/name: forge
+    app.kubernetes.io/component: job-network-policy
+spec:
+  podSelector:
+    matchLabels:
+      forge.zarf.dev/managed: "true"  # Applied to all Forge-created jobs
+  policyTypes:
+  - Egress
+  egress:
+  # Allow DNS
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: kube-system
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+
+  # Allow HTTPS egress for Git/OCI/S3
+  - to:
+    - namespaceSelector: {}  # All namespaces
+    ports:
+    - protocol: TCP
+      port: 443
+
+  # Allow HTTP (for some registries)
+  - to:
+    - namespaceSelector: {}
+    ports:
+    - protocol: TCP
+      port: 80
+
+  # Allow Kubernetes API server (for in-cluster operations)
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: default
+    ports:
+    - protocol: TCP
+      port: 443
+    - protocol: TCP
+      port: 6443
+
+---
+# Network Policy Template for Build Jobs Only
+# More restrictive - only allows source fetching
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: forge-build-job-policy
+  namespace: default
+  labels:
+    app.kubernetes.io/name: forge
+    app.kubernetes.io/component: build-network-policy
+spec:
+  podSelector:
+    matchLabels:
+      forge.zarf.dev/managed: "true"
+      forge.zarf.dev/action: "build"
+  policyTypes:
+  - Egress
+  egress:
+  # DNS only
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: kube-system
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+
+  # HTTPS for source fetching
+  - to:
+    - namespaceSelector: {}
+    ports:
+    - protocol: TCP
+      port: 443
+
+---
+# Network Policy for Deploy Jobs
+# Allows Kubernetes API access for deployments
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: forge-deploy-job-policy
+  namespace: default
+  labels:
+    app.kubernetes.io/name: forge
+    app.kubernetes.io/component: deploy-network-policy
+spec:
+  podSelector:
+    matchLabels:
+      forge.zarf.dev/managed: "true"
+      forge.zarf.dev/action: "deploy"
+  policyTypes:
+  - Egress
+  egress:
+  # DNS
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: kube-system
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+
+  # Kubernetes API
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: default
+    ports:
+    - protocol: TCP
+      port: 443
+    - protocol: TCP
+      port: 6443
+
+  # HTTPS for OCI/S3 source fetching
+  - to:
+    - namespaceSelector: {}
+    ports:
+    - protocol: TCP
+      port: 443
+
+---
+# Deny all ingress by default for job pods
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: forge-job-deny-ingress
+  namespace: default
+  labels:
+    app.kubernetes.io/name: forge
+    app.kubernetes.io/component: deny-ingress
+spec:
+  podSelector:
+    matchLabels:
+      forge.zarf.dev/managed: "true"
+  policyTypes:
+  - Ingress
+  # No ingress rules = deny all ingress

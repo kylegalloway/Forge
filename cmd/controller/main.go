@@ -21,14 +21,16 @@ import (
 
 	"github.com/kylegalloway/forge/pkg/controller"
 	"github.com/kylegalloway/forge/pkg/telemetry"
+	"github.com/kylegalloway/forge/pkg/leaderelection"
 )
 
 var (
-	masterURL   string
-	kubeconfig  string
-	namespace   string
-	healthAddr  string
-	metricsAddr string
+	masterURL            string
+	kubeconfig           string
+	namespace            string
+	healthAddr           string
+	metricsAddr          string
+	enableLeaderElection bool
 )
 
 func main() {
@@ -38,6 +40,7 @@ func main() {
 	flag.StringVar(&namespace, "namespace", "", "Namespace to watch. Empty string means all namespaces.")
 	flag.StringVar(&healthAddr, "health-addr", ":8081", "The address for health check endpoints.")
 	flag.StringVar(&metricsAddr, "metrics-addr", ":8080", "The address for metrics endpoints.")
+	flag.BoolVar(&enableLeaderElection, "enable-leader-election", false, "Enable leader election for high availability.")
 	flag.Parse()
 
 	// Set up signals so we handle the first shutdown signal gracefully
@@ -142,10 +145,24 @@ func main() {
 		}
 	}()
 
-	// Run the controller
+	// Run the controller with or without leader election
 	klog.Info("Starting Forge controller")
-	if err := ctrl.Run(ctx); err != nil {
-		klog.Fatalf("Error running controller: %v", err)
+	if enableLeaderElection {
+		klog.Info("Leader election enabled")
+		leConfig := leaderelection.DefaultConfig()
+		err = leaderelection.RunWithLeaderElection(ctx, kubeClient, leConfig, func(ctx context.Context) {
+			if err := ctrl.Run(ctx); err != nil {
+				klog.ErrorS(err, "Error running controller")
+			}
+		})
+		if err != nil {
+			klog.Fatalf("Error in leader election: %v", err)
+		}
+	} else {
+		klog.Info("Leader election disabled - running as single instance")
+		if err := ctrl.Run(ctx); err != nil {
+			klog.Fatalf("Error running controller: %v", err)
+		}
 	}
 
 	// Graceful shutdown of servers

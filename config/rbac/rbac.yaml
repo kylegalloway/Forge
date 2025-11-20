@@ -102,3 +102,13 @@ subjects:
 - kind: ServiceAccount
   name: forge-controller
   namespace: forge-system
+# Permissions for leader election (Leases)
+- apiGroups:
+  - coordination.k8s.io
+  resources:
+  - leases
+  verbs:
+  - create
+  - get
+  - list
+  - update

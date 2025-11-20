@@ -1,0 +1,104 @@
+# golangci-lint configuration for Forge
+run:
+  timeout: 10m
+  tests: true
+  modules-download-mode: readonly
+
+linters:
+  enable:
+    - errcheck        # Check for unchecked errors
+    - gosimple        # Simplify code
+    - govet           # Vet examines Go source code
+    - ineffassign     # Detect ineffectual assignments
+    - staticcheck     # Go static analysis
+    - unused          # Check for unused constants, variables, functions
+    - gofmt           # Check code formatting
+    - goimports       # Check import formatting
+    - misspell        # Check for misspelled words
+    - unconvert       # Remove unnecessary type conversions
+    - unparam         # Check for unused function parameters
+    - gosec           # Security checks
+    - errname         # Check error naming
+    - gocyclo         # Check cyclomatic complexity
+    - dupl            # Check for code duplication
+    - goconst         # Find repeated strings that could be constants
+    - gocritic        # Comprehensive Go linter
+    - revive          # Fast, configurable, extensible linter
+    - stylecheck      # Replacement for golint
+    - exportloopref   # Check for pointer loop variable escapes
+    - nolintlint      # Check nolint directives
+
+linters-settings:
+  errcheck:
+    check-blank: true
+    check-type-assertions: true
+
+  govet:
+    enable-all: true
+
+  gocyclo:
+    min-complexity: 15
+
+  dupl:
+    threshold: 100
+
+  goconst:
+    min-len: 3
+    min-occurrences: 3
+
+  misspell:
+    locale: US
+
+  gosec:
+    excludes:
+      - G404  # Use of weak random number generator (ok for non-crypto use)
+
+  revive:
+    rules:
+      - name: exported
+        arguments:
+          - checkPrivateReceivers
+          - disableStutteringCheck
+      - name: package-comments
+      - name: blank-imports
+      - name: context-as-argument
+      - name: dot-imports
+      - name: error-return
+      - name: error-strings
+      - name: error-naming
+      - name: increment-decrement
+      - name: var-naming
+      - name: range
+      - name: receiver-naming
+      - name: indent-error-flow
+      - name: superfluous-else
+      - name: unused-parameter
+      - name: unreachable-code
+      - name: redefines-builtin-id
+
+issues:
+  exclude-rules:
+    # Exclude some linters from running on tests files
+    - path: _test\.go
+      linters:
+        - gocyclo
+        - errcheck
+        - dupl
+        - gosec
+        - goconst
+
+    # Exclude generated files
+    - path: zz_generated\.deepcopy\.go
+      linters:
+        - all
+
+    # Exclude vendor directory
+    - path: vendor/
+      linters:
+        - all
+
+  max-issues-per-linter: 0
+  max-same-issues: 0
+
+output:
+  sort-results: true

@@ -1,0 +1,24 @@
+# YAML linting configuration for Forge
+extends: default
+
+rules:
+  line-length:
+    max: 120
+    level: warning
+  document-start: disable
+  comments:
+    min-spaces-from-content: 1
+  indentation:
+    spaces: 2
+    indent-sequences: true
+  truthy:
+    allowed-values: ['true', 'false', 'yes', 'no']
+    check-keys: false
+
+# Ignore patterns
+ignore: |
+  vendor/
+  bin/
+  .git/
+  config/samples/
+  webhook/deploy/

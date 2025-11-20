@@ -220,6 +220,32 @@ Forge includes production-grade observability:
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for development workflow.
 
+### CI/CD
+
+Forge includes comprehensive CI/CD pipelines for both GitHub Actions and GitLab CI.
+
+**Pre-commit Hooks:**
+```bash
+# Install pre-commit
+brew install pre-commit
+pre-commit install
+
+# Run all hooks
+pre-commit run --all-files
+```
+
+**GitHub Actions:**
+- **CI**: Lint, test, build, security scans on every push/PR
+- **Pre-commit**: Runs all hooks on pull requests
+- **Release**: Builds multi-arch binaries and Docker images on version tags
+
+**GitLab CI:**
+- Complete pipeline with lint, test, build, security, and release stages
+- Multi-arch Docker image builds
+- Coverage reporting and artifact management
+
+See [.github/workflows/README.md](.github/workflows/README.md) for details.
+
 ### Project Structure
 
 ```

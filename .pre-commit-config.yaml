@@ -1,0 +1,88 @@
+# Pre-commit hooks for Forge
+# See https://pre-commit.com for more information
+
+repos:
+  # General file checks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+        exclude: '^go\.(mod|sum)$'
+      - id: end-of-file-fixer
+        exclude: '^go\.(mod|sum)$'
+      - id: check-yaml
+        args: ['--unsafe']  # Allow custom YAML tags for Kubernetes
+        exclude: '^(config/samples/|webhook/deploy/)'
+      - id: check-added-large-files
+        args: ['--maxkb=1000']
+      - id: check-merge-conflict
+      - id: check-case-conflict
+      - id: mixed-line-ending
+        args: ['--fix=lf']
+      - id: detect-private-key
+        exclude: '^(config/samples/|docs/)'
+
+  # Go formatting
+  - repo: https://github.com/dnephin/pre-commit-golang
+    rev: v0.5.1
+    hooks:
+      - id: go-fmt
+        args: ['-w']
+      - id: go-vet
+      - id: go-imports
+        args: ['-w']
+      - id: go-mod-tidy
+      - id: go-build
+        args: ['./cmd/controller', './cmd/webhook']
+      - id: go-unit-tests
+        args: ['./pkg/...']
+
+  # Security scanning
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.5.0
+    hooks:
+      - id: detect-secrets
+        args: ['--baseline', '.secrets.baseline']
+        exclude: '^(go\.sum|\.secrets\.baseline)$'
+
+  # Markdown linting (disabled - requires Ruby 3.0+)
+  #   - repo: https://github.com/markdownlint/markdownlint
+  #     rev: v0.13.0
+  #     hooks:
+  #       - id: markdownlint
+  #         args: ['--config', '.markdownlint.yaml']
+  #         exclude: '^vendor/|^\.github/'
+
+  # YAML linting
+  - repo: https://github.com/adrienverge/yamllint
+    rev: v1.35.1
+    hooks:
+      - id: yamllint
+        args: ['-c', '.yamllint.yaml']
+        exclude: '^(config/samples/|webhook/deploy/)'
+
+  # Dockerfile linting
+  - repo: https://github.com/hadolint/hadolint
+    rev: v2.12.0
+    hooks:
+      - id: hadolint-docker
+        args: ['--ignore', 'DL3018', '--ignore', 'DL3008']
+
+  # Shell script linting
+  - repo: https://github.com/shellcheck-py/shellcheck-py
+    rev: v0.10.0.1
+    hooks:
+      - id: shellcheck
+        args: ['--severity=warning']
+
+  # Git commit message linting
+  - repo: https://github.com/jorisroovers/gitlint
+    rev: v0.19.1
+    hooks:
+      - id: gitlint
+        stages: [commit-msg]
+
+# Configuration for specific file types
+files: ''
+exclude: '^(vendor/|\.git/|bin/|\.vscode/)'
+fail_fast: false

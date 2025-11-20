@@ -1,0 +1,16 @@
+# Git commit message linting configuration
+[general]
+ignore=body-is-missing
+contrib=contrib-title-conventional-commits
+
+[title-max-length]
+line-length=72
+
+[title-must-not-contain-word]
+words=wip,WIP,todo,TODO
+
+[body-max-line-length]
+line-length=120
+
+[contrib-title-conventional-commits]
+types = build,chore,ci,docs,feat,fix,perf,refactor,revert,style,test

@@ -1,0 +1,27 @@
+# Markdown linting rules for Forge documentation
+default: true
+
+# MD013: Line length
+MD013:
+  line_length: 120
+  heading_line_length: 80
+  code_block_line_length: 120
+  code_blocks: false
+  tables: false
+  headings: true
+  headers: true
+  strict: false
+  stern: false
+
+# MD033: Allow inline HTML (needed for badges, etc)
+MD033: false
+
+# MD034: Allow bare URLs
+MD034: false
+
+# MD041: First line doesn't have to be H1
+MD041: false
+
+# MD046: Code block style
+MD046:
+  style: fenced

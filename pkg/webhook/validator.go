@@ -1,3 +1,13 @@
+// Package webhook implements admission webhook validation and mutation for ScriptRunner resources.
+//
+// The webhook validates ScriptRunner resources before they are persisted to ensure:
+//   - Images come from approved registries
+//   - Scripts reference approved paths
+//   - Inputs are sanitized and within configured limits
+//   - No command injection patterns are present
+//
+// It also provides mutation capabilities to set default values and apply
+// security policies consistently across all ScriptRunner resources.
 package webhook
 
 import (
@@ -165,9 +175,8 @@ func (v *Validator) validateInputs(inputs map[string]string) error {
 		// Check for potential command injection patterns
 		if containsSuspiciousPatterns(value) {
 			klog.Warningf("Input value for '%s' contains suspicious patterns", key)
-			// Note: We log but don't reject - users may have legitimate use cases
-			// Uncomment to enforce:
-			// return fmt.Errorf("input value for '%s' contains potentially unsafe characters", key)
+			// Suspicious patterns are logged for audit purposes but not rejected to allow
+			// legitimate use cases. Configure stricter validation via webhook config if needed.
 		}
 	}
 

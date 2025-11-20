@@ -1,0 +1,32 @@
+---
+# Example: Local development/testing (build from local files)
+# WARNING: This should ONLY be used in dev environments
+apiVersion: zarf.dev/v1alpha1
+kind: ZarfPackage
+metadata:
+  name: local-dev-example
+  namespace: dev
+spec:
+  action: BuildDeploy
+
+  # Source: Local filesystem (dev only!)
+  source:
+    type: Local
+    local:
+      path: /workspace/my-package
+      devMode: true  # Required for local sources
+
+  # Deploy locally for testing
+  deploy:
+    target: InCluster
+    namespace: dev
+    timeout: 10m
+
+  # Restricted policy for dev environment
+  rbacPolicy:
+    allowedUsers:
+      - group:developers
+    allowedActions:
+      - BuildDeploy
+    allowedDeployTargets:
+      - InCluster  # Cannot deploy to external clusters

@@ -1,0 +1,56 @@
+---
+# Example: Build, Publish, and Deploy a Zarf package from Git
+apiVersion: zarf.dev/v1alpha1
+kind: ZarfPackage
+metadata:
+  name: full-pipeline-example
+  namespace: default
+spec:
+  # Perform all three actions in sequence
+  action: BuildPublishDeploy
+
+  # Source: Git repository
+  source:
+    type: Git
+    git:
+      url: https://github.com/defenseunicorns/zarf
+      ref: v0.32.0
+      path: examples/big-bang  # Path to zarf.yaml in repo
+      credentialsSecretRef:
+        name: git-credentials  # Optional: if repo is private
+
+  # Publish to OCI registry
+  publish:
+    destination:
+      type: OCI
+      oci:
+        registry: ghcr.io
+        repository: myorg/packages
+        tag: "big-bang-v0.32.0"
+        credentialsSecretRef:
+          name: ghcr-credentials
+
+  # Deploy to in-cluster
+  deploy:
+    target: InCluster
+    namespace: bigbang
+    timeout: 60m
+    components:
+      - bigbang-core
+      - flux
+    setVariables:
+      DOMAIN: bigbang.dev
+
+  # RBAC policy: restrict who can use this
+  rbacPolicy:
+    allowedUsers:
+      - user:admin@example.com
+      - group:platform-team
+    allowedActions:
+      - BuildPublishDeploy
+    allowedSourceRepos:
+      - github.com/defenseunicorns/*
+    allowedPublishRegistries:
+      - ghcr.io/myorg/*
+    allowedDeployTargets:
+      - InCluster

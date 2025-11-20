@@ -1,0 +1,27 @@
+---
+# Example: Deploy a pre-built package from OCI registry
+apiVersion: zarf.dev/v1alpha1
+kind: ZarfPackage
+metadata:
+  name: deploy-prebuilt-example
+  namespace: production
+spec:
+  action: Deploy
+
+  # Source: Pre-built package in OCI registry
+  source:
+    type: OCI
+    oci:
+      image: ghcr.io/defenseunicorns/packages/init:v0.32.0
+      credentialsSecretRef:
+        name: ghcr-pull-secret
+
+  # Deploy configuration
+  deploy:
+    target: InCluster
+    namespace: zarf
+    timeout: 15m
+    components:
+      - zarf-seed-registry
+      - zarf-registry
+      - zarf-agent

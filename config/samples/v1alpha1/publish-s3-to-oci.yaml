@@ -1,0 +1,40 @@
+---
+# Example: Copy/publish a package from S3 to OCI registry
+apiVersion: zarf.dev/v1alpha1
+kind: ZarfPackage
+metadata:
+  name: republish-example
+  namespace: default
+spec:
+  action: PublishDeploy
+
+  # Source: Package artifact in S3
+  source:
+    type: S3
+    s3:
+      bucket: artifacts-bucket
+      key: packages/my-package-v1.0.0.tar.zst
+      region: us-west-2
+      credentialsSecretRef:
+        name: s3-read-creds
+
+  # Publish to OCI
+  publish:
+    destination:
+      type: OCI
+      oci:
+        registry: registry.example.com
+        repository: packages/my-package
+        tag: v1.0.0
+        credentialsSecretRef:
+          name: registry-push-creds
+
+  # Deploy to external cluster
+  deploy:
+    target: ExternalCluster
+    externalCluster:
+      kubeconfigSecretRef:
+        name: prod-cluster-kubeconfig
+      context: production
+    namespace: default
+    timeout: 30m

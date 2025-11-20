@@ -1,0 +1,21 @@
+---
+# Example: Build a Zarf package from Git (no publish or deploy)
+apiVersion: zarf.dev/v1alpha1
+kind: ZarfPackage
+metadata:
+  name: build-only-example
+  namespace: default
+spec:
+  action: Build
+
+  source:
+    type: Git
+    git:
+      url: https://github.com/myorg/my-package
+      ref: main
+      path: .
+      credentialsSecretRef:
+        name: github-token
+
+  # No publish or deploy config needed
+  # Built artifact will be stored in job pod (for local testing)

@@ -15,6 +15,7 @@ import (
 	"k8s.io/klog/v2"
 
 	zarfv1alpha1 "github.com/kylegalloway/forge/pkg/apis/zarf/v1alpha1"
+	"github.com/kylegalloway/forge/pkg/sources"
 	"github.com/kylegalloway/forge/pkg/telemetry"
 )
 
@@ -42,7 +43,6 @@ func NewBuildHandler(kubeClient kubernetes.Interface, metrics *telemetry.Metrics
 // Execute performs a Build action for the given ZarfPackage
 func (h *BuildHandler) Execute(ctx context.Context, pkg *zarfv1alpha1.ZarfPackage) (*ActionResult, error) {
 
-
 	klog.InfoS("Executing Build action", "name", pkg.Name, "namespace", pkg.Namespace)
 
 	// Validate source is provided
@@ -59,11 +59,11 @@ func (h *BuildHandler) Execute(ctx context.Context, pkg *zarfv1alpha1.ZarfPackag
 	klog.InfoS("Build job created", "name", pkg.Name, "job", job.Name)
 
 	result := &ActionResult{
-		JobName:    job.Name,
-		Phase:      "Running",
-		Message:    fmt.Sprintf("Build job %s created", job.Name),
-		StartTime:  metav1.Now(),
-		Completed:  false,
+		JobName:   job.Name,
+		Phase:     "Running",
+		Message:   fmt.Sprintf("Build job %s created", job.Name),
+		StartTime: metav1.Now(),
+		Completed: false,
 	}
 
 	return result, nil
@@ -84,7 +84,7 @@ func (h *BuildHandler) createBuildJob(ctx context.Context, pkg *zarfv1alpha1.Zar
 	initContainers := h.buildInitContainers(pkg)
 
 	// Job configuration
-	backoffLimit := int32(0) // Don't retry failed builds
+	backoffLimit := int32(0)             // Don't retry failed builds
 	activeDeadlineSeconds := int64(3600) // 1 hour timeout
 
 	job := &batchv1.Job{
@@ -92,17 +92,17 @@ func (h *BuildHandler) createBuildJob(ctx context.Context, pkg *zarfv1alpha1.Zar
 			Name:      jobName,
 			Namespace: namespace,
 			Labels: map[string]string{
-				"app":                          "forge",
-				"forge.zarf.dev/package":       pkg.Name,
-				"forge.zarf.dev/action":        "build",
+				"app":                    "forge",
+				"forge.zarf.dev/package": pkg.Name,
+				"forge.zarf.dev/action":  "build",
 			},
 			OwnerReferences: []metav1.OwnerReference{
 				*metav1.NewControllerRef(pkg, zarfv1alpha1.SchemeGroupVersion.WithKind("ZarfPackage")),
 			},
 		},
 		Spec: batchv1.JobSpec{
-			BackoffLimit:          &backoffLimit,
-			ActiveDeadlineSeconds: &activeDeadlineSeconds,
+			BackoffLimit:            &backoffLimit,
+			ActiveDeadlineSeconds:   &activeDeadlineSeconds,
 			TTLSecondsAfterFinished: ptr(int32(3600)), // Clean up after 1 hour
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
@@ -221,152 +221,21 @@ func (h *BuildHandler) buildZarfCommand(pkg *zarfv1alpha1.ZarfPackage) (string, 
 
 // buildInitContainers creates init containers for source retrieval
 func (h *BuildHandler) buildInitContainers(pkg *zarfv1alpha1.ZarfPackage) []corev1.Container {
-	var initContainers []corev1.Container
-
-	switch pkg.Spec.Source.Type {
-	case zarfv1alpha1.SourceTypeGit:
-		// Git clone init container
-		gitSource := pkg.Spec.Source.Git
-		if gitSource == nil {
-			break
-		}
-
-		cloneCmd := fmt.Sprintf("git clone --depth 1 --branch %s %s /workspace", gitSource.Ref, gitSource.URL)
-		if gitSource.Path != "" && gitSource.Path != "." {
-			cloneCmd = fmt.Sprintf("%s && cd /workspace && mv %s/* . && rm -rf %s", cloneCmd, gitSource.Path, gitSource.Path)
-		}
-
-		initContainers = append(initContainers, corev1.Container{
-			Name:    "git-clone",
-			Image:   "alpine/git:latest",
-			Command: []string{"/bin/sh", "-c"},
-			Args:    []string{cloneCmd},
-			VolumeMounts: []corev1.VolumeMount{
-				{
-					Name:      "workspace",
-					MountPath: "/workspace",
-				},
-			},
-			SecurityContext: &corev1.SecurityContext{
-				RunAsNonRoot:             ptr(true),
-				RunAsUser:                ptr(int64(1000)),
-				AllowPrivilegeEscalation: ptr(false),
-				Capabilities: &corev1.Capabilities{
-					Drop: []corev1.Capability{"ALL"},
-				},
-			},
-		})
-
-	case zarfv1alpha1.SourceTypeS3:
-		// S3 download init container
-		s3Source := pkg.Spec.Source.S3
-		if s3Source == nil {
-			break
-		}
-
-		// Build S3 download command
-		s3Path := fmt.Sprintf("s3://%s/%s", s3Source.Bucket, s3Source.Key)
-		downloadCmd := fmt.Sprintf("aws s3 cp %s /workspace/package.tar.zst --region %s", s3Path, s3Source.Region)
-
-		// Build environment variables for credentials
-		env := []corev1.EnvVar{}
-		if s3Source.CredentialsSecretRef != nil {
-			env = append(env,
-				corev1.EnvVar{
-					Name: "AWS_ACCESS_KEY_ID",
-					ValueFrom: &corev1.EnvVarSource{
-						SecretKeyRef: &corev1.SecretKeySelector{
-							LocalObjectReference: corev1.LocalObjectReference{
-								Name: s3Source.CredentialsSecretRef.Name,
-							},
-							Key: "access-key-id",
-						},
-					},
-				},
-				corev1.EnvVar{
-					Name: "AWS_SECRET_ACCESS_KEY",
-					ValueFrom: &corev1.EnvVarSource{
-						SecretKeyRef: &corev1.SecretKeySelector{
-							LocalObjectReference: corev1.LocalObjectReference{
-								Name: s3Source.CredentialsSecretRef.Name,
-							},
-							Key: "secret-access-key",
-						},
-					},
-				},
-			)
-		}
-
-		initContainers = append(initContainers, corev1.Container{
-			Name:    "s3-download",
-			Image:   "amazon/aws-cli:latest",
-			Command: []string{"/bin/sh", "-c"},
-			Args:    []string{downloadCmd},
-			Env:     env,
-			VolumeMounts: []corev1.VolumeMount{
-				{
-					Name:      "workspace",
-					MountPath: "/workspace",
-				},
-			},
-			SecurityContext: &corev1.SecurityContext{
-				RunAsNonRoot:             ptr(true),
-				RunAsUser:                ptr(int64(1000)),
-				AllowPrivilegeEscalation: ptr(false),
-				Capabilities: &corev1.Capabilities{
-					Drop: []corev1.Capability{"ALL"},
-				},
-			},
-		})
-
-	case zarfv1alpha1.SourceTypeOCI:
-		// OCI pull init container
-		ociSource := pkg.Spec.Source.OCI
-		if ociSource == nil {
-			break
-		}
-
-		// Use crane (go-containerregistry) to pull OCI artifacts
-		// crane export <image> - | tar -xz -C /workspace
-		pullCmd := fmt.Sprintf("crane export %s - | tar -xz -C /workspace", ociSource.Image)
-
-		// Build volume mounts
-		volumeMounts := []corev1.VolumeMount{
-			{
-				Name:      "workspace",
-				MountPath: "/workspace",
-			},
-		}
-
-		// Add docker config volume mount if credentials provided
-		if ociSource.CredentialsSecretRef != nil {
-			volumeMounts = append(volumeMounts, corev1.VolumeMount{
-				Name:      "docker-config",
-				MountPath: "/home/nonroot/.docker",
-				ReadOnly:  true,
-			})
-		}
-
-		initContainers = append(initContainers, corev1.Container{
-			Name:         "oci-pull",
-			Image:        "gcr.io/go-containerregistry/crane:latest",
-			Command:      []string{"/bin/sh", "-c"},
-			Args:         []string{pullCmd},
-			VolumeMounts: volumeMounts,
-			SecurityContext: &corev1.SecurityContext{
-				RunAsNonRoot:             ptr(true),
-				RunAsUser:                ptr(int64(65532)), // nonroot user in crane image
-				AllowPrivilegeEscalation: ptr(false),
-				Capabilities: &corev1.Capabilities{
-					Drop: []corev1.Capability{"ALL"},
-				},
-			},
-		})
-
-	case zarfv1alpha1.SourceTypeLocal:
-		// Local source - no init container needed, but this shouldn't be used in production
-		klog.V(4).InfoS("Local source - no init container needed", "package", pkg.Name)
+	sourceHandler, err := sources.New(pkg)
+	if err != nil {
+		klog.ErrorS(err, "Failed to create source handler", "package", pkg.Name)
+		return nil
 	}
 
-	return initContainers
+	container, err := sourceHandler.GetInitContainer(pkg)
+	if err != nil {
+		klog.ErrorS(err, "Failed to get init container", "package", pkg.Name)
+		return nil
+	}
+
+	if container == nil {
+		return nil
+	}
+
+	return []corev1.Container{*container}
 }

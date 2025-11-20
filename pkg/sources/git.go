@@ -44,9 +44,32 @@ func (s *GitSource) GetInitContainer(pkg *zarfv1alpha1.ZarfPackage) (*corev1.Con
 	}
 
 	// Handle credentials if provided
+	// Handle credentials if provided
 	if gitSource.CredentialsSecretRef != nil {
-		// TODO: Implement git credential handling (SSH key or token)
-		// This might require mounting the secret and configuring git to use it
+		// Mount secret to /etc/git-secret
+		container.VolumeMounts = append(container.VolumeMounts, corev1.VolumeMount{
+			Name:      "git-creds",
+			MountPath: "/etc/git-secret",
+			ReadOnly:  true,
+		})
+
+		// Setup command to configure credentials
+		setupCmd := `
+if [ -f /etc/git-secret/ssh-key ]; then
+  mkdir -p ~/.ssh
+  cp /etc/git-secret/ssh-key ~/.ssh/id_rsa
+  chmod 600 ~/.ssh/id_rsa
+  echo "StrictHostKeyChecking no" >> ~/.ssh/config
+elif [ -f /etc/git-secret/token ]; then
+  git config --global credential.helper store
+  token=$(cat /etc/git-secret/token)
+  echo "https://oauth2:${token}@github.com" > ~/.git-credentials
+  echo "https://oauth2:${token}@gitlab.com" >> ~/.git-credentials
+fi
+`
+		// Prepend setup to clone command
+		cloneCmd = fmt.Sprintf("%s && %s", setupCmd, cloneCmd)
+		container.Args = []string{cloneCmd}
 	}
 
 	return container, nil

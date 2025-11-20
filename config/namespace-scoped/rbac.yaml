@@ -1,0 +1,122 @@
+---
+# Namespace-Scoped Deployment RBAC
+# Use this for restricted clusters where ClusterRole permissions are not allowed
+# Controller will only watch ZarfPackages in its own namespace
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: forge-controller
+  namespace: forge-system
+---
+# Role (not ClusterRole) - scoped to single namespace
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: forge-controller-role
+  namespace: forge-system
+rules:
+# Permissions for ZarfPackage resources in this namespace only
+- apiGroups:
+  - zarf.dev
+  resources:
+  - zarfpackages
+  verbs:
+  - get
+  - list
+  - watch
+# Permissions to update ZarfPackage status
+- apiGroups:
+  - zarf.dev
+  resources:
+  - zarfpackages/status
+  verbs:
+  - get
+  - update
+  - patch
+# Permissions for UDSBundle resources
+- apiGroups:
+  - uds.io
+  resources:
+  - udsbundles
+  verbs:
+  - get
+  - list
+  - watch
+# Permissions to update UDSBundle status
+- apiGroups:
+  - uds.io
+  resources:
+  - udsbundles/status
+  verbs:
+  - get
+  - update
+  - patch
+# Permissions to read ServiceAccounts for policy validation
+- apiGroups:
+  - ""
+  resources:
+  - serviceaccounts
+  verbs:
+  - get
+  - list
+  - watch
+# Permissions to read Secrets for credential validation
+- apiGroups:
+  - ""
+  resources:
+  - secrets
+  verbs:
+  - get
+  - list
+# Permissions for Jobs - create and read only
+- apiGroups:
+  - batch
+  resources:
+  - jobs
+  verbs:
+  - create
+  - get
+  - list
+  - watch
+# Permissions for Pods - read only (for debugging/status checking)
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  verbs:
+  - get
+  - list
+  - watch
+# Permissions for Events - create for better observability
+- apiGroups:
+  - ""
+  resources:
+  - events
+  verbs:
+  - create
+  - patch
+# Permissions for leader election (Leases) - namespace-scoped
+- apiGroups:
+  - coordination.k8s.io
+  resources:
+  - leases
+  verbs:
+  - create
+  - get
+  - list
+  - update
+---
+# RoleBinding (not ClusterRoleBinding)
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: forge-controller-rolebinding
+  namespace: forge-system
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: forge-controller-role
+subjects:
+- kind: ServiceAccount
+  name: forge-controller
+  namespace: forge-system

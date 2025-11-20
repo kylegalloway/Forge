@@ -1,0 +1,19 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: scriptrunner-controller
+  namespace: scriptrunner-system
+  labels:
+    app: scriptrunner-controller
+    prometheus: kube-prometheus
+spec:
+  selector:
+    matchLabels:
+      app: scriptrunner-controller
+      component: metrics
+  endpoints:
+  - port: metrics
+    interval: 30s
+    path: /metrics
+    scheme: http
+    scrapeTimeout: 10s

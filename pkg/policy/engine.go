@@ -231,7 +231,13 @@ func parseList(s string) []string {
 
 func matchAny(patterns []string, value string) bool {
 	for _, pattern := range patterns {
-		if matched, _ := filepath.Match(pattern, value); matched {
+		matched, err := filepath.Match(pattern, value)
+		if err != nil {
+			// Invalid pattern, log and skip it
+			klog.V(4).InfoS("Invalid glob pattern", "pattern", pattern, "error", err)
+			continue
+		}
+		if matched {
 			return true
 		}
 		// Also handle simple prefix matching if glob fails or is not enough

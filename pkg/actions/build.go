@@ -21,7 +21,7 @@ import (
 
 const (
 	// ZarfCLIImage is the default Zarf CLI container image
-	ZarfCLIImage = "ghcr.io/defenseunicorns/zarf:v0.32.0"
+	ZarfCLIImage = "ghcr.io/defenseunicorns/zarf:v0.66.0"
 )
 
 // BuildHandler handles Build actions for ZarfPackage resources

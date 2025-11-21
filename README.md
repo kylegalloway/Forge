@@ -41,7 +41,7 @@ spec:
     type: Git
     git:
       url: https://github.com/defenseunicorns/zarf
-      ref: v0.32.0
+      ref: v0.66.0
       path: examples/big-bang
 
   # Where to deploy it

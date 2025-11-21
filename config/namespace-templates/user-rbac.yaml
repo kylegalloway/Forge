@@ -1,8 +1,8 @@
-# User RBAC Template for ScriptRunner Multi-Tenancy
+# User RBAC Template for ZarfPackage Multi-Tenancy
 #
-# This template creates RBAC roles and bindings for ScriptRunner users.
+# This template creates RBAC roles and bindings for ZarfPackage users.
 # Users get scoped permissions within their own namespace:
-# - Create/read/update/delete ScriptRunners
+# - Create/read/update/delete ZarfPackages
 # - Read Jobs and Pods (for monitoring execution)
 # - Cannot modify the controller, CRD, or cluster-wide resources
 #
@@ -14,22 +14,22 @@
 #   ./scripts/onboard-user.sh <username>
 
 ---
-# Role: ScriptRunner Creator
-# Allows users to manage ScriptRunner resources in their namespace
+# Role: ZarfPackage Creator
+# Allows users to manage ZarfPackage resources in their namespace
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
-  name: scriptrunner-user
+  name: forge-user
   namespace: user-{{ .Username }}
   labels:
-    scriptrunner.io/tenant: "{{ .Username }}"
-    scriptrunner.io/rbac: "user"
+    forge.zarf.dev/tenant: "{{ .Username }}"
+    forge.zarf.dev/rbac: "user"
 rules:
-# Full access to ScriptRunner resources
+# Full access to ZarfPackage resources
 - apiGroups:
-  - scriptrunner.io
+  - forge.zarf.dev
   resources:
-  - scriptrunners
+  - zarfpackages
   verbs:
   - create
   - get
@@ -39,11 +39,11 @@ rules:
   - patch
   - delete
 
-# Read-only access to ScriptRunner status
+# Read-only access to ZarfPackage status
 - apiGroups:
-  - scriptrunner.io
+  - forge.zarf.dev
   resources:
-  - scriptrunners/status
+  - zarfpackages/status
   verbs:
   - get
   - list
@@ -99,19 +99,19 @@ rules:
   - watch
 
 ---
-# RoleBinding: Bind the user to the scriptrunner-user role
+# RoleBinding: Bind the user to the forge-user role
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  name: {{ .Username }}-scriptrunner-user
+  name: {{ .Username }}-forge-user
   namespace: user-{{ .Username }}
   labels:
-    scriptrunner.io/tenant: "{{ .Username }}"
-    scriptrunner.io/rbac: "user"
+    forge.zarf.dev/tenant: "{{ .Username }}"
+    forge.zarf.dev/rbac: "user"
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
-  name: scriptrunner-user
+  name: forge-user
 subjects:
 - kind: User
   name: {{ .Username }}
@@ -127,21 +127,21 @@ subjects:
 #   name: {{ .Username }}-automation
 #   namespace: user-{{ .Username }}
 #   labels:
-#     scriptrunner.io/tenant: "{{ .Username }}"
-#     scriptrunner.io/rbac: "automation"
+#     forge.zarf.dev/tenant: "{{ .Username }}"
+#     forge.zarf.dev/rbac: "automation"
 # ---
 # apiVersion: rbac.authorization.k8s.io/v1
 # kind: RoleBinding
 # metadata:
-#   name: {{ .Username }}-automation-scriptrunner-user
+#   name: {{ .Username }}-automation-forge-user
 #   namespace: user-{{ .Username }}
 #   labels:
-#     scriptrunner.io/tenant: "{{ .Username }}"
-#     scriptrunner.io/rbac: "automation"
+#     forge.zarf.dev/tenant: "{{ .Username }}"
+#     forge.zarf.dev/rbac: "automation"
 # roleRef:
 #   apiGroup: rbac.authorization.k8s.io
 #   kind: Role
-#   name: scriptrunner-user
+#   name: forge-user
 # subjects:
 # - kind: ServiceAccount
 #   name: {{ .Username }}-automation
@@ -154,7 +154,7 @@ subjects:
 # Actual enforcement relies on NOT granting these permissions in the first place
 #
 # Users CANNOT:
-# - Modify CRDs (scriptrunners.scriptrunner.io)
+# - Modify CRDs (zarfpackages.forge.zarf.dev)
 # - Access controller namespace (forge-system)
 # - Create/modify ClusterRoles or ClusterRoleBindings
 # - Create/modify Roles or RoleBindings outside their namespace

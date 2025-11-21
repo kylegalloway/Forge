@@ -1,4 +1,4 @@
-# Network Policy for ScriptRunner Controller
+# Network Policy for Forge Controller
 #
 # This policy restricts network access for the controller deployment.
 # The controller only needs to communicate with the Kubernetes API server.
@@ -17,7 +17,7 @@ metadata:
   name: deny-all-ingress
   namespace: forge-system
   labels:
-    app.kubernetes.io/name: scriptrunner
+    app.kubernetes.io/name: forge
     app.kubernetes.io/component: network-policy
 spec:
   podSelector: {}  # Applies to all pods in forge-system
@@ -75,12 +75,12 @@ metadata:
   name: webhook-allow-api-ingress
   namespace: forge-system
   labels:
-    app.kubernetes.io/name: scriptrunner-webhook
+    app.kubernetes.io/name: forge-webhook
     app.kubernetes.io/component: network-policy
 spec:
   podSelector:
     matchLabels:
-      app: scriptrunner-webhook
+      app: forge-webhook
   policyTypes:
   - Ingress
   ingress:
@@ -104,12 +104,12 @@ metadata:
   name: webhook-allow-api-egress
   namespace: forge-system
   labels:
-    app.kubernetes.io/name: scriptrunner-webhook
+    app.kubernetes.io/name: forge-webhook
     app.kubernetes.io/component: network-policy
 spec:
   podSelector:
     matchLabels:
-      app: scriptrunner-webhook
+      app: forge-webhook
   policyTypes:
   - Egress
   egress:
@@ -142,22 +142,22 @@ spec:
 # Notes:
 #
 # 1. Controller Network Requirements:
-#    - Egress to Kubernetes API (watch ScriptRunners, create Jobs)
+#    - Egress to Kubernetes API (watch ZarfPackages, create Jobs)
 #    - Egress to DNS (resolve service names)
 #    - NO ingress required (controller initiates all connections)
 #
 # 2. Webhook Network Requirements:
 #    - Ingress from Kubernetes API server on port 8443 (admission requests)
-#    - Egress to Kubernetes API (validate ScriptRunners)
+#    - Egress to Kubernetes API (validate ZarfPackages)
 #    - Egress to DNS (resolve service names)
 #
 # 3. Testing:
-#    - Verify controller can watch ScriptRunners:
+#    - Verify controller can watch ZarfPackages:
 #      kubectl logs -n forge-system deployment/forge-controller
 #    - Verify controller can create Jobs:
-#      kubectl apply -f config/samples/scriptrunner_v1alpha1_scriptrunner.yaml
+#      kubectl apply -f config/samples/forge_v1alpha1_forge.yaml
 #    - Verify webhook receives admission requests:
-#      kubectl logs -n forge-system deployment/scriptrunner-webhook
+#      kubectl logs -n forge-system deployment/forge-webhook
 #
 # 4. Troubleshooting:
 #    - If controller can't create Jobs: Check egress to API server

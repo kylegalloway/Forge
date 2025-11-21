@@ -1,4 +1,4 @@
-// Package telemetry provides OpenTelemetry integration for ScriptRunner observability.
+// Package telemetry provides OpenTelemetry integration for Forge observability.
 //
 // This package implements vendor-neutral metrics, tracing, and logging using the
 // OpenTelemetry SDK. It provides:

@@ -16,7 +16,7 @@ metadata:
     app: forge-controller
     app.kubernetes.io/name: forge-controller
     app.kubernetes.io/component: controller
-    app.kubernetes.io/part-of: scriptrunner
+    app.kubernetes.io/part-of: forge
 spec:
   replicas: 1
   selector:

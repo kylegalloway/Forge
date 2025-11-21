@@ -96,7 +96,7 @@ uninstall: undeploy uninstall-crd ## Undeploy controller and uninstall CRDs.
 ##@ Samples
 
 .PHONY: apply-sample
-apply-sample: ## Apply sample ScriptRunner resource.
+apply-sample: ## Apply sample ZarfPackage resource.
 	kubectl apply -f config/samples/forge_v1alpha1_forge.yaml
 
 .PHONY: apply-custom-sample
@@ -114,8 +114,8 @@ status: ## Show status of controller and samples.
 	@echo "=== Controller Status ==="
 	@kubectl get pods -n $(NAMESPACE) -l app=forge-controller 2>/dev/null || echo "Controller not deployed"
 	@echo ""
-	@echo "=== ScriptRunner Resources ==="
-	@kubectl get forges --all-namespaces 2>/dev/null || echo "No ScriptRunner resources found"
+	@echo "=== ZarfPackage Resources ==="
+	@kubectl get forges --all-namespaces 2>/dev/null || echo "No ZarfPackage resources found"
 	@echo ""
 	@echo "=== Jobs ==="
 	@kubectl get jobs --all-namespaces -l app=forge 2>/dev/null || echo "No jobs found"
@@ -191,7 +191,7 @@ kind-setup: kind-create kind-deploy ## Complete setup: create kind cluster and d
 	@echo "Cluster name: $(KIND_CLUSTER_NAME)"
 	@echo "==============================================="
 	@echo ""
-	@echo "Try creating a sample ScriptRunner:"
+	@echo "Try creating a sample ZarfPackage:"
 	@echo "  make apply-sample"
 	@echo ""
 	@echo "Check status:"

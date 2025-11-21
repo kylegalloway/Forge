@@ -1,4 +1,4 @@
-# Network Policy Template for ScriptRunner Multi-Tenancy
+# Network Policy Template for ZarfPackage Multi-Tenancy
 #
 # This template creates NetworkPolicies to restrict network access for job pods.
 # By default, Kubernetes allows all traffic - these policies implement deny-by-default.
@@ -23,8 +23,8 @@ metadata:
   name: deny-all-ingress
   namespace: user-{{ .Username }}
   labels:
-    scriptrunner.io/tenant: "{{ .Username }}"
-    scriptrunner.io/network-policy: "default-deny"
+    forge.zarf.dev/tenant: "{{ .Username }}"
+    forge.zarf.dev/network-policy: "default-deny"
 spec:
   podSelector: {}  # Applies to all pods in namespace
   policyTypes:
@@ -40,8 +40,8 @@ metadata:
   name: allow-dns
   namespace: user-{{ .Username }}
   labels:
-    scriptrunner.io/tenant: "{{ .Username }}"
-    scriptrunner.io/network-policy: "dns"
+    forge.zarf.dev/tenant: "{{ .Username }}"
+    forge.zarf.dev/network-policy: "dns"
 spec:
   podSelector: {}  # Applies to all pods in namespace
   policyTypes:
@@ -63,15 +63,15 @@ spec:
 
 ---
 # Allow Egress to Kubernetes API
-# Job pods may need to read their own status or update ScriptRunner status
+# Job pods may need to read their own status or update ZarfPackage status
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
   name: allow-kubernetes-api
   namespace: user-{{ .Username }}
   labels:
-    scriptrunner.io/tenant: "{{ .Username }}"
-    scriptrunner.io/network-policy: "api-access"
+    forge.zarf.dev/tenant: "{{ .Username }}"
+    forge.zarf.dev/network-policy: "api-access"
 spec:
   podSelector: {}  # Applies to all pods in namespace
   policyTypes:
@@ -99,12 +99,12 @@ spec:
 #   name: allow-metrics-service
 #   namespace: user-{{ .Username }}
 #   labels:
-#     scriptrunner.io/tenant: "{{ .Username }}"
-#     scriptrunner.io/network-policy: "metrics"
+#     forge.zarf.dev/tenant: "{{ .Username }}"
+#     forge.zarf.dev/network-policy: "metrics"
 # spec:
 #   podSelector:
 #     matchLabels:
-#       app: scriptrunner
+#       app: forge
 #   policyTypes:
 #   - Egress
 #   egress:
@@ -129,12 +129,12 @@ spec:
 #   name: allow-external-https
 #   namespace: user-{{ .Username }}
 #   labels:
-#     scriptrunner.io/tenant: "{{ .Username }}"
-#     scriptrunner.io/network-policy: "external-https"
+#     forge.zarf.dev/tenant: "{{ .Username }}"
+#     forge.zarf.dev/network-policy: "external-https"
 # spec:
 #   podSelector:
 #     matchLabels:
-#       app: scriptrunner
+#       app: forge
 #   policyTypes:
 #   - Egress
 #   egress:
@@ -163,12 +163,12 @@ spec:
 #   name: allow-database-access
 #   namespace: user-{{ .Username }}
 #   labels:
-#     scriptrunner.io/tenant: "{{ .Username }}"
-#     scriptrunner.io/network-policy: "database"
+#     forge.zarf.dev/tenant: "{{ .Username }}"
+#     forge.zarf.dev/network-policy: "database"
 # spec:
 #   podSelector:
 #     matchLabels:
-#       app: scriptrunner
+#       app: forge
 #   policyTypes:
 #   - Egress
 #   egress:
@@ -210,7 +210,7 @@ spec:
 #
 # 5. Security Considerations:
 #    - These policies use podSelector: {} to apply to ALL pods
-#    - Consider using more specific selectors (app: scriptrunner) if needed
+#    - Consider using more specific selectors (app: forge) if needed
 #    - Block cloud metadata services (169.254.169.254) to prevent credential leaks
 #    - Review and approve all NetworkPolicy changes in production
 #    - Network policies are additive - multiple policies are OR'd together

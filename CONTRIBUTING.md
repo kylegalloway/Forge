@@ -6,15 +6,15 @@ Thank you for your interest in contributing to Forge! This guide will help you s
 
 ### Prerequisites
 
-1. **Go** (1.21 or later)
+1. **Go** (1.24 or later)
 
    ```bash
    # macOS
    brew install go
 
    # Linux
-   wget https://go.dev/dl/go1.21.0.linux-amd64.tar.gz
-   sudo tar -C /usr/local -xzf go1.21.0.linux-amd64.tar.gz
+   wget https://go.dev/dl/go1.24.0.linux-amd64.tar.gz
+   sudo tar -C /usr/local -xzf go1.24.0.linux-amd64.tar.gz
    ```
 
 2. **Podman or Docker**

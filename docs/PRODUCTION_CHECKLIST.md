@@ -388,7 +388,7 @@ Minimum viable path (fastest route):
 ## Notes
 
 - **Architecture change**: This checklist reflects the Forge architecture using ZarfPackage/UDSBundle CRDs
-- **No ScriptRunner**: Old ScriptRunner API has been completely removed
+- **No ZarfPackage**: Old ZarfPackage API has been completely removed
 - **Policy-based**: Security model based on ServiceAccount annotations and admission webhooks
 - **Observability-first**: Full OpenTelemetry integration from day one
 - **Production-ready foundation**: Core security and observability already implemented

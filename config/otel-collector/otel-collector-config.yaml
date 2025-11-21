@@ -1,4 +1,4 @@
-# OpenTelemetry Collector Configuration for ScriptRunner
+# OpenTelemetry Collector Configuration for Forge
 # This collector receives telemetry from the controller and exports to multiple backends
 
 apiVersion: v1
@@ -73,7 +73,7 @@ data:
       # Prometheus exporter (exposes metrics for Prometheus to scrape)
       prometheus:
         endpoint: "0.0.0.0:8889"
-        namespace: scriptrunner
+        namespace: forge
         const_labels:
           service: forge-controller
 

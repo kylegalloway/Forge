@@ -18,7 +18,7 @@ COPY pkg/ pkg/
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -o controller cmd/controller/main.go
 
 # Runtime stage
-FROM alpine:3.18
+FROM alpine:3.20
 
 WORKDIR /
 

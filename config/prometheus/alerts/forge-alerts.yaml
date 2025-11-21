@@ -12,19 +12,19 @@ spec:
     interval: 30s
     rules:
     # Controller Health
-    - alert: ScriptRunnerControllerDown
+    - alert: ZarfPackageControllerDown
       expr: up{job="forge-controller-metrics"} == 0
       for: 5m
       labels:
         severity: critical
         component: controller
       annotations:
-        summary: "ScriptRunner controller is down"
-        description: "ScriptRunner controller has been down for more than 5 minutes. No ScriptRunner resources will be reconciled."
+        summary: "ZarfPackage controller is down"
+        description: "ZarfPackage controller has been down for more than 5 minutes. No ZarfPackage resources will be reconciled."
         runbook_url: "https://github.com/kylegalloway/forge/blob/main/config/prometheus/alerts/README.md#forgecontrollerdown"
 
     # High Error Rate
-    - alert: ScriptRunnerHighErrorRate
+    - alert: ZarfPackageHighErrorRate
       expr: |
         (
           sum(rate(forge_reconcile_errors_total[5m]))
@@ -36,11 +36,11 @@ spec:
         severity: warning
         component: controller
       annotations:
-        summary: "High error rate in ScriptRunner reconciliation"
-        description: "More than 10% of ScriptRunner reconciliations are failing (current: {{ $value | humanizePercentage }})"
+        summary: "High error rate in ZarfPackage reconciliation"
+        description: "More than 10% of ZarfPackage reconciliations are failing (current: {{ $value | humanizePercentage }})"
         runbook_url: "https://github.com/kylegalloway/forge/blob/main/config/prometheus/alerts/README.md#high-error-rate"
 
-    - alert: ScriptRunnerCriticalErrorRate
+    - alert: ZarfPackageCriticalErrorRate
       expr: |
         (
           sum(rate(forge_reconcile_errors_total[5m]))
@@ -52,12 +52,12 @@ spec:
         severity: critical
         component: controller
       annotations:
-        summary: "Critical error rate in ScriptRunner reconciliation"
-        description: "More than 50% of ScriptRunner reconciliations are failing (current: {{ $value | humanizePercentage }}). Controller may be broken."
+        summary: "Critical error rate in ZarfPackage reconciliation"
+        description: "More than 50% of ZarfPackage reconciliations are failing (current: {{ $value | humanizePercentage }}). Controller may be broken."
         runbook_url: "https://github.com/kylegalloway/forge/blob/main/config/prometheus/alerts/README.md#critical-error-rate"
 
     # Slow Reconciliation
-    - alert: ScriptRunnerSlowReconciliation
+    - alert: ZarfPackageSlowReconciliation
       expr: |
         histogram_quantile(0.95,
           sum(rate(forge_reconcile_duration_seconds_bucket[5m])) by (le)
@@ -67,12 +67,12 @@ spec:
         severity: warning
         component: controller
       annotations:
-        summary: "ScriptRunner reconciliation is slow"
+        summary: "ZarfPackage reconciliation is slow"
         description: "p95 reconciliation latency is {{ $value | humanizeDuration }} (threshold: 5s). Controller may be overloaded."
         runbook_url: "https://github.com/kylegalloway/forge/blob/main/config/prometheus/alerts/README.md#slow-reconciliation"
 
     # Job Creation Failures
-    - alert: ScriptRunnerJobCreationFailures
+    - alert: ZarfPackageJobCreationFailures
       expr: sum(rate(forge_reconcile_errors_total{error_type="job_creation_error"}[5m])) > 0.1
       for: 10m
       labels:
@@ -84,7 +84,7 @@ spec:
         runbook_url: "https://github.com/kylegalloway/forge/blob/main/config/prometheus/alerts/README.md#job-creation-failures"
 
     # No Activity (Controller may be stuck)
-    - alert: ScriptRunnerNoActivity
+    - alert: ZarfPackageNoActivity
       expr: |
         rate(forge_resources_created_total[10m]) == 0
         and
@@ -94,15 +94,15 @@ spec:
         severity: warning
         component: controller
       annotations:
-        summary: "No ScriptRunner activity detected"
-        description: "Controller has {{ $value }} active ScriptRunners but hasn't created any new ones in 30 minutes. May be stuck."
+        summary: "No ZarfPackage activity detected"
+        description: "Controller has {{ $value }} active ZarfPackages but hasn't created any new ones in 30 minutes. May be stuck."
         runbook_url: "https://github.com/kylegalloway/forge/blob/main/config/prometheus/alerts/README.md#no-activity"
 
   - name: forge.webhook
     interval: 30s
     rules:
     # Webhook Validation Failures
-    - alert: ScriptRunnerWebhookHighRejectionRate
+    - alert: ZarfPackageWebhookHighRejectionRate
       expr: sum(rate(forge_webhook_validation_errors_total[5m])) > 1
       for: 10m
       labels:
@@ -110,43 +110,43 @@ spec:
         component: webhook
       annotations:
         summary: "High rate of webhook validation rejections"
-        description: "Webhook is rejecting {{ $value }} ScriptRunner creates per second. Users may be submitting invalid resources."
+        description: "Webhook is rejecting {{ $value }} ZarfPackage creates per second. Users may be submitting invalid resources."
         runbook_url: "https://github.com/kylegalloway/forge/blob/main/config/prometheus/alerts/README.md#webhook-rejections"
 
     # Webhook Down
-    - alert: ScriptRunnerWebhookDown
+    - alert: ZarfPackageWebhookDown
       expr: up{job="forge-webhook-metrics"} == 0
       for: 5m
       labels:
         severity: warning
         component: webhook
       annotations:
-        summary: "ScriptRunner webhook is down"
-        description: "Admission webhook has been down for 5 minutes. New ScriptRunner resources cannot be validated."
+        summary: "ZarfPackage webhook is down"
+        description: "Admission webhook has been down for 5 minutes. New ZarfPackage resources cannot be validated."
         runbook_url: "https://github.com/kylegalloway/forge/blob/main/config/prometheus/alerts/README.md#webhook-down"
 
   - name: forge.capacity
     interval: 60s
     rules:
     # High Resource Usage
-    - alert: ScriptRunnerHighResourceCount
+    - alert: ZarfPackageHighResourceCount
       expr: forge_resources_active > 1000
       for: 10m
       labels:
         severity: info
         component: controller
       annotations:
-        summary: "High number of active ScriptRunners"
-        description: "Cluster has {{ $value }} active ScriptRunners. May need to scale controller or review capacity."
+        summary: "High number of active ZarfPackages"
+        description: "Cluster has {{ $value }} active ZarfPackages. May need to scale controller or review capacity."
         runbook_url: "https://github.com/kylegalloway/forge/blob/main/config/prometheus/alerts/README.md#high-resource-count"
 
-    - alert: ScriptRunnerVeryHighResourceCount
+    - alert: ZarfPackageVeryHighResourceCount
       expr: forge_resources_active > 5000
       for: 10m
       labels:
         severity: warning
         component: controller
       annotations:
-        summary: "Very high number of active ScriptRunners"
-        description: "Cluster has {{ $value }} active ScriptRunners. Controller may struggle at this scale."
+        summary: "Very high number of active ZarfPackages"
+        description: "Cluster has {{ $value }} active ZarfPackages. Controller may struggle at this scale."
         runbook_url: "https://github.com/kylegalloway/forge/blob/main/config/prometheus/alerts/README.md#very-high-resource-count"

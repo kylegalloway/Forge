@@ -74,11 +74,11 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "scriptrunner_resources_active",
+          "expr": "forge_resources_active",
           "refId": "A"
         }
       ],
-      "title": "Active ScriptRunners",
+      "title": "Active Forges",
       "type": "stat"
     },
     {
@@ -133,7 +133,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "sum(rate(scriptrunner_jobs_created_total[5m])) * 60",
+          "expr": "sum(rate(forge_jobs_created_total[5m])) * 60",
           "refId": "A"
         }
       ],
@@ -200,7 +200,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "sum(rate(scriptrunner_reconcile_errors_total[5m])) / sum(rate(scriptrunner_resources_created_total[5m]))",
+          "expr": "sum(rate(forge_reconcile_errors_total[5m])) / sum(rate(forge_resources_created_total[5m]))",
           "refId": "A"
         }
       ],
@@ -287,12 +287,12 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "rate(scriptrunner_jobs_created_total[5m])",
-          "legendFormat": "{{namespace}}/{{scriptrunner}}",
+          "expr": "rate(forge_jobs_created_total[5m])",
+          "legendFormat": "{{namespace}}/{{forge}}",
           "refId": "A"
         }
       ],
-      "title": "Job Creation Rate by ScriptRunner",
+      "title": "Job Creation Rate by Forge",
       "type": "timeseries"
     },
     {
@@ -375,7 +375,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "rate(scriptrunner_reconcile_errors_total[5m])",
+          "expr": "rate(forge_reconcile_errors_total[5m])",
           "legendFormat": "{{error_type}}",
           "refId": "A"
         }
@@ -466,7 +466,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "histogram_quantile(0.95, sum(rate(scriptrunner_reconcile_duration_seconds_bucket[5m])) by (le))",
+          "expr": "histogram_quantile(0.95, sum(rate(forge_reconcile_duration_seconds_bucket[5m])) by (le))",
           "legendFormat": "p95",
           "refId": "A"
         },
@@ -475,7 +475,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "histogram_quantile(0.50, sum(rate(scriptrunner_reconcile_duration_seconds_bucket[5m])) by (le))",
+          "expr": "histogram_quantile(0.50, sum(rate(forge_reconcile_duration_seconds_bucket[5m])) by (le))",
           "legendFormat": "p50",
           "refId": "B"
         }
@@ -488,7 +488,7 @@
   "schemaVersion": 38,
   "style": "dark",
   "tags": [
-    "scriptrunner",
+    "forge",
     "kubernetes"
   ],
   "templating": {
@@ -500,8 +500,8 @@
   },
   "timepicker": {},
   "timezone": "",
-  "title": "ScriptRunner Controller",
-  "uid": "scriptrunner-controller",
+  "title": "Forge Controller",
+  "uid": "forge-controller",
   "version": 1,
   "weekStart": ""
 }

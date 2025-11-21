@@ -1,6 +1,6 @@
-# ScriptRunner Admission Webhook
+# ZarfPackage Admission Webhook
 
-This directory contains a validating admission webhook for ScriptRunner that enforces production security policies.
+This directory contains a validating admission webhook for ZarfPackage that enforces production security policies.
 
 ## Purpose
 
@@ -11,7 +11,7 @@ The webhook provides:
 3. **Input Validation**: Validate input keys and sanitize values
 4. **Block Inline Scripts**: Prevent `script` field in production
 5. **Set Defaults**: Auto-populate image, resource limits, etc.
-6. **Audit Logging**: Log all ScriptRunner creation attempts
+6. **Audit Logging**: Log all ZarfPackage creation attempts
 
 ## Quick Start
 
@@ -32,7 +32,7 @@ kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/
 kubectl apply -f deploy/
 
 # Verify
-kubectl get validatingwebhookconfiguration scriptrunner-webhook
+kubectl get validatingwebhookconfiguration forge-webhook
 ```
 
 ### Test
@@ -40,12 +40,12 @@ kubectl get validatingwebhookconfiguration scriptrunner-webhook
 ```bash
 # This should be allowed (approved script)
 kubectl apply -f - <<EOF
-apiVersion: scriptrunner.io/v1alpha1
-kind: ScriptRunner
+apiVersion: forge.io/v1alpha1
+kind: ZarfPackage
 metadata:
   name: test-allowed
 spec:
-  image: your-registry.io/scriptrunner-scripts:v1.0.0
+  image: your-registry.io/forge-scripts:v1.0.0
   scriptRef: /scripts/process-data.sh
   inputs:
     test: "value"
@@ -53,8 +53,8 @@ EOF
 
 # This should be denied (inline script)
 kubectl apply -f - <<EOF
-apiVersion: scriptrunner.io/v1alpha1
-kind: ScriptRunner
+apiVersion: forge.io/v1alpha1
+kind: ZarfPackage
 metadata:
   name: test-denied
 spec:
@@ -71,7 +71,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: webhook-config
-  namespace: scriptrunner-system
+  namespace: forge-system
 data:
   config.yaml: |
     # Approved scripts that users can run
@@ -81,7 +81,7 @@ data:
       - /scripts/report-status.py
 
     # Approved image registry prefix
-    approvedImagePrefix: your-registry.io/scriptrunner-scripts:
+    approvedImagePrefix: your-registry.io/forge-scripts:
 
     # Max values to prevent abuse
     maxInputs: 20
@@ -94,7 +94,7 @@ data:
 
     # Default values
     defaults:
-      image: your-registry.io/scriptrunner-scripts:v1.0.0
+      image: your-registry.io/forge-scripts:v1.0.0
       resources:
         requests:
           cpu: 250m
@@ -113,7 +113,7 @@ data:
 Edit `pkg/webhook/validator.go` to add your validation:
 
 ```go
-func (v *Validator) validateScriptRunner(sr *scriptrunnerv1alpha1.ScriptRunner) error {
+func (v *Validator) validateZarfPackage(sr *forgev1alpha1.ZarfPackage) error {
     // Check scriptRef is approved
     if !v.isApprovedScript(sr.Spec.ScriptRef) {
         return fmt.Errorf("scriptRef '%s' not in approved list", sr.Spec.ScriptRef)
@@ -152,7 +152,7 @@ func (v *Validator) validateScriptRunner(sr *scriptrunnerv1alpha1.ScriptRunner) 
 Implement mutation webhook to set defaults:
 
 ```go
-func (v *Validator) setDefaults(sr *scriptrunnerv1alpha1.ScriptRunner) {
+func (v *Validator) setDefaults(sr *forgev1alpha1.ZarfPackage) {
     // Set default image if not specified
     if sr.Spec.Image == "" {
         sr.Spec.Image = v.config.Defaults.Image
@@ -162,7 +162,7 @@ func (v *Validator) setDefaults(sr *scriptrunnerv1alpha1.ScriptRunner) {
     if sr.Labels == nil {
         sr.Labels = make(map[string]string)
     }
-    sr.Labels["managed-by"] = "scriptrunner-webhook"
+    sr.Labels["managed-by"] = "forge-webhook"
 }
 ```
 
@@ -170,10 +170,10 @@ func (v *Validator) setDefaults(sr *scriptrunnerv1alpha1.ScriptRunner) {
 
 ```bash
 # Build webhook image
-podman build -t your-registry.io/scriptrunner-webhook:v1.0.0 .
+podman build -t your-registry.io/forge-webhook:v1.0.0 .
 
 # Push to registry
-podman push your-registry.io/scriptrunner-webhook:v1.0.0
+podman push your-registry.io/forge-webhook:v1.0.0
 
 # Deploy
 kubectl apply -f deploy/
@@ -183,7 +183,7 @@ kubectl apply -f deploy/
 
 ### Validating Webhook
 
-Validates ScriptRunner objects before they are created:
+Validates ZarfPackage objects before they are created:
 
 - Checks scriptRef against whitelist
 - Validates image registry
@@ -192,7 +192,7 @@ Validates ScriptRunner objects before they are created:
 
 ### Mutating Webhook
 
-Modifies ScriptRunner objects before creation:
+Modifies ZarfPackage objects before creation:
 
 - Sets default image
 - Adds default labels
@@ -217,8 +217,8 @@ go test ./pkg/webhook/...
 go test ./test/integration/...
 
 # Manual testing
-kubectl apply -f test/fixtures/valid-scriptrunner.yaml
-kubectl apply -f test/fixtures/invalid-scriptrunner.yaml
+kubectl apply -f test/fixtures/valid-forge.yaml
+kubectl apply -f test/fixtures/invalid-forge.yaml
 ```
 
 ## Troubleshooting
@@ -227,24 +227,24 @@ kubectl apply -f test/fixtures/invalid-scriptrunner.yaml
 
 ```bash
 # Check webhook configuration
-kubectl get validatingwebhookconfiguration scriptrunner-webhook -o yaml
+kubectl get validatingwebhookconfiguration forge-webhook -o yaml
 
 # Check certificate
-kubectl get certificate -n scriptrunner-system
+kubectl get certificate -n forge-system
 
 # Check webhook logs
-kubectl logs -n scriptrunner-system -l app=scriptrunner-webhook
+kubectl logs -n forge-system -l app=forge-webhook
 ```
 
 ### Certificate issues
 
 ```bash
 # Recreate certificate
-kubectl delete certificate -n scriptrunner-system scriptrunner-webhook-cert
+kubectl delete certificate -n forge-system forge-webhook-cert
 kubectl apply -f deploy/certificate.yaml
 
 # Wait for cert-manager to issue
-kubectl wait --for=condition=Ready certificate/scriptrunner-webhook-cert -n scriptrunner-system
+kubectl wait --for=condition=Ready certificate/forge-webhook-cert -n forge-system
 ```
 
 ## Production Deployment

@@ -49,7 +49,7 @@ spec:
     target: InCluster
     namespace: bigbang
     timeout: 60m
-```text
+```
 
 ## Architecture
 
@@ -111,7 +111,7 @@ metadata:
 
     # Where packages can be published
     forge.zarf.dev/allowed-publish-registries: "ghcr.io/myorg/dev/*"
-```text
+```
 
 The admission webhook validates all operations against these policies before creation.
 
@@ -132,7 +132,7 @@ kubectl apply -f config/manager/deployment.yaml
 
 # Install admission webhook (for policy enforcement)
 kubectl apply -f webhook/deploy/
-```text
+```
 
 **Watches**: All namespaces
 **Permissions**: Cluster-wide (ClusterRole)
@@ -153,7 +153,7 @@ kubectl create namespace forge-system
 # Install Forge controller with Role (namespace-only)
 kubectl apply -f config/namespace-scoped/rbac.yaml
 kubectl apply -f config/namespace-scoped/deployment.yaml
-```text
+```
 
 **Watches**: Single namespace (forge-system)
 **Permissions**: Namespace-only (Role)
@@ -238,7 +238,7 @@ pre-commit install
 
 # Run all hooks
 pre-commit run --all-files
-```text
+```
 
 **GitHub Actions:**
 
@@ -282,7 +282,7 @@ forge/
 │   └── otel-collector/          # OTel Collector config
 ├── docs/                        # Documentation
 └── cmd/                         # Entrypoints (controller, webhook)
-```text
+```
 
 ## Roadmap
 
@@ -324,7 +324,7 @@ Also, "ScriptRunner" sounded like a toy. Forge sounds like where serious ops get
 
 ## License
 
-[Add license here]
+This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
 
 ## Contributing
 

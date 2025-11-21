@@ -1,6 +1,6 @@
-# User Namespace Template for ScriptRunner Multi-Tenancy
+# User Namespace Template for ZarfPackage Multi-Tenancy
 #
-# This template creates an isolated namespace for a ScriptRunner user with:
+# This template creates an isolated namespace for a ZarfPackage user with:
 # - Pod Security Standards (restricted)
 # - ResourceQuota to limit resource consumption
 # - LimitRange to set default resource limits
@@ -23,24 +23,24 @@ metadata:
     pod-security.kubernetes.io/audit: restricted
     pod-security.kubernetes.io/warn: restricted
 
-    # ScriptRunner labels
-    scriptrunner.io/tenant: "{{ .Username }}"
-    scriptrunner.io/managed: "true"
+    # ZarfPackage labels
+    forge.zarf.dev/tenant: "{{ .Username }}"
+    forge.zarf.dev/managed: "true"
 
     # Enable webhook validation (remove to disable)
-    scriptrunner.io/webhook: enabled
+    forge.zarf.dev/webhook: enabled
 ---
 apiVersion: v1
 kind: ResourceQuota
 metadata:
-  name: scriptrunner-quota
+  name: forge-quota
   namespace: user-{{ .Username }}
   labels:
-    scriptrunner.io/tenant: "{{ .Username }}"
+    forge.zarf.dev/tenant: "{{ .Username }}"
 spec:
   hard:
-    # Limit total ScriptRunner resources
-    count/scriptrunners.scriptrunner.io: "{{ .MaxScriptRunners | default 50 }}"
+    # Limit total ZarfPackage resources
+    count/zarfpackages.forge.zarf.dev: "{{ .MaxZarfPackages | default 50 }}"
 
     # Limit concurrent Jobs
     count/jobs.batch: "{{ .MaxJobs | default 20 }}"
@@ -65,10 +65,10 @@ spec:
 apiVersion: v1
 kind: LimitRange
 metadata:
-  name: scriptrunner-limits
+  name: forge-limits
   namespace: user-{{ .Username }}
   labels:
-    scriptrunner.io/tenant: "{{ .Username }}"
+    forge.zarf.dev/tenant: "{{ .Username }}"
 spec:
   limits:
   # Default limits for Pods (Jobs)
@@ -89,11 +89,11 @@ spec:
       cpu: "{{ .ContainerMinCPU | default 50m }}"
       memory: "{{ .ContainerMinMemory | default 64Mi }}"
     default:
-      # Default limits (if not specified in ScriptRunner)
+      # Default limits (if not specified in ZarfPackage)
       cpu: "{{ .ContainerDefaultLimitCPU | default 1 }}"
       memory: "{{ .ContainerDefaultLimitMemory | default 1Gi }}"
     defaultRequest:
-      # Default requests (if not specified in ScriptRunner)
+      # Default requests (if not specified in ZarfPackage)
       cpu: "{{ .ContainerDefaultRequestCPU | default 250m }}"
       memory: "{{ .ContainerDefaultRequestMemory | default 256Mi }}"
 
@@ -110,14 +110,14 @@ spec:
 # apiVersion: networking.k8s.io/v1
 # kind: NetworkPolicy
 # metadata:
-#   name: scriptrunner-network-policy
+#   name: forge-network-policy
 #   namespace: user-{{ .Username }}
 #   labels:
-#     scriptrunner.io/tenant: "{{ .Username }}"
+#     forge.zarf.dev/tenant: "{{ .Username }}"
 # spec:
 #   podSelector:
 #     matchLabels:
-#       app: scriptrunner
+#       app: forge
 #   policyTypes:
 #   - Ingress
 #   - Egress

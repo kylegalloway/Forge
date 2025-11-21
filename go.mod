@@ -1,6 +1,6 @@
 module github.com/kylegalloway/forge
 
-go 1.25.4
+go 1.24
 
 require (
 	github.com/prometheus/client_golang v1.23.2

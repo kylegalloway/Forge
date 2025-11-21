@@ -28,6 +28,11 @@ jobs:
           go install golang.org/x/tools/cmd/goimports@latest
           echo "$HOME/go/bin" >> $GITHUB_PATH
 
+      - name: Install hadolint
+        run: |
+          wget -qO /usr/local/bin/hadolint https://github.com/hadolint/hadolint/releases/latest/download/hadolint-Linux-x86_64
+          chmod +x /usr/local/bin/hadolint
+
       - name: Install pre-commit
         run: pip install pre-commit
 

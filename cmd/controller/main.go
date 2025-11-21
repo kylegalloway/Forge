@@ -34,6 +34,24 @@ var (
 )
 
 func main() {
+	parseFlags()
+	ctx := setupSignalHandler()
+	cfg := mustBuildConfig()
+	kubeClient, dynamicClient := mustCreateClients(cfg)
+	watchNamespace := determineWatchNamespace()
+
+	metrics, tracer := initializeTelemetry()
+	ctrl := controller.NewController(kubeClient, dynamicClient, watchNamespace, metrics, tracer)
+
+	healthServer := startHealthServer(ctrl)
+	meterProvider, metricsServer := startMetricsServer(ctx)
+	defer shutdownMeterProvider(ctx, meterProvider)
+
+	runController(ctx, ctrl, kubeClient)
+	shutdownServers(healthServer, metricsServer)
+}
+
+func parseFlags() {
 	klog.InitFlags(nil)
 	flag.StringVar(&kubeconfig, "kubeconfig", "", "Path to a kubeconfig. Only required if out-of-cluster.")
 	flag.StringVar(&masterURL, "master", "", "The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster.")
@@ -42,11 +60,10 @@ func main() {
 	flag.StringVar(&metricsAddr, "metrics-addr", ":8080", "The address for metrics endpoints.")
 	flag.BoolVar(&enableLeaderElection, "enable-leader-election", false, "Enable leader election for high availability.")
 	flag.Parse()
+}
 
-	// Set up signals so we handle the first shutdown signal gracefully
+func setupSignalHandler() context.Context {
 	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	signalChan := make(chan os.Signal, 1)
 	signal.Notify(signalChan, os.Interrupt, syscall.SIGTERM)
 	go func() {
@@ -54,26 +71,30 @@ func main() {
 		klog.Info("Received shutdown signal")
 		cancel()
 	}()
+	return ctx
+}
 
-	// Build the Kubernetes config
+func mustBuildConfig() *rest.Config {
 	cfg, err := buildConfig(kubeconfig, masterURL)
 	if err != nil {
 		klog.Fatalf("Error building kubeconfig: %v", err)
 	}
+	return cfg
+}
 
-	// Create the Kubernetes client
+func mustCreateClients(cfg *rest.Config) (*kubernetes.Clientset, dynamic.Interface) {
 	kubeClient, err := kubernetes.NewForConfig(cfg)
 	if err != nil {
 		klog.Fatalf("Error building kubernetes clientset: %v", err)
 	}
-
-	// Create the dynamic client
 	dynamicClient, err := dynamic.NewForConfig(cfg)
 	if err != nil {
 		klog.Fatalf("Error building dynamic client: %v", err)
 	}
+	return kubeClient, dynamicClient
+}
 
-	// If namespace is not specified, watch all namespaces
+func determineWatchNamespace() string {
 	watchNamespace := namespace
 	if watchNamespace == "" {
 		watchNamespace = corev1.NamespaceAll
@@ -81,78 +102,85 @@ func main() {
 	} else {
 		klog.Infof("Watching namespace: %s", watchNamespace)
 	}
+	return watchNamespace
+}
 
-	// Initialize OpenTelemetry metrics
+func initializeTelemetry() (*telemetry.Metrics, *telemetry.Tracer) {
 	metrics, err := telemetry.NewMetrics()
 	if err != nil {
 		klog.Fatalf("Error creating metrics: %v", err)
 	}
 	klog.Info("OpenTelemetry metrics initialized")
 
-	// Initialize OpenTelemetry tracer
 	tracer := telemetry.NewTracer()
 	klog.Info("OpenTelemetry tracer initialized")
+	return metrics, tracer
+}
 
-	// Create the controller with telemetry
-	ctrl := controller.NewController(kubeClient, dynamicClient, watchNamespace, metrics, tracer)
-
-	// Start health check server
+func startHealthServer(ctrl *controller.Controller) *http.Server {
 	healthMux := http.NewServeMux()
 	healthMux.HandleFunc("/healthz", ctrl.HealthzHandler())
 	healthMux.HandleFunc("/readyz", ctrl.ReadyzHandler())
 
 	healthServer := &http.Server{
-		Addr:    healthAddr,
-		Handler: healthMux,
+		Addr:              healthAddr,
+		Handler:           healthMux,
+		ReadHeaderTimeout: 10 * time.Second,
 	}
 
 	go func() {
 		klog.InfoS("Starting health check server", "addr", healthAddr)
-		if err := healthServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			klog.ErrorS(err, "Health check server failed")
+		if serverErr := healthServer.ListenAndServe(); serverErr != nil && serverErr != http.ErrServerClosed {
+			klog.ErrorS(serverErr, "Health check server failed")
 		}
 	}()
 
-	// Start metrics server with Prometheus exporter
-	// Create Prometheus exporter that bridges OTel metrics to Prometheus format
+	return healthServer
+}
+
+func startMetricsServer(ctx context.Context) (*sdkmetric.MeterProvider, *http.Server) {
 	promExporter, err := prometheus.New()
 	if err != nil {
 		klog.Fatalf("Error creating Prometheus exporter: %v", err)
 	}
 
-	// Create MeterProvider with Prometheus exporter
 	meterProvider := sdkmetric.NewMeterProvider(
 		sdkmetric.WithReader(promExporter),
 	)
-	defer func() {
-		if err := meterProvider.Shutdown(ctx); err != nil {
-			klog.ErrorS(err, "Error shutting down meter provider")
-		}
-	}()
 
 	metricsMux := http.NewServeMux()
 	metricsMux.Handle("/metrics", promhttp.Handler())
 
 	metricsServer := &http.Server{
-		Addr:    metricsAddr,
-		Handler: metricsMux,
+		Addr:              metricsAddr,
+		Handler:           metricsMux,
+		ReadHeaderTimeout: 10 * time.Second,
 	}
 
 	go func() {
 		klog.InfoS("Starting metrics server (Prometheus-compatible)", "addr", metricsAddr)
-		if err := metricsServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			klog.ErrorS(err, "Metrics server failed")
+		if serverErr := metricsServer.ListenAndServe(); serverErr != nil && serverErr != http.ErrServerClosed {
+			klog.ErrorS(serverErr, "Metrics server failed")
 		}
 	}()
 
-	// Run the controller with or without leader election
+	return meterProvider, metricsServer
+}
+
+func shutdownMeterProvider(ctx context.Context, meterProvider *sdkmetric.MeterProvider) {
+	if shutdownErr := meterProvider.Shutdown(ctx); shutdownErr != nil {
+		klog.ErrorS(shutdownErr, "Error shutting down meter provider")
+	}
+}
+
+func runController(ctx context.Context, ctrl *controller.Controller, kubeClient *kubernetes.Clientset) {
 	klog.Info("Starting Forge controller")
 	if enableLeaderElection {
 		klog.Info("Leader election enabled")
 		leConfig := leaderelection.DefaultConfig()
-		err = leaderelection.RunWithLeaderElection(ctx, kubeClient, leConfig, func(ctx context.Context) {
-			if err := ctrl.Run(ctx); err != nil {
-				klog.ErrorS(err, "Error running controller")
+		err := leaderelection.RunWithLeaderElection(ctx, kubeClient, leConfig, func(ctx context.Context) {
+			if runErr := ctrl.Run(ctx); runErr != nil {
+				klog.ErrorS(runErr, "Error running controller")
 			}
 		})
 		if err != nil {
@@ -164,8 +192,9 @@ func main() {
 			klog.Fatalf("Error running controller: %v", err)
 		}
 	}
+}
 
-	// Graceful shutdown of servers
+func shutdownServers(healthServer, metricsServer *http.Server) {
 	klog.Info("Shutting down servers")
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer shutdownCancel()

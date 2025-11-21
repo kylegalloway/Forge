@@ -33,8 +33,12 @@ var (
 )
 
 func init() {
-	_ = admissionv1.AddToScheme(scheme)
-	_ = zarfv1alpha1.AddToScheme(scheme)
+	if err := admissionv1.AddToScheme(scheme); err != nil {
+		panic(fmt.Sprintf("failed to add admissionv1 to scheme: %v", err))
+	}
+	if err := zarfv1alpha1.AddToScheme(scheme); err != nil {
+		panic(fmt.Sprintf("failed to add zarfv1alpha1 to scheme: %v", err))
+	}
 }
 
 func main() {
@@ -70,8 +74,9 @@ func main() {
 	mux.HandleFunc("/readyz", server.serveReadyz)
 
 	httpServer := &http.Server{
-		Addr:    fmt.Sprintf(":%d", port),
-		Handler: mux,
+		Addr:              fmt.Sprintf(":%d", port),
+		Handler:           mux,
+		ReadHeaderTimeout: 10 * time.Second,
 	}
 
 	// Set up graceful shutdown
@@ -126,9 +131,9 @@ func (ws *WebhookServer) serveValidate(w http.ResponseWriter, r *http.Request) {
 	// Decode admission review
 	admissionReview := admissionv1.AdmissionReview{}
 	deserializer := codecs.UniversalDeserializer()
-	if _, _, err := deserializer.Decode(body, nil, &admissionReview); err != nil {
-		klog.ErrorS(err, "Failed to decode admission review")
-		http.Error(w, fmt.Sprintf("failed to decode admission review: %v", err), http.StatusBadRequest)
+	if _, _, decodeErr := deserializer.Decode(body, nil, &admissionReview); decodeErr != nil {
+		klog.ErrorS(decodeErr, "Failed to decode admission review")
+		http.Error(w, fmt.Sprintf("failed to decode admission review: %v", decodeErr), http.StatusBadRequest)
 		return
 	}
 
@@ -199,13 +204,17 @@ func (ws *WebhookServer) validate(ctx context.Context, request *admissionv1.Admi
 }
 
 // serveHealthz handles health check requests
-func (ws *WebhookServer) serveHealthz(w http.ResponseWriter, r *http.Request) {
+func (ws *WebhookServer) serveHealthz(w http.ResponseWriter, _ *http.Request) {
 	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write([]byte("ok"))
+	if _, err := w.Write([]byte("ok")); err != nil {
+		klog.ErrorS(err, "Failed to write health response")
+	}
 }
 
 // serveReadyz handles readiness check requests
-func (ws *WebhookServer) serveReadyz(w http.ResponseWriter, r *http.Request) {
+func (ws *WebhookServer) serveReadyz(w http.ResponseWriter, _ *http.Request) {
 	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write([]byte("ready"))
+	if _, err := w.Write([]byte("ready")); err != nil {
+		klog.ErrorS(err, "Failed to write ready response")
+	}
 }

@@ -77,9 +77,9 @@ func (h *DeployHandler) createDeployJob(ctx context.Context, pkg *zarfv1alpha1.Z
 	// Parse timeout (default 30m)
 	activeDeadlineSeconds := int64(1800) // Default 30 minutes
 	if pkg.Spec.Deploy.Timeout != "" {
-		timeout, err := time.ParseDuration(pkg.Spec.Deploy.Timeout)
-		if err != nil {
-			klog.V(4).InfoS("Invalid timeout format, using default", "timeout", pkg.Spec.Deploy.Timeout, "error", err)
+		timeout, parseErr := time.ParseDuration(pkg.Spec.Deploy.Timeout)
+		if parseErr != nil {
+			klog.V(4).InfoS("Invalid timeout format, using default", "timeout", pkg.Spec.Deploy.Timeout, "error", parseErr)
 		} else {
 			activeDeadlineSeconds = int64(timeout.Seconds())
 		}
@@ -260,7 +260,7 @@ func (h *DeployHandler) buildEnvVars(pkg *zarfv1alpha1.ZarfPackage) []corev1.Env
 }
 
 // buildInitContainers creates init containers for artifact retrieval
-func (h *DeployHandler) buildInitContainers(pkg *zarfv1alpha1.ZarfPackage, artifactPath string) ([]corev1.Container, error) {
+func (h *DeployHandler) buildInitContainers(pkg *zarfv1alpha1.ZarfPackage, _ string) ([]corev1.Container, error) {
 	sourceHandler, err := sources.New(pkg)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create source handler: %w", err)

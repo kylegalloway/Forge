@@ -213,7 +213,7 @@ func (h *BuildHandler) createBuildJob(ctx context.Context, pkg *zarfv1alpha1.Zar
 }
 
 // buildZarfCommand builds the zarf CLI command based on package source
-func (h *BuildHandler) buildZarfCommand(pkg *zarfv1alpha1.ZarfPackage) (string, string, error) {
+func (h *BuildHandler) buildZarfCommand(_ *zarfv1alpha1.ZarfPackage) (string, string, error) {
 	workingDir := "/workspace"
 
 	// Basic zarf package create command

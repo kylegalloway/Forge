@@ -138,7 +138,7 @@ func startHealthServer(ctrl *controller.Controller) *http.Server {
 	return healthServer
 }
 
-func startMetricsServer(ctx context.Context) (*sdkmetric.MeterProvider, *http.Server) {
+func startMetricsServer(_ context.Context) (*sdkmetric.MeterProvider, *http.Server) {
 	promExporter, err := prometheus.New()
 	if err != nil {
 		klog.Fatalf("Error creating Prometheus exporter: %v", err)

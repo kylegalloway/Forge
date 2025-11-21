@@ -133,15 +133,16 @@ func (c *Controller) Run(ctx context.Context) error {
 			if !ok {
 				klog.Warning("Watch channel closed, restarting watcher")
 				// Recreate watcher
-				watcher, err = c.dynamicClient.Resource(ZarfPackageGVR).Namespace(c.namespace).Watch(ctx, metav1.ListOptions{})
-				if err != nil {
-					return fmt.Errorf("failed to recreate watcher: %w", err)
+				var watchErr error
+				watcher, watchErr = c.dynamicClient.Resource(ZarfPackageGVR).Namespace(c.namespace).Watch(ctx, metav1.ListOptions{})
+				if watchErr != nil {
+					return fmt.Errorf("failed to recreate watcher: %w", watchErr)
 				}
 				continue
 			}
 
-			if err := c.handleEvent(ctx, event); err != nil {
-				klog.ErrorS(err, "Error handling event", "type", event.Type)
+			if handleErr := c.handleEvent(ctx, event); handleErr != nil {
+				klog.ErrorS(handleErr, "Error handling event", "type", event.Type)
 				// Don't return error, continue processing
 			}
 
@@ -172,7 +173,10 @@ func (c *Controller) handleEvent(ctx context.Context, event watch.Event) error {
 		return c.handleObject(ctx, event.Object)
 	case watch.Deleted:
 		// Cleanup handled by owner references
-		obj := event.Object.(*unstructured.Unstructured)
+		obj, ok := event.Object.(*unstructured.Unstructured)
+		if !ok {
+			return fmt.Errorf("unexpected object type in deleted event")
+		}
 		klog.InfoS("ZarfPackage deleted", "name", obj.GetName(), "namespace", obj.GetNamespace())
 		return nil
 	case watch.Error:
@@ -365,13 +369,17 @@ func (c *Controller) updateStatus(ctx context.Context, obj *unstructured.Unstruc
 
 // HealthzHandler returns an HTTP handler for health checks
 func (c *Controller) HealthzHandler() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, _ *http.Request) {
 		if c.healthy {
 			w.WriteHeader(http.StatusOK)
-			_, _ = w.Write([]byte("ok"))
+			if _, err := w.Write([]byte("ok")); err != nil {
+				klog.ErrorS(err, "Failed to write health response")
+			}
 		} else {
 			w.WriteHeader(http.StatusServiceUnavailable)
-			_, _ = w.Write([]byte("unhealthy"))
+			if _, err := w.Write([]byte("unhealthy")); err != nil {
+				klog.ErrorS(err, "Failed to write unhealthy response")
+			}
 		}
 	}
 }

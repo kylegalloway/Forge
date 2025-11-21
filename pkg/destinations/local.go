@@ -1,3 +1,4 @@
+// Package destinations provides implementations for different destination types (S3, OCI, local) used for publishing Zarf packages.
 package destinations
 
 import (
@@ -24,6 +25,6 @@ func (d *LocalDestination) GetPublishCommand(pkg *zarfv1alpha1.ZarfPackage, arti
 }
 
 // GetJobConfiguration returns nil for local destinations
-func (d *LocalDestination) GetJobConfiguration(pkg *zarfv1alpha1.ZarfPackage) (*JobConfig, error) {
+func (d *LocalDestination) GetJobConfiguration(_ *zarfv1alpha1.ZarfPackage) (*JobConfig, error) {
 	return &JobConfig{}, nil
 }

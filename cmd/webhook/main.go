@@ -1,3 +1,4 @@
+// Package main implements the admission webhook server for validating ZarfPackage resources.
 package main
 
 import (

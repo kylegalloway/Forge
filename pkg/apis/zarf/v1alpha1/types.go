@@ -20,12 +20,19 @@ const (
 type Action string
 
 const (
-	ActionBuild              Action = "Build"
-	ActionPublish            Action = "Publish"
-	ActionDeploy             Action = "Deploy"
-	ActionBuildPublish       Action = "BuildPublish"
-	ActionBuildDeploy        Action = "BuildDeploy"
-	ActionPublishDeploy      Action = "PublishDeploy"
+	// ActionBuild builds a Zarf package from source
+	ActionBuild Action = "Build"
+	// ActionPublish publishes a built package to a destination
+	ActionPublish Action = "Publish"
+	// ActionDeploy deploys a package to a target cluster
+	ActionDeploy Action = "Deploy"
+	// ActionBuildPublish builds and publishes in sequence
+	ActionBuildPublish Action = "BuildPublish"
+	// ActionBuildDeploy builds and deploys in sequence
+	ActionBuildDeploy Action = "BuildDeploy"
+	// ActionPublishDeploy publishes and deploys in sequence
+	ActionPublishDeploy Action = "PublishDeploy"
+	// ActionBuildPublishDeploy performs all three actions in sequence
 	ActionBuildPublishDeploy Action = "BuildPublishDeploy"
 )
 
@@ -34,9 +41,13 @@ const (
 type SourceType string
 
 const (
-	SourceTypeGit   SourceType = "Git"
-	SourceTypeS3    SourceType = "S3"
-	SourceTypeOCI   SourceType = "OCI"
+	// SourceTypeGit pulls package sources from a Git repository
+	SourceTypeGit SourceType = "Git"
+	// SourceTypeS3 pulls package sources from an S3 bucket
+	SourceTypeS3 SourceType = "S3"
+	// SourceTypeOCI pulls package sources from an OCI registry
+	SourceTypeOCI SourceType = "OCI"
+	// SourceTypeLocal uses package sources from a local directory
 	SourceTypeLocal SourceType = "Local"
 )
 
@@ -45,8 +56,11 @@ const (
 type DestinationType string
 
 const (
-	DestinationTypeS3    DestinationType = "S3"
-	DestinationTypeOCI   DestinationType = "OCI"
+	// DestinationTypeS3 publishes artifacts to an S3 bucket
+	DestinationTypeS3 DestinationType = "S3"
+	// DestinationTypeOCI publishes artifacts to an OCI registry
+	DestinationTypeOCI DestinationType = "OCI"
+	// DestinationTypeLocal stores artifacts locally on ephemeral storage
 	DestinationTypeLocal DestinationType = "Local"
 )
 
@@ -55,7 +69,9 @@ const (
 type DeployTargetType string
 
 const (
-	DeployTargetInCluster       DeployTargetType = "InCluster"
+	// DeployTargetInCluster deploys to the same cluster where Forge is running
+	DeployTargetInCluster DeployTargetType = "InCluster"
+	// DeployTargetExternalCluster deploys to a different cluster using provided kubeconfig
 	DeployTargetExternalCluster DeployTargetType = "ExternalCluster"
 )
 

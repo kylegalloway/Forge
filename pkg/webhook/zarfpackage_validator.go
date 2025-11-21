@@ -155,7 +155,7 @@ func (v *ZarfPackageValidator) validateGitSource(sa *corev1.ServiceAccount, git 
 		}
 	}
 
-	return fmt.Errorf("Git repository %s is not allowed by ServiceAccount %s (allowed patterns: %s)", git.URL, sa.Name, allowedRepos)
+	return fmt.Errorf("git repository %s is not allowed by ServiceAccount %s (allowed patterns: %s)", git.URL, sa.Name, allowedRepos)
 }
 
 // validateS3Source validates S3 source permissions

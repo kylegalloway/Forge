@@ -1,3 +1,4 @@
+// Package main implements the Forge controller that watches ZarfPackage resources and orchestrates package operations.
 package main
 
 import (

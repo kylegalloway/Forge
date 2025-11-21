@@ -1,3 +1,4 @@
+// Package v1alpha1 contains the v1alpha1 API definitions for UDS resources.
 package v1alpha1
 
 import (

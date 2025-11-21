@@ -1,3 +1,4 @@
+// Package leaderelection provides leader election capabilities for high availability controller deployments.
 package leaderelection
 
 import (

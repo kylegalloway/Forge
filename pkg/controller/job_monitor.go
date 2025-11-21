@@ -17,6 +17,12 @@ import (
 	zarfv1alpha1 "github.com/kylegalloway/forge/pkg/apis/zarf/v1alpha1"
 )
 
+const (
+	actionBuild   = "build"
+	actionPublish = "publish"
+	actionDeploy  = "deploy"
+)
+
 // startJobMonitoring starts a goroutine to monitor Job completion
 func (c *Controller) startJobMonitoring(ctx context.Context) {
 	ticker := time.NewTicker(10 * time.Second)
@@ -115,11 +121,11 @@ func (c *Controller) processJobStatus(ctx context.Context, job *batchv1.Job) err
 	artifactLocation := "/workspace/package.tar.zst" // Default artifact location
 
 	switch action {
-	case "build":
+	case actionBuild:
 		statusField = "buildStatus"
-	case "publish":
+	case actionPublish:
 		statusField = "publishStatus"
-	case "deploy":
+	case actionDeploy:
 		statusField = "deployStatus"
 	default:
 		klog.V(4).InfoS("Unknown action type", "action", action, "job", job.Name)
@@ -173,22 +179,23 @@ func (c *Controller) handleActionChaining(ctx context.Context, u *unstructured.U
 
 	switch action {
 	case "BuildPublish":
-		if completedAction == "build" {
-			nextAction = "publish"
+		if completedAction == actionBuild {
+			nextAction = actionPublish
 		}
 	case "BuildDeploy":
-		if completedAction == "build" {
-			nextAction = "deploy"
+		if completedAction == actionBuild {
+			nextAction = actionDeploy
 		}
 	case "PublishDeploy":
-		if completedAction == "publish" {
-			nextAction = "deploy"
+		if completedAction == actionPublish {
+			nextAction = actionDeploy
 		}
 	case "BuildPublishDeploy":
-		if completedAction == "build" {
-			nextAction = "publish"
-		} else if completedAction == "publish" {
-			nextAction = "deploy"
+		switch completedAction {
+		case actionBuild:
+			nextAction = actionPublish
+		case actionPublish:
+			nextAction = actionDeploy
 		}
 	default:
 		// Not a chained action, nothing to do

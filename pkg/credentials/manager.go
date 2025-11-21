@@ -1,3 +1,4 @@
+// Package credentials provides utilities for managing Kubernetes credentials (git, registry, S3) for ZarfPackage operations.
 package credentials
 
 import (

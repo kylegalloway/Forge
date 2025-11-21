@@ -1,3 +1,4 @@
+// Package sources provides implementations for different source types (git, OCI, Helm, local) used by ZarfPackage operations.
 package sources
 
 import (
@@ -54,6 +55,7 @@ func (s *GitSource) GetInitContainer(pkg *zarfv1alpha1.ZarfPackage) (*corev1.Con
 		})
 
 		// Setup command to configure credentials
+		// #nosec G101 - This is a shell script template, not a hardcoded credential
 		setupCmd := `
 if [ -f /etc/git-secret/ssh-key ]; then
   mkdir -p ~/.ssh

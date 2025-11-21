@@ -1,3 +1,4 @@
+// Package policy enforces access control policies for ZarfPackage operations based on ServiceAccount permissions.
 package policy
 
 import (
@@ -116,7 +117,7 @@ func (e *Engine) validateSource(source zarfv1alpha1.PackageSource, annotations m
 			return fmt.Errorf("source type is Git but Git config is nil")
 		}
 		if !matchAny(allowedRepos, source.Git.URL) {
-			return fmt.Errorf("Git repo %s is not allowed (allowed repos: %v) for ServiceAccount %s",
+			return fmt.Errorf("git repo %s is not allowed (allowed repos: %v) for ServiceAccount %s",
 				source.Git.URL, allowedRepos, saName)
 		}
 	case zarfv1alpha1.SourceTypeS3:

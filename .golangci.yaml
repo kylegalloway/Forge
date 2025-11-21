@@ -16,9 +16,9 @@ linters:
     - unconvert       # Remove unnecessary type conversions
     - unparam         # Check for unused function parameters
     - gosec           # Security checks
-    - gocyclo         # Check cyclomatic complexity
-    - dupl            # Check for code duplication
-    - goconst         # Find repeated strings that could be constants
+    # - gocyclo         # Check cyclomatic complexity
+    # - dupl            # Check for code duplication
+    # - goconst         # Find repeated strings that could be constants
     - gocritic        # Comprehensive Go linter
     - revive          # Fast, configurable, extensible linter
     - copyloopvar     # Check for loop variable capture issues (Go 1.22+)

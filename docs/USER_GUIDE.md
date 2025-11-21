@@ -26,6 +26,7 @@ kubectl apply -f webhook/deploy/
 ```
 
 **Features**:
+
 - Watches all namespaces
 - ZarfPackages can be created in any namespace
 - ServiceAccounts can be in any namespace
@@ -49,6 +50,7 @@ kubectl apply -f config/namespace-scoped/deployment.yaml
 ```
 
 **Features**:
+
 - Watches only forge-system namespace
 - All resources must be in forge-system
 - Minimal permissions (Role, not ClusterRole)
@@ -61,16 +63,19 @@ kubectl apply -f config/namespace-scoped/deployment.yaml
 ## Core Concepts
 
 ### ZarfPackage
+
 The primary resource for defining operations on a single Zarf package.
 
 ### UDSBundle
+
 The resource for defining operations on a UDS bundle (a collection of Zarf packages).
 
 ### Actions
-*   **Build**: Creates a Zarf package from source.
-*   **Publish**: Uploads a package to a registry (OCI or S3).
-*   **Deploy**: Installs a package into a cluster.
-*   **Composite Actions**: `BuildPublish`, `BuildDeploy`, `PublishDeploy`, `BuildPublishDeploy`.
+
+- **Build**: Creates a Zarf package from source.
+- **Publish**: Uploads a package to a registry (OCI or S3).
+- **Deploy**: Installs a package into a cluster.
+- **Composite Actions**: `BuildPublish`, `BuildDeploy`, `PublishDeploy`, `BuildPublishDeploy`.
 
 ## Examples
 
@@ -178,8 +183,8 @@ Forge uses `ServiceAccount` annotations to enforce policies.
 
 ### Setup
 
-1.  Create a `ServiceAccount`.
-2.  Annotate it with allowed actions and resources.
+1. Create a `ServiceAccount`.
+2. Annotate it with allowed actions and resources.
 
 ```yaml
 apiVersion: v1
@@ -214,15 +219,20 @@ If the `ZarfPackage` tries to use a disallowed source or action, the controller 
 
 Forge creates Kubernetes Jobs for each operation. If an operation fails:
 
-1.  Check the `ZarfPackage` status:
+1. Check the `ZarfPackage` status:
+
     ```bash
     kubectl get zarfpackage my-package -o yaml
     ```
-2.  Find the failed Job (named `<package-name>-<action>`):
+
+2. Find the failed Job (named `<package-name>-<action>`):
+
     ```bash
     kubectl get jobs -l forge.zarf.dev/package=my-package
     ```
-3.  Check the Job logs:
+
+3. Check the Job logs:
+
     ```bash
     # Find the pod
     kubectl get pods -l job-name=<job-name>
@@ -234,8 +244,10 @@ Forge creates Kubernetes Jobs for each operation. If an operation fails:
 
 If you cannot create `ZarfPackage` resources:
 
-1.  Check if the webhook pod is running:
+1. Check if the webhook pod is running:
+
     ```bash
     kubectl get pods -n forge-system
     ```
-2.  Check webhook logs for validation errors.
+
+2. Check webhook logs for validation errors.

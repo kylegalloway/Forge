@@ -22,6 +22,7 @@ Forge uses ServiceAccount annotations to define fine-grained permissions for Zar
 **Format:** Comma-separated list of action names
 
 **Valid Values:**
+
 - `Build` - Build Zarf packages from source
 - `Publish` - Publish built packages to registries/buckets
 - `Deploy` - Deploy packages to clusters
@@ -49,12 +50,13 @@ annotations:
 # Platform team - full permissions
 annotations:
   forge.zarf.dev/allowed-actions: "*"
-```
+```text
 
 **Error Example:**
-```
+
+```text
 action Deploy is not allowed (allowed actions: [Build,Publish]) for ServiceAccount dev-sa
-```
+```text
 
 ---
 
@@ -65,6 +67,7 @@ action Deploy is not allowed (allowed actions: [Build,Publish]) for ServiceAccou
 **Format:** Comma-separated glob patterns
 
 **Pattern Syntax:**
+
 - Exact match: `https://github.com/myorg/myrepo`
 - Wildcard: `https://github.com/myorg/*` (matches all repos under myorg)
 - All: `*` (matches everything - not recommended)
@@ -87,14 +90,15 @@ annotations:
 # Private GitLab
 annotations:
   forge.zarf.dev/allowed-source-repos: "https://gitlab.company.com/infra/*"
-```
+```text
 
 **Required For:** `source.type: Git`
 
 **Error Example:**
-```
+
+```text
 Git repo https://github.com/other/repo is not allowed (allowed repos: [https://github.com/myorg/*])
-```
+```text
 
 ---
 
@@ -105,6 +109,7 @@ Git repo https://github.com/other/repo is not allowed (allowed repos: [https://g
 **Format:** Comma-separated glob patterns
 
 **Pattern Syntax:**
+
 - Exact: `my-artifacts-bucket`
 - Prefix match: `my-artifacts-*`
 - All: `*`
@@ -123,14 +128,15 @@ annotations:
 # All buckets with prefix
 annotations:
   forge.zarf.dev/allowed-source-buckets: "zarf-*"
-```
+```text
 
 **Required For:** `source.type: S3`
 
 **Error Example:**
-```
+
+```text
 S3 bucket prod-bucket is not allowed (allowed buckets: [dev-*,staging-*])
-```
+```text
 
 ---
 
@@ -141,6 +147,7 @@ S3 bucket prod-bucket is not allowed (allowed buckets: [dev-*,staging-*])
 **Format:** Comma-separated glob patterns
 
 **Pattern Syntax:**
+
 - Exact: `ghcr.io/myorg/package`
 - Repository match: `ghcr.io/myorg/*`
 - Registry-wide: `ghcr.io/*`
@@ -163,14 +170,15 @@ annotations:
 # Docker Hub
 annotations:
   forge.zarf.dev/allowed-source-registries: "docker.io/myorg/*"
-```
+```text
 
 **Required For:** `source.type: OCI`
 
 **Error Example:**
-```
+
+```text
 OCI image ghcr.io/other/package is not allowed (allowed registries: [ghcr.io/myorg/*])
-```
+```text
 
 ---
 
@@ -194,14 +202,15 @@ annotations:
 # Customer-specific
 annotations:
   forge.zarf.dev/allowed-publish-buckets: "customer-*-packages"
-```
+```text
 
 **Required For:** `publish.destination.type: S3`
 
 **Error Example:**
-```
+
+```text
 S3 bucket wrong-bucket is not allowed for publishing (allowed buckets: [artifacts-*])
-```
+```text
 
 ---
 
@@ -225,14 +234,15 @@ annotations:
 # Environment-specific
 annotations:
   forge.zarf.dev/allowed-publish-registries: "registry.company.com/dev/*,registry.company.com/staging/*"
-```
+```text
 
 **Required For:** `publish.destination.type: OCI`
 
 **Error Example:**
-```
+
+```text
 OCI registry ghcr.io/other/* is not allowed for publishing (allowed registries: [ghcr.io/myorg/*])
-```
+```text
 
 ---
 
@@ -243,6 +253,7 @@ OCI registry ghcr.io/other/* is not allowed for publishing (allowed registries: 
 **Format:** Comma-separated list of deployment targets
 
 **Valid Values:**
+
 - `InCluster` - Deploy to the same cluster where Forge runs
 - `ExternalCluster` - Deploy to external clusters (requires kubeconfig)
 - `*` - Allow both (use with caution)
@@ -261,14 +272,15 @@ annotations:
 # Both
 annotations:
   forge.zarf.dev/allowed-deploy-targets: "InCluster,ExternalCluster"
-```
+```text
 
 **Required For:** `deploy.target: InCluster` or `ExternalCluster`
 
 **Error Example:**
-```
+
+```text
 deploy target ExternalCluster is not allowed (allowed targets: [InCluster])
-```
+```text
 
 ---
 
@@ -290,14 +302,15 @@ annotations:
 # Explicitly deny (default behavior)
 annotations:
   forge.zarf.dev/allow-local-sources: "false"
-```
+```text
 
 **Required For:** `source.type: Local` or `publish.destination.type: Local`
 
 **Error Example:**
-```
+
+```text
 local sources are not allowed (set annotation forge.zarf.dev/allow-local-sources: true for dev mode)
-```
+```text
 
 ---
 
@@ -322,7 +335,7 @@ metadata:
     forge.zarf.dev/allowed-publish-registries: "ghcr.io/myorg/dev/*"
 
     # No deployment permissions
-```
+```text
 
 ### CI/CD Pipeline ServiceAccount
 
@@ -344,7 +357,7 @@ metadata:
 
     # Publish to staging bucket
     forge.zarf.dev/allowed-publish-buckets: "staging-artifacts"
-```
+```text
 
 ### Production Deployer ServiceAccount
 
@@ -363,7 +376,7 @@ metadata:
 
     # Only to external clusters
     forge.zarf.dev/allowed-deploy-targets: "ExternalCluster"
-```
+```text
 
 ### Platform Team ServiceAccount
 
@@ -382,7 +395,7 @@ metadata:
     forge.zarf.dev/allowed-publish-buckets: "*"
     forge.zarf.dev/allowed-publish-registries: "*"
     forge.zarf.dev/allowed-deploy-targets: "*"
-```
+```text
 
 ### Testing/Development ServiceAccount
 
@@ -407,7 +420,7 @@ metadata:
 
     # In-cluster deployments
     forge.zarf.dev/allowed-deploy-targets: "InCluster"
-```
+```text
 
 ---
 
@@ -433,12 +446,14 @@ metadata:
 ### Principle of Least Privilege
 
 ✅ **DO:**
+
 - Grant minimal required permissions
 - Use specific patterns over wildcards
 - Separate ServiceAccounts by role/team
 - Regular audit of permissions
 
 ❌ **DON'T:**
+
 - Use `*` wildcard unless absolutely necessary
 - Share ServiceAccounts across teams
 - Grant local source access in production
@@ -447,6 +462,7 @@ metadata:
 ### Pattern Design
 
 **Good Patterns:**
+
 ```yaml
 # Specific organization
 forge.zarf.dev/allowed-source-repos: "https://github.com/myorg/*"
@@ -456,9 +472,10 @@ forge.zarf.dev/allowed-publish-buckets: "dev-artifacts-*,staging-artifacts-*"
 
 # Team-scoped
 forge.zarf.dev/allowed-source-registries: "ghcr.io/myorg/team-platform/*"
-```
+```text
 
 **Avoid:**
+
 ```yaml
 # Too permissive
 forge.zarf.dev/allowed-source-repos: "*"
@@ -466,23 +483,26 @@ forge.zarf.dev/allowed-source-repos: "https://*/*"
 
 # Overly specific (limits flexibility)
 forge.zarf.dev/allowed-source-repos: "https://github.com/myorg/one-specific-repo"
-```
+```text
 
 ### Multi-Environment Strategy
 
 **Development:**
+
 - Broad source access (team repos)
 - Dev-only publish destinations
 - Local sources allowed
 - In-cluster deployment only
 
 **Staging:**
+
 - Specific source patterns
 - Staging registries/buckets
 - No local sources
 - External cluster deployment
 
 **Production:**
+
 - Deploy-only (no build)
 - Production registries only
 - Strict validation

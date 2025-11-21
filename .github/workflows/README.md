@@ -9,6 +9,7 @@ This directory contains GitHub Actions workflows for CI/CD automation.
 Runs on every push and pull request to main/develop branches.
 
 **Jobs:**
+
 - **lint**: Runs golangci-lint, go fmt, go vet
 - **test**: Runs unit tests with race detection and coverage reporting
 - **build**: Builds controller and webhook binaries
@@ -16,6 +17,7 @@ Runs on every push and pull request to main/develop branches.
 - **security**: Runs Trivy and gosec security scans
 
 **Artifacts:**
+
 - Test coverage reports (uploaded to Codecov)
 - Build binaries
 - Security scan results (uploaded to GitHub Security tab)
@@ -25,6 +27,7 @@ Runs on every push and pull request to main/develop branches.
 Runs pre-commit hooks on pull requests.
 
 **Checks:**
+
 - Go formatting
 - YAML linting
 - Markdown linting
@@ -37,6 +40,7 @@ Runs pre-commit hooks on pull requests.
 Triggered on version tags (v*).
 
 **Actions:**
+
 - Builds multi-arch binaries (Linux/Darwin, AMD64/ARM64)
 - Builds and pushes Docker images to GHCR
 - Creates GitHub release with binaries attached
@@ -47,17 +51,20 @@ Triggered on version tags (v*).
 ### Running Locally
 
 Install pre-commit:
+
 ```bash
 brew install pre-commit
 pre-commit install
 ```
 
 Run all hooks:
+
 ```bash
 pre-commit run --all-files
 ```
 
 Run specific hook:
+
 ```bash
 pre-commit run go-fmt --all-files
 ```
@@ -65,6 +72,7 @@ pre-commit run go-fmt --all-files
 ### Triggering Release
 
 Create and push a version tag:
+
 ```bash
 git tag -a v1.0.0 -m "Release v1.0.0"
 git push origin v1.0.0
@@ -91,6 +99,7 @@ Add workflow badges to README:
 ### Modifying Workflows
 
 When updating workflows:
+
 1. Test changes in a feature branch first
 2. Use `act` for local testing (optional)
 3. Review workflow logs in Actions tab
@@ -114,6 +123,7 @@ new-job:
 ### Caching
 
 Workflows use GitHub Actions cache for:
+
 - Go modules cache
 - Docker layer cache
 - Pre-commit environments
@@ -125,19 +135,23 @@ This significantly speeds up builds.
 ### Workflow Failures
 
 **Go version mismatch:**
+
 - Update `go-version` in all workflows to match go.mod
 
 **Docker build fails:**
+
 - Check Dockerfile syntax
 - Verify base image availability
 - Review Docker build logs
 
 **Pre-commit hooks fail:**
+
 - Run `pre-commit run --all-files` locally
 - Fix reported issues
 - Commit and push again
 
 **Security scan failures:**
+
 - Review Trivy/gosec reports in Security tab
 - Update dependencies if needed
 - Add exceptions only if false positives
@@ -145,6 +159,7 @@ This significantly speeds up builds.
 ### Performance
 
 If workflows are slow:
+
 - Check cache hit rates
 - Review job parallelization
 - Consider self-hosted runners for large repos

@@ -5,6 +5,7 @@ This directory contains NetworkPolicy resources to secure Forge deployments.
 ## Overview
 
 Network policies implement **deny-by-default** network security:
+
 - By default, Kubernetes allows all pod-to-pod traffic
 - NetworkPolicies restrict traffic to only what's necessary
 - Reduces attack surface and limits lateral movement
@@ -14,6 +15,7 @@ Network policies implement **deny-by-default** network security:
 **CNI Plugin with NetworkPolicy Support Required:**
 
 Supported CNI plugins:
+
 - ✅ Calico
 - ✅ Cilium
 - ✅ Weave Net
@@ -23,6 +25,7 @@ Supported CNI plugins:
 - ❌ Basic kubenet (no support)
 
 Check your CNI:
+
 ```bash
 kubectl get pods -n kube-system | grep -E 'calico|cilium|weave|antrea'
 ```
@@ -36,17 +39,20 @@ If you don't have a supported CNI, NetworkPolicies will be **accepted but not en
 **File:** `controller-network-policy.yaml`
 
 **Policies:**
+
 1. `deny-all-ingress` - Deny all ingress to controller pods
 2. `controller-allow-api` - Allow controller egress to Kubernetes API and DNS
 3. `webhook-allow-api-ingress` - Allow webhook ingress from API server on port 8443
 4. `webhook-allow-api-egress` - Allow webhook egress to Kubernetes API and DNS
 
 **Apply:**
+
 ```bash
 kubectl apply -f config/network/controller-network-policy.yaml
 ```
 
 **Verify:**
+
 ```bash
 # Check policies exist
 kubectl get networkpolicy -n forge-system
@@ -65,27 +71,32 @@ kubectl logs -n forge-system deployment/forge-webhook
 **Template File:** `../namespace-templates/network-policy.yaml`
 
 **Policies:**
+
 1. `deny-all-ingress` - Deny all ingress to job pods
 2. `allow-dns` - Allow egress to DNS (kube-system/kube-dns)
 3. `allow-kubernetes-api` - Allow egress to Kubernetes API server
 
 **Additional Policies (commented out, enable as needed):**
+
 - `allow-metrics-service` - Access to Prometheus/metrics
 - `allow-external-https` - HTTPS to internet (use with caution)
 - `allow-database-access` - Access to specific database subnets
 
 **Auto-applied by onboarding script:**
+
 ```bash
 ./scripts/onboard-user.sh alice
 ```
 
 **Manual application:**
+
 ```bash
 # Replace {{ .Username }} with actual username
 sed 's/{{ .Username }}/alice/g' config/namespace-templates/network-policy.yaml | kubectl apply -f -
 ```
 
 **Verify:**
+
 ```bash
 # Check policies
 kubectl get networkpolicy -n user-alice
@@ -101,6 +112,7 @@ kubectl run test --rm -it --image=curlimages/curl -n user-alice -- curl -I https
 ## Default Behavior
 
 With the default policies, job pods can:
+
 - ✅ Query DNS (kube-system CoreDNS)
 - ✅ Access Kubernetes API (ports 443, 6443)
 - ❌ Access other pods in the same namespace
@@ -193,6 +205,7 @@ spec:
 ## Testing
 
 ### 1. Test DNS Resolution
+
 ```bash
 kubectl run test --rm -it --image=alpine -n user-alice -- nslookup kubernetes.default.svc.cluster.local
 ```
@@ -200,6 +213,7 @@ kubectl run test --rm -it --image=alpine -n user-alice -- nslookup kubernetes.de
 **Expected:** Success (DNS allowed)
 
 ### 2. Test Blocked Internet Access
+
 ```bash
 kubectl run test --rm -it --image=curlimages/curl -n user-alice -- curl -m 5 https://google.com
 ```
@@ -207,6 +221,7 @@ kubectl run test --rm -it --image=curlimages/curl -n user-alice -- curl -m 5 htt
 **Expected:** Timeout (external HTTPS blocked by default)
 
 ### 3. Test Kubernetes API Access
+
 ```bash
 kubectl run test --rm -it --image=bitnami/kubectl -n user-alice -- kubectl get pods
 ```
@@ -214,6 +229,7 @@ kubectl run test --rm -it --image=bitnami/kubectl -n user-alice -- kubectl get p
 **Expected:** Success or RBAC error (network allows it, RBAC may deny)
 
 ### 4. Test Blocked Pod-to-Pod Access
+
 ```bash
 # Terminal 1: Start a simple HTTP server
 kubectl run server --image=nginx -n user-alice
@@ -225,6 +241,7 @@ kubectl run test --rm -it --image=curlimages/curl -n user-alice -- curl http://s
 **Expected:** Timeout (ingress denied by deny-all-ingress policy)
 
 ### 5. Verify Controller Still Works
+
 ```bash
 # Create a Forge
 kubectl apply -f config/samples/forge_v1alpha1_forge.yaml
@@ -247,6 +264,7 @@ kubectl logs -n forge-system deployment/forge-controller
 **Cause:** CNI doesn't support NetworkPolicy
 
 **Fix:**
+
 ```bash
 # Check CNI
 kubectl get pods -n kube-system
@@ -261,11 +279,13 @@ kubectl apply -f https://docs.projectcalico.org/manifests/canal.yaml
 **Symptom:** Controller logs show API errors
 
 **Diagnosis:**
+
 ```bash
 kubectl logs -n forge-system deployment/forge-controller
 ```
 
 **Fix:** Verify controller egress allows Kubernetes API
+
 ```bash
 kubectl get networkpolicy controller-allow-api -n forge-system -o yaml
 ```
@@ -275,11 +295,13 @@ kubectl get networkpolicy controller-allow-api -n forge-system -o yaml
 **Symptom:** All Forge creations fail with webhook timeout
 
 **Diagnosis:**
+
 ```bash
 kubectl logs -n forge-system deployment/forge-webhook
 ```
 
 **Fix:** Verify webhook ingress allows API server
+
 ```bash
 kubectl get networkpolicy webhook-allow-api-ingress -n forge-system -o yaml
 ```
@@ -289,6 +311,7 @@ kubectl get networkpolicy webhook-allow-api-ingress -n forge-system -o yaml
 **Symptom:** Jobs fail with "Name or service not known"
 
 **Fix:** Verify DNS policy
+
 ```bash
 kubectl get networkpolicy allow-dns -n user-alice -o yaml
 

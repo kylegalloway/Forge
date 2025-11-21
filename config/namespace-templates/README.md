@@ -24,12 +24,15 @@ Templates for creating isolated, multi-tenant namespaces for Forge users.
 Each user namespace includes:
 
 ### 1. Namespace with Pod Security Standards
+
 - **Pod Security Standards**: Restricted profile enforced
 - **Labels**: Tenant identification and webhook enablement
 - **Isolation**: Users cannot access other namespaces
 
 ### 2. ResourceQuota
+
 Limits total resource consumption:
+
 - Forge resources (default: 50)
 - Concurrent Jobs (default: 20)
 - Pods (default: 20)
@@ -39,20 +42,25 @@ Limits total resource consumption:
 - PVCs (default: 5)
 
 ### 3. LimitRange
+
 Sets default and maximum limits for containers:
+
 - **Pod limits**: 50m-4 CPU, 64Mi-8Gi memory
 - **Container limits**: 50m-2 CPU, 64Mi-4Gi memory
 - **Default resources**: 250m CPU, 256Mi memory (if not specified)
 - **PVC limits**: 1Gi-5Gi storage
 
 ### 4. RBAC Role
+
 User permissions within their namespace:
+
 - **Forges**: create, get, list, watch, delete
 - **Jobs**: get, list, watch (read-only)
 - **Pods**: get, list, watch, logs (read-only)
 - **Status**: get, list, watch
 
 ### 5. RoleBinding
+
 Binds the user to their namespace role.
 
 ## Default Resource Limits
@@ -100,6 +108,7 @@ kubectl apply -f /tmp/alice-namespace.yaml
 ### Adjust Quotas for Specific Users
 
 High-usage users (e.g., CI/CD):
+
 ```bash
 ./scripts/onboard-user.sh ci-pipeline \
   --max-forges 500 \
@@ -109,6 +118,7 @@ High-usage users (e.g., CI/CD):
 ```
 
 Low-usage users (e.g., testing):
+
 ```bash
 ./scripts/onboard-user.sh test-user \
   --max-forges 10 \
@@ -122,6 +132,7 @@ Low-usage users (e.g., testing):
 Uncomment the NetworkPolicy section in `user-namespace.yaml` to restrict network access.
 
 Default policy allows:
+
 - DNS lookups (kube-system)
 - Kubernetes API access
 - Add custom egress rules as needed
@@ -168,11 +179,13 @@ kubectl delete namespace user-alice
 ### User Cannot Create Forges
 
 Check quota:
+
 ```bash
 kubectl describe resourcequota forge-quota -n user-alice
 ```
 
 Look for:
+
 - `count/forges.forge.io` exceeded
 - `count/jobs.batch` exceeded
 - CPU/memory limits exceeded
@@ -180,6 +193,7 @@ Look for:
 ### Pods Not Starting
 
 Check LimitRange:
+
 ```bash
 kubectl describe limitrange forge-limits -n user-alice
 ```
@@ -189,6 +203,7 @@ Ensure Forge resource requests fit within container limits.
 ### Permission Denied
 
 Check RoleBinding:
+
 ```bash
 kubectl get rolebinding forge-user-binding -n user-alice -o yaml
 ```
@@ -200,6 +215,7 @@ Verify user is listed in subjects.
 Namespaces with `forge.io/webhook: enabled` label will have Forge resources validated by the admission webhook.
 
 To disable webhook for a namespace:
+
 ```bash
 kubectl label namespace user-alice forge.io/webhook=disabled --overwrite
 ```

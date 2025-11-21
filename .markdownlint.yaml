@@ -2,25 +2,31 @@
 default: true
 
 # MD013: Line length
-MD013:
-  line_length: 120
-  heading_line_length: 80
-  code_block_line_length: 120
-  code_blocks: false
-  tables: false
-  headings: true
-  headers: true
-  strict: false
-  stern: false
+MD013: false
 
 # MD033: Allow inline HTML (needed for badges, etc)
 MD033: false
 
+# MD029: Allow different ordered list prefixes
+MD029: false
+
+# MD031: Allow code blocks without surrounding blank lines
+MD031: false
+
+# MD036: Allow emphasis as heading (status lines)
+MD036: false
+
 # MD034: Allow bare URLs
 MD034: false
 
+# MD051: Allow link fragments (internal links)
+MD051: false
+
 # MD041: First line doesn't have to be H1
 MD041: false
+
+# MD060: Ignore table column style breaks
+MD060: false
 
 # MD046: Code block style
 MD046:

@@ -16,9 +16,10 @@ Production readiness checklist for deploying Forge - the Kubernetes-native Zarf 
 
 ## Phase 1: Core Infrastructure (COMPLETED ✅)
 
-**Status: 100% Complete**
+*Status: 100% Complete*
 
 ### API & CRD
+
 - [x] ✅ ZarfPackage CRD with comprehensive validation
 - [x] ✅ UDSBundle CRD support
 - [x] ✅ Status subresources for both CRDs
@@ -26,6 +27,7 @@ Production readiness checklist for deploying Forge - the Kubernetes-native Zarf 
 - [x] ✅ Short names configured (zp, udsb)
 
 ### Controller Security
+
 - [x] ✅ Non-root user (65532:65532)
 - [x] ✅ Read-only root filesystem
 - [x] ✅ Dropped ALL capabilities
@@ -34,6 +36,7 @@ Production readiness checklist for deploying Forge - the Kubernetes-native Zarf 
 - [x] ✅ Namespace enforces Pod Security Standards (restricted)
 
 ### RBAC (Least Privilege)
+
 - [x] ✅ ServiceAccount for controller
 - [x] ✅ ClusterRole with minimal permissions
 - [x] ✅ ZarfPackage and UDSBundle read/status permissions
@@ -43,6 +46,7 @@ Production readiness checklist for deploying Forge - the Kubernetes-native Zarf 
 - [x] ✅ Event create permissions (for observability)
 
 ### Health & Readiness
+
 - [x] ✅ /healthz endpoint implemented
 - [x] ✅ /readyz endpoint implemented
 - [x] ✅ Liveness probe configured
@@ -50,6 +54,7 @@ Production readiness checklist for deploying Forge - the Kubernetes-native Zarf 
 - [x] ✅ Graceful shutdown handling
 
 ### Build & Dependencies
+
 - [x] ✅ Go 1.25 compatibility
 - [x] ✅ Multi-stage Dockerfile
 - [x] ✅ Makefile with all targets
@@ -60,9 +65,10 @@ Production readiness checklist for deploying Forge - the Kubernetes-native Zarf 
 
 ## Phase 2: Policy & Security (COMPLETED ✅)
 
-**Status: 100% Complete**
+*Status: 100% Complete*
 
 ### Policy Engine
+
 - [x] ✅ ServiceAccount-based authorization
 - [x] ✅ Glob pattern matching for repos/registries/buckets
 - [x] ✅ Action allowlist enforcement
@@ -71,6 +77,7 @@ Production readiness checklist for deploying Forge - the Kubernetes-native Zarf 
 - [x] ✅ Deploy target validation
 
 ### Admission Webhook
+
 - [x] ✅ Validating webhook deployed
 - [x] ✅ TLS certificate management (cert-manager ready)
 - [x] ✅ ZarfPackage validation
@@ -79,6 +86,7 @@ Production readiness checklist for deploying Forge - the Kubernetes-native Zarf 
 - [x] ✅ Health endpoints (/healthz, /readyz)
 
 ### Job Security
+
 - [x] ✅ Jobs run as non-root (1000:1000)
 - [x] ✅ Security context enforced
 - [x] ✅ TTL configured (1 hour)
@@ -91,9 +99,10 @@ Production readiness checklist for deploying Forge - the Kubernetes-native Zarf 
 
 ## Phase 3: Observability (COMPLETED ✅)
 
-**Status: 100% Complete**
+*Status: 100% Complete*
 
 ### Metrics (OpenTelemetry)
+
 - [x] ✅ Package creation metrics
 - [x] ✅ Job lifecycle metrics (created, completed, failed)
 - [x] ✅ Action-specific metrics (build, publish, deploy)
@@ -102,22 +111,26 @@ Production readiness checklist for deploying Forge - the Kubernetes-native Zarf 
 - [x] ✅ Active resource gauges
 
 ### Prometheus Integration
+
 - [x] ✅ Prometheus exporter configured
 - [x] ✅ /metrics endpoint exposed
 - [x] ✅ ServiceMonitor template provided
 - [x] ✅ Prometheus-compatible metric names
 
 ### Tracing
+
 - [x] ✅ OpenTelemetry tracer initialized
 - [x] ✅ Span creation for operations
 - [x] ✅ Context propagation
 
 ### Logging
+
 - [x] ✅ Structured logging (klog.InfoS/ErrorS)
 - [x] ✅ Log levels configurable via flags
 - [x] ✅ Request tracing in logs
 
 ### Alerting
+
 - [x] ✅ Alert rules defined
 - [x] ✅ Controller down alerts
 - [x] ✅ High failure rate alerts
@@ -130,6 +143,7 @@ Production readiness checklist for deploying Forge - the Kubernetes-native Zarf 
 **Status: 18/18 items complete (100%)
 
 ### High Availability
+
 - [x] ✅ Single replica works correctly
 - [x] ✅ Multiple replicas configured (3+)
 - [x] ✅ Leader election implemented
@@ -138,6 +152,7 @@ Production readiness checklist for deploying Forge - the Kubernetes-native Zarf 
 - [x] ✅ Topology spread constraints
 
 ### Network Security
+
 - [x] ✅ Controller network policy template
 - [x] ✅ Namespace network policy templates
 - [x] ✅ Job pod egress restrictions enforced
@@ -145,18 +160,21 @@ Production readiness checklist for deploying Forge - the Kubernetes-native Zarf 
 - [x] ✅ Per-action network policies
 
 ### Image Security
+
 - [x] ✅ Container image scanning in CI
 - [x] ✅ Image signing (cosign/notary)
 - [x] ✅ Image pull policy enforced (Always)
 - [x] ✅ Private registry credentials configured
 
 ### Credential Management
+
 - [x] ✅ Git credentials rotation process
 - [x] ✅ S3 credentials rotation process
 - [x] ✅ OCI credentials rotation process
 - [x] ✅ External secrets operator integration
 
 ### Deployment Options
+
 - [x] ✅ Cluster-wide deployment mode (default)
 - [x] ✅ Namespace-scoped deployment mode (restricted environments)
 - [x] ✅ Multi-tenant deployment patterns documented
@@ -168,6 +186,7 @@ Production readiness checklist for deploying Forge - the Kubernetes-native Zarf 
 **Status: 18/18 items complete (100%)
 
 ### Unit Tests
+
 - [x] ✅ Controller reconciliation tests
 - [x] ✅ Policy engine tests
 - [x] ✅ Webhook validation tests
@@ -177,6 +196,7 @@ Production readiness checklist for deploying Forge - the Kubernetes-native Zarf 
 - [x] ✅ Test coverage >70%
 
 ### Integration Tests
+
 - [x] ✅ E2E test suite
 - [x] ✅ Multi-namespace tests
 - [x] ✅ RBAC policy tests
@@ -185,6 +205,7 @@ Production readiness checklist for deploying Forge - the Kubernetes-native Zarf 
 - [x] ✅ Failure scenario tests
 
 ### Load & Performance
+
 - [x] ✅ Baseline performance established
 - [x] ✅ Concurrent package operations tested
 - [x] ✅ Large package handling tested
@@ -198,6 +219,7 @@ Production readiness checklist for deploying Forge - the Kubernetes-native Zarf 
 **Status: 12/12 items complete (100%)
 
 ### User Documentation
+
 - [x] ✅ README.md with quickstart
 - [x] ✅ USER_GUIDE.md with examples
 - [x] ✅ Troubleshooting guide
@@ -205,6 +227,7 @@ Production readiness checklist for deploying Forge - the Kubernetes-native Zarf 
 - [x] ✅ ServiceAccount annotation reference
 
 ### Operational Documentation
+
 - [x] ✅ Runbook for common issues
 - [x] ✅ Incident response procedures
 - [x] ✅ Upgrade procedures
@@ -212,6 +235,7 @@ Production readiness checklist for deploying Forge - the Kubernetes-native Zarf 
 - [x] ✅ Backup and restore procedures
 
 ### Developer Documentation
+
 - [x] ✅ CONTRIBUTING.md
 - [x] ✅ Architecture diagrams
 - [x] ✅ API documentation
@@ -220,9 +244,10 @@ Production readiness checklist for deploying Forge - the Kubernetes-native Zarf 
 
 ## Phase 7: CI/CD Pipeline (PENDING ⏸️)
 
-**Status: 0/10 items complete (0%)**
+*Status: 0/10 items complete (0%)*
 
 ### Build Automation
+
 - [ ] ⏸️ CI pipeline configured (GitHub Actions recommended)
 - [ ] ⏸️ Automated builds on PR
 - [ ] ⏸️ Image vulnerability scanning
@@ -230,6 +255,7 @@ Production readiness checklist for deploying Forge - the Kubernetes-native Zarf 
 - [ ] ⏸️ Multi-arch builds (amd64, arm64)
 
 ### Deployment Automation
+
 - [ ] ⏸️ GitOps configured (ArgoCD/Flux)
 - [ ] ⏸️ Staging environment automated
 - [ ] ⏸️ Production approval workflow
@@ -240,15 +266,17 @@ Production readiness checklist for deploying Forge - the Kubernetes-native Zarf 
 
 ## Phase 8: Compliance & Audit (PENDING ⏸️)
 
-**Status: 0/10 items complete (0%)**
+*Status: 0/10 items complete (0%)*
 
 ### Security Audit
+
 - [ ] ⏸️ Internal security review completed
 - [ ] ⏸️ External security audit (if required)
 - [ ] ⏸️ Penetration testing completed
 - [ ] ⏸️ Vulnerability remediation complete
 
 ### Compliance
+
 - [ ] ⏸️ Compliance requirements identified
 - [ ] ⏸️ Audit logging enabled
 - [ ] ⏸️ Access logs configured
@@ -263,6 +291,7 @@ Production readiness checklist for deploying Forge - the Kubernetes-native Zarf 
 **Status: 0/12 items complete (0%)**
 
 ### Pre-Launch Verification
+
 - [ ] ⏸️ All Phase 4 items complete (HA)
 - [ ] ⏸️ All Phase 5 items complete (Testing)
 - [ ] ⏸️ All Phase 8 items complete (Security)
@@ -272,6 +301,7 @@ Production readiness checklist for deploying Forge - the Kubernetes-native Zarf 
 - [ ] ⏸️ Rollback plan tested
 
 ### Capacity Planning
+
 - [ ] ⏸️ Expected load estimated
 - [ ] ⏸️ Resource requirements calculated
 - [ ] ⏸️ Scaling strategy defined
@@ -301,6 +331,7 @@ Production readiness checklist for deploying Forge - the Kubernetes-native Zarf 
 ### Critical Path to Production
 
 Minimum viable path (fastest route):
+
 1. ✅ **COMPLETE**: Phases 1-3 (Core + Security + Observability)
 2. **REQUIRED**: Phase 4 - High Availability (leader election, replicas)
 3. **REQUIRED**: Phase 5 - Testing (E2E tests, integration tests)
@@ -314,33 +345,39 @@ Minimum viable path (fastest route):
 ## Recommended Execution Order
 
 ### Weeks 1-2: Complete Phase 4 (Production Hardening)
+
 - Implement leader election
 - Configure HA deployment (3 replicas)
 - Set up network policies
 - Configure image scanning
 
 ### Weeks 3-4: Phase 5 (Testing)
+
 - Write unit tests (target 70% coverage)
 - Build E2E test suite
 - Perform load testing
 - Test failure scenarios
 
 ### Week 5: Phase 6 (Documentation)
+
 - Complete operational runbooks
 - Write troubleshooting guides
 - Document upgrade/rollback procedures
 
 ### Week 6-7: Phase 7 (CI/CD)
+
 - Set up GitHub Actions
 - Configure automated testing
 - Implement GitOps deployment
 
 ### Week 8-9: Phase 8 (Security Audit)
+
 - Internal security review
 - Remediate findings
 - Document compliance posture
 
 ### Week 10: Phase 9 (Launch Prep)
+
 - Verify all systems
 - Capacity planning
 - Final staging tests
@@ -360,12 +397,14 @@ Minimum viable path (fastest route):
 ## Deployment Modes
 
 ### Cluster-Wide (Default)
+
 - **RBAC**: ClusterRole with cluster-wide permissions
 - **Scope**: Watches all namespaces
 - **Use Case**: Platform teams managing multi-tenant deployments
 - **Configuration**: Standard RBAC + deployment manifests
 
 ### Namespace-Scoped (Restricted)
+
 - **RBAC**: Role with namespace-only permissions
 - **Scope**: Watches single namespace (e.g., forge-system)
 - **Use Case**: Restricted clusters, individual teams, multi-tenant isolation

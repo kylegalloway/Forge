@@ -7,6 +7,7 @@ Thank you for your interest in contributing to Forge! This guide will help you s
 ### Prerequisites
 
 1. **Go** (1.21 or later)
+
    ```bash
    # macOS
    brew install go
@@ -17,6 +18,7 @@ Thank you for your interest in contributing to Forge! This guide will help you s
    ```
 
 2. **Podman or Docker**
+
    ```bash
    # macOS - Podman
    brew install podman
@@ -29,12 +31,14 @@ Thank you for your interest in contributing to Forge! This guide will help you s
    ```
 
 3. **kubectl**
+
    ```bash
    brew install kubectl  # macOS
    # Or download from https://kubernetes.io/docs/tasks/tools/
    ```
 
 4. **kind** (Kubernetes in Docker)
+
    ```bash
    brew install kind  # macOS
    # Or: curl -Lo ./kind https://kind.sigs.k8s.io/dl/latest/kind-linux-amd64
@@ -164,7 +168,7 @@ make install-crd
 
 The controller structure (once implemented) will follow this pattern:
 
-```
+```text
 pkg/
 ├── controller/          # Main controller reconciliation loop
 ├── actions/            # Build, Publish, Deploy handlers
@@ -189,7 +193,7 @@ func (h *BuildHandler) Execute(ctx context.Context, pkg *v1alpha1.ZarfPackage) e
 }
 ```
 
-## Testing Your Changes
+## Testing Controller Changes
 
 ### Unit Tests
 
@@ -272,6 +276,7 @@ if err != nil {
 ### Before Submitting
 
 1. Run tests and linters
+
    ```bash
    make test
    make fmt
@@ -279,6 +284,7 @@ if err != nil {
    ```
 
 2. Test in kind cluster
+
    ```bash
    make kind-redeploy
    # Manual testing
@@ -292,9 +298,11 @@ if err != nil {
 
 1. Fork the repository
 2. Create a feature branch
+
    ```bash
    git checkout -b feature/my-feature
    ```
+
 3. Make your changes with clear commits
 4. Push to your fork
 5. Open a Pull Request with:

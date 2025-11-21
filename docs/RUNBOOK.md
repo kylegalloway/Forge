@@ -7,12 +7,14 @@ Operational procedures for running and maintaining Forge in production.
 Forge supports two deployment modes. Commands in this runbook are provided for both modes where they differ:
 
 **Cluster-Wide (Default)**:
+
 - Controller watches all namespaces
 - Uses ClusterRole permissions
 - Resources can be in any namespace
 - Suitable for platform teams
 
 **Namespace-Scoped (Restricted)**:
+
 - Controller watches only `forge-system` namespace
 - Uses Role permissions (namespace-only)
 - All resources must be in `forge-system`
@@ -38,6 +40,7 @@ Forge supports two deployment modes. Commands in this runbook are provided for b
 Run these checks daily or as part of automated monitoring:
 
 **Cluster-Wide Deployment:**
+
 ```bash
 # Controller health
 kubectl get pods -n forge-system -l app=forge-controller
@@ -58,6 +61,7 @@ kubectl get lease -n forge-system forge-controller-lock -o yaml
 ```
 
 **Namespace-Scoped Deployment:**
+
 ```bash
 # Controller health (same namespace where deployed)
 kubectl get pods -n forge-system -l app=forge-controller
@@ -85,6 +89,7 @@ kubectl logs -n forge-system -l app=forge-controller --since=1h | grep -i error
 - `forge_builds_failed_total` - Failed builds
 
 **Alert if:**
+
 - Job failure rate > 10% over 15 minutes
 - Reconcile errors > 5 per minute
 - Controller pod restarts
@@ -97,6 +102,7 @@ kubectl logs -n forge-system -l app=forge-controller --since=1h | grep -i error
 **Cluster-Wide Deployment:**
 
 1. Create ServiceAccount with appropriate permissions in team namespace:
+
 ```yaml
 apiVersion: v1
 kind: ServiceAccount
@@ -109,7 +115,8 @@ metadata:
     forge.zarf.dev/allowed-publish-registries: "ghcr.io/myorg/*"
 ```
 
-2. Create namespace ResourceQuota (if needed):
+1. Create namespace ResourceQuota (if needed):
+
 ```yaml
 apiVersion: v1
 kind: ResourceQuota
@@ -122,11 +129,12 @@ spec:
     count/jobs.batch: "20"
 ```
 
-3. Document the ServiceAccount capabilities and share with team
+1. Document the ServiceAccount capabilities and share with team
 
 **Namespace-Scoped Deployment:**
 
 1. Create ServiceAccount in forge-system namespace:
+
 ```yaml
 apiVersion: v1
 kind: ServiceAccount
@@ -139,7 +147,8 @@ metadata:
     forge.zarf.dev/allowed-publish-registries: "ghcr.io/myorg/*"
 ```
 
-2. Apply ResourceQuota to forge-system namespace:
+1. Apply ResourceQuota to forge-system namespace:
+
 ```yaml
 apiVersion: v1
 kind: ResourceQuota
@@ -152,11 +161,12 @@ spec:
     count/jobs.batch: "50"
 ```
 
-3. Instruct team that all ZarfPackages must be created in `forge-system` namespace
+1. Instruct team that all ZarfPackages must be created in `forge-system` namespace
 
 #### Review Package Activity
 
 **Cluster-Wide Deployment:**
+
 ```bash
 # List all packages across all namespaces
 kubectl get zarfpackages -A
@@ -169,6 +179,7 @@ kubectl get zarfpackages -A --sort-by=.metadata.creationTimestamp | tail -10
 ```
 
 **Namespace-Scoped Deployment:**
+
 ```bash
 # List all packages (only in forge-system)
 kubectl get zarfpackages -n forge-system
@@ -197,26 +208,31 @@ kubectl get zarfpackages -A -o json | jq -r '.items[] | select(.status.phase=="C
 ### Prometheus Queries
 
 **Package Creation Rate:**
+
 ```promql
 rate(forge_zarf_packages_created_total[5m])
 ```
 
 **Job Failure Rate:**
+
 ```promql
 rate(forge_jobs_failed_total[5m]) / rate(forge_jobs_created_total[5m])
 ```
 
 **Active Packages:**
+
 ```promql
 forge_zarf_packages_active
 ```
 
 **Build Duration (p95):**
+
 ```promql
 histogram_quantile(0.95, rate(forge_action_duration_bucket{action="build"}[5m]))
 ```
 
 **Reconcile Errors:**
+
 ```promql
 rate(forge_reconcile_errors_total[5m])
 ```
@@ -250,35 +266,45 @@ Key panels to include:
 **Critical Alerts:**
 
 1. **Controller Down**
+
    ```promql
    up{job="forge-controller"} == 0
    ```
+
    **Action:** Check controller pods, review logs, restart if needed
 
 2. **High Job Failure Rate**
+
    ```promql
    rate(forge_jobs_failed_total[15m]) / rate(forge_jobs_created_total[15m]) > 0.1
    ```
+
    **Action:** Review failed job logs, check for common errors
 
 3. **Webhook Down**
+
    ```promql
    up{job="forge-webhook"} == 0
    ```
+
    **Action:** Check webhook pods, verify certificates
 
 **Warning Alerts:**
 
 1. **Elevated Reconcile Errors**
+
    ```promql
    rate(forge_reconcile_errors_total[5m]) > 5
    ```
+
    **Action:** Review controller logs
 
 2. **High Policy Violation Rate**
+
    ```promql
    rate(forge_webhook_validations_total{status="denied"}[15m]) > 10
    ```
+
    **Action:** May indicate misconfigured ServiceAccounts or user education needed
 
 ---
@@ -288,11 +314,13 @@ Key panels to include:
 ### Controller Crash Loop
 
 **Symptoms:**
+
 - Controller pod continuously restarting
 - Metrics unavailable
 - ZarfPackages not being reconciled
 
 **Investigation:**
+
 ```bash
 # Check pod status
 kubectl describe pod -n forge-system -l app=forge-controller
@@ -321,10 +349,12 @@ kubectl get events -n forge-system --sort-by='.lastTimestamp'
 ### Mass Job Failures
 
 **Symptoms:**
+
 - Multiple jobs failing simultaneously
 - Specific error pattern across jobs
 
 **Investigation:**
+
 ```bash
 # Find failed jobs
 kubectl get jobs -A -o json | jq -r '.items[] | select(.status.failed > 0) | "\(.metadata.namespace)/\(.metadata.name)"'
@@ -350,10 +380,12 @@ kubectl get jobs -A -o json | jq -r '.items[] | select(.status.failed > 0) | .st
 ### Webhook Validation Failures
 
 **Symptoms:**
+
 - All ZarfPackage creations failing
 - Webhook timeout errors
 
 **Quick Fix:**
+
 ```bash
 # Temporarily disable webhook (EMERGENCY ONLY)
 kubectl delete validatingwebhookconfiguration forge-webhook
@@ -445,6 +477,7 @@ Controller and webhook logs are managed by Kubernetes. For external log aggregat
 ### Credential Rotation
 
 **Git Credentials:**
+
 ```bash
 # Update Secret
 kubectl create secret generic github-token \
@@ -455,6 +488,7 @@ kubectl create secret generic github-token \
 ```
 
 **S3 Credentials:**
+
 ```bash
 # Update Secret
 kubectl create secret generic s3-creds \
@@ -464,6 +498,7 @@ kubectl create secret generic s3-creds \
 ```
 
 **OCI Registry Credentials:**
+
 ```bash
 # Update dockerconfigjson secret
 kubectl create secret docker-registry oci-creds \
@@ -482,17 +517,20 @@ kubectl create secret docker-registry oci-creds \
 **What to Backup:**
 
 1. **CRDs** (critical)
+
    ```bash
    kubectl get crd zarfpackages.zarf.dev -o yaml > zarfpackages-crd.yaml
    kubectl get crd udsbundles.uds.io -o yaml > udsbundles-crd.yaml
    ```
 
 2. **ServiceAccounts with policies** (critical)
+
    ```bash
    kubectl get sa -A -o yaml | grep -A 50 "forge.zarf.dev/" > serviceaccounts-backup.yaml
    ```
 
 3. **Active ZarfPackages** (important)
+
    ```bash
    kubectl get zarfpackages -A -o yaml > zarfpackages-backup.yaml
    ```
@@ -504,6 +542,7 @@ kubectl create secret docker-registry oci-creds \
    - Network policies
 
 **Backup Frequency:**
+
 - CRDs: On each upgrade
 - ServiceAccounts: Daily
 - ZarfPackages: Continuous (if needed)
@@ -537,10 +576,12 @@ kubectl get zarfpackages -A
 **Controller Data Loss:**
 
 Forge is stateless - all state is in Kubernetes. Recovery:
+
 1. Redeploy controller
 2. Controller will reconcile existing ZarfPackages
 
 **RTO/RPO:**
+
 - RTO (Recovery Time Objective): < 15 minutes
 - RPO (Recovery Point Objective): 0 (no data loss, all state in etcd)
 
@@ -551,6 +592,7 @@ Forge is stateless - all state is in Kubernetes. Recovery:
 ### Horizontal Scaling
 
 **When to scale:**
+
 - More than 100 active ZarfPackages
 - Reconciliation lag > 5 seconds
 - CPU usage consistently > 70%
@@ -582,6 +624,7 @@ resources:
 ```
 
 **Apply:**
+
 ```bash
 kubectl patch deployment forge-controller -n forge-system --patch '
 spec:
@@ -602,15 +645,18 @@ spec:
 ### Performance Tuning
 
 **Reconciliation Rate:**
+
 - Default: Every 10 minutes for each ZarfPackage
 - Immediate on spec changes
 - Adjust via controller flags if needed
 
 **Job Cleanup:**
+
 - TTL: 1 hour (3600s)
 - Adjust in code if shorter/longer retention needed
 
 **Resource Quotas:**
+
 - Limit ZarfPackages per namespace
 - Limit concurrent Jobs per namespace
 - Example in `config/namespace-templates/`
@@ -622,16 +668,19 @@ spec:
 ### Pager Alerts
 
 **P0 - Critical (Immediate Response):**
+
 - Controller down
 - Webhook down
 - Job failure rate > 50%
 
 **P1 - High (15 minute response):**
+
 - Job failure rate > 20%
 - High reconcile errors
 - Certificate expiration < 7 days
 
 **P2 - Medium (1 hour response):**
+
 - Elevated error rates
 - Performance degradation
 - Resource constraints
@@ -639,12 +688,14 @@ spec:
 ### First Steps for Any Alert
 
 1. Check current system status:
+
    ```bash
    kubectl get pods -n forge-system
    kubectl get zarfpackages -A | grep -v Completed
    ```
 
 2. Review recent logs:
+
    ```bash
    kubectl logs -n forge-system -l app=forge-controller --tail=100
    ```
@@ -660,6 +711,7 @@ spec:
 **Level 3:** Platform team lead
 
 **When to escalate:**
+
 - Issue not resolved in 30 minutes
 - Requires code changes
 - Impacts multiple teams/critical workloads

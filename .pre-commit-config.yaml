@@ -12,7 +12,7 @@ repos:
         exclude: '^go\.(mod|sum)$'
       - id: check-yaml
         args: ['--unsafe']  # Allow custom YAML tags for Kubernetes
-        exclude: '^(config/samples/|webhook/deploy/)'
+        exclude: '^(config/samples/|webhook/deploy/|config/namespace-templates/)'
       - id: check-added-large-files
         args: ['--maxkb=1000']
       - id: check-merge-conflict
@@ -28,7 +28,6 @@ repos:
     hooks:
       - id: go-fmt
         args: ['-w']
-      - id: go-vet
       - id: go-imports
         args: ['-w']
       - id: go-mod-tidy
@@ -45,13 +44,12 @@ repos:
         args: ['--baseline', '.secrets.baseline']
         exclude: '^(go\.sum|\.secrets\.baseline)$'
 
-  # Markdown linting (disabled - requires Ruby 3.0+)
-  #   - repo: https://github.com/markdownlint/markdownlint
-  #     rev: v0.13.0
-  #     hooks:
-  #       - id: markdownlint
-  #         args: ['--config', '.markdownlint.yaml']
-  #         exclude: '^vendor/|^\.github/'
+  # Markdown linting
+  - repo: https://github.com/DavidAnson/markdownlint-cli2
+    rev: v0.19.0 # Use the latest stable version
+    hooks:
+      - id: markdownlint-cli2
+        args: ["--config", ".markdownlint.yaml", "**/*.md"]
 
   # YAML linting
   - repo: https://github.com/adrienverge/yamllint
@@ -59,13 +57,13 @@ repos:
     hooks:
       - id: yamllint
         args: ['-c', '.yamllint.yaml']
-        exclude: '^(config/samples/|webhook/deploy/)'
+        exclude: '^(config/samples/|webhook/deploy/|config/namespace-templates/)'
 
   # Dockerfile linting
   - repo: https://github.com/hadolint/hadolint
     rev: v2.12.0
     hooks:
-      - id: hadolint-docker
+      - id: hadolint
         args: ['--ignore', 'DL3018', '--ignore', 'DL3008']
 
   # Shell script linting

@@ -7,6 +7,7 @@ Deploy Forge with namespace-scoped permissions instead of cluster-wide access.
 **Default deployment:** Forge uses ClusterRole/ClusterRoleBinding to watch all namespaces.
 
 **Namespace-scoped deployment:** Forge uses Role/RoleBinding to watch only its own namespace. This is ideal for:
+
 - Restricted clusters where ClusterRole permissions are not allowed
 - Multi-tenant environments where each team gets their own Forge instance
 - Security-conscious deployments requiring minimal permissions
@@ -26,7 +27,7 @@ Deploy Forge with namespace-scoped permissions instead of cluster-wide access.
 
 ## Architecture
 
-```
+```text
 ┌─────────────────────────────────────────┐
 │         forge-system namespace          │
 ├─────────────────────────────────────────┤
@@ -56,12 +57,14 @@ Deploy Forge with namespace-scoped permissions instead of cluster-wide access.
 ## Prerequisites
 
 1. **CRDs must be installed cluster-wide** (requires cluster admin):
+
    ```bash
    kubectl apply -f config/crd/zarf.dev_zarfpackages.yaml
    kubectl apply -f config/crd/uds.io_udsbundles.yaml
    ```
 
 2. **Namespace creation permission** (or pre-created namespace):
+
    ```bash
    kubectl create namespace forge-system
    ```
@@ -79,6 +82,7 @@ kubectl apply -f config/namespace-scoped/deployment.yaml
 ### Option 2: Manual Install
 
 **1. Create Namespace:**
+
 ```bash
 kubectl create namespace forge-system
 kubectl label namespace forge-system \
@@ -88,16 +92,19 @@ kubectl label namespace forge-system \
 ```
 
 **2. Install RBAC:**
+
 ```bash
 kubectl apply -f config/namespace-scoped/rbac.yaml
 ```
 
 **3. Deploy Controller:**
+
 ```bash
 kubectl apply -f config/namespace-scoped/deployment.yaml
 ```
 
 **4. Verify Installation:**
+
 ```bash
 # Check controller is running
 kubectl get pods -n forge-system
@@ -110,7 +117,8 @@ kubectl logs -n forge-system -l app=forge-controller
 ```
 
 You should see:
-```
+
+```text
 Watching namespace: forge-system
 Leader election disabled - running as single instance
 Starting Forge controller
@@ -173,6 +181,7 @@ stringData:
 Enable HA in namespace-scoped mode:
 
 **1. Update Deployment:**
+
 ```yaml
 spec:
   replicas: 3  # Increase from 1
@@ -187,6 +196,7 @@ spec:
 ```
 
 **2. Add PodDisruptionBudget:**
+
 ```yaml
 apiVersion: policy/v1
 kind: PodDisruptionBudget
@@ -201,6 +211,7 @@ spec:
 ```
 
 **3. Apply:**
+
 ```bash
 kubectl apply -f config/namespace-scoped/deployment.yaml
 ```
@@ -348,6 +359,7 @@ kubectl apply -f config/manager/deployment.yaml
 **Problem:** Created ZarfPackage but controller doesn't process it.
 
 **Solution:** Ensure ZarfPackage is in forge-system:
+
 ```bash
 kubectl get zarfpackages -n forge-system
 ```
@@ -357,6 +369,7 @@ kubectl get zarfpackages -n forge-system
 **Problem:** Controller cannot create jobs.
 
 **Solution:** Verify Role permissions:
+
 ```bash
 kubectl get role forge-controller-role -n forge-system -o yaml
 ```
@@ -368,6 +381,7 @@ Ensure `jobs` verbs include `create, get, list, watch`.
 **Problem:** ZarfPackage references ServiceAccount in another namespace.
 
 **Solution:** Move ServiceAccount to forge-system:
+
 ```bash
 kubectl get sa my-sa -n other-namespace -o yaml | \
   sed 's/namespace: other-namespace/namespace: forge-system/' | \

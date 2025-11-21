@@ -7,12 +7,14 @@ This directory contains PrometheusRule CRDs defining alerts for Forge.
 ### Controller Health Alerts
 
 **ForgeControllerDown** (Critical)
+
 - **Condition**: Controller metrics endpoint is unreachable for 5 minutes
 - **Impact**: No Forge resources will be reconciled
 - **Action**: Check controller pod status, restart if necessary
 - **False positives**: Network issues, pod restarts
 
 **ForgeNoActivity** (Warning)
+
 - **Condition**: No new Forges created in 30 minutes, but active count > 0
 - **Impact**: Controller may be stuck in a watch loop
 - **Action**: Check controller logs, restart controller
@@ -21,18 +23,21 @@ This directory contains PrometheusRule CRDs defining alerts for Forge.
 ### Error Rate Alerts
 
 **ForgeHighErrorRate** (Warning)
+
 - **Condition**: > 10% of reconciliations failing for 10 minutes
 - **Impact**: Some Forges may not create Jobs
 - **Action**: Check controller logs for error patterns, review recent Forge changes
 - **False positives**: Brief spike in invalid resources
 
 **ForgeCriticalErrorRate** (Critical)
+
 - **Condition**: > 50% of reconciliations failing for 5 minutes
 - **Impact**: Controller is effectively broken
 - **Action**: Immediate investigation required, consider rollback
 - **False positives**: Deployment in progress, API server issues
 
 **ForgeJobCreationFailures** (Warning)
+
 - **Condition**: Job creation errors > 0.1/sec for 10 minutes
 - **Impact**: Forges exist but Jobs aren't being created
 - **Action**: Check RBAC permissions, API server health, resource quotas
@@ -41,6 +46,7 @@ This directory contains PrometheusRule CRDs defining alerts for Forge.
 ### Performance Alerts
 
 **ForgeSlowReconciliation** (Warning)
+
 - **Condition**: p95 reconciliation latency > 5 seconds for 15 minutes
 - **Impact**: Slow Job creation, degraded user experience
 - **Action**: Check controller resource usage, API server latency, consider scaling
@@ -49,12 +55,14 @@ This directory contains PrometheusRule CRDs defining alerts for Forge.
 ### Webhook Alerts
 
 **ForgeWebhookDown** (Warning)
+
 - **Condition**: Webhook metrics endpoint unreachable for 5 minutes
 - **Impact**: New Forges cannot be validated (may be rejected by fail-closed policy)
 - **Action**: Check webhook pod status, certificate validity
 - **False positives**: Webhook deployment rollout
 
 **ForgeWebhookHighRejectionRate** (Info)
+
 - **Condition**: Webhook rejecting > 1 request/second for 10 minutes
 - **Impact**: Users may be submitting invalid Forges
 - **Action**: Review webhook logs, educate users on validation rules
@@ -63,12 +71,14 @@ This directory contains PrometheusRule CRDs defining alerts for Forge.
 ### Capacity Alerts
 
 **ForgeHighResourceCount** (Info)
+
 - **Condition**: > 1000 active Forges for 10 minutes
 - **Impact**: Informational, may need capacity planning
 - **Action**: Review trends, consider controller scaling, audit old Forges
 - **False positives**: Expected in large clusters
 
 **ForgeVeryHighResourceCount** (Warning)
+
 - **Condition**: > 5000 active Forges for 10 minutes
 - **Impact**: Controller may struggle, watch loop overhead
 - **Action**: Scale controller, implement namespace sharding, review TTLs
@@ -150,6 +160,7 @@ amtool silence add \
 Common adjustments based on your environment:
 
 **For high-traffic clusters:**
+
 ```yaml
 # Increase error rate threshold
 ForgeHighErrorRate:
@@ -161,6 +172,7 @@ ForgeHighResourceCount:
 ```
 
 **For low-latency requirements:**
+
 ```yaml
 # Decrease reconciliation latency threshold
 ForgeSlowReconciliation:
@@ -170,6 +182,7 @@ ForgeSlowReconciliation:
 ### Adjusting For Duration
 
 **For stable environments:**
+
 ```yaml
 # Require longer sustained state before alerting
 ForgeHighErrorRate:
@@ -177,6 +190,7 @@ ForgeHighErrorRate:
 ```
 
 **For critical systems:**
+
 ```yaml
 # Alert faster
 ForgeCriticalErrorRate:
@@ -188,7 +202,8 @@ ForgeCriticalErrorRate:
 Each alert includes a `runbook_url` annotation pointing to troubleshooting documentation.
 
 Create runbooks at:
-```
+
+```text
 docs/runbooks/
 ├── controller-down.md
 ├── high-error-rate.md

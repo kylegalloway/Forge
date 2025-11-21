@@ -56,18 +56,21 @@ kubectl create configmap forge-dashboard \
 ## Panels Explained
 
 ### Active Forges
+
 - **Metric**: `forge_resources_active`
 - **Type**: Stat (single value)
 - **Shows**: Current number of Forge resources being managed
 - **Use**: Capacity planning, understanding load
 
 ### Job Creation Rate
+
 - **Metric**: `sum(rate(forge_jobs_created_total[5m])) * 60`
 - **Type**: Stat (single value)
 - **Shows**: Jobs created per minute (5-minute average)
 - **Use**: Traffic monitoring, scaling decisions
 
 ### Error Rate
+
 - **Metric**: `sum(rate(forge_reconcile_errors_total[5m])) / sum(rate(forge_resources_created_total[5m]))`
 - **Type**: Stat with thresholds
 - **Shows**: Percentage of reconciliations that failed
@@ -78,18 +81,21 @@ kubectl create configmap forge-dashboard \
 - **Use**: SLO monitoring, alerting trigger
 
 ### Job Creation Rate by Forge
+
 - **Metric**: `rate(forge_jobs_created_total[5m])`
 - **Type**: Time series
 - **Shows**: Job creation rate for each Forge (by namespace/name)
 - **Use**: Identifying hot Forges, troubleshooting specific resources
 
 ### Reconcile Errors by Type
+
 - **Metric**: `rate(forge_reconcile_errors_total[5m])`
 - **Type**: Stacked time series
 - **Shows**: Error rate breakdown by type (conversion_error, job_creation_error, status_update_error)
 - **Use**: Targeted troubleshooting, understanding failure modes
 
 ### Reconcile Duration
+
 - **Metrics**:
   - `histogram_quantile(0.95, sum(rate(forge_reconcile_duration_seconds_bucket[5m])) by (le))`
   - `histogram_quantile(0.50, sum(rate(forge_reconcile_duration_seconds_bucket[5m])) by (le))`
@@ -100,34 +106,42 @@ kubectl create configmap forge-dashboard \
 ## Customization
 
 ### Time Range
+
 Default: Last 1 hour with 10-second refresh
 To change: Use the time picker in the top right
 
 ### Adding Panels
+
 Common additions:
+
 - Pod resource usage (CPU, memory from cAdvisor)
 - API server request rate (from kube-apiserver metrics)
 - Namespace-specific views (add `namespace` template variable)
 
 ### Alerts
+
 This dashboard doesn't include alerts. Configure alerts via:
+
 - Grafana Alerting (built into panels)
 - Prometheus AlertManager (see `../prometheus/alerts/`)
 
 ## Troubleshooting
 
 ### No Data
+
 - Verify Prometheus data source is configured
 - Check ServiceMonitor is deployed: `kubectl get servicemonitor -n forge-system`
 - Verify Prometheus is scraping: Check Prometheus UI → Status → Targets
 - Confirm controller is exposing metrics: `kubectl port-forward -n forge-system svc/forge-controller-metrics 8080:8080` then `curl localhost:8080/metrics`
 
 ### Missing Metrics
+
 - Controller may not have processed any Forges yet
 - Metrics are only created when events occur (counters increment, histograms observe)
 - Wait for Forge activity or create a test resource
 
 ### Dashboard Shows Zero Values
+
 - Check time range (metrics may not exist in selected window)
 - Verify rate() interval (5m) has sufficient data points
 - Adjust time range to "Last 5 minutes" for immediate feedback

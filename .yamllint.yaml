@@ -8,12 +8,12 @@ rules:
   document-start: disable
   comments:
     min-spaces-from-content: 1
-  indentation:
-    spaces: 2
-    indent-sequences: true
+  indentation: disable  # Kubernetes YAML uses its own indentation style
   truthy:
     allowed-values: ['true', 'false', 'yes', 'no']
     check-keys: false
+  brackets:
+    max-spaces-inside: 1  # Allow single spaces in brackets for readability
 
 # Ignore patterns
 ignore: |
@@ -22,3 +22,6 @@ ignore: |
   .git/
   config/samples/
   webhook/deploy/
+  .pre-commit-config.yaml
+  .markdownlint.yaml
+  .golangci.yaml

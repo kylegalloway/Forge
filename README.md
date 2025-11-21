@@ -8,13 +8,15 @@
 
 Forge is a Kubernetes controller that brings Zarf package operations into the declarative Kubernetes world. Instead of running arbitrary scripts (security nightmare), Forge provides purpose-built operations with fine-grained RBAC controls.
 
-### What it does:
+### What it does
+
 - **Build** Zarf packages from Git repos, S3, or OCI registries
 - **Publish** artifacts to S3 or OCI registries
 - **Deploy** packages to in-cluster or external Kubernetes clusters
 - **Enforce policies** on who can do what with which resources
 
-### What it doesn't do:
+### What it doesn't do
+
 - Run arbitrary scripts (use a CronJob for that)
 - Give you root access disguised as "flexibility"
 - Trust users by default
@@ -47,7 +49,7 @@ spec:
     target: InCluster
     namespace: bigbang
     timeout: 60m
-```
+```text
 
 ## Architecture
 
@@ -109,7 +111,7 @@ metadata:
 
     # Where packages can be published
     forge.zarf.dev/allowed-publish-registries: "ghcr.io/myorg/dev/*"
-```
+```text
 
 The admission webhook validates all operations against these policies before creation.
 
@@ -130,7 +132,7 @@ kubectl apply -f config/manager/deployment.yaml
 
 # Install admission webhook (for policy enforcement)
 kubectl apply -f webhook/deploy/
-```
+```text
 
 **Watches**: All namespaces
 **Permissions**: Cluster-wide (ClusterRole)
@@ -151,7 +153,7 @@ kubectl create namespace forge-system
 # Install Forge controller with Role (namespace-only)
 kubectl apply -f config/namespace-scoped/rbac.yaml
 kubectl apply -f config/namespace-scoped/deployment.yaml
-```
+```text
 
 **Watches**: Single namespace (forge-system)
 **Permissions**: Namespace-only (Role)
@@ -166,17 +168,20 @@ kubectl apply -f config/namespace-scoped/deployment.yaml
 Forge includes production-grade observability:
 
 ### Metrics (OpenTelemetry + Prometheus)
+
 - Package operations (build/publish/deploy) with status and duration
 - Job lifecycle metrics (created, completed, failed)
 - Policy decisions (allowed/denied) with reason
 - Controller health and performance
 
 ### Tracing (OpenTelemetry)
+
 - Distributed traces for complete workflows
 - Span per action (build, publish, deploy)
 - Context propagation across operations
 
 ### Dashboards & Alerts
+
 - Grafana dashboard for Forge operations
 - Prometheus alerts for failures and policy violations
 - OTel Collector for multi-backend export
@@ -225,6 +230,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for development workflow.
 Forge includes comprehensive CI/CD pipelines for both GitHub Actions and GitLab CI.
 
 **Pre-commit Hooks:**
+
 ```bash
 # Install pre-commit
 brew install pre-commit
@@ -232,14 +238,16 @@ pre-commit install
 
 # Run all hooks
 pre-commit run --all-files
-```
+```text
 
 **GitHub Actions:**
+
 - **CI**: Lint, test, build, security scans on every push/PR
 - **Pre-commit**: Runs all hooks on pull requests
 - **Release**: Builds multi-arch binaries and Docker images on version tags
 
 **GitLab CI:**
+
 - Complete pipeline with lint, test, build, security, and release stages
 - Multi-arch Docker image builds
 - Coverage reporting and artifact management
@@ -248,7 +256,7 @@ See [.github/workflows/README.md](.github/workflows/README.md) for details.
 
 ### Project Structure
 
-```
+```text
 forge/
 ├── pkg/
 │   ├── apis/zarf/v1alpha1/     # ZarfPackage CRD types
@@ -274,30 +282,34 @@ forge/
 │   └── otel-collector/          # OTel Collector config
 ├── docs/                        # Documentation
 └── cmd/                         # Entrypoints (controller, webhook)
-```
+```text
 
 ## Roadmap
 
 See [PRODUCTION_CHECKLIST.md](docs/PRODUCTION_CHECKLIST.md) for detailed progress tracking.
 
 **Phase 1-3: Foundation** (Completed ✅)
+
 - [x] API design and CRDs
 - [x] Controller implementation
 - [x] Policy engine and webhook
 - [x] OpenTelemetry observability
 
 **Phase 4: Production Hardening** (Completed ✅)
+
 - [x] Leader election for HA
 - [x] Network policies
 - [x] Namespace-scoped deployment mode
 - [x] Image security
 
 **Phase 5-6: Testing & Documentation** (Completed ✅)
+
 - [x] Unit and integration tests
 - [x] Comprehensive documentation
 - [x] Operational runbooks
 
 **Phase 7-9: Launch** (Pending ⏸️)
+
 - [ ] CI/CD pipeline
 - [ ] Security audit
 - [ ] Production deployment

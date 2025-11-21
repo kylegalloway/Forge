@@ -4,7 +4,7 @@ The OpenTelemetry (OTel) Collector receives telemetry from the Forge controller 
 
 ## Architecture
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────────┐
 │                   Forge Controller                        │
 │  ┌──────────────┐  ┌─────────────┐  ┌──────────────┐           │
@@ -146,49 +146,60 @@ kubectl port-forward -n forge-system svc/jaeger-query 16686:16686
 ### Receivers
 
 **OTLP Receiver** (primary):
+
 - Receives metrics and traces from controller via gRPC
 - Endpoint: `0.0.0.0:4317` (gRPC) and `0.0.0.0:4318` (HTTP)
 
 **Prometheus Receiver** (backup):
+
 - Scrapes controller's `/metrics` endpoint
 - Useful if controller uses Prometheus bridge instead of OTLP export
 
 ### Processors
 
 **Batch Processor**:
+
 - Batches telemetry to reduce network overhead
 - Timeout: 10s, batch size: 1024
 
 **Memory Limiter**:
+
 - Prevents OOM by limiting memory usage
 - Limit: 512 MiB, spike limit: 128 MiB
 
 **Resource Processor**:
+
 - Adds service metadata: `service.name`, `service.namespace`, `deployment.environment`
 
 **Attributes Processor**:
+
 - Maps Kubernetes attributes: `k8s.namespace.name`, `k8s.pod.name`
 
 ### Exporters
 
 **Prometheus Exporter** (enabled):
+
 - Exposes metrics at `:8889/metrics` for Prometheus to scrape
 - Namespace: `forge`
 - ServiceMonitor included for Prometheus Operator
 
 **Jaeger Exporter** (enabled):
+
 - Sends traces to Jaeger via OTLP
 - Endpoint: `jaeger-collector:4317`
 
 **Prometheus Remote Write** (enabled):
+
 - Sends metrics to Prometheus via remote write API
 - Endpoint: `http://prometheus-server:9090/api/v1/write`
 
 **Logging Exporter** (enabled):
+
 - Logs telemetry to stdout for debugging
 - Sampling: 1/5 initially, 1/200 thereafter
 
 **Other Exporters** (disabled, uncomment to enable):
+
 - Datadog: Set `DD_API_KEY` environment variable
 - New Relic: Set `NEW_RELIC_LICENSE_KEY`
 - Honeycomb: Set `HONEYCOMB_API_KEY`
@@ -198,9 +209,11 @@ kubectl port-forward -n forge-system svc/jaeger-query 16686:16686
 Forge uses a **hybrid approach** combining:
 
 ### 1. In-App Metrics (OTel SDK in Go)
+
 **What**: Controller internals, business logic
 **How**: `pkg/telemetry` package with OTel SDK
 **Examples**:
+
 - Reconcile loop duration (p50, p95, p99)
 - Error types (conversion_error, job_creation_error, status_update_error)
 - Job creation attempts vs successes
@@ -209,9 +222,11 @@ Forge uses a **hybrid approach** combining:
 **Why**: Only the controller knows these internal details.
 
 ### 2. Kubernetes Metrics (kube-state-metrics)
+
 **What**: Resource counts, object statuses
 **How**: Deploy kube-state-metrics (separate deployment)
 **Examples**:
+
 - Total Forge resources (by namespace, by phase)
 - Total Jobs (by condition: succeeded, failed, active)
 - Pod counts, container restarts
@@ -220,9 +235,11 @@ Forge uses a **hybrid approach** combining:
 **Why**: Free metrics, no code changes, works for any CRD.
 
 ### 3. OTel Collector (This Component)
+
 **What**: Aggregation, routing, transformation
 **How**: Receives from #1 and #2, exports to backends
 **Examples**:
+
 - Route metrics to Prometheus, traces to Jaeger
 - Add common labels (environment, cluster, region)
 - Batch and compress telemetry
@@ -260,6 +277,7 @@ kubectl apply -f https://github.com/kubernetes/kube-state-metrics/releases/downl
 ```
 
 kube-state-metrics will expose metrics like:
+
 - `kube_forge_created` - Total Forges
 - `kube_forge_status_phase{phase="JobCreated"}` - Forges by phase
 - `kube_job_status_succeeded` - Jobs that succeeded
@@ -287,6 +305,7 @@ kubectl apply -f config/otel-collector/otel-collector-deployment.yaml
 ```
 
 **Metrics Available**:
+
 - `forge_resources_created` - Counter
 - `forge_resources_active` - Gauge
 - `forge_jobs_created` - Counter (by namespace, forge)
@@ -301,12 +320,14 @@ kubectl apply -f config/otel-collector/otel-collector-deployment.yaml
 Jaeger receives traces from the OTel Collector and provides a UI for exploring them.
 
 **Trace Structure**:
-```
+
+```text
 reconcile_forge (root span)
   └── create_job (child span)
 ```
 
 **Attributes**:
+
 - `forge.namespace` - Namespace
 - `forge.name` - Forge name
 - `job.name` - Created Job name
@@ -314,9 +335,11 @@ reconcile_forge (root span)
 - `error.type` - Error type (conversion_error, job_creation_error, etc.)
 
 **Events**:
+
 - `job_created` - When Job is successfully created
 
 **Access Jaeger UI**:
+
 ```bash
 kubectl port-forward -n forge-system svc/jaeger-query 16686:16686
 # Open http://localhost:16686
@@ -399,6 +422,7 @@ curl http://localhost:8888/metrics
 ```
 
 **Collector Metrics**:
+
 - `otelcol_receiver_accepted_spans` - Traces received
 - `otelcol_receiver_accepted_metric_points` - Metrics received
 - `otelcol_exporter_sent_spans` - Traces exported
@@ -432,6 +456,7 @@ kubectl port-forward -n forge-system svc/otel-collector 55679:55679
 **Symptom**: No metrics/traces in collector logs
 
 **Check**:
+
 ```bash
 # Verify controller can reach collector
 kubectl exec -n forge-system deploy/forge-controller -- \
@@ -461,6 +486,7 @@ processors:
 **Symptom**: Metrics not appearing in Prometheus
 
 **Check**:
+
 ```bash
 # Verify Prometheus can reach collector
 kubectl exec -n monitoring deploy/prometheus-server -- \
@@ -475,6 +501,7 @@ kubectl get servicemonitor -n forge-system otel-collector
 **Symptom**: No traces in Jaeger UI
 
 **Check**:
+
 ```bash
 # Verify collector can reach Jaeger
 kubectl exec -n forge-system deploy/otel-collector -- \
@@ -550,12 +577,14 @@ If you're currently using Prometheus directly:
 4. **Optional**: Enable OTLP export from controller for better performance
 
 **Before**:
-```
+
+```text
 Controller :8080/metrics → Prometheus
 ```
 
 **After**:
-```
+
+```text
 Controller :8080/metrics (Prometheus bridge) → OTel Collector :8889/metrics → Prometheus
 Controller → OTLP :4317 → OTel Collector → Prometheus + Jaeger
 ```

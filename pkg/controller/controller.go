@@ -126,7 +126,7 @@ func (c *Controller) Run(ctx context.Context) error {
 	for {
 		select {
 		case <-ctx.Done():
-			klog.Info("Context cancelled, stopping controller")
+			klog.Info("Context canceled, stopping controller")
 			return nil
 
 		case event, ok := <-watcher.ResultChan():
@@ -386,13 +386,17 @@ func (c *Controller) HealthzHandler() http.HandlerFunc {
 
 // ReadyzHandler returns an HTTP handler for readiness checks
 func (c *Controller) ReadyzHandler() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, _ *http.Request) {
 		if c.ready {
 			w.WriteHeader(http.StatusOK)
-			_, _ = w.Write([]byte("ready"))
+			if _, err := w.Write([]byte("ready")); err != nil {
+				klog.ErrorS(err, "Failed to write ready response")
+			}
 		} else {
 			w.WriteHeader(http.StatusServiceUnavailable)
-			_, _ = w.Write([]byte("not ready"))
+			if _, err := w.Write([]byte("not ready")); err != nil {
+				klog.ErrorS(err, "Failed to write not ready response")
+			}
 		}
 	}
 }

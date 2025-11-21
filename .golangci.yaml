@@ -25,7 +25,7 @@ linters:
     - gocritic        # Comprehensive Go linter
     - revive          # Fast, configurable, extensible linter
     - stylecheck      # Replacement for golint
-    - exportloopref   # Check for pointer loop variable escapes
+    - copyloopvar     # Check for loop variable capture issues (Go 1.22+)
     - nolintlint      # Check nolint directives
 
 linters-settings:

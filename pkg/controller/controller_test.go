@@ -2,6 +2,7 @@ package controller
 
 import (
 	"context"
+	"net/http"
 	"testing"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -295,6 +296,212 @@ func TestUpdateStatus(t *testing.T) {
 	if message != "Test message" {
 		t.Errorf("Expected message 'Test message', got '%s'", message)
 	}
+}
+
+func TestReconcilePackage(t *testing.T) {
+	scheme := runtime.NewScheme()
+	_ = zarfv1alpha1.AddToScheme(scheme)
+	dynamicClient := dynamicfake.NewSimpleDynamicClient(scheme)
+	kubeClient := fake.NewSimpleClientset()
+	ctrl := NewController(kubeClient, dynamicClient, "forge-system", mustNewMetrics(), telemetry.NewTracer())
+
+	tests := []struct {
+		name              string
+		pkg               *zarfv1alpha1.ZarfPackageJob
+		expectedPhase     string
+		expectStatusError bool
+	}{
+		{
+			name: "build action without service account",
+			pkg: &zarfv1alpha1.ZarfPackageJob{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "forge.dev/v1alpha1",
+					Kind:       "ZarfPackageJob",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-build",
+					Namespace: "forge-system",
+				},
+				Spec: zarfv1alpha1.ZarfPackageJobSpec{
+					ServiceAccountName: "test-sa",
+					Action:             zarfv1alpha1.ActionBuild,
+				},
+			},
+			expectedPhase:     "Failed",
+			expectStatusError: false, // Status update succeeds, but phase is Failed
+		},
+		{
+			name: "unknown action",
+			pkg: &zarfv1alpha1.ZarfPackageJob{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "forge.dev/v1alpha1",
+					Kind:       "ZarfPackageJob",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-unknown",
+					Namespace: "forge-system",
+				},
+				Spec: zarfv1alpha1.ZarfPackageJobSpec{
+					ServiceAccountName: "test-sa",
+					Action:             "UnknownAction",
+				},
+			},
+			expectedPhase:     "Failed",
+			expectStatusError: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			unstrObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(tt.pkg)
+			if err != nil {
+				t.Fatalf("Failed to convert to unstructured: %v", err)
+			}
+			u := &unstructured.Unstructured{Object: unstrObj}
+			u.SetGroupVersionKind(schema.GroupVersionKind{
+				Group:   "forge.dev",
+				Version: "v1alpha1",
+				Kind:    "ZarfPackageJob",
+			})
+
+			// Create the resource
+			_, err = dynamicClient.Resource(ZarfPackageJobGVR).Namespace(tt.pkg.Namespace).Create(
+				context.Background(), u, metav1.CreateOptions{})
+			if err != nil {
+				t.Fatalf("Failed to create test resource: %v", err)
+			}
+
+			err = ctrl.reconcilePackage(context.Background(), u, tt.pkg)
+			if tt.expectStatusError && err == nil {
+				t.Error("Expected error from reconcilePackage, got nil")
+			}
+			if !tt.expectStatusError && err != nil {
+				t.Errorf("Unexpected error from reconcilePackage: %v", err)
+			}
+
+			// Verify status was updated
+			updated, getErr := dynamicClient.Resource(ZarfPackageJobGVR).Namespace(tt.pkg.Namespace).Get(
+				context.Background(), tt.pkg.Name, metav1.GetOptions{})
+			if getErr != nil {
+				t.Fatalf("Failed to get updated resource: %v", getErr)
+			}
+
+			status, found, _ := unstructured.NestedMap(updated.Object, "status")
+			if found && tt.expectedPhase != "" {
+				phase, _, _ := unstructured.NestedString(status, "phase")
+				if phase != tt.expectedPhase {
+					t.Errorf("Expected phase %q, got %q", tt.expectedPhase, phase)
+				}
+			}
+		})
+	}
+}
+
+func TestHealthzHandlerResponse(t *testing.T) {
+	kubeClient := fake.NewSimpleClientset()
+	dynamicClient := dynamicfake.NewSimpleDynamicClient(runtime.NewScheme())
+	ctrl := NewController(kubeClient, dynamicClient, "forge-system", mustNewMetrics(), telemetry.NewTracer())
+
+	tests := []struct {
+		name           string
+		healthy        bool
+		expectedStatus int
+		expectedBody   string
+	}{
+		{
+			name:           "healthy",
+			healthy:        true,
+			expectedStatus: 200,
+			expectedBody:   "ok",
+		},
+		{
+			name:           "unhealthy",
+			healthy:        false,
+			expectedStatus: 503,
+			expectedBody:   "unhealthy",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctrl.healthy = tt.healthy
+			handler := ctrl.HealthzHandler()
+
+			req := &http.Request{}
+			w := &fakeResponseWriter{status: 200, body: []byte{}}
+			handler(w, req)
+
+			if w.status != tt.expectedStatus {
+				t.Errorf("Expected status %d, got %d", tt.expectedStatus, w.status)
+			}
+			if string(w.body) != tt.expectedBody {
+				t.Errorf("Expected body %q, got %q", tt.expectedBody, string(w.body))
+			}
+		})
+	}
+}
+
+func TestReadyzHandlerResponse(t *testing.T) {
+	kubeClient := fake.NewSimpleClientset()
+	dynamicClient := dynamicfake.NewSimpleDynamicClient(runtime.NewScheme())
+	ctrl := NewController(kubeClient, dynamicClient, "forge-system", mustNewMetrics(), telemetry.NewTracer())
+
+	tests := []struct {
+		name           string
+		ready          bool
+		expectedStatus int
+		expectedBody   string
+	}{
+		{
+			name:           "ready",
+			ready:          true,
+			expectedStatus: 200,
+			expectedBody:   "ready",
+		},
+		{
+			name:           "not ready",
+			ready:          false,
+			expectedStatus: 503,
+			expectedBody:   "not ready",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctrl.ready = tt.ready
+			handler := ctrl.ReadyzHandler()
+
+			req := &http.Request{}
+			w := &fakeResponseWriter{status: 200, body: []byte{}}
+			handler(w, req)
+
+			if w.status != tt.expectedStatus {
+				t.Errorf("Expected status %d, got %d", tt.expectedStatus, w.status)
+			}
+			if string(w.body) != tt.expectedBody {
+				t.Errorf("Expected body %q, got %q", tt.expectedBody, string(w.body))
+			}
+		})
+	}
+}
+
+// fakeResponseWriter implements http.ResponseWriter for testing
+type fakeResponseWriter struct {
+	status int
+	body   []byte
+}
+
+func (f *fakeResponseWriter) Header() http.Header {
+	return http.Header{}
+}
+
+func (f *fakeResponseWriter) Write(data []byte) (int, error) {
+	f.body = append(f.body, data...)
+	return len(data), nil
+}
+
+func (f *fakeResponseWriter) WriteHeader(statusCode int) {
+	f.status = statusCode
 }
 
 func mustNewMetrics() *telemetry.Metrics {

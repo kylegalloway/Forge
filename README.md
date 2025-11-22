@@ -223,6 +223,34 @@ Forge includes production-grade observability:
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for development workflow.
 
+### Testing
+
+Forge includes comprehensive test coverage across all major components:
+
+```bash
+# Run all tests with coverage report
+make test
+
+# View HTML coverage report
+make test-coverage
+
+# Run YAML validation tests
+make test-validation
+
+# Run unit tests only (no integration)
+make test-unit
+```
+
+**Current Coverage**: ~18% and growing
+
+**Test Suites:**
+
+- **Controller Tests**: Event handling, status updates, reconciliation
+- **Action Handler Tests**: Build, publish, and deploy operations
+- **YAML Validation**: All config files (CRDs, RBAC, samples) validated for correctness
+- **Policy Engine Tests**: ServiceAccount policy validation
+- **Credential Tests**: Secret extraction and mounting
+
 ### CI/CD
 
 Forge includes comprehensive CI/CD pipelines for both GitHub Actions and GitLab CI.
@@ -299,9 +327,14 @@ See [PRODUCTION_CHECKLIST.md](docs/PRODUCTION_CHECKLIST.md) for detailed progres
 - [x] Namespace-scoped deployment mode
 - [x] Image security
 
-**Phase 5-6: Testing & Documentation** (Completed ✅)
+**Phase 5-6: Testing & Documentation** (In Progress 🚧)
 
-- [x] Unit and integration tests
+- [x] Controller unit tests (~22% coverage)
+- [x] Action handler tests (~73% coverage)
+- [x] YAML validation tests
+- [x] Policy engine tests
+- [x] Credential management tests
+- [ ] Integration tests (end-to-end workflows)
 - [x] Comprehensive documentation
 - [x] Operational runbooks
 

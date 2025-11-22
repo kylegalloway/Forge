@@ -38,6 +38,18 @@ vet: ## Run go vet against code.
 test: fmt vet ## Run tests.
 	go test ./... -coverprofile cover.out
 
+.PHONY: test-coverage
+test-coverage: test ## Run tests and show coverage report.
+	go tool cover -html=cover.out
+
+.PHONY: test-validation
+test-validation: ## Run YAML validation tests.
+	go test ./pkg/validation -v
+
+.PHONY: test-unit
+test-unit: ## Run unit tests only (no integration tests).
+	go test ./pkg/... -short
+
 .PHONY: tidy
 tidy: ## Run go mod tidy
 	go mod tidy

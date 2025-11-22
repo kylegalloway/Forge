@@ -438,14 +438,13 @@ type OperationStatus struct {
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
-// +kubebuilder:resource:shortName=zpj
+// +kubebuilder:resource:shortName=zp
 // +kubebuilder:printcolumn:name="Action",type=string,JSONPath=`.spec.action`
 // +kubebuilder:printcolumn:name="Source",type=string,JSONPath=`.spec.source.type`
 // +kubebuilder:printcolumn:name="Phase",type=string,JSONPath=`.status.phase`
 // +kubebuilder:printcolumn:name="Age",type=date,JSONPath=`.metadata.creationTimestamp`
 
-// ZarfPackageJob is a Forge job specification for Zarf package operations.
-// This is NOT a Zarf package definition - it's a job spec telling Forge what to do.
+// ZarfPackageJob is the Schema for the zarf packages API
 type ZarfPackageJob struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -457,7 +456,7 @@ type ZarfPackageJob struct {
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +kubebuilder:object:root=true
 
-// ZarfPackageJobList contains a list of ZarfPackageJob resources
+// ZarfPackageList contains a list of ZarfPackageJob
 type ZarfPackageJobList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`

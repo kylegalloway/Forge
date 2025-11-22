@@ -1,6 +1,6 @@
-# User Namespace Template for ZarfPackage Multi-Tenancy
+# User Namespace Template for ZarfPackageJob Multi-Tenancy
 #
-# This template creates an isolated namespace for a ZarfPackage user with:
+# This template creates an isolated namespace for a ZarfPackageJob user with:
 # - Pod Security Standards (restricted)
 # - ResourceQuota to limit resource consumption
 # - LimitRange to set default resource limits
@@ -23,12 +23,12 @@ metadata:
     pod-security.kubernetes.io/audit: restricted
     pod-security.kubernetes.io/warn: restricted
 
-    # ZarfPackage labels
-    forge.zarf.dev/tenant: "{{ .Username }}"
-    forge.zarf.dev/managed: "true"
+    # ZarfPackageJob labels
+    forge.forge.dev/tenant: "{{ .Username }}"
+    forge.forge.dev/managed: "true"
 
     # Enable webhook validation (remove to disable)
-    forge.zarf.dev/webhook: enabled
+    forge.forge.dev/webhook: enabled
 ---
 apiVersion: v1
 kind: ResourceQuota
@@ -36,11 +36,11 @@ metadata:
   name: forge-quota
   namespace: user-{{ .Username }}
   labels:
-    forge.zarf.dev/tenant: "{{ .Username }}"
+    forge.forge.dev/tenant: "{{ .Username }}"
 spec:
   hard:
-    # Limit total ZarfPackage resources
-    count/zarfpackages.forge.zarf.dev: "{{ .MaxZarfPackages | default 50 }}"
+    # Limit total ZarfPackageJob resources
+    count/zarfpackagejobs.forge.forge.dev: "{{ .MaxZarfPackageJobs | default 50 }}"
 
     # Limit concurrent Jobs
     count/jobs.batch: "{{ .MaxJobs | default 20 }}"
@@ -68,7 +68,7 @@ metadata:
   name: forge-limits
   namespace: user-{{ .Username }}
   labels:
-    forge.zarf.dev/tenant: "{{ .Username }}"
+    forge.forge.dev/tenant: "{{ .Username }}"
 spec:
   limits:
   # Default limits for Pods (Jobs)
@@ -89,11 +89,11 @@ spec:
       cpu: "{{ .ContainerMinCPU | default 50m }}"
       memory: "{{ .ContainerMinMemory | default 64Mi }}"
     default:
-      # Default limits (if not specified in ZarfPackage)
+      # Default limits (if not specified in ZarfPackageJob)
       cpu: "{{ .ContainerDefaultLimitCPU | default 1 }}"
       memory: "{{ .ContainerDefaultLimitMemory | default 1Gi }}"
     defaultRequest:
-      # Default requests (if not specified in ZarfPackage)
+      # Default requests (if not specified in ZarfPackageJob)
       cpu: "{{ .ContainerDefaultRequestCPU | default 250m }}"
       memory: "{{ .ContainerDefaultRequestMemory | default 256Mi }}"
 
@@ -113,7 +113,7 @@ spec:
 #   name: forge-network-policy
 #   namespace: user-{{ .Username }}
 #   labels:
-#     forge.zarf.dev/tenant: "{{ .Username }}"
+#     forge.forge.dev/tenant: "{{ .Username }}"
 # spec:
 #   podSelector:
 #     matchLabels:

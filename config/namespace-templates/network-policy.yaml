@@ -1,4 +1,4 @@
-# Network Policy Template for ZarfPackage Multi-Tenancy
+# Network Policy Template for ZarfPackageJob Multi-Tenancy
 #
 # This template creates NetworkPolicies to restrict network access for job pods.
 # By default, Kubernetes allows all traffic - these policies implement deny-by-default.
@@ -23,8 +23,8 @@ metadata:
   name: deny-all-ingress
   namespace: user-{{ .Username }}
   labels:
-    forge.zarf.dev/tenant: "{{ .Username }}"
-    forge.zarf.dev/network-policy: "default-deny"
+    forge.forge.dev/tenant: "{{ .Username }}"
+    forge.forge.dev/network-policy: "default-deny"
 spec:
   podSelector: {}  # Applies to all pods in namespace
   policyTypes:
@@ -40,8 +40,8 @@ metadata:
   name: allow-dns
   namespace: user-{{ .Username }}
   labels:
-    forge.zarf.dev/tenant: "{{ .Username }}"
-    forge.zarf.dev/network-policy: "dns"
+    forge.forge.dev/tenant: "{{ .Username }}"
+    forge.forge.dev/network-policy: "dns"
 spec:
   podSelector: {}  # Applies to all pods in namespace
   policyTypes:
@@ -63,15 +63,15 @@ spec:
 
 ---
 # Allow Egress to Kubernetes API
-# Job pods may need to read their own status or update ZarfPackage status
+# Job pods may need to read their own status or update ZarfPackageJob status
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
   name: allow-kubernetes-api
   namespace: user-{{ .Username }}
   labels:
-    forge.zarf.dev/tenant: "{{ .Username }}"
-    forge.zarf.dev/network-policy: "api-access"
+    forge.forge.dev/tenant: "{{ .Username }}"
+    forge.forge.dev/network-policy: "api-access"
 spec:
   podSelector: {}  # Applies to all pods in namespace
   policyTypes:
@@ -99,8 +99,8 @@ spec:
 #   name: allow-metrics-service
 #   namespace: user-{{ .Username }}
 #   labels:
-#     forge.zarf.dev/tenant: "{{ .Username }}"
-#     forge.zarf.dev/network-policy: "metrics"
+#     forge.forge.dev/tenant: "{{ .Username }}"
+#     forge.forge.dev/network-policy: "metrics"
 # spec:
 #   podSelector:
 #     matchLabels:
@@ -129,8 +129,8 @@ spec:
 #   name: allow-external-https
 #   namespace: user-{{ .Username }}
 #   labels:
-#     forge.zarf.dev/tenant: "{{ .Username }}"
-#     forge.zarf.dev/network-policy: "external-https"
+#     forge.forge.dev/tenant: "{{ .Username }}"
+#     forge.forge.dev/network-policy: "external-https"
 # spec:
 #   podSelector:
 #     matchLabels:
@@ -163,8 +163,8 @@ spec:
 #   name: allow-database-access
 #   namespace: user-{{ .Username }}
 #   labels:
-#     forge.zarf.dev/tenant: "{{ .Username }}"
-#     forge.zarf.dev/network-policy: "database"
+#     forge.forge.dev/tenant: "{{ .Username }}"
+#     forge.forge.dev/network-policy: "database"
 # spec:
 #   podSelector:
 #     matchLabels:

@@ -1,14 +1,14 @@
 ---
 # Example: Local development/testing (build from local files)
 # WARNING: This should ONLY be used in dev environments
-apiVersion: zarf.dev/v1alpha1
-kind: ZarfPackage
+apiVersion: forge.dev/v1alpha1
+kind: ZarfPackageJob
 metadata:
   name: local-dev-example
   namespace: dev
 spec:
   # ServiceAccount controls what this package is allowed to do
-  # Created by cluster admin with forge.zarf.dev/* annotations
+  # Created by cluster admin with forge.forge.dev/* annotations
   serviceAccountName: developer-forge-sa
   action: BuildDeploy
 

@@ -11,7 +11,7 @@ import (
 type OCISource struct{}
 
 // GetInitContainer returns an init container to pull the artifact from OCI
-func (s *OCISource) GetInitContainer(pkg *zarfv1alpha1.ZarfPackage) (*corev1.Container, error) {
+func (s *OCISource) GetInitContainer(pkg *zarfv1alpha1.ZarfPackageJob) (*corev1.Container, error) {
 	ociSource := pkg.Spec.Source.OCI
 	if ociSource == nil {
 		return nil, fmt.Errorf("oci source configuration is missing")

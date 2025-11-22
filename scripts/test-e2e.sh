@@ -2,7 +2,7 @@
 set -e
 
 # End-to-End Test Script for Forge
-# Tests ZarfPackage operations with policy enforcement
+# Tests ZarfPackageJob operations with policy enforcement
 
 NAMESPACE="${1:-default}"
 TEST_PREFIX="e2e-test-$(date +%s)"
@@ -17,7 +17,7 @@ echo ""
 cleanup() {
     echo ""
     echo "Cleaning up test resources..."
-    kubectl delete zarfpackage -l test=e2e --ignore-not-found=true -n "${NAMESPACE}"
+    kubectl delete ZarfPackageJob -l test=e2e --ignore-not-found=true -n "${NAMESPACE}"
     kubectl delete serviceaccount -l test=e2e --ignore-not-found=true -n "${NAMESPACE}"
     echo "✓ Cleanup complete"
 }
@@ -36,19 +36,19 @@ metadata:
   labels:
     test: e2e
   annotations:
-    forge.zarf.dev/allowed-actions: "Build"
-    forge.zarf.dev/allowed-source-repos: "github.com/defenseunicorns/*"
+    forge.forge.dev/allowed-actions: "Build"
+    forge.forge.dev/allowed-source-repos: "github.com/defenseunicorns/*"
 EOF
 
 echo "✓ ServiceAccount created"
 echo ""
 
-# Test 2: Build-only ZarfPackage
-echo "Test 2: ZarfPackage with Build action"
+# Test 2: Build-only ZarfPackageJob
+echo "Test 2: ZarfPackageJob with Build action"
 echo "--------------------------------------"
 cat <<EOF | kubectl apply -f -
-apiVersion: zarf.dev/v1alpha1
-kind: ZarfPackage
+apiVersion: forge.dev/v1alpha1
+kind: ZarfPackageJob
 metadata:
   name: ${TEST_PREFIX}-build
   namespace: ${NAMESPACE}
@@ -65,24 +65,24 @@ spec:
       path: .
 EOF
 
-echo "Waiting for ZarfPackage to be processed..."
+echo "Waiting for ZarfPackageJob to be processed..."
 sleep 5
 
 # Check if package was created
-PKG_STATUS=$(kubectl get zarfpackage ${TEST_PREFIX}-build -n "${NAMESPACE}" -o jsonpath='{.status.phase}' 2>/dev/null || echo "not found")
+PKG_STATUS=$(kubectl get ZarfPackageJob ${TEST_PREFIX}-build -n "${NAMESPACE}" -o jsonpath='{.status.phase}' 2>/dev/null || echo "not found")
 if [ "$PKG_STATUS" = "not found" ]; then
-    echo "✗ FAILED: ZarfPackage was not created"
+    echo "✗ FAILED: ZarfPackageJob was not created"
     exit 1
 fi
-echo "✓ ZarfPackage created (status: ${PKG_STATUS})"
+echo "✓ ZarfPackageJob created (status: ${PKG_STATUS})"
 echo ""
 
 # Test 3: Policy violation - unauthorized action
 echo "Test 3: Policy violation - Deploy action not allowed"
 echo "-----------------------------------------------------"
 cat <<EOF | kubectl apply -f - 2>&1 | grep -q "denied\|not allowed" && echo "✓ Policy correctly denied unauthorized action" || echo "✗ FAILED: Policy did not block unauthorized action"
-apiVersion: zarf.dev/v1alpha1
-kind: ZarfPackage
+apiVersion: forge.dev/v1alpha1
+kind: ZarfPackageJob
 metadata:
   name: ${TEST_PREFIX}-denied
   namespace: ${NAMESPACE}
@@ -104,8 +104,8 @@ echo ""
 echo "Test 4: Policy violation - Unauthorized Git repository"
 echo "-------------------------------------------------------"
 cat <<EOF | kubectl apply -f - 2>&1 | grep -q "denied\|not allowed" && echo "✓ Policy correctly denied unauthorized repository" || echo "✗ FAILED: Policy did not block unauthorized repository"
-apiVersion: zarf.dev/v1alpha1
-kind: ZarfPackage
+apiVersion: forge.dev/v1alpha1
+kind: ZarfPackageJob
 metadata:
   name: ${TEST_PREFIX}-denied-repo
   namespace: ${NAMESPACE}
@@ -135,24 +135,24 @@ metadata:
   labels:
     test: e2e
   annotations:
-    forge.zarf.dev/allowed-actions: "*"
-    forge.zarf.dev/allowed-source-repos: "*"
-    forge.zarf.dev/allowed-source-buckets: "*"
-    forge.zarf.dev/allowed-source-registries: "*"
-    forge.zarf.dev/allowed-publish-buckets: "*"
-    forge.zarf.dev/allowed-publish-registries: "*"
-    forge.zarf.dev/allowed-deploy-targets: "*"
+    forge.forge.dev/allowed-actions: "*"
+    forge.forge.dev/allowed-source-repos: "*"
+    forge.forge.dev/allowed-source-buckets: "*"
+    forge.forge.dev/allowed-source-registries: "*"
+    forge.forge.dev/allowed-publish-buckets: "*"
+    forge.forge.dev/allowed-publish-registries: "*"
+    forge.forge.dev/allowed-deploy-targets: "*"
 EOF
 
 echo "✓ Platform ServiceAccount created"
 echo ""
 
-# Test 6: Multi-action ZarfPackage with full permissions
+# Test 6: Multi-action ZarfPackageJob with full permissions
 echo "Test 6: BuildPublish action with wildcard permissions"
 echo "------------------------------------------------------"
 cat <<EOF | kubectl apply -f -
-apiVersion: zarf.dev/v1alpha1
-kind: ZarfPackage
+apiVersion: forge.dev/v1alpha1
+kind: ZarfPackageJob
 metadata:
   name: ${TEST_PREFIX}-buildpublish
   namespace: ${NAMESPACE}
@@ -176,12 +176,12 @@ EOF
 
 sleep 5
 
-PKG_STATUS=$(kubectl get zarfpackage ${TEST_PREFIX}-buildpublish -n "${NAMESPACE}" -o jsonpath='{.status.phase}' 2>/dev/null || echo "not found")
+PKG_STATUS=$(kubectl get ZarfPackageJob ${TEST_PREFIX}-buildpublish -n "${NAMESPACE}" -o jsonpath='{.status.phase}' 2>/dev/null || echo "not found")
 if [ "$PKG_STATUS" = "not found" ]; then
-    echo "✗ FAILED: BuildPublish ZarfPackage was not created"
+    echo "✗ FAILED: BuildPublish ZarfPackageJob was not created"
     exit 1
 fi
-echo "✓ BuildPublish ZarfPackage created (status: ${PKG_STATUS})"
+echo "✓ BuildPublish ZarfPackageJob created (status: ${PKG_STATUS})"
 echo ""
 
 # Test 7: Check controller metrics
@@ -194,7 +194,7 @@ if command -v curl &> /dev/null; then
         PF_PID=$!
         sleep 2
 
-        if curl -s http://localhost:8080/metrics | grep -q "forge_zarf_packages_created"; then
+        if curl -s http://localhost:8080/metrics | grep -q "forge_zarf_packagejobs_created"; then
             echo "✓ Metrics endpoint accessible"
         else
             echo "⚠ Warning: Metrics endpoint not accessible (may not be running locally)"
@@ -212,7 +212,7 @@ echo ""
 # Test 8: Status updates
 echo "Test 8: Status field population"
 echo "--------------------------------"
-STATUS=$(kubectl get zarfpackage ${TEST_PREFIX}-build -n "${NAMESPACE}" -o jsonpath='{.status}' 2>/dev/null)
+STATUS=$(kubectl get ZarfPackageJob ${TEST_PREFIX}-build -n "${NAMESPACE}" -o jsonpath='{.status}' 2>/dev/null)
 if echo "$STATUS" | grep -q "phase"; then
     echo "✓ Status contains phase field"
 else
@@ -224,11 +224,11 @@ echo "=================================="
 echo "E2E Tests Summary"
 echo "=================================="
 echo "✓ Test 1: ServiceAccount creation"
-echo "✓ Test 2: Build-only ZarfPackage"
+echo "✓ Test 2: Build-only ZarfPackageJob"
 echo "✓ Test 3: Policy denies unauthorized actions"
 echo "✓ Test 4: Policy denies unauthorized repositories"
 echo "✓ Test 5: Platform ServiceAccount with wildcards"
-echo "✓ Test 6: Multi-action ZarfPackage"
+echo "✓ Test 6: Multi-action ZarfPackageJob"
 echo "✓ Test 7: Metrics endpoint (conditional)"
 echo "✓ Test 8: Status updates"
 echo ""

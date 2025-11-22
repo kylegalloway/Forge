@@ -1,4 +1,4 @@
-// Package main implements the admission webhook server for validating ZarfPackage resources.
+// Package main implements the admission webhook server for validating ZarfPackageJob resources.
 package main
 
 import (
@@ -60,8 +60,8 @@ func main() {
 		klog.Fatalf("Failed to create Kubernetes client: %v", err)
 	}
 
-	// Create ZarfPackage validator
-	validator := webhook.NewZarfPackageValidator(kubeClient)
+	// Create ZarfPackageJob validator
+	validator := webhook.NewZarfPackageJobValidator(kubeClient)
 
 	// Create webhook server
 	server := &WebhookServer{
@@ -105,9 +105,9 @@ func main() {
 	klog.Info("Webhook server stopped")
 }
 
-// WebhookServer handles admission webhook requests for ZarfPackage resources
+// WebhookServer handles admission webhook requests for ZarfPackageJob resources
 type WebhookServer struct {
-	validator *webhook.ZarfPackageValidator
+	validator *webhook.ZarfPackageJobValidator
 }
 
 // serveValidate handles validation webhook requests
@@ -161,27 +161,27 @@ func (ws *WebhookServer) serveValidate(w http.ResponseWriter, r *http.Request) {
 
 // validate performs the actual validation
 func (ws *WebhookServer) validate(ctx context.Context, request *admissionv1.AdmissionRequest) *admissionv1.AdmissionResponse {
-	klog.InfoS("Validating ZarfPackage",
+	klog.InfoS("Validating ZarfPackageJob",
 		"name", request.Name,
 		"namespace", request.Namespace,
 		"operation", request.Operation,
 		"user", request.UserInfo.Username)
 
-	// Decode ZarfPackage object
-	var pkg zarfv1alpha1.ZarfPackage
+	// Decode ZarfPackageJob object
+	var pkg zarfv1alpha1.ZarfPackageJob
 	deserializer := codecs.UniversalDeserializer()
 	if _, _, err := deserializer.Decode(request.Object.Raw, nil, &pkg); err != nil {
-		klog.ErrorS(err, "Failed to decode ZarfPackage")
+		klog.ErrorS(err, "Failed to decode ZarfPackageJob")
 		return &admissionv1.AdmissionResponse{
 			Allowed: false,
 			Result: &metav1.Status{
-				Message: fmt.Sprintf("failed to decode ZarfPackage: %v", err),
+				Message: fmt.Sprintf("failed to decode ZarfPackageJob: %v", err),
 			},
 		}
 	}
 
-	// Validate the ZarfPackage against ServiceAccount permissions
-	if err := ws.validator.ValidateZarfPackage(ctx, &pkg); err != nil {
+	// Validate the ZarfPackageJob against ServiceAccount permissions
+	if err := ws.validator.ValidateZarfPackageJob(ctx, &pkg); err != nil {
 		klog.InfoS("Validation failed",
 			"name", pkg.Name,
 			"namespace", pkg.Namespace,
@@ -190,7 +190,7 @@ func (ws *WebhookServer) validate(ctx context.Context, request *admissionv1.Admi
 		return &admissionv1.AdmissionResponse{
 			Allowed: false,
 			Result: &metav1.Status{
-				Message: fmt.Sprintf("ZarfPackage validation failed: %v", err),
+				Message: fmt.Sprintf("ZarfPackageJob validation failed: %v", err),
 			},
 		}
 	}

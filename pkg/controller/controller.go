@@ -1,6 +1,6 @@
-// Package controller implements the Forge controller for ZarfPackage resources.
+// Package controller implements the Forge controller for ZarfPackageJob resources.
 //
-// The controller watches for ZarfPackage resources and executes the specified
+// The controller watches for ZarfPackageJob resources and executes the specified
 // actions (Build, Publish, Deploy) using dedicated handler packages.
 package controller
 
@@ -21,38 +21,30 @@ import (
 	"k8s.io/klog/v2"
 
 	"github.com/kylegalloway/forge/pkg/actions"
-	udsv1alpha1 "github.com/kylegalloway/forge/pkg/apis/uds/v1alpha1"
 	zarfv1alpha1 "github.com/kylegalloway/forge/pkg/apis/zarf/v1alpha1"
 	"github.com/kylegalloway/forge/pkg/policy"
 	"github.com/kylegalloway/forge/pkg/telemetry"
 )
 
 const (
-	// ZarfPackageGroup is the API group for ZarfPackage resources
-	ZarfPackageGroup = "zarf.dev"
-	// ZarfPackageVersion is the API version
-	ZarfPackageVersion = "v1alpha1"
-	// ZarfPackageResource is the resource name
-	ZarfPackageResource = "zarfpackages"
+	// ZarfPackageJobGroup is the API group for ZarfPackageJob resources
+	ZarfPackageJobGroup = "forge.dev"
+	// ZarfPackageJobVersion is the API version
+	ZarfPackageJobVersion = "v1alpha1"
+	// ZarfPackageJobResource is the resource name
+	ZarfPackageJobResource = "zarfpackagejobs"
 )
 
 var (
-	// ZarfPackageGVR is the GroupVersionResource for ZarfPackage
-	ZarfPackageGVR = schema.GroupVersionResource{
-		Group:    ZarfPackageGroup,
-		Version:  ZarfPackageVersion,
-		Resource: ZarfPackageResource,
-	}
-
-	// UDSBundleGVR is the GroupVersionResource for UDSBundle
-	UDSBundleGVR = schema.GroupVersionResource{
-		Group:    udsv1alpha1.GroupName,
-		Version:  udsv1alpha1.Version,
-		Resource: "udsbundles",
+	// ZarfPackageJobGVR is the GroupVersionResource for ZarfPackageJob
+	ZarfPackageJobGVR = schema.GroupVersionResource{
+		Group:    ZarfPackageJobGroup,
+		Version:  ZarfPackageJobVersion,
+		Resource: ZarfPackageJobResource,
 	}
 )
 
-// Controller watches ZarfPackage resources and executes actions
+// Controller watches ZarfPackageJob resources and executes actions
 type Controller struct {
 	kubeClient     kubernetes.Interface
 	dynamicClient  dynamic.Interface
@@ -105,19 +97,12 @@ func (c *Controller) Run(ctx context.Context) error {
 	// Start Job monitoring in background
 	go c.startJobMonitoring(ctx)
 
-	// Watch ZarfPackage resources
-	watcher, err := c.dynamicClient.Resource(ZarfPackageGVR).Namespace(c.namespace).Watch(ctx, metav1.ListOptions{})
+	// Watch ZarfPackageJob resources
+	watcher, err := c.dynamicClient.Resource(ZarfPackageJobGVR).Namespace(c.namespace).Watch(ctx, metav1.ListOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to create watcher: %w", err)
 	}
 	defer watcher.Stop()
-
-	// Watch UDSBundle resources
-	udsWatcher, err := c.dynamicClient.Resource(UDSBundleGVR).Namespace(c.namespace).Watch(ctx, metav1.ListOptions{})
-	if err != nil {
-		return fmt.Errorf("failed to create uds watcher: %w", err)
-	}
-	defer udsWatcher.Stop()
 
 	c.ready = true
 	klog.Info("Forge controller is ready")
@@ -134,7 +119,7 @@ func (c *Controller) Run(ctx context.Context) error {
 				klog.Warning("Watch channel closed, restarting watcher")
 				// Recreate watcher
 				var watchErr error
-				watcher, watchErr = c.dynamicClient.Resource(ZarfPackageGVR).Namespace(c.namespace).Watch(ctx, metav1.ListOptions{})
+				watcher, watchErr = c.dynamicClient.Resource(ZarfPackageJobGVR).Namespace(c.namespace).Watch(ctx, metav1.ListOptions{})
 				if watchErr != nil {
 					return fmt.Errorf("failed to recreate watcher: %w", watchErr)
 				}
@@ -144,21 +129,6 @@ func (c *Controller) Run(ctx context.Context) error {
 			if handleErr := c.handleEvent(ctx, event); handleErr != nil {
 				klog.ErrorS(handleErr, "Error handling event", "type", event.Type)
 				// Don't return error, continue processing
-			}
-
-		case event, ok := <-udsWatcher.ResultChan():
-			if !ok {
-				klog.Warning("UDS Watch channel closed, restarting watcher")
-				// Recreate watcher
-				udsWatcher, err = c.dynamicClient.Resource(UDSBundleGVR).Namespace(c.namespace).Watch(ctx, metav1.ListOptions{})
-				if err != nil {
-					return fmt.Errorf("failed to recreate uds watcher: %w", err)
-				}
-				continue
-			}
-
-			if err := c.handleEvent(ctx, event); err != nil {
-				klog.ErrorS(err, "Error handling UDS event", "type", event.Type)
 			}
 		}
 	}
@@ -177,7 +147,7 @@ func (c *Controller) handleEvent(ctx context.Context, event watch.Event) error {
 		if !ok {
 			return fmt.Errorf("unexpected object type in deleted event")
 		}
-		klog.InfoS("ZarfPackage deleted", "name", obj.GetName(), "namespace", obj.GetNamespace())
+		klog.InfoS("ZarfPackageJob deleted", "name", obj.GetName(), "namespace", obj.GetNamespace())
 		return nil
 	case watch.Error:
 		return fmt.Errorf("watch error: %v", event.Object)
@@ -189,80 +159,48 @@ func (c *Controller) handleEvent(ctx context.Context, event watch.Event) error {
 
 // handleObject dispatches to the appropriate handler based on kind
 func (c *Controller) handleObject(ctx context.Context, obj interface{}) error {
-	u, ok := obj.(*unstructured.Unstructured)
+	unstrObj, ok := obj.(*unstructured.Unstructured)
 	if !ok {
 		return fmt.Errorf("unexpected object type: %T", obj)
 	}
 
-	gvk := u.GroupVersionKind()
-	if gvk.Group == ZarfPackageGroup && gvk.Kind == "ZarfPackage" {
-		return c.handleZarfPackage(ctx, u)
-	} else if gvk.Group == udsv1alpha1.GroupName && gvk.Kind == "UDSBundle" {
-		return c.handleUDSBundle(ctx, u)
+	gvk := unstrObj.GroupVersionKind()
+	if gvk.Group == ZarfPackageJobGroup && gvk.Kind == "ZarfPackageJob" {
+		return c.handleZarfPackageJob(ctx, unstrObj)
 	}
 
 	return fmt.Errorf("unsupported kind: %s", gvk.Kind)
 }
 
-// handleZarfPackage reconciles a ZarfPackage resource
-func (c *Controller) handleZarfPackage(ctx context.Context, u *unstructured.Unstructured) error {
-	name := u.GetName()
-	namespace := u.GetNamespace()
+// handleZarfPackage reconciles a ZarfPackageJob resource
+func (c *Controller) handleZarfPackageJob(ctx context.Context, unstrObj *unstructured.Unstructured) error {
+	name := unstrObj.GetName()
+	namespace := unstrObj.GetNamespace()
 
-	klog.InfoS("Reconciling ZarfPackage", "name", name, "namespace", namespace)
+	klog.InfoS("Reconciling ZarfPackageJob", "name", name, "namespace", namespace)
 
-	// Convert unstructured to typed ZarfPackage
-	pkg := &zarfv1alpha1.ZarfPackage{}
-	if err := runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, pkg); err != nil {
-		klog.ErrorS(err, "Failed to convert unstructured to ZarfPackage", "name", name, "namespace", namespace)
-		return c.updateStatus(ctx, u, "Failed", fmt.Sprintf("Invalid ZarfPackage: %v", err), nil)
+	// Convert unstructured to typed ZarfPackageJob
+	pkg := &zarfv1alpha1.ZarfPackageJob{}
+	if err := runtime.DefaultUnstructuredConverter.FromUnstructured(unstrObj.Object, pkg); err != nil {
+		klog.ErrorS(err, "Failed to convert unstructured to ZarfPackageJob", "name", name, "namespace", namespace)
+		return c.updateStatus(ctx, unstrObj, "Failed", fmt.Sprintf("Invalid ZarfPackageJob: %v", err), nil)
 	}
 
-	return c.reconcilePackage(ctx, u, pkg)
-}
-
-// handleUDSBundle reconciles a UDSBundle resource
-func (c *Controller) handleUDSBundle(ctx context.Context, u *unstructured.Unstructured) error {
-	name := u.GetName()
-	namespace := u.GetNamespace()
-
-	klog.InfoS("Reconciling UDSBundle", "name", name, "namespace", namespace)
-
-	// Convert unstructured to typed UDSBundle
-	bundle := &udsv1alpha1.UDSBundle{}
-	if err := runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, bundle); err != nil {
-		klog.ErrorS(err, "Failed to convert unstructured to UDSBundle", "name", name, "namespace", namespace)
-		return c.updateStatus(ctx, u, "Failed", fmt.Sprintf("Invalid UDSBundle: %v", err), nil)
-	}
-
-	// Convert to ZarfPackage for processing
-	pkg := &zarfv1alpha1.ZarfPackage{
-		ObjectMeta: bundle.ObjectMeta,
-		Spec: zarfv1alpha1.ZarfPackageSpec{
-			ServiceAccountName: bundle.Spec.ServiceAccountName,
-			Action:             bundle.Spec.Action,
-			Source:             bundle.Spec.Source,
-			Publish:            bundle.Spec.Publish,
-			Deploy:             bundle.Spec.Deploy,
-			RBACPolicy:         bundle.Spec.RBACPolicy,
-		},
-	}
-
-	return c.reconcilePackage(ctx, u, pkg)
+	return c.reconcilePackage(ctx, unstrObj, pkg)
 }
 
 // reconcilePackage performs the actual reconciliation logic
-func (c *Controller) reconcilePackage(ctx context.Context, u *unstructured.Unstructured, pkg *zarfv1alpha1.ZarfPackage) error {
+func (c *Controller) reconcilePackage(ctx context.Context, unstrObj *unstructured.Unstructured, pkg *zarfv1alpha1.ZarfPackageJob) error {
 	startTime := time.Now()
 	name := pkg.Name
 	namespace := pkg.Namespace
 
-	klog.InfoS("Processing ZarfPackage action", "name", name, "namespace", namespace, "action", pkg.Spec.Action)
+	klog.InfoS("Processing ZarfPackageJob action", "name", name, "namespace", namespace, "action", pkg.Spec.Action)
 
 	// Validate policy
 	if err := c.policyEngine.Validate(ctx, pkg); err != nil {
 		klog.ErrorS(err, "Policy validation failed", "name", name, "namespace", namespace)
-		return c.updateStatus(ctx, u, "Failed", fmt.Sprintf("Policy violation: %v", err), nil)
+		return c.updateStatus(ctx, unstrObj, "Failed", fmt.Sprintf("Policy violation: %v", err), nil)
 	}
 
 	// Dispatch to appropriate action handler
@@ -306,7 +244,7 @@ func (c *Controller) reconcilePackage(ctx context.Context, u *unstructured.Unstr
 	// Update status based on result
 	if err != nil {
 		klog.ErrorS(err, "Action failed", "name", name, "namespace", namespace, "action", pkg.Spec.Action)
-		return c.updateStatus(ctx, u, "Failed", err.Error(), nil)
+		return c.updateStatus(ctx, unstrObj, "Failed", err.Error(), nil)
 	}
 
 	if result != nil {
@@ -317,7 +255,7 @@ func (c *Controller) reconcilePackage(ctx context.Context, u *unstructured.Unstr
 				"startTime": result.StartTime.Format(time.RFC3339),
 			},
 		}
-		if err := c.updateStatus(ctx, u, result.Phase, result.Message, opStatus); err != nil {
+		if err := c.updateStatus(ctx, unstrObj, result.Phase, result.Message, opStatus); err != nil {
 			klog.ErrorS(err, "Failed to update status", "name", name, "namespace", namespace)
 		}
 	}
@@ -328,7 +266,7 @@ func (c *Controller) reconcilePackage(ctx context.Context, u *unstructured.Unstr
 	return nil
 }
 
-// updateStatus updates the status of a ZarfPackage resource
+// updateStatus updates the status of a ZarfPackageJob resource
 func (c *Controller) updateStatus(ctx context.Context, obj *unstructured.Unstructured, phase, message string, operationStatus map[string]interface{}) error {
 	name := obj.GetName()
 	namespace := obj.GetNamespace()
@@ -349,15 +287,10 @@ func (c *Controller) updateStatus(ctx context.Context, obj *unstructured.Unstruc
 	// Update status subresource
 	obj.Object["status"] = status
 
-	gvr := ZarfPackageGVR
-	if obj.GroupVersionKind().Group == udsv1alpha1.GroupName {
-		gvr = UDSBundleGVR
-	}
-
-	_, err := c.dynamicClient.Resource(gvr).Namespace(namespace).UpdateStatus(ctx, obj, metav1.UpdateOptions{})
+	_, err := c.dynamicClient.Resource(ZarfPackageJobGVR).Namespace(namespace).UpdateStatus(ctx, obj, metav1.UpdateOptions{})
 	if err != nil {
 		if errors.IsNotFound(err) {
-			klog.V(4).InfoS("ZarfPackage not found during status update", "name", name, "namespace", namespace)
+			klog.V(4).InfoS("ZarfPackageJob not found during status update", "name", name, "namespace", namespace)
 			return nil
 		}
 		return fmt.Errorf("failed to update status: %w", err)

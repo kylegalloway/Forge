@@ -1,8 +1,8 @@
-# User RBAC Template for ZarfPackage Multi-Tenancy
+# User RBAC Template for ZarfPackageJob Multi-Tenancy
 #
-# This template creates RBAC roles and bindings for ZarfPackage users.
+# This template creates RBAC roles and bindings for ZarfPackageJob users.
 # Users get scoped permissions within their own namespace:
-# - Create/read/update/delete ZarfPackages
+# - Create/read/update/delete ZarfPackageJobs
 # - Read Jobs and Pods (for monitoring execution)
 # - Cannot modify the controller, CRD, or cluster-wide resources
 #
@@ -14,22 +14,22 @@
 #   ./scripts/onboard-user.sh <username>
 
 ---
-# Role: ZarfPackage Creator
-# Allows users to manage ZarfPackage resources in their namespace
+# Role: ZarfPackageJob Creator
+# Allows users to manage ZarfPackageJob resources in their namespace
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: forge-user
   namespace: user-{{ .Username }}
   labels:
-    forge.zarf.dev/tenant: "{{ .Username }}"
-    forge.zarf.dev/rbac: "user"
+    forge.forge.dev/tenant: "{{ .Username }}"
+    forge.forge.dev/rbac: "user"
 rules:
-# Full access to ZarfPackage resources
+# Full access to ZarfPackageJob resources
 - apiGroups:
-  - forge.zarf.dev
+  - forge.forge.dev
   resources:
-  - zarfpackages
+  - zarfpackagejobs
   verbs:
   - create
   - get
@@ -39,11 +39,11 @@ rules:
   - patch
   - delete
 
-# Read-only access to ZarfPackage status
+# Read-only access to ZarfPackageJob status
 - apiGroups:
-  - forge.zarf.dev
+  - forge.forge.dev
   resources:
-  - zarfpackages/status
+  - zarfpackagejobs/status
   verbs:
   - get
   - list
@@ -106,8 +106,8 @@ metadata:
   name: {{ .Username }}-forge-user
   namespace: user-{{ .Username }}
   labels:
-    forge.zarf.dev/tenant: "{{ .Username }}"
-    forge.zarf.dev/rbac: "user"
+    forge.forge.dev/tenant: "{{ .Username }}"
+    forge.forge.dev/rbac: "user"
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
@@ -127,8 +127,8 @@ subjects:
 #   name: {{ .Username }}-automation
 #   namespace: user-{{ .Username }}
 #   labels:
-#     forge.zarf.dev/tenant: "{{ .Username }}"
-#     forge.zarf.dev/rbac: "automation"
+#     forge.forge.dev/tenant: "{{ .Username }}"
+#     forge.forge.dev/rbac: "automation"
 # ---
 # apiVersion: rbac.authorization.k8s.io/v1
 # kind: RoleBinding
@@ -136,8 +136,8 @@ subjects:
 #   name: {{ .Username }}-automation-forge-user
 #   namespace: user-{{ .Username }}
 #   labels:
-#     forge.zarf.dev/tenant: "{{ .Username }}"
-#     forge.zarf.dev/rbac: "automation"
+#     forge.forge.dev/tenant: "{{ .Username }}"
+#     forge.forge.dev/rbac: "automation"
 # roleRef:
 #   apiGroup: rbac.authorization.k8s.io
 #   kind: Role
@@ -154,7 +154,7 @@ subjects:
 # Actual enforcement relies on NOT granting these permissions in the first place
 #
 # Users CANNOT:
-# - Modify CRDs (zarfpackages.forge.zarf.dev)
+# - Modify CRDs (zarfpackagejobs.forge.forge.dev)
 # - Access controller namespace (forge-system)
 # - Create/modify ClusterRoles or ClusterRoleBindings
 # - Create/modify Roles or RoleBindings outside their namespace

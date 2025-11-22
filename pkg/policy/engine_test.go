@@ -14,12 +14,12 @@ func TestValidate_MissingServiceAccount(t *testing.T) {
 	client := fake.NewSimpleClientset()
 	engine := NewEngine(client)
 
-	pkg := &zarfv1alpha1.ZarfPackage{
+	pkg := &zarfv1alpha1.ZarfPackageJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-pkg",
 			Namespace: "default",
 		},
-		Spec: zarfv1alpha1.ZarfPackageSpec{
+		Spec: zarfv1alpha1.ZarfPackageJobSpec{
 			ServiceAccountName: "",
 			Action:             zarfv1alpha1.ActionBuild,
 		},
@@ -38,12 +38,12 @@ func TestValidate_ServiceAccountNotFound(t *testing.T) {
 	client := fake.NewSimpleClientset()
 	engine := NewEngine(client)
 
-	pkg := &zarfv1alpha1.ZarfPackage{
+	pkg := &zarfv1alpha1.ZarfPackageJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-pkg",
 			Namespace: "default",
 		},
-		Spec: zarfv1alpha1.ZarfPackageSpec{
+		Spec: zarfv1alpha1.ZarfPackageJobSpec{
 			ServiceAccountName: "nonexistent-sa",
 			Action:             zarfv1alpha1.ActionBuild,
 		},
@@ -69,12 +69,12 @@ func TestValidate_ActionNotAllowed(t *testing.T) {
 	client := fake.NewSimpleClientset(sa)
 	engine := NewEngine(client)
 
-	pkg := &zarfv1alpha1.ZarfPackage{
+	pkg := &zarfv1alpha1.ZarfPackageJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-pkg",
 			Namespace: "default",
 		},
-		Spec: zarfv1alpha1.ZarfPackageSpec{
+		Spec: zarfv1alpha1.ZarfPackageJobSpec{
 			ServiceAccountName: "test-sa",
 			Action:             zarfv1alpha1.ActionDeploy,
 			Source: zarfv1alpha1.PackageSource{
@@ -111,12 +111,12 @@ func TestValidate_GitSourceAllowed(t *testing.T) {
 	client := fake.NewSimpleClientset(sa)
 	engine := NewEngine(client)
 
-	pkg := &zarfv1alpha1.ZarfPackage{
+	pkg := &zarfv1alpha1.ZarfPackageJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-pkg",
 			Namespace: "default",
 		},
-		Spec: zarfv1alpha1.ZarfPackageSpec{
+		Spec: zarfv1alpha1.ZarfPackageJobSpec{
 			ServiceAccountName: "test-sa",
 			Action:             zarfv1alpha1.ActionBuild,
 			Source: zarfv1alpha1.PackageSource{
@@ -150,12 +150,12 @@ func TestValidate_GitSourceNotAllowed(t *testing.T) {
 	client := fake.NewSimpleClientset(sa)
 	engine := NewEngine(client)
 
-	pkg := &zarfv1alpha1.ZarfPackage{
+	pkg := &zarfv1alpha1.ZarfPackageJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-pkg",
 			Namespace: "default",
 		},
-		Spec: zarfv1alpha1.ZarfPackageSpec{
+		Spec: zarfv1alpha1.ZarfPackageJobSpec{
 			ServiceAccountName: "test-sa",
 			Action:             zarfv1alpha1.ActionBuild,
 			Source: zarfv1alpha1.PackageSource{
@@ -189,12 +189,12 @@ func TestValidate_WildcardAllowsAll(t *testing.T) {
 	client := fake.NewSimpleClientset(sa)
 	engine := NewEngine(client)
 
-	pkg := &zarfv1alpha1.ZarfPackage{
+	pkg := &zarfv1alpha1.ZarfPackageJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-pkg",
 			Namespace: "default",
 		},
-		Spec: zarfv1alpha1.ZarfPackageSpec{
+		Spec: zarfv1alpha1.ZarfPackageJobSpec{
 			ServiceAccountName: "test-sa",
 			Action:             zarfv1alpha1.ActionBuildPublishDeploy,
 			Source: zarfv1alpha1.PackageSource{
@@ -228,12 +228,12 @@ func TestValidate_S3Source(t *testing.T) {
 	client := fake.NewSimpleClientset(sa)
 	engine := NewEngine(client)
 
-	pkg := &zarfv1alpha1.ZarfPackage{
+	pkg := &zarfv1alpha1.ZarfPackageJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-pkg",
 			Namespace: "default",
 		},
-		Spec: zarfv1alpha1.ZarfPackageSpec{
+		Spec: zarfv1alpha1.ZarfPackageJobSpec{
 			ServiceAccountName: "test-sa",
 			Action:             zarfv1alpha1.ActionBuild,
 			Source: zarfv1alpha1.PackageSource{
@@ -267,12 +267,12 @@ func TestValidate_LocalSourceDeniedByDefault(t *testing.T) {
 	client := fake.NewSimpleClientset(sa)
 	engine := NewEngine(client)
 
-	pkg := &zarfv1alpha1.ZarfPackage{
+	pkg := &zarfv1alpha1.ZarfPackageJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-pkg",
 			Namespace: "default",
 		},
-		Spec: zarfv1alpha1.ZarfPackageSpec{
+		Spec: zarfv1alpha1.ZarfPackageJobSpec{
 			ServiceAccountName: "test-sa",
 			Action:             zarfv1alpha1.ActionBuild,
 			Source: zarfv1alpha1.PackageSource{
@@ -306,12 +306,12 @@ func TestValidate_LocalSourceAllowed(t *testing.T) {
 	client := fake.NewSimpleClientset(sa)
 	engine := NewEngine(client)
 
-	pkg := &zarfv1alpha1.ZarfPackage{
+	pkg := &zarfv1alpha1.ZarfPackageJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-pkg",
 			Namespace: "default",
 		},
-		Spec: zarfv1alpha1.ZarfPackageSpec{
+		Spec: zarfv1alpha1.ZarfPackageJobSpec{
 			ServiceAccountName: "test-sa",
 			Action:             zarfv1alpha1.ActionBuild,
 			Source: zarfv1alpha1.PackageSource{

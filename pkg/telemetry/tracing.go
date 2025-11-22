@@ -9,7 +9,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-const tracerName = "forge.zarf.dev/controller"
+const tracerName = "forge.forge.dev/controller"
 
 // Tracer wraps OpenTelemetry tracer with convenience methods
 type Tracer struct {
@@ -25,21 +25,21 @@ func NewTracer() *Tracer {
 
 // StartReconcileSpan starts a new span for reconciliation
 func (t *Tracer) StartReconcileSpan(ctx context.Context, namespace, name string) (context.Context, trace.Span) {
-	return t.tracer.Start(ctx, "reconcile_zarfpackage",
+	return t.tracer.Start(ctx, "reconcile_zarfpackagejob",
 		trace.WithAttributes(
-			attribute.String("zarfpackage.namespace", namespace),
-			attribute.String("zarfpackage.name", name),
+			attribute.String("ZarfPackageJob.namespace", namespace),
+			attribute.String("ZarfPackageJob.name", name),
 		),
 		trace.WithSpanKind(trace.SpanKindInternal),
 	)
 }
 
 // StartJobCreationSpan starts a new span for Job creation
-func (t *Tracer) StartJobCreationSpan(ctx context.Context, namespace, zarfPackage, jobName string) (context.Context, trace.Span) {
+func (t *Tracer) StartJobCreationSpan(ctx context.Context, namespace, zarfPackageJob, jobName string) (context.Context, trace.Span) {
 	return t.tracer.Start(ctx, "create_job",
 		trace.WithAttributes(
-			attribute.String("zarfpackage.namespace", namespace),
-			attribute.String("zarfpackage.name", zarfPackage),
+			attribute.String("ZarfPackageJob.namespace", namespace),
+			attribute.String("ZarfPackageJob.name", zarfPackageJob),
 			attribute.String("job.name", jobName),
 		),
 		trace.WithSpanKind(trace.SpanKindInternal),
@@ -48,10 +48,10 @@ func (t *Tracer) StartJobCreationSpan(ctx context.Context, namespace, zarfPackag
 
 // StartWebhookValidationSpan starts a new span for webhook validation
 func (t *Tracer) StartWebhookValidationSpan(ctx context.Context, namespace, name string) (context.Context, trace.Span) {
-	return t.tracer.Start(ctx, "validate_zarfpackage",
+	return t.tracer.Start(ctx, "validate_zarfpackagejob",
 		trace.WithAttributes(
-			attribute.String("zarfpackage.namespace", namespace),
-			attribute.String("zarfpackage.name", name),
+			attribute.String("ZarfPackageJob.namespace", namespace),
+			attribute.String("ZarfPackageJob.name", name),
 		),
 		trace.WithSpanKind(trace.SpanKindServer),
 	)
@@ -59,10 +59,10 @@ func (t *Tracer) StartWebhookValidationSpan(ctx context.Context, namespace, name
 
 // StartWebhookMutationSpan starts a new span for webhook mutation
 func (t *Tracer) StartWebhookMutationSpan(ctx context.Context, namespace, name string) (context.Context, trace.Span) {
-	return t.tracer.Start(ctx, "mutate_zarfpackage",
+	return t.tracer.Start(ctx, "mutate_zarfpackagejob",
 		trace.WithAttributes(
-			attribute.String("zarfpackage.namespace", namespace),
-			attribute.String("zarfpackage.name", name),
+			attribute.String("ZarfPackageJob.namespace", namespace),
+			attribute.String("ZarfPackageJob.name", name),
 		),
 		trace.WithSpanKind(trace.SpanKindServer),
 	)

@@ -20,11 +20,10 @@ Production readiness checklist for deploying Forge - the Kubernetes-native Zarf 
 
 ### API & CRD
 
-- [x] ✅ ZarfPackage CRD with comprehensive validation
-- [x] ✅ UDSBundle CRD support
-- [x] ✅ Status subresources for both CRDs
+- [x] ✅ ZarfPackageJob CRD with comprehensive validation
+- [x] ✅ Status subresources
 - [x] ✅ OpenAPI v3 schema validation
-- [x] ✅ Short names configured (zp, udsb)
+- [x] ✅ Short name configured (zpj)
 
 ### Controller Security
 
@@ -39,7 +38,7 @@ Production readiness checklist for deploying Forge - the Kubernetes-native Zarf 
 
 - [x] ✅ ServiceAccount for controller
 - [x] ✅ ClusterRole with minimal permissions
-- [x] ✅ ZarfPackage and UDSBundle read/status permissions
+- [x] ✅ ZarfPackageJob read/status permissions
 - [x] ✅ ServiceAccount read permissions (for policy validation)
 - [x] ✅ Secret read permissions (for credentials)
 - [x] ✅ Job create/read permissions (no delete)
@@ -80,7 +79,7 @@ Production readiness checklist for deploying Forge - the Kubernetes-native Zarf 
 
 - [x] ✅ Validating webhook deployed
 - [x] ✅ TLS certificate management (cert-manager ready)
-- [x] ✅ ZarfPackage validation
+- [x] ✅ ZarfPackageJob validation
 - [x] ✅ Policy enforcement at admission time
 - [x] ✅ Fail-closed configuration
 - [x] ✅ Health endpoints (/healthz, /readyz)
@@ -387,8 +386,7 @@ Minimum viable path (fastest route):
 
 ## Notes
 
-- **Architecture change**: This checklist reflects the Forge architecture using ZarfPackage/UDSBundle CRDs
-- **No ZarfPackage**: Old ZarfPackage API has been completely removed
+- **Architecture change**: This checklist reflects the Forge architecture using ZarfPackageJob CRDs
 - **Policy-based**: Security model based on ServiceAccount annotations and admission webhooks
 - **Observability-first**: Full OpenTelemetry integration from day one
 - **Production-ready foundation**: Core security and observability already implemented

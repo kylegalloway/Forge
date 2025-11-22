@@ -16,7 +16,7 @@ import (
 	"github.com/kylegalloway/forge/pkg/telemetry"
 )
 
-// DeployHandler handles Deploy actions for ZarfPackage resources
+// DeployHandler handles Deploy actions for ZarfPackageJob resources
 type DeployHandler struct {
 	kubeClient kubernetes.Interface
 	metrics    *telemetry.Metrics
@@ -32,8 +32,8 @@ func NewDeployHandler(kubeClient kubernetes.Interface, metrics *telemetry.Metric
 	}
 }
 
-// Execute performs a Deploy action for the given ZarfPackage
-func (h *DeployHandler) Execute(ctx context.Context, pkg *zarfv1alpha1.ZarfPackage, artifactPath string) (*ActionResult, error) {
+// Execute performs a Deploy action for the given ZarfPackageJob
+func (h *DeployHandler) Execute(ctx context.Context, pkg *zarfv1alpha1.ZarfPackageJob, artifactPath string) (*ActionResult, error) {
 	klog.InfoS("Executing Deploy action", "name", pkg.Name, "namespace", pkg.Namespace)
 
 	// Validate deploy config is provided
@@ -61,7 +61,7 @@ func (h *DeployHandler) Execute(ctx context.Context, pkg *zarfv1alpha1.ZarfPacka
 }
 
 // createDeployJob creates a Kubernetes Job to deploy a Zarf package
-func (h *DeployHandler) createDeployJob(ctx context.Context, pkg *zarfv1alpha1.ZarfPackage, artifactPath string) (*batchv1.Job, error) {
+func (h *DeployHandler) createDeployJob(ctx context.Context, pkg *zarfv1alpha1.ZarfPackageJob, artifactPath string) (*batchv1.Job, error) {
 	jobName := fmt.Sprintf("%s-deploy", pkg.Name)
 	namespace := pkg.Namespace
 
@@ -93,12 +93,12 @@ func (h *DeployHandler) createDeployJob(ctx context.Context, pkg *zarfv1alpha1.Z
 			Name:      jobName,
 			Namespace: namespace,
 			Labels: map[string]string{
-				"app":                    "forge",
-				"forge.zarf.dev/package": pkg.Name,
-				"forge.zarf.dev/action":  "deploy",
+				"app":                     "forge",
+				"forge.forge.dev/package": pkg.Name,
+				"forge.forge.dev/action":  "deploy",
 			},
 			OwnerReferences: []metav1.OwnerReference{
-				*metav1.NewControllerRef(pkg, zarfv1alpha1.SchemeGroupVersion.WithKind("ZarfPackage")),
+				*metav1.NewControllerRef(pkg, zarfv1alpha1.SchemeGroupVersion.WithKind("ZarfPackageJob")),
 			},
 		},
 		Spec: batchv1.JobSpec{
@@ -108,9 +108,9 @@ func (h *DeployHandler) createDeployJob(ctx context.Context, pkg *zarfv1alpha1.Z
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{
-						"app":                    "forge",
-						"forge.zarf.dev/package": pkg.Name,
-						"forge.zarf.dev/action":  "deploy",
+						"app":                     "forge",
+						"forge.forge.dev/package": pkg.Name,
+						"forge.forge.dev/action":  "deploy",
 					},
 				},
 				Spec: corev1.PodSpec{
@@ -210,7 +210,7 @@ func (h *DeployHandler) createDeployJob(ctx context.Context, pkg *zarfv1alpha1.Z
 }
 
 // buildDeployCommand builds the zarf deploy command
-func (h *DeployHandler) buildDeployCommand(pkg *zarfv1alpha1.ZarfPackage, artifactPath string) string {
+func (h *DeployHandler) buildDeployCommand(pkg *zarfv1alpha1.ZarfPackageJob, artifactPath string) string {
 	deploy := pkg.Spec.Deploy
 
 	// Base command
@@ -240,7 +240,7 @@ func (h *DeployHandler) buildDeployCommand(pkg *zarfv1alpha1.ZarfPackage, artifa
 }
 
 // buildEnvVars builds environment variables for deploy job
-func (h *DeployHandler) buildEnvVars(pkg *zarfv1alpha1.ZarfPackage) []corev1.EnvVar {
+func (h *DeployHandler) buildEnvVars(pkg *zarfv1alpha1.ZarfPackageJob) []corev1.EnvVar {
 	envVars := []corev1.EnvVar{
 		{
 			Name:  "ZARF_CONFIRM",
@@ -260,7 +260,7 @@ func (h *DeployHandler) buildEnvVars(pkg *zarfv1alpha1.ZarfPackage) []corev1.Env
 }
 
 // buildInitContainers creates init containers for artifact retrieval
-func (h *DeployHandler) buildInitContainers(pkg *zarfv1alpha1.ZarfPackage, _ string) ([]corev1.Container, error) {
+func (h *DeployHandler) buildInitContainers(pkg *zarfv1alpha1.ZarfPackageJob, _ string) ([]corev1.Container, error) {
 	sourceHandler, err := sources.New(pkg)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create source handler: %w", err)
@@ -279,13 +279,13 @@ func (h *DeployHandler) buildInitContainers(pkg *zarfv1alpha1.ZarfPackage, _ str
 }
 
 // addServiceAccount adds the ServiceAccount to the job pod
-func (h *DeployHandler) addServiceAccount(pkg *zarfv1alpha1.ZarfPackage, job *batchv1.Job) {
-	// Use the ZarfPackage's ServiceAccount
+func (h *DeployHandler) addServiceAccount(pkg *zarfv1alpha1.ZarfPackageJob, job *batchv1.Job) {
+	// Use the ZarfPackageJob's ServiceAccount
 	job.Spec.Template.Spec.ServiceAccountName = pkg.Spec.ServiceAccountName
 }
 
 // addKubeconfigVolume adds kubeconfig Secret volume for external cluster deployments
-func (h *DeployHandler) addKubeconfigVolume(pkg *zarfv1alpha1.ZarfPackage, job *batchv1.Job) {
+func (h *DeployHandler) addKubeconfigVolume(pkg *zarfv1alpha1.ZarfPackageJob, job *batchv1.Job) {
 	if pkg.Spec.Deploy.ExternalCluster == nil {
 		return
 	}

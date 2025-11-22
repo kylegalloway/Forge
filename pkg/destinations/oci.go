@@ -11,7 +11,7 @@ import (
 type OCIDestination struct{}
 
 // GetPublishCommand returns the zarf package publish command
-func (d *OCIDestination) GetPublishCommand(pkg *zarfv1alpha1.ZarfPackage, artifactPath string) (string, error) {
+func (d *OCIDestination) GetPublishCommand(pkg *zarfv1alpha1.ZarfPackageJob, artifactPath string) (string, error) {
 	dest := pkg.Spec.Publish.Destination.OCI
 	if dest == nil {
 		return "", fmt.Errorf("oci destination configuration is missing")
@@ -26,7 +26,7 @@ func (d *OCIDestination) GetPublishCommand(pkg *zarfv1alpha1.ZarfPackage, artifa
 }
 
 // GetJobConfiguration returns the docker config volume mount
-func (d *OCIDestination) GetJobConfiguration(pkg *zarfv1alpha1.ZarfPackage) (*JobConfig, error) {
+func (d *OCIDestination) GetJobConfiguration(pkg *zarfv1alpha1.ZarfPackageJob) (*JobConfig, error) {
 	dest := pkg.Spec.Publish.Destination.OCI
 	if dest == nil {
 		return nil, fmt.Errorf("oci destination configuration is missing")

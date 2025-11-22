@@ -4,7 +4,7 @@ Common issues and their solutions when running Forge.
 
 ## Table of Contents
 
-- [ZarfPackage Issues](#zarfpackage-issues)
+- [ZarfPackageJob Issues](#ZarfPackageJob-issues)
 - [Policy & Permission Issues](#policy--permission-issues)
 - [Job Failures](#job-failures)
 - [Webhook Issues](#webhook-issues)
@@ -13,14 +13,14 @@ Common issues and their solutions when running Forge.
 
 ---
 
-## ZarfPackage Issues
+## ZarfPackageJob Issues
 
-### ZarfPackage stays in Pending phase
+### ZarfPackageJob stays in Pending phase
 
 **Symptoms:**
 
 ```bash
-kubectl get zarfpackage my-package
+kubectl get ZarfPackageJob my-package
 # STATUS shows "Pending" for extended period
 ```text
 
@@ -29,7 +29,7 @@ kubectl get zarfpackage my-package
 1. **ServiceAccount not found**
 
    ```bash
-   kubectl describe zarfpackage my-package
+   kubectl describe ZarfPackageJob my-package
    # Check Events section for "ServiceAccount not found"
    ```
 
@@ -51,12 +51,12 @@ kubectl get zarfpackage my-package
 
    **Solution:** Check controller logs and ensure deployment is healthy
 
-### ZarfPackage was denied by webhook
+### ZarfPackageJob was denied by webhook
 
 **Symptoms:**
 
 ```text
-Error from server: admission webhook "validate.zarf.dev" denied the request
+Error from server: admission webhook "validate.forge.dev" denied the request
 ```text
 
 **Solution:**
@@ -87,7 +87,7 @@ kind: ServiceAccount
 metadata:
   name: dev-sa
   annotations:
-    forge.zarf.dev/allowed-actions: "Build,Publish,Deploy"  # Add Deploy
+    forge.forge.dev/allowed-actions: "Build,Publish,Deploy"  # Add Deploy
 ```text
 
 ### Git repository not allowed
@@ -103,7 +103,7 @@ Update ServiceAccount to allow the repository pattern:
 
 ```yaml
 annotations:
-  forge.zarf.dev/allowed-source-repos: "https://github.com/myorg/*,https://github.com/other/*"
+  forge.forge.dev/allowed-source-repos: "https://github.com/myorg/*,https://github.com/other/*"
 ```text
 
 **Note:** Patterns use glob matching. Use `*` for wildcard, e.g., `https://github.com/myorg/*` matches all repos under myorg.
@@ -120,9 +120,9 @@ S3 bucket my-prod-bucket is not allowed (allowed buckets: [my-dev-*])
 
 ```yaml
 annotations:
-  forge.zarf.dev/allowed-source-buckets: "my-dev-*,my-prod-*"
+  forge.forge.dev/allowed-source-buckets: "my-dev-*,my-prod-*"
   # or for publish:
-  forge.zarf.dev/allowed-publish-buckets: "my-artifacts-*"
+  forge.forge.dev/allowed-publish-buckets: "my-artifacts-*"
 ```text
 
 ### Local sources denied
@@ -130,14 +130,14 @@ annotations:
 **Symptoms:**
 
 ```text
-local sources are not allowed (set annotation forge.zarf.dev/allow-local-sources: true for dev mode)
+local sources are not allowed (set annotation forge.forge.dev/allow-local-sources: true for dev mode)
 ```text
 
 **Solution (DEV/TEST ONLY):**
 
 ```yaml
 annotations:
-  forge.zarf.dev/allow-local-sources: "true"
+  forge.forge.dev/allow-local-sources: "true"
 ```text
 
 **Warning:** Only enable for development/testing. Never in production.
@@ -152,7 +152,7 @@ annotations:
 
 ```bash
 # Find the job
-kubectl get jobs -l forge.zarf.dev/package=my-package
+kubectl get jobs -l forge.forge.dev/package=my-package
 
 # Get logs
 kubectl logs job/my-package-build-xxxxx
@@ -166,7 +166,7 @@ kubectl logs job/my-package-build-xxxxx
    fatal: could not read Username for 'https://github.com': No such device
    ```
 
-   **Solution:** Create Secret with Git credentials and reference in ZarfPackage:
+   **Solution:** Create Secret with Git credentials and reference in ZarfPackageJob:
 
    ```yaml
    source:
@@ -281,7 +281,7 @@ kubectl get svc -n forge-system forge-webhook
 ### Webhook validation takes too long
 
 **Symptoms:**
-Slow ZarfPackage creation (>5 seconds)
+Slow ZarfPackageJob creation (>5 seconds)
 
 **Possible causes:**
 
@@ -309,7 +309,7 @@ kubectl logs -n forge-system -l app=forge-controller --tail=100
 1. **RBAC permissions missing**
 
    ```text
-   is forbidden: User "system:serviceaccount:forge-system:forge-controller" cannot get resource "zarfpackages"
+   is forbidden: User "system:serviceaccount:forge-system:forge-controller" cannot get resource "zarfpackagejobs"
    ```
 
    **Solution:** Ensure RBAC is properly configured:
@@ -321,7 +321,7 @@ kubectl logs -n forge-system -l app=forge-controller --tail=100
 2. **CRD not installed**
 
    ```text
-   no matches for kind "ZarfPackage" in version "zarf.dev/v1alpha1"
+   no matches for kind "ZarfPackageJob" in version "forge.dev/v1alpha1"
    ```
 
    **Solution:** Install CRDs:
@@ -333,7 +333,7 @@ kubectl logs -n forge-system -l app=forge-controller --tail=100
 ### Controller not reconciling
 
 **Symptoms:**
-ZarfPackage created but no Jobs appear
+ZarfPackageJob created but no Jobs appear
 
 **Debug:**
 
@@ -358,14 +358,14 @@ Controller pod OOMKilled or high memory consumption
 
 **Possible causes:**
 
-1. Too many ZarfPackages being monitored
+1. Too many ZarfPackageJobs being monitored
 2. Memory leak (report bug if persists)
 3. Large job watch cache
 
 **Solution:**
 
 1. Increase memory limits in deployment
-2. Check for completed ZarfPackages that can be cleaned up
+2. Check for completed ZarfPackageJobs that can be cleaned up
 3. Review metrics for abnormal patterns
 
 ---
@@ -384,23 +384,23 @@ kubectl get pods -n forge-system -l app=forge-webhook
 kubectl get validatingwebhookconfiguration forge-webhook
 
 # CRDs installed
-kubectl get crd | grep zarf.dev
+kubectl get crd | grep forge.dev
 ```text
 
-### Inspect ZarfPackage
+### Inspect ZarfPackageJob
 
 ```bash
 # Get package details
-kubectl get zarfpackage my-package -o yaml
+kubectl get ZarfPackageJob my-package -o yaml
 
 # Get package status
-kubectl get zarfpackage my-package -o jsonpath='{.status}' | jq
+kubectl get ZarfPackageJob my-package -o jsonpath='{.status}' | jq
 
 # Get related events
 kubectl get events --field-selector involvedObject.name=my-package
 
 # Get related job
-JOB=$(kubectl get zarfpackage my-package -o jsonpath='{.status.buildStatus.jobName}' 2>/dev/null || echo "none")
+JOB=$(kubectl get ZarfPackageJob my-package -o jsonpath='{.status.buildStatus.jobName}' 2>/dev/null || echo "none")
 kubectl get job $JOB -o yaml
 ```text
 
@@ -449,8 +449,8 @@ kubectl get validatingwebhookconfiguration forge-webhook -o yaml
 
 # Test webhook (will fail but shows if webhook is reachable)
 kubectl create -f - <<EOF
-apiVersion: zarf.dev/v1alpha1
-kind: ZarfPackage
+apiVersion: forge.dev/v1alpha1
+kind: ZarfPackageJob
 metadata:
   name: test-webhook
 spec:
@@ -463,7 +463,7 @@ spec:
       ref: main
 EOF
 # Should see webhook validation error
-kubectl delete zarfpackage test-webhook --ignore-not-found
+kubectl delete ZarfPackageJob test-webhook --ignore-not-found
 ```text
 
 ---
@@ -481,8 +481,8 @@ If the issue persists after trying these solutions:
    # Webhook logs
    kubectl logs -n forge-system -l app=forge-webhook --tail=500 > webhook.log
 
-   # ZarfPackage details
-   kubectl get zarfpackage my-package -o yaml > package.yaml
+   # ZarfPackageJob details
+   kubectl get ZarfPackageJob my-package -o yaml > package.yaml
 
    # Events
    kubectl get events -A > events.log

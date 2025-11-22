@@ -8,17 +8,17 @@ import (
 	"go.opentelemetry.io/otel/metric"
 )
 
-const meterName = "forge.zarf.dev/controller"
+const meterName = "forge.forge.dev/controller"
 
 // Metrics holds all OpenTelemetry metrics for the Forge controller
 type Metrics struct {
 	// Counter metrics
-	zarfPackagesCreated metric.Int64Counter
-	jobsCreated         metric.Int64Counter
-	jobsCompleted       metric.Int64Counter
-	jobsFailed          metric.Int64Counter
-	reconcileErrors     metric.Int64Counter
-	webhookValidations  metric.Int64Counter
+	zarfPackageJobsCreated metric.Int64Counter
+	jobsCreated            metric.Int64Counter
+	jobsCompleted          metric.Int64Counter
+	jobsFailed             metric.Int64Counter
+	reconcileErrors        metric.Int64Counter
+	webhookValidations     metric.Int64Counter
 
 	// Action-specific metrics
 	buildsStarted      metric.Int64Counter
@@ -32,7 +32,7 @@ type Metrics struct {
 	deploysFailed      metric.Int64Counter
 
 	// Gauge metrics (using UpDownCounter for current state)
-	zarfPackagesActive metric.Int64UpDownCounter
+	zarfPackageJobsActive metric.Int64UpDownCounter
 
 	// Histogram metrics
 	actionDuration    metric.Float64Histogram
@@ -43,19 +43,19 @@ type Metrics struct {
 func NewMetrics() (*Metrics, error) {
 	meter := otel.Meter(meterName)
 
-	// Create counters for ZarfPackage resources
-	zarfPackagesCreated, err := meter.Int64Counter(
-		"forge.zarf_packages.created",
-		metric.WithDescription("Total number of ZarfPackage resources created"),
+	// Create counters for ZarfPackageJob resources
+	zarfPackageJobsCreated, err := meter.Int64Counter(
+		"forge.zarf_package_jobs.created",
+		metric.WithDescription("Total number of ZarfPackageJob resources created"),
 		metric.WithUnit("{resource}"),
 	)
 	if err != nil {
 		return nil, err
 	}
 
-	zarfPackagesActive, err := meter.Int64UpDownCounter(
-		"forge.zarf_packages.active",
-		metric.WithDescription("Current number of active ZarfPackage resources"),
+	zarfPackageJobsActive, err := meter.Int64UpDownCounter(
+		"forge.zarf_package_jobs.active",
+		metric.WithDescription("Current number of active ZarfPackageJob resources"),
 		metric.WithUnit("{resource}"),
 	)
 	if err != nil {
@@ -216,38 +216,38 @@ func NewMetrics() (*Metrics, error) {
 	}
 
 	return &Metrics{
-		zarfPackagesCreated: zarfPackagesCreated,
-		zarfPackagesActive:  zarfPackagesActive,
-		jobsCreated:         jobsCreated,
-		jobsCompleted:       jobsCompleted,
-		jobsFailed:          jobsFailed,
-		buildsStarted:       buildsStarted,
-		buildsCompleted:     buildsCompleted,
-		buildsFailed:        buildsFailed,
-		publishesStarted:    publishesStarted,
-		publishesCompleted:  publishesCompleted,
-		publishesFailed:     publishesFailed,
-		deploysStarted:      deploysStarted,
-		deploysCompleted:    deploysCompleted,
-		deploysFailed:       deploysFailed,
-		reconcileErrors:     reconcileErrors,
-		webhookValidations:  webhookValidations,
-		actionDuration:      actionDuration,
-		reconcileDuration:   reconcileDuration,
+		zarfPackageJobsCreated: zarfPackageJobsCreated,
+		zarfPackageJobsActive:  zarfPackageJobsActive,
+		jobsCreated:            jobsCreated,
+		jobsCompleted:          jobsCompleted,
+		jobsFailed:             jobsFailed,
+		buildsStarted:          buildsStarted,
+		buildsCompleted:        buildsCompleted,
+		buildsFailed:           buildsFailed,
+		publishesStarted:       publishesStarted,
+		publishesCompleted:     publishesCompleted,
+		publishesFailed:        publishesFailed,
+		deploysStarted:         deploysStarted,
+		deploysCompleted:       deploysCompleted,
+		deploysFailed:          deploysFailed,
+		reconcileErrors:        reconcileErrors,
+		webhookValidations:     webhookValidations,
+		actionDuration:         actionDuration,
+		reconcileDuration:      reconcileDuration,
 	}, nil
 }
 
-// RecordZarfPackageCreated increments the ZarfPackage created counter
-func (m *Metrics) RecordZarfPackageCreated(ctx context.Context, namespace string) {
-	m.zarfPackagesCreated.Add(ctx, 1,
+// RecordZarfPackageCreated increments the ZarfPackageJob created counter
+func (m *Metrics) RecordZarfPackageJobCreated(ctx context.Context, namespace string) {
+	m.zarfPackageJobsCreated.Add(ctx, 1,
 		metric.WithAttributes(attribute.String("namespace", namespace)))
-	m.zarfPackagesActive.Add(ctx, 1,
+	m.zarfPackageJobsActive.Add(ctx, 1,
 		metric.WithAttributes(attribute.String("namespace", namespace)))
 }
 
-// RecordZarfPackageDeleted decrements the active ZarfPackage counter
-func (m *Metrics) RecordZarfPackageDeleted(ctx context.Context, namespace string) {
-	m.zarfPackagesActive.Add(ctx, -1,
+// RecordZarfPackageDeleted decrements the active ZarfPackageJob counter
+func (m *Metrics) RecordZarfPackageJobDeleted(ctx context.Context, namespace string) {
+	m.zarfPackageJobsActive.Add(ctx, -1,
 		metric.WithAttributes(attribute.String("namespace", namespace)))
 }
 

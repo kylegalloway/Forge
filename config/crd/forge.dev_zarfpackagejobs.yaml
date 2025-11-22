@@ -2,18 +2,18 @@
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
-  name: udsbundles.uds.io
+  name: zarfpackagejobs.forge.dev
   annotations:
     controller-gen.kubebuilder.io/version: v0.11.0
 spec:
-  group: uds.io
+  group: forge.dev
   names:
-    kind: UDSBundle
-    listKind: UDSBundleList
-    plural: udsbundles
+    kind: ZarfPackageJob
+    listKind: ZarfPackageJobList
+    plural: zarfpackagejobs
     shortNames:
-    - ub
-    singular: udsbundle
+    - zpj
+    singular: zarfpackagejob
   scope: Namespaced
   versions:
   - name: v1alpha1
@@ -21,7 +21,7 @@ spec:
     storage: true
     schema:
       openAPIV3Schema:
-        description: UDSBundle is the Schema for the UDS bundles API
+        description: ZarfPackageJob is the Schema for the zarf packages API
         type: object
         properties:
           apiVersion:
@@ -33,16 +33,12 @@ spec:
           metadata:
             type: object
           spec:
-            description: UDSBundleSpec defines the desired state of a UDSBundle
+            description: ZarfPackageJobSpec defines the desired state of a ZarfPackageJob
             type: object
             required:
             - action
             - source
-            - serviceAccountName
             properties:
-              serviceAccountName:
-                description: ServiceAccountName references the ServiceAccount that defines permissions for this bundle
-                type: string
               action:
                 description: Action specifies what operation(s) to perform
                 type: string
@@ -55,7 +51,7 @@ spec:
                 - PublishDeploy
                 - BuildPublishDeploy
               source:
-                description: Source defines where the bundle definition or artifact comes from
+                description: Source defines where the package definition or artifact comes from
                 type: object
                 required:
                 - type
@@ -156,7 +152,7 @@ spec:
                         description: DevMode must be explicitly set to true for local sources
                         type: boolean
               publish:
-                description: Publish defines where to publish the built bundle
+                description: Publish defines where to publish the built package
                 type: object
                 required:
                 - destination
@@ -228,7 +224,7 @@ spec:
                           devMode:
                             type: boolean
               deploy:
-                description: Deploy defines how to deploy the bundle
+                description: Deploy defines how to deploy the package
                 type: object
                 required:
                 - target
@@ -296,55 +292,31 @@ spec:
                       - BuildDeploy
                       - PublishDeploy
                       - BuildPublishDeploy
-                  allowedSources:
-                    description: AllowedSources restricts which source types/patterns are permitted
+                  allowedSourceRepos:
+                    description: AllowedSourceRepos restricts which Git repositories can be used
                     type: array
                     items:
-                      type: object
-                      required:
-                      - type
-                      properties:
-                        type:
-                          type: string
-                          enum:
-                          - Git
-                          - S3
-                          - OCI
-                          - Local
-                        repos:
-                          type: array
-                          items:
-                            type: string
-                        buckets:
-                          type: array
-                          items:
-                            type: string
-                        images:
-                          type: array
-                          items:
-                            type: string
-                  allowedDestinations:
-                    description: AllowedDestinations restricts which destination types/patterns are permitted
+                      type: string
+                  allowedSourceBuckets:
+                    description: AllowedSourceBuckets restricts which S3 buckets can be used
                     type: array
                     items:
-                      type: object
-                      required:
-                      - type
-                      properties:
-                        type:
-                          type: string
-                          enum:
-                          - S3
-                          - OCI
-                          - Local
-                        buckets:
-                          type: array
-                          items:
-                            type: string
-                        registries:
-                          type: array
-                          items:
-                            type: string
+                      type: string
+                  allowedSourceRegistries:
+                    description: AllowedSourceRegistries restricts which OCI registries can be used
+                    type: array
+                    items:
+                      type: string
+                  allowedPublishBuckets:
+                    description: AllowedPublishBuckets restricts publish S3 destinations
+                    type: array
+                    items:
+                      type: string
+                  allowedPublishRegistries:
+                    description: AllowedPublishRegistries restricts publish OCI destinations
+                    type: array
+                    items:
+                      type: string
                   allowedDeployTargets:
                     description: AllowedDeployTargets restricts deploy targets
                     type: array
@@ -354,7 +326,7 @@ spec:
                       - InCluster
                       - ExternalCluster
           status:
-            description: UDSBundleStatus defines the observed state of UDSBundle
+            description: ZarfPackageJobStatus defines the observed state of ZarfPackageJob
             type: object
             properties:
               phase:

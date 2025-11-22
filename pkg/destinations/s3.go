@@ -11,7 +11,7 @@ import (
 type S3Destination struct{}
 
 // GetPublishCommand returns the aws s3 cp command
-func (d *S3Destination) GetPublishCommand(pkg *zarfv1alpha1.ZarfPackage, artifactPath string) (string, error) {
+func (d *S3Destination) GetPublishCommand(pkg *zarfv1alpha1.ZarfPackageJob, artifactPath string) (string, error) {
 	dest := pkg.Spec.Publish.Destination.S3
 	if dest == nil {
 		return "", fmt.Errorf("s3 destination configuration is missing")
@@ -22,7 +22,7 @@ func (d *S3Destination) GetPublishCommand(pkg *zarfv1alpha1.ZarfPackage, artifac
 }
 
 // GetJobConfiguration returns the AWS credentials env vars
-func (d *S3Destination) GetJobConfiguration(pkg *zarfv1alpha1.ZarfPackage) (*JobConfig, error) {
+func (d *S3Destination) GetJobConfiguration(pkg *zarfv1alpha1.ZarfPackageJob) (*JobConfig, error) {
 	dest := pkg.Spec.Publish.Destination.S3
 	if dest == nil {
 		return nil, fmt.Errorf("s3 destination configuration is missing")

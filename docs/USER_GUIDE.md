@@ -2,7 +2,7 @@
 
 ## Introduction
 
-Forge allows you to manage Zarf packages and UDS bundles using Kubernetes Custom Resources. This guide provides detailed instructions on how to use Forge to build, publish, and deploy your artifacts.
+Forge allows you to manage Zarf packages using Kubernetes Custom Resources. This guide provides detailed instructions on how to use Forge to build, publish, and deploy your artifacts.
 
 ## Installation
 
@@ -14,8 +14,7 @@ For platform teams managing multi-tenant environments with full cluster access:
 
 ```bash
 # 1. Install Custom Resource Definitions (requires cluster-admin)
-kubectl apply -f config/crd/zarf.dev_zarfpackages.yaml
-kubectl apply -f config/crd/uds.io_udsbundles.yaml
+kubectl apply -f config/crd/forge.dev_zarfpackagejobs.yaml
 
 # 2. Install the Forge Controller with ClusterRole
 kubectl apply -f config/rbac/rbac.yaml
@@ -28,7 +27,7 @@ kubectl apply -f webhook/deploy/
 **Features**:
 
 - Watches all namespaces
-- ZarfPackages can be created in any namespace
+- ZarfPackageJobs can be created in any namespace
 - ServiceAccounts can be in any namespace
 - Suitable for platform teams
 
@@ -38,8 +37,7 @@ For restricted environments where ClusterRole permissions aren't available:
 
 ```bash
 # 1. Install CRDs (requires cluster-admin - one-time setup)
-kubectl apply -f config/crd/zarf.dev_zarfpackages.yaml
-kubectl apply -f config/crd/uds.io_udsbundles.yaml
+kubectl apply -f config/crd/forge.dev_zarfpackagejobs.yaml
 
 # 2. Create namespace
 kubectl create namespace forge-system
@@ -56,19 +54,15 @@ kubectl apply -f config/namespace-scoped/deployment.yaml
 - Minimal permissions (Role, not ClusterRole)
 - Suitable for restricted clusters, individual teams
 
-**Important**: In namespace-scoped mode, all ZarfPackages, ServiceAccounts, and Secrets must be created in the `forge-system` namespace.
+**Important**: In namespace-scoped mode, all ZarfPackageJobs, ServiceAccounts, and Secrets must be created in the `forge-system` namespace.
 
 📖 **Detailed Guide**: See [NAMESPACE_SCOPED_DEPLOYMENT.md](./NAMESPACE_SCOPED_DEPLOYMENT.md) for complete instructions, migration paths, and multi-tenant patterns.
 
 ## Core Concepts
 
-### ZarfPackage
+### ZarfPackageJob
 
 The primary resource for defining operations on a single Zarf package.
-
-### UDSBundle
-
-The resource for defining operations on a UDS bundle (a collection of Zarf packages).
 
 ### Actions
 
@@ -84,8 +78,8 @@ The resource for defining operations on a UDS bundle (a collection of Zarf packa
 Builds a package from a public Git repository.
 
 ```yaml
-apiVersion: zarf.dev/v1alpha1
-kind: ZarfPackage
+apiVersion: forge.dev/v1alpha1
+kind: ZarfPackageJob
 metadata:
   name: build-example
   namespace: default
@@ -105,8 +99,8 @@ spec:
 Builds a package and immediately publishes it to an OCI registry.
 
 ```yaml
-apiVersion: zarf.dev/v1alpha1
-kind: ZarfPackage
+apiVersion: forge.dev/v1alpha1
+kind: ZarfPackageJob
 metadata:
   name: build-publish-oci
   namespace: default
@@ -135,8 +129,8 @@ spec:
 Deploys a package stored in an S3 bucket.
 
 ```yaml
-apiVersion: zarf.dev/v1alpha1
-kind: ZarfPackage
+apiVersion: forge.dev/v1alpha1
+kind: ZarfPackageJob
 metadata:
   name: deploy-s3
   namespace: default
@@ -156,27 +150,6 @@ spec:
     namespace: games
 ```
 
-### 4. UDS Bundle Deploy
-
-Deploys a UDS bundle from an OCI registry.
-
-```yaml
-apiVersion: uds.io/v1alpha1
-kind: UDSBundle
-metadata:
-  name: deploy-bundle
-  namespace: default
-spec:
-  serviceAccountName: default
-  action: Deploy
-  source:
-    type: OCI
-    oci:
-      image: ghcr.io/defenseunicorns/packages/uds/bundle:0.1.0
-  deploy:
-    target: InCluster
-```
-
 ## Policy Enforcement
 
 Forge uses `ServiceAccount` annotations to enforce policies.
@@ -194,16 +167,16 @@ metadata:
   namespace: default  # cluster-wide mode
   # namespace: forge-system  # namespace-scoped mode (all SAs must be here)
   annotations:
-    forge.zarf.dev/allowed-actions: "Build,Publish"
-    forge.zarf.dev/allowed-source-repos: "https://github.com/myorg/*"
-    forge.zarf.dev/allowed-publish-registries: "ghcr.io/myorg/*"
+    forge.forge.dev/allowed-actions: "Build,Publish"
+    forge.forge.dev/allowed-source-repos: "https://github.com/myorg/*"
+    forge.forge.dev/allowed-publish-registries: "ghcr.io/myorg/*"
 ```
 
 **Note**: In namespace-scoped deployments, all ServiceAccounts must be created in the `forge-system` namespace.
 
 ### Usage
 
-Reference this ServiceAccount in your `ZarfPackage`:
+Reference this ServiceAccount in your `ZarfPackageJob`:
 
 ```yaml
 spec:
@@ -211,7 +184,7 @@ spec:
   # ...
 ```
 
-If the `ZarfPackage` tries to use a disallowed source or action, the controller will reject it.
+If the `ZarfPackageJob` tries to use a disallowed source or action, the controller will reject it.
 
 ## Troubleshooting
 
@@ -219,16 +192,16 @@ If the `ZarfPackage` tries to use a disallowed source or action, the controller 
 
 Forge creates Kubernetes Jobs for each operation. If an operation fails:
 
-1. Check the `ZarfPackage` status:
+1. Check the `ZarfPackageJob` status:
 
     ```bash
-    kubectl get zarfpackage my-package -o yaml
+    kubectl get ZarfPackageJob my-package -o yaml
     ```
 
 2. Find the failed Job (named `<package-name>-<action>`):
 
     ```bash
-    kubectl get jobs -l forge.zarf.dev/package=my-package
+    kubectl get jobs -l forge.forge.dev/package=my-package
     ```
 
 3. Check the Job logs:
@@ -242,7 +215,7 @@ Forge creates Kubernetes Jobs for each operation. If an operation fails:
 
 ### Webhook Issues
 
-If you cannot create `ZarfPackage` resources:
+If you cannot create `ZarfPackageJob` resources:
 
 1. Check if the webhook pod is running:
 

@@ -1,13 +1,13 @@
 ---
 # Example: Copy/publish a package from S3 to OCI registry
-apiVersion: zarf.dev/v1alpha1
-kind: ZarfPackage
+apiVersion: forge.dev/v1alpha1
+kind: ZarfPackageJob
 metadata:
   name: republish-example
   namespace: default
 spec:
   # ServiceAccount controls what this package is allowed to do
-  # Created by cluster admin with forge.zarf.dev/* annotations
+  # Created by cluster admin with forge.forge.dev/* annotations
   serviceAccountName: developer-forge-sa
   action: PublishDeploy
 

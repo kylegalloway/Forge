@@ -43,7 +43,7 @@ func (c *Controller) startJobMonitoring(ctx context.Context) {
 	}
 }
 
-// checkJobStatuses checks all Jobs labeled with forge labels and updates ZarfPackage status
+// checkJobStatuses checks all Jobs labeled with forge labels and updates ZarfPackageJob status
 func (c *Controller) checkJobStatuses(ctx context.Context) error {
 	// List all Jobs with forge labels
 	jobs, err := c.kubeClient.BatchV1().Jobs(c.namespace).List(ctx, metav1.ListOptions{
@@ -63,16 +63,16 @@ func (c *Controller) checkJobStatuses(ctx context.Context) error {
 	return nil
 }
 
-// processJobStatus checks a single Job and updates the corresponding ZarfPackage status
+// processJobStatus checks a single Job and updates the corresponding ZarfPackageJob status
 func (c *Controller) processJobStatus(ctx context.Context, job *batchv1.Job) error {
-	// Get the ZarfPackage name from job labels
-	packageName, ok := job.Labels["forge.zarf.dev/package"]
+	// Get the ZarfPackageJob name from job labels
+	packageName, ok := job.Labels["forge.forge.dev/package"]
 	if !ok {
 		klog.V(4).InfoS("Job missing package label, skipping", "job", job.Name)
 		return nil
 	}
 
-	action, ok := job.Labels["forge.zarf.dev/action"]
+	action, ok := job.Labels["forge.forge.dev/action"]
 	if !ok {
 		klog.V(4).InfoS("Job missing action label, skipping", "job", job.Name)
 		return nil
@@ -107,10 +107,10 @@ func (c *Controller) processJobStatus(ctx context.Context, job *batchv1.Job) err
 
 	klog.InfoS("Job status changed", "job", job.Name, "package", packageName, "phase", phase)
 
-	// Get the ZarfPackage resource
-	u, err := c.dynamicClient.Resource(ZarfPackageGVR).Namespace(job.Namespace).Get(ctx, packageName, metav1.GetOptions{})
+	// Get the ZarfPackageJob resource
+	unstrObj, err := c.dynamicClient.Resource(ZarfPackageJobGVR).Namespace(job.Namespace).Get(ctx, packageName, metav1.GetOptions{})
 	if err != nil {
-		return fmt.Errorf("failed to get ZarfPackage: %w", err)
+		return fmt.Errorf("failed to get ZarfPackageJob: %w", err)
 	}
 
 	// Build operation status
@@ -139,24 +139,24 @@ func (c *Controller) processJobStatus(ctx context.Context, job *batchv1.Job) err
 		"artifactLocation": artifactLocation,
 	}
 
-	// Update ZarfPackage status
-	if err := c.updateStatus(ctx, u, phase, message, opStatus); err != nil {
+	// Update ZarfPackageJob status
+	if err := c.updateStatus(ctx, unstrObj, phase, message, opStatus); err != nil {
 		return err
 	}
 
 	// Handle action chaining: if this job succeeded and is part of a chained workflow,
 	// trigger the next action
 	if phase == "Completed" {
-		return c.handleActionChaining(ctx, u, action, artifactLocation)
+		return c.handleActionChaining(ctx, unstrObj, action, artifactLocation)
 	}
 
 	return nil
 }
 
 // handleActionChaining triggers the next action in a chained workflow
-func (c *Controller) handleActionChaining(ctx context.Context, u *unstructured.Unstructured, completedAction, artifactPath string) error {
+func (c *Controller) handleActionChaining(ctx context.Context, unstrObj *unstructured.Unstructured, completedAction, artifactPath string) error {
 	// Get the action from spec to determine if this is a chained workflow
-	spec, ok := u.Object["spec"].(map[string]interface{})
+	spec, ok := unstrObj.Object["spec"].(map[string]interface{})
 	if !ok {
 		return nil
 	}
@@ -166,10 +166,10 @@ func (c *Controller) handleActionChaining(ctx context.Context, u *unstructured.U
 		return nil
 	}
 
-	// Convert to typed ZarfPackage for easier handling
-	pkg := &zarfv1alpha1.ZarfPackage{}
-	if err := runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, pkg); err != nil {
-		return fmt.Errorf("failed to convert to ZarfPackage: %w", err)
+	// Convert to typed ZarfPackageJob for easier handling
+	pkg := &zarfv1alpha1.ZarfPackageJob{}
+	if err := runtime.DefaultUnstructuredConverter.FromUnstructured(unstrObj.Object, pkg); err != nil {
+		return fmt.Errorf("failed to convert to ZarfPackageJob: %w", err)
 	}
 
 	klog.InfoS("Checking for action chaining", "package", pkg.Name, "action", action, "completedAction", completedAction)
@@ -225,7 +225,7 @@ func (c *Controller) handleActionChaining(ctx context.Context, u *unstructured.U
 	if err != nil {
 		klog.ErrorS(err, "Failed to execute next action", "package", pkg.Name, "action", nextAction)
 		// Update status to Failed
-		return c.updateStatus(ctx, u, "Failed", fmt.Sprintf("Failed to execute %s: %v", nextAction, err), nil)
+		return c.updateStatus(ctx, unstrObj, "Failed", fmt.Sprintf("Failed to execute %s: %v", nextAction, err), nil)
 	}
 
 	if result != nil {
@@ -237,7 +237,7 @@ func (c *Controller) handleActionChaining(ctx context.Context, u *unstructured.U
 			"message":   result.Message,
 			"startTime": result.StartTime.Format(time.RFC3339),
 		}
-		return c.updateStatus(ctx, u, result.Phase, result.Message, opStatus)
+		return c.updateStatus(ctx, unstrObj, result.Phase, result.Message, opStatus)
 	}
 
 	return nil

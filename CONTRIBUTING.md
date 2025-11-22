@@ -61,7 +61,7 @@ make kind-setup
 
 # Verify deployment
 kubectl get pods -n forge-system
-kubectl get crd zarfpackages.zarf.dev
+kubectl get crd zarfpackagejobs.forge.dev
 ```
 
 ### Step-by-Step Setup
@@ -89,11 +89,11 @@ kubectl get pods -n forge-system
 ### Testing Your Changes
 
 ```bash
-# Apply a sample ZarfPackage
+# Apply a sample ZarfPackageJob
 kubectl apply -f config/samples/v1alpha1/build-only-git.yaml
 
 # Check status
-kubectl get zarfpackages
+kubectl get zarfpackagejobs
 kubectl get zp  # shortname
 
 # View logs
@@ -127,12 +127,12 @@ kubectl get zp -w
 
 ### API Types
 
-Edit [pkg/apis/zarf/v1alpha1/types.go](pkg/apis/zarf/v1alpha1/types.go) to modify the ZarfPackage schema.
+Edit [pkg/apis/zarf/v1alpha1/types.go](pkg/apis/zarf/v1alpha1/types.go) to modify the ZarfPackageJob schema.
 
-Example: Adding a new field to `ZarfPackageSpec`:
+Example: Adding a new field to `ZarfPackageJobSpec`:
 
 ```go
-type ZarfPackageSpec struct {
+type ZarfPackageJobSpec struct {
     Action     Action         `json:"action"`
     Source     PackageSource  `json:"source"`
     Publish    *PublishConfig `json:"publish,omitempty"`
@@ -146,7 +146,7 @@ type ZarfPackageSpec struct {
 
 ### Update the CRD Manifest
 
-Edit [config/crd/zarf.dev_zarfpackages.yaml](config/crd/zarf.dev_zarfpackages.yaml) to add validation:
+Edit [config/crd/forge.dev_zarfpackagejobs.yaml](config/crd/forge.dev_zarfpackagejobs.yaml) to add validation:
 
 ```yaml
 spec:
@@ -160,7 +160,7 @@ spec:
 ### Redeploy CRD
 
 ```bash
-kubectl delete crd zarfpackages.zarf.dev
+kubectl delete crd zarfpackagejobs.forge.dev
 make install-crd
 ```
 
@@ -183,7 +183,7 @@ pkg/
 // pkg/actions/build.go
 package actions
 
-func (h *BuildHandler) Execute(ctx context.Context, pkg *v1alpha1.ZarfPackage) error {
+func (h *BuildHandler) Execute(ctx context.Context, pkg *v1alpha1.ZarfPackageJob) error {
     span := trace.SpanFromContext(ctx)
     span.SetAttributes(attribute.String("action", "build"))
 
@@ -216,7 +216,7 @@ go tool cover -html=coverage.out
 kubectl apply -f config/samples/v1alpha1/build-only-git.yaml
 
 # Wait for completion
-kubectl wait --for=condition=BuildComplete --timeout=300s zarfpackage/test-build
+kubectl wait --for=condition=BuildComplete --timeout=300s ZarfPackageJob/test-build
 
 # Check status
 kubectl get zp test-build -o yaml
@@ -319,7 +319,7 @@ if err != nil {
 kubectl logs -n forge-system -l app=forge-controller
 
 # Check CRD is installed
-kubectl get crd zarfpackages.zarf.dev
+kubectl get crd zarfpackagejobs.forge.dev
 
 # Check RBAC
 kubectl describe clusterrole forge-controller
@@ -339,11 +339,11 @@ kind load docker-image forge-controller:latest --name forge-dev
 
 ```bash
 # Reinstall CRD
-kubectl delete crd zarfpackages.zarf.dev
+kubectl delete crd zarfpackagejobs.forge.dev
 make install-crd
 
 # Verify version
-kubectl get crd zarfpackages.zarf.dev -o yaml | grep -A 5 versions
+kubectl get crd zarfpackagejobs.forge.dev -o yaml | grep -A 5 versions
 ```
 
 ## Resources

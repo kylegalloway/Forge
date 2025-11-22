@@ -18,13 +18,13 @@ type JobConfig struct {
 // Destination defines the interface for package destinations
 type Destination interface {
 	// GetPublishCommand returns the command to publish the artifact
-	GetPublishCommand(pkg *zarfv1alpha1.ZarfPackage, artifactPath string) (string, error)
+	GetPublishCommand(pkg *zarfv1alpha1.ZarfPackageJob, artifactPath string) (string, error)
 	// GetJobConfiguration returns the job configuration (volumes, envs) needed for publishing
-	GetJobConfiguration(pkg *zarfv1alpha1.ZarfPackage) (*JobConfig, error)
+	GetJobConfiguration(pkg *zarfv1alpha1.ZarfPackageJob) (*JobConfig, error)
 }
 
 // New returns a new Destination based on the package configuration
-func New(pkg *zarfv1alpha1.ZarfPackage) (Destination, error) {
+func New(pkg *zarfv1alpha1.ZarfPackageJob) (Destination, error) {
 	if pkg.Spec.Publish == nil {
 		return nil, fmt.Errorf("publish configuration is missing")
 	}

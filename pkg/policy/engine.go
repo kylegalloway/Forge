@@ -1,4 +1,4 @@
-// Package policy enforces access control policies for ZarfPackage operations based on ServiceAccount permissions.
+// Package policy enforces access control policies for ZarfPackageJob operations based on ServiceAccount permissions.
 package policy
 
 import (
@@ -15,21 +15,21 @@ import (
 
 const (
 	// AnnotationAllowedActions is the annotation for allowed actions
-	AnnotationAllowedActions = "forge.zarf.dev/allowed-actions"
+	AnnotationAllowedActions = "forge.forge.dev/allowed-actions"
 	// AnnotationAllowedSourceRepos is the annotation for allowed source repositories
-	AnnotationAllowedSourceRepos = "forge.zarf.dev/allowed-source-repos"
+	AnnotationAllowedSourceRepos = "forge.forge.dev/allowed-source-repos"
 	// AnnotationAllowedSourceBuckets is the annotation for allowed source buckets
-	AnnotationAllowedSourceBuckets = "forge.zarf.dev/allowed-source-buckets"
+	AnnotationAllowedSourceBuckets = "forge.forge.dev/allowed-source-buckets"
 	// AnnotationAllowedSourceRegistries is the annotation for allowed source registries
-	AnnotationAllowedSourceRegistries = "forge.zarf.dev/allowed-source-registries"
+	AnnotationAllowedSourceRegistries = "forge.forge.dev/allowed-source-registries"
 	// AnnotationAllowedPublishBuckets is the annotation for allowed publish buckets
-	AnnotationAllowedPublishBuckets = "forge.zarf.dev/allowed-publish-buckets"
+	AnnotationAllowedPublishBuckets = "forge.forge.dev/allowed-publish-buckets"
 	// AnnotationAllowedPublishRegistries is the annotation for allowed publish registries
-	AnnotationAllowedPublishRegistries = "forge.zarf.dev/allowed-publish-registries"
+	AnnotationAllowedPublishRegistries = "forge.forge.dev/allowed-publish-registries"
 	// AnnotationAllowedDeployTargets is the annotation for allowed deploy targets
-	AnnotationAllowedDeployTargets = "forge.zarf.dev/allowed-deploy-targets"
+	AnnotationAllowedDeployTargets = "forge.forge.dev/allowed-deploy-targets"
 	// AnnotationAllowLocalSources is the annotation to allow local sources (dev mode)
-	AnnotationAllowLocalSources = "forge.zarf.dev/allow-local-sources"
+	AnnotationAllowLocalSources = "forge.forge.dev/allow-local-sources"
 )
 
 // Engine handles policy validation
@@ -45,7 +45,7 @@ func NewEngine(kubeClient kubernetes.Interface) *Engine {
 }
 
 // Validate checks if the operation is allowed based on the ServiceAccount permissions
-func (e *Engine) Validate(ctx context.Context, pkg *zarfv1alpha1.ZarfPackage) error {
+func (e *Engine) Validate(ctx context.Context, pkg *zarfv1alpha1.ZarfPackageJob) error {
 	// 1. Fetch ServiceAccount
 	saName := pkg.Spec.ServiceAccountName
 	if saName == "" {

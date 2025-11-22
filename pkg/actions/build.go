@@ -1,4 +1,4 @@
-// Package actions provides handlers for ZarfPackage actions (Build, Publish, Deploy).
+// Package actions provides handlers for ZarfPackageJob actions (Build, Publish, Deploy).
 //
 // Each action handler is responsible for executing a specific operation
 // on a Zarf package or UDS bundle.
@@ -24,7 +24,7 @@ const (
 	ZarfCLIImage = "ghcr.io/defenseunicorns/zarf:v0.66.0"
 )
 
-// BuildHandler handles Build actions for ZarfPackage resources
+// BuildHandler handles Build actions for ZarfPackageJob resources
 type BuildHandler struct {
 	kubeClient kubernetes.Interface
 	metrics    *telemetry.Metrics
@@ -40,8 +40,8 @@ func NewBuildHandler(kubeClient kubernetes.Interface, metrics *telemetry.Metrics
 	}
 }
 
-// Execute performs a Build action for the given ZarfPackage
-func (h *BuildHandler) Execute(ctx context.Context, pkg *zarfv1alpha1.ZarfPackage) (*ActionResult, error) {
+// Execute performs a Build action for the given ZarfPackageJob
+func (h *BuildHandler) Execute(ctx context.Context, pkg *zarfv1alpha1.ZarfPackageJob) (*ActionResult, error) {
 
 	klog.InfoS("Executing Build action", "name", pkg.Name, "namespace", pkg.Namespace)
 
@@ -70,7 +70,7 @@ func (h *BuildHandler) Execute(ctx context.Context, pkg *zarfv1alpha1.ZarfPackag
 }
 
 // createBuildJob creates a Kubernetes Job to build a Zarf package
-func (h *BuildHandler) createBuildJob(ctx context.Context, pkg *zarfv1alpha1.ZarfPackage) (*batchv1.Job, error) {
+func (h *BuildHandler) createBuildJob(ctx context.Context, pkg *zarfv1alpha1.ZarfPackageJob) (*batchv1.Job, error) {
 	jobName := fmt.Sprintf("%s-build", pkg.Name)
 	namespace := pkg.Namespace
 
@@ -95,12 +95,12 @@ func (h *BuildHandler) createBuildJob(ctx context.Context, pkg *zarfv1alpha1.Zar
 			Name:      jobName,
 			Namespace: namespace,
 			Labels: map[string]string{
-				"app":                    "forge",
-				"forge.zarf.dev/package": pkg.Name,
-				"forge.zarf.dev/action":  "build",
+				"app":                     "forge",
+				"forge.forge.dev/package": pkg.Name,
+				"forge.forge.dev/action":  "build",
 			},
 			OwnerReferences: []metav1.OwnerReference{
-				*metav1.NewControllerRef(pkg, zarfv1alpha1.SchemeGroupVersion.WithKind("ZarfPackage")),
+				*metav1.NewControllerRef(pkg, zarfv1alpha1.SchemeGroupVersion.WithKind("ZarfPackageJob")),
 			},
 		},
 		Spec: batchv1.JobSpec{
@@ -110,9 +110,9 @@ func (h *BuildHandler) createBuildJob(ctx context.Context, pkg *zarfv1alpha1.Zar
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{
-						"app":                    "forge",
-						"forge.zarf.dev/package": pkg.Name,
-						"forge.zarf.dev/action":  "build",
+						"app":                     "forge",
+						"forge.forge.dev/package": pkg.Name,
+						"forge.forge.dev/action":  "build",
 					},
 				},
 				Spec: corev1.PodSpec{
@@ -213,7 +213,7 @@ func (h *BuildHandler) createBuildJob(ctx context.Context, pkg *zarfv1alpha1.Zar
 }
 
 // buildZarfCommand builds the zarf CLI command based on package source
-func (h *BuildHandler) buildZarfCommand(_ *zarfv1alpha1.ZarfPackage) (string, string, error) {
+func (h *BuildHandler) buildZarfCommand(_ *zarfv1alpha1.ZarfPackageJob) (string, string, error) {
 	workingDir := "/workspace"
 
 	// Basic zarf package create command
@@ -223,7 +223,7 @@ func (h *BuildHandler) buildZarfCommand(_ *zarfv1alpha1.ZarfPackage) (string, st
 }
 
 // buildInitContainers creates init containers for source artifact retrieval
-func (h *BuildHandler) buildInitContainers(pkg *zarfv1alpha1.ZarfPackage) ([]corev1.Container, error) {
+func (h *BuildHandler) buildInitContainers(pkg *zarfv1alpha1.ZarfPackageJob) ([]corev1.Container, error) {
 	sourceHandler, err := sources.New(pkg)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create source handler: %w", err)

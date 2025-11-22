@@ -6,7 +6,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
-// SchemeGroupVersion is the group version for ZarfPackage resources
+// SchemeGroupVersion is the group version for Forge Zarf job resources
 var SchemeGroupVersion = schema.GroupVersion{
 	Group:   GroupName,
 	Version: Version,
@@ -27,8 +27,8 @@ var (
 // addKnownTypes adds the types to the scheme
 func addKnownTypes(scheme *runtime.Scheme) error {
 	scheme.AddKnownTypes(SchemeGroupVersion,
-		&ZarfPackage{},
-		&ZarfPackageList{},
+		&ZarfPackageJob{},
+		&ZarfPackageJobList{},
 	)
 	metav1.AddToGroupVersion(scheme, SchemeGroupVersion)
 	return nil

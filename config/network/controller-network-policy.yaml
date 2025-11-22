@@ -142,17 +142,17 @@ spec:
 # Notes:
 #
 # 1. Controller Network Requirements:
-#    - Egress to Kubernetes API (watch ZarfPackages, create Jobs)
+#    - Egress to Kubernetes API (watch ZarfPackageJobs, create Jobs)
 #    - Egress to DNS (resolve service names)
 #    - NO ingress required (controller initiates all connections)
 #
 # 2. Webhook Network Requirements:
 #    - Ingress from Kubernetes API server on port 8443 (admission requests)
-#    - Egress to Kubernetes API (validate ZarfPackages)
+#    - Egress to Kubernetes API (validate ZarfPackageJobs)
 #    - Egress to DNS (resolve service names)
 #
 # 3. Testing:
-#    - Verify controller can watch ZarfPackages:
+#    - Verify controller can watch ZarfPackageJobs:
 #      kubectl logs -n forge-system deployment/forge-controller
 #    - Verify controller can create Jobs:
 #      kubectl apply -f config/samples/forge_v1alpha1_forge.yaml

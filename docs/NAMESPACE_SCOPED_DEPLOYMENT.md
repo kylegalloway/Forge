@@ -21,7 +21,7 @@ Deploy Forge with namespace-scoped permissions instead of cluster-wide access.
 | **Scope** | All namespaces | Single namespace (forge-system) |
 | **Permissions** | Cluster-wide | Namespace-only |
 | **Use Case** | Platform teams | Individual teams |
-| **ZarfPackages** | Can be created anywhere | Only in forge-system |
+| **ZarfPackageJobs** | Can be created anywhere | Only in forge-system |
 | **ServiceAccounts** | Any namespace | Only forge-system |
 | **Jobs** | Created in source namespace | Only in forge-system |
 
@@ -38,7 +38,7 @@ Deploy Forge with namespace-scoped permissions instead of cluster-wide access.
 │ └────────────────────────────────────┘  │
 │                                          │
 │ ┌────────────────────────────────────┐  │
-│ │  ZarfPackages (CRDs)               │  │
+│ │  ZarfPackageJobs (CRDs)               │  │
 │ │  - Created in: forge-system        │  │
 │ └────────────────────────────────────┘  │
 │                                          │
@@ -59,8 +59,7 @@ Deploy Forge with namespace-scoped permissions instead of cluster-wide access.
 1. **CRDs must be installed cluster-wide** (requires cluster admin):
 
    ```bash
-   kubectl apply -f config/crd/zarf.dev_zarfpackages.yaml
-   kubectl apply -f config/crd/uds.io_udsbundles.yaml
+   kubectl apply -f config/crd/forge.dev_zarfpackagejobs.yaml
    ```
 
 2. **Namespace creation permission** (or pre-created namespace):
@@ -126,13 +125,13 @@ Starting Forge controller
 
 ## Usage
 
-### Creating ZarfPackages
+### Creating ZarfPackageJobs
 
-All ZarfPackages **must be created in the forge-system namespace**:
+All ZarfPackageJobs **must be created in the forge-system namespace**:
 
 ```yaml
-apiVersion: zarf.dev/v1alpha1
-kind: ZarfPackage
+apiVersion: forge.dev/v1alpha1
+kind: ZarfPackageJob
 metadata:
   name: my-package
   namespace: forge-system  # REQUIRED
@@ -157,8 +156,8 @@ metadata:
   name: my-sa
   namespace: forge-system  # REQUIRED
   annotations:
-    forge.zarf.dev/allowed-actions: "Build,Publish"
-    forge.zarf.dev/allowed-source-repos: "https://github.com/myorg/*"
+    forge.forge.dev/allowed-actions: "Build,Publish"
+    forge.forge.dev/allowed-source-repos: "https://github.com/myorg/*"
 ```
 
 ### Creating Secrets
@@ -275,7 +274,7 @@ When running namespace-scoped, be aware of these constraints:
 ### ❌ Cannot Do
 
 1. **Watch other namespaces:**
-   - ZarfPackages in other namespaces will be ignored
+   - ZarfPackageJobs in other namespaces will be ignored
    - Controller only sees forge-system
 
 2. **Access ServiceAccounts in other namespaces:**
@@ -288,7 +287,7 @@ When running namespace-scoped, be aware of these constraints:
 
 ### ✅ Can Do
 
-1. **All ZarfPackage operations:**
+1. **All ZarfPackageJob operations:**
    - Build, Publish, Deploy work normally
    - Just scoped to forge-system namespace
 
@@ -310,13 +309,13 @@ kubectl delete clusterrolebinding forge-controller-rolebinding
 kubectl delete clusterrole forge-controller-role
 kubectl delete deployment forge-controller -n forge-system
 
-# 2. Migrate ZarfPackages to forge-system
-kubectl get zarfpackages -A -o yaml > all-packages.yaml
+# 2. Migrate ZarfPackageJobs to forge-system
+kubectl get zarfpackagejobs -A -o yaml > all-packages.yaml
 # Edit to change all namespaces to forge-system
 kubectl apply -f all-packages.yaml
 
 # 3. Migrate ServiceAccounts to forge-system
-kubectl get sa -A -o yaml | grep "forge.zarf.dev/" > all-sa.yaml
+kubectl get sa -A -o yaml | grep "forge.forge.dev/" > all-sa.yaml
 # Edit to change namespaces to forge-system
 kubectl apply -f all-sa.yaml
 
@@ -354,14 +353,14 @@ kubectl apply -f config/manager/deployment.yaml
 
 ## Troubleshooting
 
-### Controller not seeing ZarfPackages
+### Controller not seeing ZarfPackageJobs
 
-**Problem:** Created ZarfPackage but controller doesn't process it.
+**Problem:** Created ZarfPackageJob but controller doesn't process it.
 
-**Solution:** Ensure ZarfPackage is in forge-system:
+**Solution:** Ensure ZarfPackageJob is in forge-system:
 
 ```bash
-kubectl get zarfpackages -n forge-system
+kubectl get zarfpackagejobs -n forge-system
 ```
 
 ### Permission denied errors
@@ -378,7 +377,7 @@ Ensure `jobs` verbs include `create, get, list, watch`.
 
 ### ServiceAccount not found
 
-**Problem:** ZarfPackage references ServiceAccount in another namespace.
+**Problem:** ZarfPackageJob references ServiceAccount in another namespace.
 
 **Solution:** Move ServiceAccount to forge-system:
 
@@ -402,7 +401,7 @@ metadata:
   namespace: forge-system
 spec:
   hard:
-    count/zarfpackages.zarf.dev: "100"
+    count/zarfpackagejobs.forge.dev: "100"
     count/jobs.batch: "50"
     requests.cpu: "10"
     requests.memory: "20Gi"
@@ -431,7 +430,7 @@ kubectl label namespace forge-system \
 Backup namespace resources:
 
 ```bash
-kubectl get all,zarfpackages,sa,secrets -n forge-system -o yaml > forge-backup.yaml
+kubectl get all,zarfpackagejobs,sa,secrets -n forge-system -o yaml > forge-backup.yaml
 ```
 
 ## Examples

@@ -16,7 +16,7 @@ import (
 	"github.com/kylegalloway/forge/pkg/telemetry"
 )
 
-// PublishHandler handles Publish actions for ZarfPackage resources
+// PublishHandler handles Publish actions for ZarfPackageJob resources
 type PublishHandler struct {
 	kubeClient kubernetes.Interface
 	metrics    *telemetry.Metrics
@@ -32,8 +32,8 @@ func NewPublishHandler(kubeClient kubernetes.Interface, metrics *telemetry.Metri
 	}
 }
 
-// Execute performs a Publish action for the given ZarfPackage
-func (h *PublishHandler) Execute(ctx context.Context, pkg *zarfv1alpha1.ZarfPackage, artifactPath string) (*ActionResult, error) {
+// Execute performs a Publish action for the given ZarfPackageJob
+func (h *PublishHandler) Execute(ctx context.Context, pkg *zarfv1alpha1.ZarfPackageJob, artifactPath string) (*ActionResult, error) {
 	klog.InfoS("Executing Publish action", "name", pkg.Name, "namespace", pkg.Namespace)
 
 	// Validate publish destination is provided
@@ -61,7 +61,7 @@ func (h *PublishHandler) Execute(ctx context.Context, pkg *zarfv1alpha1.ZarfPack
 }
 
 // createPublishJob creates a Kubernetes Job to publish a Zarf package
-func (h *PublishHandler) createPublishJob(ctx context.Context, pkg *zarfv1alpha1.ZarfPackage, artifactPath string) (*batchv1.Job, error) {
+func (h *PublishHandler) createPublishJob(ctx context.Context, pkg *zarfv1alpha1.ZarfPackageJob, artifactPath string) (*batchv1.Job, error) {
 	jobName := fmt.Sprintf("%s-publish", pkg.Name)
 	namespace := pkg.Namespace
 
@@ -92,12 +92,12 @@ func (h *PublishHandler) createPublishJob(ctx context.Context, pkg *zarfv1alpha1
 			Name:      jobName,
 			Namespace: namespace,
 			Labels: map[string]string{
-				"app":                    "forge",
-				"forge.zarf.dev/package": pkg.Name,
-				"forge.zarf.dev/action":  "publish",
+				"app":                     "forge",
+				"forge.forge.dev/package": pkg.Name,
+				"forge.forge.dev/action":  "publish",
 			},
 			OwnerReferences: []metav1.OwnerReference{
-				*metav1.NewControllerRef(pkg, zarfv1alpha1.SchemeGroupVersion.WithKind("ZarfPackage")),
+				*metav1.NewControllerRef(pkg, zarfv1alpha1.SchemeGroupVersion.WithKind("ZarfPackageJob")),
 			},
 		},
 		Spec: batchv1.JobSpec{
@@ -107,9 +107,9 @@ func (h *PublishHandler) createPublishJob(ctx context.Context, pkg *zarfv1alpha1
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{
-						"app":                    "forge",
-						"forge.zarf.dev/package": pkg.Name,
-						"forge.zarf.dev/action":  "publish",
+						"app":                     "forge",
+						"forge.forge.dev/package": pkg.Name,
+						"forge.forge.dev/action":  "publish",
 					},
 				},
 				Spec: corev1.PodSpec{
@@ -213,7 +213,7 @@ func (h *PublishHandler) createPublishJob(ctx context.Context, pkg *zarfv1alpha1
 }
 
 // buildInitContainers creates init containers for artifact retrieval
-func (h *PublishHandler) buildInitContainers(pkg *zarfv1alpha1.ZarfPackage) ([]corev1.Container, error) {
+func (h *PublishHandler) buildInitContainers(pkg *zarfv1alpha1.ZarfPackageJob) ([]corev1.Container, error) {
 	sourceHandler, err := sources.New(pkg)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create source handler: %w", err)

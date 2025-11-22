@@ -10,11 +10,11 @@ import (
 // Source defines the interface for package sources
 type Source interface {
 	// GetInitContainer returns an init container to fetch the source
-	GetInitContainer(pkg *zarfv1alpha1.ZarfPackage) (*corev1.Container, error)
+	GetInitContainer(pkg *zarfv1alpha1.ZarfPackageJob) (*corev1.Container, error)
 }
 
 // New returns a new Source based on the package configuration
-func New(pkg *zarfv1alpha1.ZarfPackage) (Source, error) {
+func New(pkg *zarfv1alpha1.ZarfPackageJob) (Source, error) {
 	switch pkg.Spec.Source.Type {
 	case zarfv1alpha1.SourceTypeGit:
 		return &GitSource{}, nil

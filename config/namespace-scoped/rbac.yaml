@@ -1,7 +1,7 @@
 ---
 # Namespace-Scoped Deployment RBAC
 # Use this for restricted clusters where ClusterRole permissions are not allowed
-# Controller will only watch ZarfPackages in its own namespace
+# Controller will only watch ZarfPackageJobs in its own namespace
 apiVersion: v1
 kind: ServiceAccount
 metadata:
@@ -15,20 +15,20 @@ metadata:
   name: forge-controller-role
   namespace: forge-system
 rules:
-# Permissions for ZarfPackage resources in this namespace only
+# Permissions for ZarfPackageJob resources in this namespace only
 - apiGroups:
-  - zarf.dev
+  - forge.dev
   resources:
-  - zarfpackages
+  - zarfpackagejobs
   verbs:
   - get
   - list
   - watch
-# Permissions to update ZarfPackage status
+# Permissions to update ZarfPackageJob status
 - apiGroups:
-  - zarf.dev
+  - forge.dev
   resources:
-  - zarfpackages/status
+  - zarfpackagejobs/status
   verbs:
   - get
   - update

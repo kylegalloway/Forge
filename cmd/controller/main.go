@@ -1,4 +1,4 @@
-// Package main implements the Forge controller that watches ZarfPackage resources and orchestrates package operations.
+// Package main implements the Forge controller that watches ZarfPackageJob resources and orchestrates package operations.
 package main
 
 import (

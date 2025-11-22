@@ -11,7 +11,7 @@ import (
 type LocalDestination struct{}
 
 // GetPublishCommand returns the cp command
-func (d *LocalDestination) GetPublishCommand(pkg *zarfv1alpha1.ZarfPackage, artifactPath string) (string, error) {
+func (d *LocalDestination) GetPublishCommand(pkg *zarfv1alpha1.ZarfPackageJob, artifactPath string) (string, error) {
 	dest := pkg.Spec.Publish.Destination.Local
 	if dest == nil {
 		return "", fmt.Errorf("local destination configuration is missing")
@@ -25,6 +25,6 @@ func (d *LocalDestination) GetPublishCommand(pkg *zarfv1alpha1.ZarfPackage, arti
 }
 
 // GetJobConfiguration returns nil for local destinations
-func (d *LocalDestination) GetJobConfiguration(_ *zarfv1alpha1.ZarfPackage) (*JobConfig, error) {
+func (d *LocalDestination) GetJobConfiguration(_ *zarfv1alpha1.ZarfPackageJob) (*JobConfig, error) {
 	return &JobConfig{}, nil
 }

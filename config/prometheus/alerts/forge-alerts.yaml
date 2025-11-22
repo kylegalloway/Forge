@@ -12,19 +12,19 @@ spec:
     interval: 30s
     rules:
     # Controller Health
-    - alert: ZarfPackageControllerDown
+    - alert: ZarfPackageJobControllerDown
       expr: up{job="forge-controller-metrics"} == 0
       for: 5m
       labels:
         severity: critical
         component: controller
       annotations:
-        summary: "ZarfPackage controller is down"
-        description: "ZarfPackage controller has been down for more than 5 minutes. No ZarfPackage resources will be reconciled."
+        summary: "ZarfPackageJob controller is down"
+        description: "ZarfPackageJob controller has been down for more than 5 minutes. No ZarfPackageJob resources will be reconciled."
         runbook_url: "https://github.com/kylegalloway/forge/blob/main/config/prometheus/alerts/README.md#forgecontrollerdown"
 
     # High Error Rate
-    - alert: ZarfPackageHighErrorRate
+    - alert: ZarfPackageJobHighErrorRate
       expr: |
         (
           sum(rate(forge_reconcile_errors_total[5m]))
@@ -36,11 +36,11 @@ spec:
         severity: warning
         component: controller
       annotations:
-        summary: "High error rate in ZarfPackage reconciliation"
-        description: "More than 10% of ZarfPackage reconciliations are failing (current: {{ $value | humanizePercentage }})"
+        summary: "High error rate in ZarfPackageJob reconciliation"
+        description: "More than 10% of ZarfPackageJob reconciliations are failing (current: {{ $value | humanizePercentage }})"
         runbook_url: "https://github.com/kylegalloway/forge/blob/main/config/prometheus/alerts/README.md#high-error-rate"
 
-    - alert: ZarfPackageCriticalErrorRate
+    - alert: ZarfPackageJobCriticalErrorRate
       expr: |
         (
           sum(rate(forge_reconcile_errors_total[5m]))
@@ -52,12 +52,12 @@ spec:
         severity: critical
         component: controller
       annotations:
-        summary: "Critical error rate in ZarfPackage reconciliation"
-        description: "More than 50% of ZarfPackage reconciliations are failing (current: {{ $value | humanizePercentage }}). Controller may be broken."
+        summary: "Critical error rate in ZarfPackageJob reconciliation"
+        description: "More than 50% of ZarfPackageJob reconciliations are failing (current: {{ $value | humanizePercentage }}). Controller may be broken."
         runbook_url: "https://github.com/kylegalloway/forge/blob/main/config/prometheus/alerts/README.md#critical-error-rate"
 
     # Slow Reconciliation
-    - alert: ZarfPackageSlowReconciliation
+    - alert: ZarfPackageJobSlowReconciliation
       expr: |
         histogram_quantile(0.95,
           sum(rate(forge_reconcile_duration_seconds_bucket[5m])) by (le)
@@ -67,7 +67,7 @@ spec:
         severity: warning
         component: controller
       annotations:
-        summary: "ZarfPackage reconciliation is slow"
+        summary: "ZarfPackageJob reconciliation is slow"
         description: "p95 reconciliation latency is {{ $value | humanizeDuration }} (threshold: 5s). Controller may be overloaded."
         runbook_url: "https://github.com/kylegalloway/forge/blob/main/config/prometheus/alerts/README.md#slow-reconciliation"
 
@@ -84,7 +84,7 @@ spec:
         runbook_url: "https://github.com/kylegalloway/forge/blob/main/config/prometheus/alerts/README.md#job-creation-failures"
 
     # No Activity (Controller may be stuck)
-    - alert: ZarfPackageNoActivity
+    - alert: ZarfPackageJobNoActivity
       expr: |
         rate(forge_resources_created_total[10m]) == 0
         and
@@ -94,15 +94,15 @@ spec:
         severity: warning
         component: controller
       annotations:
-        summary: "No ZarfPackage activity detected"
-        description: "Controller has {{ $value }} active ZarfPackages but hasn't created any new ones in 30 minutes. May be stuck."
+        summary: "No ZarfPackageJob activity detected"
+        description: "Controller has {{ $value }} active ZarfPackageJobs but hasn't created any new ones in 30 minutes. May be stuck."
         runbook_url: "https://github.com/kylegalloway/forge/blob/main/config/prometheus/alerts/README.md#no-activity"
 
   - name: forge.webhook
     interval: 30s
     rules:
     # Webhook Validation Failures
-    - alert: ZarfPackageWebhookHighRejectionRate
+    - alert: ZarfPackageJobWebhookHighRejectionRate
       expr: sum(rate(forge_webhook_validation_errors_total[5m])) > 1
       for: 10m
       labels:
@@ -110,43 +110,43 @@ spec:
         component: webhook
       annotations:
         summary: "High rate of webhook validation rejections"
-        description: "Webhook is rejecting {{ $value }} ZarfPackage creates per second. Users may be submitting invalid resources."
+        description: "Webhook is rejecting {{ $value }} ZarfPackageJob creates per second. Users may be submitting invalid resources."
         runbook_url: "https://github.com/kylegalloway/forge/blob/main/config/prometheus/alerts/README.md#webhook-rejections"
 
     # Webhook Down
-    - alert: ZarfPackageWebhookDown
+    - alert: ZarfPackageJobWebhookDown
       expr: up{job="forge-webhook-metrics"} == 0
       for: 5m
       labels:
         severity: warning
         component: webhook
       annotations:
-        summary: "ZarfPackage webhook is down"
-        description: "Admission webhook has been down for 5 minutes. New ZarfPackage resources cannot be validated."
+        summary: "ZarfPackageJob webhook is down"
+        description: "Admission webhook has been down for 5 minutes. New ZarfPackageJob resources cannot be validated."
         runbook_url: "https://github.com/kylegalloway/forge/blob/main/config/prometheus/alerts/README.md#webhook-down"
 
   - name: forge.capacity
     interval: 60s
     rules:
     # High Resource Usage
-    - alert: ZarfPackageHighResourceCount
+    - alert: ZarfPackageJobHighResourceCount
       expr: forge_resources_active > 1000
       for: 10m
       labels:
         severity: info
         component: controller
       annotations:
-        summary: "High number of active ZarfPackages"
-        description: "Cluster has {{ $value }} active ZarfPackages. May need to scale controller or review capacity."
+        summary: "High number of active ZarfPackageJobs"
+        description: "Cluster has {{ $value }} active ZarfPackageJobs. May need to scale controller or review capacity."
         runbook_url: "https://github.com/kylegalloway/forge/blob/main/config/prometheus/alerts/README.md#high-resource-count"
 
-    - alert: ZarfPackageVeryHighResourceCount
+    - alert: ZarfPackageJobVeryHighResourceCount
       expr: forge_resources_active > 5000
       for: 10m
       labels:
         severity: warning
         component: controller
       annotations:
-        summary: "Very high number of active ZarfPackages"
-        description: "Cluster has {{ $value }} active ZarfPackages. Controller may struggle at this scale."
+        summary: "Very high number of active ZarfPackageJobs"
+        description: "Cluster has {{ $value }} active ZarfPackageJobs. Controller may struggle at this scale."
         runbook_url: "https://github.com/kylegalloway/forge/blob/main/config/prometheus/alerts/README.md#very-high-resource-count"

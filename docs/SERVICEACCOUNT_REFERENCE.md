@@ -4,7 +4,7 @@ Complete reference for Forge ServiceAccount policy annotations.
 
 ## Overview
 
-Forge uses ServiceAccount annotations to define fine-grained permissions for ZarfPackage operations. This enables cluster administrators to control what actions users can perform and which resources they can access.
+Forge uses ServiceAccount annotations to define fine-grained permissions for ZarfPackageJob operations. This enables cluster administrators to control what actions users can perform and which resources they can access.
 
 ## Security Model
 
@@ -15,7 +15,7 @@ Forge uses ServiceAccount annotations to define fine-grained permissions for Zar
 
 ## Annotation Reference
 
-### forge.zarf.dev/allowed-actions
+### forge.forge.dev/allowed-actions
 
 **Purpose:** Controls which actions a ServiceAccount can perform.
 
@@ -37,19 +37,19 @@ Forge uses ServiceAccount annotations to define fine-grained permissions for Zar
 ```yaml
 # Development team - can only build
 annotations:
-  forge.zarf.dev/allowed-actions: "Build"
+  forge.forge.dev/allowed-actions: "Build"
 
 # CI/CD pipeline - can build and publish
 annotations:
-  forge.zarf.dev/allowed-actions: "Build,Publish"
+  forge.forge.dev/allowed-actions: "Build,Publish"
 
 # Production deployer - can only deploy pre-built packages
 annotations:
-  forge.zarf.dev/allowed-actions: "Deploy"
+  forge.forge.dev/allowed-actions: "Deploy"
 
 # Platform team - full permissions
 annotations:
-  forge.zarf.dev/allowed-actions: "*"
+  forge.forge.dev/allowed-actions: "*"
 ```text
 
 **Error Example:**
@@ -60,7 +60,7 @@ action Deploy is not allowed (allowed actions: [Build,Publish]) for ServiceAccou
 
 ---
 
-### forge.zarf.dev/allowed-source-repos
+### forge.forge.dev/allowed-source-repos
 
 **Purpose:** Controls which Git repositories can be used as package sources.
 
@@ -77,19 +77,19 @@ action Deploy is not allowed (allowed actions: [Build,Publish]) for ServiceAccou
 ```yaml
 # Single repository
 annotations:
-  forge.zarf.dev/allowed-source-repos: "https://github.com/defenseunicorns/zarf"
+  forge.forge.dev/allowed-source-repos: "https://github.com/defenseunicorns/zarf"
 
 # Organization-wide
 annotations:
-  forge.zarf.dev/allowed-source-repos: "https://github.com/myorg/*"
+  forge.forge.dev/allowed-source-repos: "https://github.com/myorg/*"
 
 # Multiple organizations
 annotations:
-  forge.zarf.dev/allowed-source-repos: "https://github.com/myorg/*,https://github.com/platform/*"
+  forge.forge.dev/allowed-source-repos: "https://github.com/myorg/*,https://github.com/platform/*"
 
 # Private GitLab
 annotations:
-  forge.zarf.dev/allowed-source-repos: "https://gitlab.company.com/infra/*"
+  forge.forge.dev/allowed-source-repos: "https://gitlab.company.com/infra/*"
 ```text
 
 **Required For:** `source.type: Git`
@@ -102,7 +102,7 @@ Git repo https://github.com/other/repo is not allowed (allowed repos: [https://g
 
 ---
 
-### forge.zarf.dev/allowed-source-buckets
+### forge.forge.dev/allowed-source-buckets
 
 **Purpose:** Controls which S3 buckets can be used as package sources.
 
@@ -119,15 +119,15 @@ Git repo https://github.com/other/repo is not allowed (allowed repos: [https://g
 ```yaml
 # Single bucket
 annotations:
-  forge.zarf.dev/allowed-source-buckets: "prod-zarf-packages"
+  forge.forge.dev/allowed-source-buckets: "prod-zarf-packages"
 
 # Environment-based
 annotations:
-  forge.zarf.dev/allowed-source-buckets: "dev-packages-*,staging-packages-*"
+  forge.forge.dev/allowed-source-buckets: "dev-packages-*,staging-packages-*"
 
 # All buckets with prefix
 annotations:
-  forge.zarf.dev/allowed-source-buckets: "zarf-*"
+  forge.forge.dev/allowed-source-buckets: "zarf-*"
 ```text
 
 **Required For:** `source.type: S3`
@@ -140,7 +140,7 @@ S3 bucket prod-bucket is not allowed (allowed buckets: [dev-*,staging-*])
 
 ---
 
-### forge.zarf.dev/allowed-source-registries
+### forge.forge.dev/allowed-source-registries
 
 **Purpose:** Controls which OCI registries can be used as package sources.
 
@@ -157,19 +157,19 @@ S3 bucket prod-bucket is not allowed (allowed buckets: [dev-*,staging-*])
 ```yaml
 # Specific package
 annotations:
-  forge.zarf.dev/allowed-source-registries: "ghcr.io/defenseunicorns/packages/zarf"
+  forge.forge.dev/allowed-source-registries: "ghcr.io/defenseunicorns/packages/zarf"
 
 # Organization packages
 annotations:
-  forge.zarf.dev/allowed-source-registries: "ghcr.io/myorg/*"
+  forge.forge.dev/allowed-source-registries: "ghcr.io/myorg/*"
 
 # Multiple registries
 annotations:
-  forge.zarf.dev/allowed-source-registries: "ghcr.io/myorg/*,registry.company.com/*"
+  forge.forge.dev/allowed-source-registries: "ghcr.io/myorg/*,registry.company.com/*"
 
 # Docker Hub
 annotations:
-  forge.zarf.dev/allowed-source-registries: "docker.io/myorg/*"
+  forge.forge.dev/allowed-source-registries: "docker.io/myorg/*"
 ```text
 
 **Required For:** `source.type: OCI`
@@ -182,7 +182,7 @@ OCI image ghcr.io/other/package is not allowed (allowed registries: [ghcr.io/myo
 
 ---
 
-### forge.zarf.dev/allowed-publish-buckets
+### forge.forge.dev/allowed-publish-buckets
 
 **Purpose:** Controls which S3 buckets packages can be published to.
 
@@ -193,15 +193,15 @@ OCI image ghcr.io/other/package is not allowed (allowed registries: [ghcr.io/myo
 ```yaml
 # Development artifacts
 annotations:
-  forge.zarf.dev/allowed-publish-buckets: "dev-artifacts-*"
+  forge.forge.dev/allowed-publish-buckets: "dev-artifacts-*"
 
 # Production and staging
 annotations:
-  forge.zarf.dev/allowed-publish-buckets: "prod-artifacts,staging-artifacts"
+  forge.forge.dev/allowed-publish-buckets: "prod-artifacts,staging-artifacts"
 
 # Customer-specific
 annotations:
-  forge.zarf.dev/allowed-publish-buckets: "customer-*-packages"
+  forge.forge.dev/allowed-publish-buckets: "customer-*-packages"
 ```text
 
 **Required For:** `publish.destination.type: S3`
@@ -214,7 +214,7 @@ S3 bucket wrong-bucket is not allowed for publishing (allowed buckets: [artifact
 
 ---
 
-### forge.zarf.dev/allowed-publish-registries
+### forge.forge.dev/allowed-publish-registries
 
 **Purpose:** Controls which OCI registries packages can be published to.
 
@@ -225,15 +225,15 @@ S3 bucket wrong-bucket is not allowed for publishing (allowed buckets: [artifact
 ```yaml
 # Organization registry
 annotations:
-  forge.zarf.dev/allowed-publish-registries: "ghcr.io/myorg/*"
+  forge.forge.dev/allowed-publish-registries: "ghcr.io/myorg/*"
 
 # Multi-registry
 annotations:
-  forge.zarf.dev/allowed-publish-registries: "ghcr.io/myorg/*,harbor.company.com/packages/*"
+  forge.forge.dev/allowed-publish-registries: "ghcr.io/myorg/*,harbor.company.com/packages/*"
 
 # Environment-specific
 annotations:
-  forge.zarf.dev/allowed-publish-registries: "registry.company.com/dev/*,registry.company.com/staging/*"
+  forge.forge.dev/allowed-publish-registries: "registry.company.com/dev/*,registry.company.com/staging/*"
 ```text
 
 **Required For:** `publish.destination.type: OCI`
@@ -246,7 +246,7 @@ OCI registry ghcr.io/other/* is not allowed for publishing (allowed registries: 
 
 ---
 
-### forge.zarf.dev/allowed-deploy-targets
+### forge.forge.dev/allowed-deploy-targets
 
 **Purpose:** Controls where packages can be deployed.
 
@@ -263,15 +263,15 @@ OCI registry ghcr.io/other/* is not allowed for publishing (allowed registries: 
 ```yaml
 # Local deployments only
 annotations:
-  forge.zarf.dev/allowed-deploy-targets: "InCluster"
+  forge.forge.dev/allowed-deploy-targets: "InCluster"
 
 # External deployments only (production patterns)
 annotations:
-  forge.zarf.dev/allowed-deploy-targets: "ExternalCluster"
+  forge.forge.dev/allowed-deploy-targets: "ExternalCluster"
 
 # Both
 annotations:
-  forge.zarf.dev/allowed-deploy-targets: "InCluster,ExternalCluster"
+  forge.forge.dev/allowed-deploy-targets: "InCluster,ExternalCluster"
 ```text
 
 **Required For:** `deploy.target: InCluster` or `ExternalCluster`
@@ -284,7 +284,7 @@ deploy target ExternalCluster is not allowed (allowed targets: [InCluster])
 
 ---
 
-### forge.zarf.dev/allow-local-sources
+### forge.forge.dev/allow-local-sources
 
 **Purpose:** Enables local filesystem sources (development/testing only).
 
@@ -297,11 +297,11 @@ deploy target ExternalCluster is not allowed (allowed targets: [InCluster])
 ```yaml
 # Enable local sources (DEV ONLY)
 annotations:
-  forge.zarf.dev/allow-local-sources: "true"
+  forge.forge.dev/allow-local-sources: "true"
 
 # Explicitly deny (default behavior)
 annotations:
-  forge.zarf.dev/allow-local-sources: "false"
+  forge.forge.dev/allow-local-sources: "false"
 ```text
 
 **Required For:** `source.type: Local` or `publish.destination.type: Local`
@@ -309,7 +309,7 @@ annotations:
 **Error Example:**
 
 ```text
-local sources are not allowed (set annotation forge.zarf.dev/allow-local-sources: true for dev mode)
+local sources are not allowed (set annotation forge.forge.dev/allow-local-sources: true for dev mode)
 ```text
 
 ---
@@ -326,13 +326,13 @@ metadata:
   namespace: dev-team
   annotations:
     # Can only build packages
-    forge.zarf.dev/allowed-actions: "Build"
+    forge.forge.dev/allowed-actions: "Build"
 
     # Can use team repositories
-    forge.zarf.dev/allowed-source-repos: "https://github.com/myorg/*"
+    forge.forge.dev/allowed-source-repos: "https://github.com/myorg/*"
 
     # Can publish to dev registry
-    forge.zarf.dev/allowed-publish-registries: "ghcr.io/myorg/dev/*"
+    forge.forge.dev/allowed-publish-registries: "ghcr.io/myorg/dev/*"
 
     # No deployment permissions
 ```text
@@ -347,16 +347,16 @@ metadata:
   namespace: cicd
   annotations:
     # Build and publish
-    forge.zarf.dev/allowed-actions: "BuildPublish"
+    forge.forge.dev/allowed-actions: "BuildPublish"
 
     # Organization repos
-    forge.zarf.dev/allowed-source-repos: "https://github.com/myorg/*"
+    forge.forge.dev/allowed-source-repos: "https://github.com/myorg/*"
 
     # Publish to specific registries
-    forge.zarf.dev/allowed-publish-registries: "ghcr.io/myorg/packages/*"
+    forge.forge.dev/allowed-publish-registries: "ghcr.io/myorg/packages/*"
 
     # Publish to staging bucket
-    forge.zarf.dev/allowed-publish-buckets: "staging-artifacts"
+    forge.forge.dev/allowed-publish-buckets: "staging-artifacts"
 ```text
 
 ### Production Deployer ServiceAccount
@@ -369,13 +369,13 @@ metadata:
   namespace: production
   annotations:
     # Only deploy, no build
-    forge.zarf.dev/allowed-actions: "Deploy"
+    forge.forge.dev/allowed-actions: "Deploy"
 
     # Only from production registry
-    forge.zarf.dev/allowed-source-registries: "ghcr.io/myorg/prod/*"
+    forge.forge.dev/allowed-source-registries: "ghcr.io/myorg/prod/*"
 
     # Only to external clusters
-    forge.zarf.dev/allowed-deploy-targets: "ExternalCluster"
+    forge.forge.dev/allowed-deploy-targets: "ExternalCluster"
 ```text
 
 ### Platform Team ServiceAccount
@@ -388,13 +388,13 @@ metadata:
   namespace: platform
   annotations:
     # Full permissions
-    forge.zarf.dev/allowed-actions: "*"
-    forge.zarf.dev/allowed-source-repos: "*"
-    forge.zarf.dev/allowed-source-buckets: "*"
-    forge.zarf.dev/allowed-source-registries: "*"
-    forge.zarf.dev/allowed-publish-buckets: "*"
-    forge.zarf.dev/allowed-publish-registries: "*"
-    forge.zarf.dev/allowed-deploy-targets: "*"
+    forge.forge.dev/allowed-actions: "*"
+    forge.forge.dev/allowed-source-repos: "*"
+    forge.forge.dev/allowed-source-buckets: "*"
+    forge.forge.dev/allowed-source-registries: "*"
+    forge.forge.dev/allowed-publish-buckets: "*"
+    forge.forge.dev/allowed-publish-registries: "*"
+    forge.forge.dev/allowed-deploy-targets: "*"
 ```text
 
 ### Testing/Development ServiceAccount
@@ -407,26 +407,26 @@ metadata:
   namespace: dev
   annotations:
     # All actions
-    forge.zarf.dev/allowed-actions: "Build,Publish,Deploy"
+    forge.forge.dev/allowed-actions: "Build,Publish,Deploy"
 
     # Any repository (development)
-    forge.zarf.dev/allowed-source-repos: "*"
+    forge.forge.dev/allowed-source-repos: "*"
 
     # Enable local sources for testing
-    forge.zarf.dev/allow-local-sources: "true"
+    forge.forge.dev/allow-local-sources: "true"
 
     # Dev registry
-    forge.zarf.dev/allowed-publish-registries: "ghcr.io/myorg/dev/*"
+    forge.forge.dev/allowed-publish-registries: "ghcr.io/myorg/dev/*"
 
     # In-cluster deployments
-    forge.zarf.dev/allowed-deploy-targets: "InCluster"
+    forge.forge.dev/allowed-deploy-targets: "InCluster"
 ```text
 
 ---
 
 ## Validation Workflow
 
-1. **User creates ZarfPackage** with `spec.serviceAccountName: my-sa`
+1. **User creates ZarfPackageJob** with `spec.serviceAccountName: my-sa`
 
 2. **Webhook validates** (admission time):
    - ServiceAccount exists
@@ -465,24 +465,24 @@ metadata:
 
 ```yaml
 # Specific organization
-forge.zarf.dev/allowed-source-repos: "https://github.com/myorg/*"
+forge.forge.dev/allowed-source-repos: "https://github.com/myorg/*"
 
 # Environment-based
-forge.zarf.dev/allowed-publish-buckets: "dev-artifacts-*,staging-artifacts-*"
+forge.forge.dev/allowed-publish-buckets: "dev-artifacts-*,staging-artifacts-*"
 
 # Team-scoped
-forge.zarf.dev/allowed-source-registries: "ghcr.io/myorg/team-platform/*"
+forge.forge.dev/allowed-source-registries: "ghcr.io/myorg/team-platform/*"
 ```text
 
 **Avoid:**
 
 ```yaml
 # Too permissive
-forge.zarf.dev/allowed-source-repos: "*"
-forge.zarf.dev/allowed-source-repos: "https://*/*"
+forge.forge.dev/allowed-source-repos: "*"
+forge.forge.dev/allowed-source-repos: "https://*/*"
 
 # Overly specific (limits flexibility)
-forge.zarf.dev/allowed-source-repos: "https://github.com/myorg/one-specific-repo"
+forge.forge.dev/allowed-source-repos: "https://github.com/myorg/one-specific-repo"
 ```text
 
 ### Multi-Environment Strategy

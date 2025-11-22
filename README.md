@@ -24,8 +24,8 @@ Forge is a Kubernetes controller that brings Zarf package operations into the de
 ## Quick Example
 
 ```yaml
-apiVersion: zarf.dev/v1alpha1
-kind: ZarfPackage
+apiVersion: forge.dev/v1alpha1
+kind: ZarfPackageJob
 metadata:
   name: build-and-deploy
   namespace: default  # cluster-wide: any namespace; namespace-scoped: forge-system only
@@ -104,13 +104,13 @@ metadata:
   # namespace: forge-system  # namespace-scoped mode (all SAs must be here)
   annotations:
     # What actions are allowed
-    forge.zarf.dev/allowed-actions: "Build,Publish"
+    forge.forge.dev/allowed-actions: "Build,Publish"
 
     # Which Git repos can be used
-    forge.zarf.dev/allowed-source-repos: "https://github.com/myorg/*"
+    forge.forge.dev/allowed-source-repos: "https://github.com/myorg/*"
 
     # Where packages can be published
-    forge.zarf.dev/allowed-publish-registries: "ghcr.io/myorg/dev/*"
+    forge.forge.dev/allowed-publish-registries: "ghcr.io/myorg/dev/*"
 ```
 
 The admission webhook validates all operations against these policies before creation.
@@ -123,8 +123,7 @@ For platform teams managing multi-tenant environments with full cluster access:
 
 ```bash
 # Install CRDs (requires cluster-admin)
-kubectl apply -f config/crd/zarf.dev_zarfpackages.yaml
-kubectl apply -f config/crd/uds.io_udsbundles.yaml
+kubectl apply -f config/crd/forge.dev_zarfpackagejobs.yaml
 
 # Install Forge controller with ClusterRole
 kubectl apply -f config/rbac/rbac.yaml
@@ -144,8 +143,7 @@ For restricted environments where ClusterRole permissions aren't available:
 
 ```bash
 # Install CRDs (requires cluster-admin - one-time setup)
-kubectl apply -f config/crd/zarf.dev_zarfpackages.yaml
-kubectl apply -f config/crd/uds.io_udsbundles.yaml
+kubectl apply -f config/crd/forge.dev_zarfpackagejobs.yaml
 
 # Create namespace
 kubectl create namespace forge-system
@@ -159,7 +157,7 @@ kubectl apply -f config/namespace-scoped/deployment.yaml
 **Permissions**: Namespace-only (Role)
 **Use Case**: Restricted clusters, individual teams, compliance-heavy environments
 
-**Important**: In namespace-scoped mode, all resources (ZarfPackages, ServiceAccounts, Secrets) must be created in the `forge-system` namespace.
+**Important**: In namespace-scoped mode, all resources (ZarfPackageJobs, ServiceAccounts, Secrets) must be created in the `forge-system` namespace.
 
 📖 **Full Guide**: See [NAMESPACE_SCOPED_DEPLOYMENT.md](docs/NAMESPACE_SCOPED_DEPLOYMENT.md) for detailed instructions, migration paths, and multi-tenant patterns.
 
@@ -259,8 +257,7 @@ See [.github/workflows/README.md](.github/workflows/README.md) for details.
 ```text
 forge/
 ├── pkg/
-│   ├── apis/zarf/v1alpha1/     # ZarfPackage CRD types
-│   ├── apis/uds/v1alpha1/      # UDSBundle CRD types
+│   ├── apis/zarf/v1alpha1/     # ZarfPackageJob CRD types
 │   ├── controller/              # Main controller
 │   ├── actions/                 # Action handlers
 │   ├── sources/                 # Source handlers (Git, S3, OCI)
@@ -276,7 +273,7 @@ forge/
 │   ├── rbac/                    # RBAC manifests (ClusterRole)
 │   ├── namespace-scoped/        # Namespace-scoped deployment (Role)
 │   ├── network/                 # Network policies
-│   ├── samples/                 # Example ZarfPackages
+│   ├── samples/                 # Example ZarfPackageJobs
 │   ├── prometheus/              # Alerts
 │   ├── grafana/                 # Dashboards
 │   └── otel-collector/          # OTel Collector config

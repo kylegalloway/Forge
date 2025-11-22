@@ -50,8 +50,7 @@ kubectl get deployment -n forge-system forge-controller
 kubectl get pods -n forge-system -l app=forge-webhook
 
 # CRDs present
-kubectl get crd zarfpackages.zarf.dev
-kubectl get crd udsbundles.uds.io
+kubectl get crd zarfpackagejobs.forge.dev
 
 # Recent errors in logs (last hour)
 kubectl logs -n forge-system -l app=forge-controller --since=1h | grep -i error
@@ -72,7 +71,7 @@ kubectl logs -n forge-system -l app=forge-controller | grep "Watching namespace"
 # Should show: "Watching namespace: forge-system"
 
 # List resources (all in forge-system)
-kubectl get zarfpackages,serviceaccounts,secrets -n forge-system
+kubectl get zarfpackagejobs,serviceaccounts,secrets -n forge-system
 
 # Recent errors
 kubectl logs -n forge-system -l app=forge-controller --since=1h | grep -i error
@@ -110,9 +109,9 @@ metadata:
   name: team-dev-sa
   namespace: team-dev
   annotations:
-    forge.zarf.dev/allowed-actions: "Build,Publish"
-    forge.zarf.dev/allowed-source-repos: "https://github.com/myorg/*"
-    forge.zarf.dev/allowed-publish-registries: "ghcr.io/myorg/*"
+    forge.forge.dev/allowed-actions: "Build,Publish"
+    forge.forge.dev/allowed-source-repos: "https://github.com/myorg/*"
+    forge.forge.dev/allowed-publish-registries: "ghcr.io/myorg/*"
 ```
 
 1. Create namespace ResourceQuota (if needed):
@@ -125,7 +124,7 @@ metadata:
   namespace: team-dev
 spec:
   hard:
-    count/zarfpackages.zarf.dev: "50"
+    count/zarfpackagejobs.forge.dev: "50"
     count/jobs.batch: "20"
 ```
 
@@ -142,9 +141,9 @@ metadata:
   name: team-dev-sa
   namespace: forge-system  # Must be in forge-system
   annotations:
-    forge.zarf.dev/allowed-actions: "Build,Publish"
-    forge.zarf.dev/allowed-source-repos: "https://github.com/myorg/*"
-    forge.zarf.dev/allowed-publish-registries: "ghcr.io/myorg/*"
+    forge.forge.dev/allowed-actions: "Build,Publish"
+    forge.forge.dev/allowed-source-repos: "https://github.com/myorg/*"
+    forge.forge.dev/allowed-publish-registries: "ghcr.io/myorg/*"
 ```
 
 1. Apply ResourceQuota to forge-system namespace:
@@ -157,11 +156,11 @@ metadata:
   namespace: forge-system
 spec:
   hard:
-    count/zarfpackages.zarf.dev: "100"
+    count/zarfpackagejobs.forge.dev: "100"
     count/jobs.batch: "50"
 ```
 
-1. Instruct team that all ZarfPackages must be created in `forge-system` namespace
+1. Instruct team that all ZarfPackageJobs must be created in `forge-system` namespace
 
 #### Review Package Activity
 
@@ -169,36 +168,36 @@ spec:
 
 ```bash
 # List all packages across all namespaces
-kubectl get zarfpackages -A
+kubectl get zarfpackagejobs -A
 
 # Packages by phase
-kubectl get zarfpackages -A -o json | jq -r '.items[] | select(.status.phase=="Failed") | "\(.metadata.namespace)/\(.metadata.name)"'
+kubectl get zarfpackagejobs -A -o json | jq -r '.items[] | select(.status.phase=="Failed") | "\(.metadata.namespace)/\(.metadata.name)"'
 
 # Recent builds
-kubectl get zarfpackages -A --sort-by=.metadata.creationTimestamp | tail -10
+kubectl get zarfpackagejobs -A --sort-by=.metadata.creationTimestamp | tail -10
 ```
 
 **Namespace-Scoped Deployment:**
 
 ```bash
 # List all packages (only in forge-system)
-kubectl get zarfpackages -n forge-system
+kubectl get zarfpackagejobs -n forge-system
 
 # Packages by phase
-kubectl get zarfpackages -n forge-system -o json | jq -r '.items[] | select(.status.phase=="Failed") | .metadata.name'
+kubectl get zarfpackagejobs -n forge-system -o json | jq -r '.items[] | select(.status.phase=="Failed") | .metadata.name'
 
 # Recent builds
-kubectl get zarfpackages -n forge-system --sort-by=.metadata.creationTimestamp | tail -10
+kubectl get zarfpackagejobs -n forge-system --sort-by=.metadata.creationTimestamp | tail -10
 ```
 
 #### Clean Up Completed Packages
 
 ```bash
 # List completed packages older than 7 days
-kubectl get zarfpackages -A -o json | jq -r '.items[] | select(.status.phase=="Completed" and (now - (.metadata.creationTimestamp | fromdateiso8601) > 604800)) | "\(.metadata.namespace)/\(.metadata.name)"'
+kubectl get zarfpackagejobs -A -o json | jq -r '.items[] | select(.status.phase=="Completed" and (now - (.metadata.creationTimestamp | fromdateiso8601) > 604800)) | "\(.metadata.namespace)/\(.metadata.name)"'
 
 # Delete them (careful!)
-# kubectl delete zarfpackage -n <namespace> <name>
+# kubectl delete ZarfPackageJob -n <namespace> <name>
 ```
 
 ---
@@ -317,7 +316,7 @@ Key panels to include:
 
 - Controller pod continuously restarting
 - Metrics unavailable
-- ZarfPackages not being reconciled
+- ZarfPackageJobs not being reconciled
 
 **Investigation:**
 
@@ -344,7 +343,7 @@ kubectl get events -n forge-system --sort-by='.lastTimestamp'
 
 3. **Corrupted State**
    - Delete and recreate controller pod
-   - Check for malformed ZarfPackages
+   - Check for malformed ZarfPackageJobs
 
 ### Mass Job Failures
 
@@ -381,7 +380,7 @@ kubectl get jobs -A -o json | jq -r '.items[] | select(.status.failed > 0) | .st
 
 **Symptoms:**
 
-- All ZarfPackage creations failing
+- All ZarfPackageJob creations failing
 - Webhook timeout errors
 
 **Quick Fix:**
@@ -407,7 +406,7 @@ kubectl apply -f webhook/deploy/webhook-configuration.yaml
 **Pre-upgrade Checklist:**
 
 1. [ ] Review CHANGELOG for breaking changes
-2. [ ] Backup CRDs and important ZarfPackages
+2. [ ] Backup CRDs and important ZarfPackageJobs
 3. [ ] Test upgrade in staging environment
 4. [ ] Schedule maintenance window
 5. [ ] Notify users
@@ -416,8 +415,8 @@ kubectl apply -f webhook/deploy/webhook-configuration.yaml
 
 ```bash
 # 1. Backup current state
-kubectl get zarfpackages -A -o yaml > zarfpackages-backup.yaml
-kubectl get crd zarfpackages.zarf.dev -o yaml > crd-backup.yaml
+kubectl get zarfpackagejobs -A -o yaml > zarfpackagejobs-backup.yaml
+kubectl get crd zarfpackagejobs.forge.dev -o yaml > crd-backup.yaml
 
 # 2. Update CRDs (if changed)
 kubectl apply -f config/crd/
@@ -519,20 +518,19 @@ kubectl create secret docker-registry oci-creds \
 1. **CRDs** (critical)
 
    ```bash
-   kubectl get crd zarfpackages.zarf.dev -o yaml > zarfpackages-crd.yaml
-   kubectl get crd udsbundles.uds.io -o yaml > udsbundles-crd.yaml
+   kubectl get crd zarfpackagejobs.forge.dev -o yaml > zarfpackagejobs-crd.yaml
    ```
 
 2. **ServiceAccounts with policies** (critical)
 
    ```bash
-   kubectl get sa -A -o yaml | grep -A 50 "forge.zarf.dev/" > serviceaccounts-backup.yaml
+   kubectl get sa -A -o yaml | grep -A 50 "forge.forge.dev/" > serviceaccounts-backup.yaml
    ```
 
-3. **Active ZarfPackages** (important)
+3. **Active ZarfPackageJobs** (important)
 
    ```bash
-   kubectl get zarfpackages -A -o yaml > zarfpackages-backup.yaml
+   kubectl get zarfpackagejobs -A -o yaml > zarfpackagejobs-backup.yaml
    ```
 
 4. **Configuration** (important)
@@ -545,7 +543,7 @@ kubectl create secret docker-registry oci-creds \
 
 - CRDs: On each upgrade
 - ServiceAccounts: Daily
-- ZarfPackages: Continuous (if needed)
+- ZarfPackageJobs: Continuous (if needed)
 - Configuration: On each change
 
 ### Recovery Procedures
@@ -554,8 +552,7 @@ kubectl create secret docker-registry oci-creds \
 
 ```bash
 # 1. Install CRDs
-kubectl apply -f zarfpackages-crd.yaml
-kubectl apply -f udsbundles-crd.yaml
+kubectl apply -f zarfpackagejobs-crd.yaml
 
 # 2. Install Forge
 kubectl create namespace forge-system
@@ -565,12 +562,12 @@ kubectl apply -f config/manager/deployment.yaml
 # 3. Restore ServiceAccounts
 kubectl apply -f serviceaccounts-backup.yaml
 
-# 4. Restore ZarfPackages (if needed)
-kubectl apply -f zarfpackages-backup.yaml
+# 4. Restore ZarfPackageJobs (if needed)
+kubectl apply -f zarfpackagejobs-backup.yaml
 
 # 5. Verify
 kubectl get pods -n forge-system
-kubectl get zarfpackages -A
+kubectl get zarfpackagejobs -A
 ```
 
 **Controller Data Loss:**
@@ -578,7 +575,7 @@ kubectl get zarfpackages -A
 Forge is stateless - all state is in Kubernetes. Recovery:
 
 1. Redeploy controller
-2. Controller will reconcile existing ZarfPackages
+2. Controller will reconcile existing ZarfPackageJobs
 
 **RTO/RPO:**
 
@@ -593,7 +590,7 @@ Forge is stateless - all state is in Kubernetes. Recovery:
 
 **When to scale:**
 
-- More than 100 active ZarfPackages
+- More than 100 active ZarfPackageJobs
 - Reconciliation lag > 5 seconds
 - CPU usage consistently > 70%
 
@@ -646,7 +643,7 @@ spec:
 
 **Reconciliation Rate:**
 
-- Default: Every 10 minutes for each ZarfPackage
+- Default: Every 10 minutes for each ZarfPackageJob
 - Immediate on spec changes
 - Adjust via controller flags if needed
 
@@ -657,7 +654,7 @@ spec:
 
 **Resource Quotas:**
 
-- Limit ZarfPackages per namespace
+- Limit ZarfPackageJobs per namespace
 - Limit concurrent Jobs per namespace
 - Example in `config/namespace-templates/`
 
@@ -691,7 +688,7 @@ spec:
 
    ```bash
    kubectl get pods -n forge-system
-   kubectl get zarfpackages -A | grep -v Completed
+   kubectl get zarfpackagejobs -A | grep -v Completed
    ```
 
 2. Review recent logs:

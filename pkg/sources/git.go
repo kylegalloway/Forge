@@ -1,4 +1,4 @@
-// Package sources provides implementations for different source types (git, OCI, Helm, local) used by ZarfPackage operations.
+// Package sources provides implementations for different source types (git, OCI, Helm, local) used by ZarfPackageJob operations.
 package sources
 
 import (
@@ -12,7 +12,7 @@ import (
 type GitSource struct{}
 
 // GetInitContainer returns an init container to clone the git repository
-func (s *GitSource) GetInitContainer(pkg *zarfv1alpha1.ZarfPackage) (*corev1.Container, error) {
+func (s *GitSource) GetInitContainer(pkg *zarfv1alpha1.ZarfPackageJob) (*corev1.Container, error) {
 	gitSource := pkg.Spec.Source.Git
 	if gitSource == nil {
 		return nil, fmt.Errorf("git source configuration is missing")

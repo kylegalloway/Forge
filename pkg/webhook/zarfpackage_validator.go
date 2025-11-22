@@ -1,19 +1,19 @@
-// Package webhook implements admission webhook validation for ZarfPackage resources.
+// Package webhook implements admission webhook validation for ZarfPackageJob resources.
 //
-// The webhook validates ZarfPackage resources against ServiceAccount permissions to ensure:
+// The webhook validates ZarfPackageJob resources against ServiceAccount permissions to ensure:
 //   - Users can only perform actions allowed by their ServiceAccount annotations
 //   - Source repositories/registries/buckets match allowed patterns
 //   - Publish destinations match allowed patterns
 //   - Deploy targets are permitted
 //
 // ServiceAccount annotations define permissions using glob patterns:
-//   - forge.zarf.dev/allowed-actions: Comma-separated list of allowed actions
-//   - forge.zarf.dev/allowed-source-repos: Glob patterns for Git sources
-//   - forge.zarf.dev/allowed-source-registries: Glob patterns for OCI sources
-//   - forge.zarf.dev/allowed-source-buckets: Glob patterns for S3 sources
-//   - forge.zarf.dev/allowed-publish-registries: Glob patterns for OCI publish
-//   - forge.zarf.dev/allowed-publish-buckets: Glob patterns for S3 publish
-//   - forge.zarf.dev/allowed-deploy-targets: Comma-separated list (InCluster, ExternalCluster)
+//   - forge.forge.dev/allowed-actions: Comma-separated list of allowed actions
+//   - forge.forge.dev/allowed-source-repos: Glob patterns for Git sources
+//   - forge.forge.dev/allowed-source-registries: Glob patterns for OCI sources
+//   - forge.forge.dev/allowed-source-buckets: Glob patterns for S3 sources
+//   - forge.forge.dev/allowed-publish-registries: Glob patterns for OCI publish
+//   - forge.forge.dev/allowed-publish-buckets: Glob patterns for S3 publish
+//   - forge.forge.dev/allowed-deploy-targets: Comma-separated list (InCluster, ExternalCluster)
 package webhook
 
 import (
@@ -31,30 +31,30 @@ import (
 
 const (
 	// ServiceAccount annotation keys
-	annotationAllowedActions           = "forge.zarf.dev/allowed-actions"
-	annotationAllowedSourceRepos       = "forge.zarf.dev/allowed-source-repos"
-	annotationAllowedSourceRegistries  = "forge.zarf.dev/allowed-source-registries"
-	annotationAllowedSourceBuckets     = "forge.zarf.dev/allowed-source-buckets"
-	annotationAllowedPublishRegistries = "forge.zarf.dev/allowed-publish-registries"
-	annotationAllowedPublishBuckets    = "forge.zarf.dev/allowed-publish-buckets"
-	annotationAllowedDeployTargets     = "forge.zarf.dev/allowed-deploy-targets"
+	annotationAllowedActions           = "forge.forge.dev/allowed-actions"
+	annotationAllowedSourceRepos       = "forge.forge.dev/allowed-source-repos"
+	annotationAllowedSourceRegistries  = "forge.forge.dev/allowed-source-registries"
+	annotationAllowedSourceBuckets     = "forge.forge.dev/allowed-source-buckets"
+	annotationAllowedPublishRegistries = "forge.forge.dev/allowed-publish-registries"
+	annotationAllowedPublishBuckets    = "forge.forge.dev/allowed-publish-buckets"
+	annotationAllowedDeployTargets     = "forge.forge.dev/allowed-deploy-targets"
 )
 
-// ZarfPackageValidator validates ZarfPackage resources against ServiceAccount permissions
-type ZarfPackageValidator struct {
+// ZarfPackageJobValidator validates ZarfPackageJob resources against ServiceAccount permissions
+type ZarfPackageJobValidator struct {
 	kubeClient kubernetes.Interface
 }
 
-// NewZarfPackageValidator creates a new ZarfPackage validator
-func NewZarfPackageValidator(kubeClient kubernetes.Interface) *ZarfPackageValidator {
-	return &ZarfPackageValidator{
+// NewZarfPackageJobValidator creates a new ZarfPackageJob validator
+func NewZarfPackageJobValidator(kubeClient kubernetes.Interface) *ZarfPackageJobValidator {
+	return &ZarfPackageJobValidator{
 		kubeClient: kubeClient,
 	}
 }
 
-// ValidateZarfPackage validates a ZarfPackage resource against ServiceAccount permissions
-func (v *ZarfPackageValidator) ValidateZarfPackage(ctx context.Context, pkg *zarfv1alpha1.ZarfPackage) error {
-	klog.InfoS("Validating ZarfPackage", "name", pkg.Name, "namespace", pkg.Namespace)
+// ValidateZarfPackageJob validates a ZarfPackageJob resource against ServiceAccount permissions
+func (v *ZarfPackageJobValidator) ValidateZarfPackageJob(ctx context.Context, pkg *zarfv1alpha1.ZarfPackageJob) error {
+	klog.InfoS("Validating ZarfPackageJob", "name", pkg.Name, "namespace", pkg.Namespace)
 
 	// Get the ServiceAccount
 	sa, err := v.kubeClient.CoreV1().ServiceAccounts(pkg.Namespace).Get(ctx, pkg.Spec.ServiceAccountName, metav1.GetOptions{})
@@ -86,12 +86,12 @@ func (v *ZarfPackageValidator) ValidateZarfPackage(ctx context.Context, pkg *zar
 		}
 	}
 
-	klog.InfoS("ZarfPackage validation passed", "name", pkg.Name, "namespace", pkg.Namespace)
+	klog.InfoS("ZarfPackageJob validation passed", "name", pkg.Name, "namespace", pkg.Namespace)
 	return nil
 }
 
 // validateAction checks if the action is allowed by the ServiceAccount
-func (v *ZarfPackageValidator) validateAction(sa *corev1.ServiceAccount, action zarfv1alpha1.Action) error {
+func (v *ZarfPackageJobValidator) validateAction(sa *corev1.ServiceAccount, action zarfv1alpha1.Action) error {
 	allowedActions := getAnnotation(sa, annotationAllowedActions)
 	if allowedActions == "" {
 		return fmt.Errorf("ServiceAccount %s has no allowed-actions annotation", sa.Name)
@@ -109,7 +109,7 @@ func (v *ZarfPackageValidator) validateAction(sa *corev1.ServiceAccount, action 
 }
 
 // validateSource validates the source configuration
-func (v *ZarfPackageValidator) validateSource(sa *corev1.ServiceAccount, source *zarfv1alpha1.PackageSource) error {
+func (v *ZarfPackageJobValidator) validateSource(sa *corev1.ServiceAccount, source *zarfv1alpha1.PackageSource) error {
 	switch source.Type {
 	case zarfv1alpha1.SourceTypeGit:
 		if source.Git == nil {
@@ -140,7 +140,7 @@ func (v *ZarfPackageValidator) validateSource(sa *corev1.ServiceAccount, source 
 }
 
 // validateGitSource validates Git source permissions
-func (v *ZarfPackageValidator) validateGitSource(sa *corev1.ServiceAccount, git *zarfv1alpha1.GitSource) error {
+func (v *ZarfPackageJobValidator) validateGitSource(sa *corev1.ServiceAccount, git *zarfv1alpha1.GitSource) error {
 	allowedRepos := getAnnotation(sa, annotationAllowedSourceRepos)
 	if allowedRepos == "" {
 		return fmt.Errorf("ServiceAccount %s has no allowed-source-repos annotation", sa.Name)
@@ -159,7 +159,7 @@ func (v *ZarfPackageValidator) validateGitSource(sa *corev1.ServiceAccount, git 
 }
 
 // validateS3Source validates S3 source permissions
-func (v *ZarfPackageValidator) validateS3Source(sa *corev1.ServiceAccount, s3 *zarfv1alpha1.S3Source) error {
+func (v *ZarfPackageJobValidator) validateS3Source(sa *corev1.ServiceAccount, s3 *zarfv1alpha1.S3Source) error {
 	allowedBuckets := getAnnotation(sa, annotationAllowedSourceBuckets)
 	if allowedBuckets == "" {
 		return fmt.Errorf("ServiceAccount %s has no allowed-source-buckets annotation", sa.Name)
@@ -178,7 +178,7 @@ func (v *ZarfPackageValidator) validateS3Source(sa *corev1.ServiceAccount, s3 *z
 }
 
 // validateOCISource validates OCI source permissions
-func (v *ZarfPackageValidator) validateOCISource(sa *corev1.ServiceAccount, oci *zarfv1alpha1.OCISource) error {
+func (v *ZarfPackageJobValidator) validateOCISource(sa *corev1.ServiceAccount, oci *zarfv1alpha1.OCISource) error {
 	allowedRegistries := getAnnotation(sa, annotationAllowedSourceRegistries)
 	if allowedRegistries == "" {
 		return fmt.Errorf("ServiceAccount %s has no allowed-source-registries annotation", sa.Name)
@@ -197,7 +197,7 @@ func (v *ZarfPackageValidator) validateOCISource(sa *corev1.ServiceAccount, oci 
 }
 
 // validatePublish validates publish destination permissions
-func (v *ZarfPackageValidator) validatePublish(sa *corev1.ServiceAccount, publish *zarfv1alpha1.PublishConfig) error {
+func (v *ZarfPackageJobValidator) validatePublish(sa *corev1.ServiceAccount, publish *zarfv1alpha1.PublishConfig) error {
 	switch publish.Destination.Type {
 	case zarfv1alpha1.DestinationTypeS3:
 		if publish.Destination.S3 == nil {
@@ -222,7 +222,7 @@ func (v *ZarfPackageValidator) validatePublish(sa *corev1.ServiceAccount, publis
 }
 
 // validateS3Publish validates S3 publish permissions
-func (v *ZarfPackageValidator) validateS3Publish(sa *corev1.ServiceAccount, s3 *zarfv1alpha1.S3Destination) error {
+func (v *ZarfPackageJobValidator) validateS3Publish(sa *corev1.ServiceAccount, s3 *zarfv1alpha1.S3Destination) error {
 	allowedBuckets := getAnnotation(sa, annotationAllowedPublishBuckets)
 	if allowedBuckets == "" {
 		return fmt.Errorf("ServiceAccount %s has no allowed-publish-buckets annotation", sa.Name)
@@ -241,7 +241,7 @@ func (v *ZarfPackageValidator) validateS3Publish(sa *corev1.ServiceAccount, s3 *
 }
 
 // validateOCIPublish validates OCI publish permissions
-func (v *ZarfPackageValidator) validateOCIPublish(sa *corev1.ServiceAccount, oci *zarfv1alpha1.OCIDestination) error {
+func (v *ZarfPackageJobValidator) validateOCIPublish(sa *corev1.ServiceAccount, oci *zarfv1alpha1.OCIDestination) error {
 	allowedRegistries := getAnnotation(sa, annotationAllowedPublishRegistries)
 	if allowedRegistries == "" {
 		return fmt.Errorf("ServiceAccount %s has no allowed-publish-registries annotation", sa.Name)
@@ -263,7 +263,7 @@ func (v *ZarfPackageValidator) validateOCIPublish(sa *corev1.ServiceAccount, oci
 }
 
 // validateDeploy validates deploy target permissions
-func (v *ZarfPackageValidator) validateDeploy(sa *corev1.ServiceAccount, deploy *zarfv1alpha1.DeployConfig) error {
+func (v *ZarfPackageJobValidator) validateDeploy(sa *corev1.ServiceAccount, deploy *zarfv1alpha1.DeployConfig) error {
 	allowedTargets := getAnnotation(sa, annotationAllowedDeployTargets)
 	if allowedTargets == "" {
 		return fmt.Errorf("ServiceAccount %s has no allowed-deploy-targets annotation", sa.Name)

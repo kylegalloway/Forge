@@ -1,6 +1,6 @@
-# ZarfPackage Admission Webhook
+# ZarfPackageJob Admission Webhook
 
-This directory contains a validating admission webhook for ZarfPackage that enforces production security policies.
+This directory contains a validating admission webhook for ZarfPackageJob that enforces production security policies.
 
 ## Purpose
 
@@ -11,7 +11,7 @@ The webhook provides:
 3. **Input Validation**: Validate input keys and sanitize values
 4. **Block Inline Scripts**: Prevent `script` field in production
 5. **Set Defaults**: Auto-populate image, resource limits, etc.
-6. **Audit Logging**: Log all ZarfPackage creation attempts
+6. **Audit Logging**: Log all ZarfPackageJob creation attempts
 
 ## Quick Start
 
@@ -41,7 +41,7 @@ kubectl get validatingwebhookconfiguration forge-webhook
 # This should be allowed (approved script)
 kubectl apply -f - <<EOF
 apiVersion: forge.io/v1alpha1
-kind: ZarfPackage
+kind: ZarfPackageJob
 metadata:
   name: test-allowed
 spec:
@@ -54,7 +54,7 @@ EOF
 # This should be denied (inline script)
 kubectl apply -f - <<EOF
 apiVersion: forge.io/v1alpha1
-kind: ZarfPackage
+kind: ZarfPackageJob
 metadata:
   name: test-denied
 spec:
@@ -113,7 +113,7 @@ data:
 Edit `pkg/webhook/validator.go` to add your validation:
 
 ```go
-func (v *Validator) validateZarfPackage(sr *forgev1alpha1.ZarfPackage) error {
+func (v *Validator) validateZarfPackage(sr *forgev1alpha1.ZarfPackageJob) error {
     // Check scriptRef is approved
     if !v.isApprovedScript(sr.Spec.ScriptRef) {
         return fmt.Errorf("scriptRef '%s' not in approved list", sr.Spec.ScriptRef)
@@ -152,7 +152,7 @@ func (v *Validator) validateZarfPackage(sr *forgev1alpha1.ZarfPackage) error {
 Implement mutation webhook to set defaults:
 
 ```go
-func (v *Validator) setDefaults(sr *forgev1alpha1.ZarfPackage) {
+func (v *Validator) setDefaults(sr *forgev1alpha1.ZarfPackageJob) {
     // Set default image if not specified
     if sr.Spec.Image == "" {
         sr.Spec.Image = v.config.Defaults.Image
@@ -183,7 +183,7 @@ kubectl apply -f deploy/
 
 ### Validating Webhook
 
-Validates ZarfPackage objects before they are created:
+Validates ZarfPackageJob objects before they are created:
 
 - Checks scriptRef against whitelist
 - Validates image registry
@@ -192,7 +192,7 @@ Validates ZarfPackage objects before they are created:
 
 ### Mutating Webhook
 
-Modifies ZarfPackage objects before creation:
+Modifies ZarfPackageJob objects before creation:
 
 - Sets default image
 - Adds default labels

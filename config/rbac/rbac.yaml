@@ -9,20 +9,20 @@ kind: ClusterRole
 metadata:
   name: forge-controller-role
 rules:
-# Permissions for ZarfPackage resources
+# Permissions for ZarfPackageJob resources
 - apiGroups:
-  - zarf.dev
+  - forge.dev
   resources:
-  - zarfpackages
+  - zarfpackagejobs
   verbs:
   - get
   - list
   - watch
-# Permissions to update ZarfPackage status
+# Permissions to update ZarfPackageJob status
 - apiGroups:
-  - zarf.dev
+  - forge.dev
   resources:
-  - zarfpackages/status
+  - zarfpackagejobs/status
   verbs:
   - get
   - update

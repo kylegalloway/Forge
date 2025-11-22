@@ -1,13 +1,13 @@
 ---
 # Example: Deploy a pre-built package from OCI registry
-apiVersion: zarf.dev/v1alpha1
-kind: ZarfPackage
+apiVersion: forge.dev/v1alpha1
+kind: ZarfPackageJob
 metadata:
   name: deploy-prebuilt-example
   namespace: production
 spec:
   # ServiceAccount controls what this package is allowed to do
-  # Created by cluster admin with forge.zarf.dev/* annotations
+  # Created by cluster admin with forge.forge.dev/* annotations
   serviceAccountName: developer-forge-sa
   action: Deploy
 

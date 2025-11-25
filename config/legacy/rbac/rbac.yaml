@@ -1,0 +1,96 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: forge-controller
+  namespace: forge-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: forge-controller-role
+rules:
+# Permissions for ZarfPackageJob resources
+- apiGroups:
+  - forge.dev
+  resources:
+  - zarfpackagejobs
+  verbs:
+  - get
+  - list
+  - watch
+# Permissions to update ZarfPackageJob status
+- apiGroups:
+  - forge.dev
+  resources:
+  - zarfpackagejobs/status
+  verbs:
+  - get
+  - update
+  - patch
+# Permissions to read ServiceAccounts for policy validation
+- apiGroups:
+  - ""
+  resources:
+  - serviceaccounts
+  verbs:
+  - get
+  - list
+  - watch
+# Permissions to read Secrets for credential validation
+- apiGroups:
+  - ""
+  resources:
+  - secrets
+  verbs:
+  - get
+  - list
+# Permissions for Jobs - create and read only (cleanup handled by TTL and owner references)
+- apiGroups:
+  - batch
+  resources:
+  - jobs
+  verbs:
+  - create
+  - get
+  - list
+  - watch
+# Permissions for Pods - read only (for debugging/status checking)
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  verbs:
+  - get
+  - list
+  - watch
+# Permissions for Events - create for better observability
+- apiGroups:
+  - ""
+  resources:
+  - events
+  verbs:
+  - create
+  - patch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: forge-controller-rolebinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: forge-controller-role
+subjects:
+- kind: ServiceAccount
+  name: forge-controller
+  namespace: forge-system
+# Permissions for leader election (Leases)
+- apiGroups:
+  - coordination.k8s.io
+  resources:
+  - leases
+  verbs:
+  - create
+  - get
+  - list
+  - update

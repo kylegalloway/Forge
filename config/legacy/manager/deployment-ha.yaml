@@ -1,0 +1,155 @@
+---
+# High Availability Deployment with Leader Election
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: forge-controller
+  namespace: forge-system
+  labels:
+    app: forge-controller
+    app.kubernetes.io/name: forge-controller
+    app.kubernetes.io/component: controller
+    app.kubernetes.io/part-of: forge
+spec:
+  # Run 3 replicas for HA
+  replicas: 3
+  selector:
+    matchLabels:
+      app: forge-controller
+  template:
+    metadata:
+      labels:
+        app: forge-controller
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: forge-controller
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        fsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
+
+      # Pod anti-affinity - spread across nodes
+      affinity:
+        podAntiAffinity:
+          # Prefer different nodes
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  app: forge-controller
+              topologyKey: kubernetes.io/hostname
+          # Prefer different zones
+          - weight: 50
+            podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  app: forge-controller
+              topologyKey: topology.kubernetes.io/zone
+
+      # Topology spread constraints - even distribution
+      topologySpreadConstraints:
+      - maxSkew: 1
+        topologyKey: kubernetes.io/hostname
+        whenUnsatisfiable: ScheduleAnyway
+        labelSelector:
+          matchLabels:
+            app: forge-controller
+      - maxSkew: 1
+        topologyKey: topology.kubernetes.io/zone
+        whenUnsatisfiable: ScheduleAnyway
+        labelSelector:
+          matchLabels:
+            app: forge-controller
+
+      containers:
+      - name: controller
+        image: forge-controller:latest
+        imagePullPolicy: Always  # Enforce Always for production
+        command:
+        - /controller
+        args:
+        - -v=2
+        - --enable-leader-election=true  # Enable HA mode
+        ports:
+        - name: metrics
+          containerPort: 8080
+          protocol: TCP
+        - name: health
+          containerPort: 8081
+          protocol: TCP
+        resources:
+          limits:
+            cpu: "2"
+            memory: 1Gi
+          requests:
+            cpu: 500m
+            memory: 512Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          runAsNonRoot: true
+          runAsUser: 65532
+          readOnlyRootFilesystem: true
+          seccompProfile:
+            type: RuntimeDefault
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8081
+          initialDelaySeconds: 15
+          periodSeconds: 20
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: 8081
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+      terminationGracePeriodSeconds: 30  # Allow time for leader election handoff
+---
+# PodDisruptionBudget ensures availability during voluntary disruptions
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: forge-controller-pdb
+  namespace: forge-system
+  labels:
+    app: forge-controller
+spec:
+  minAvailable: 2  # Require at least 2 replicas running
+  selector:
+    matchLabels:
+      app: forge-controller
+---
+# Service for metrics and health checks
+apiVersion: v1
+kind: Service
+metadata:
+  name: forge-controller
+  namespace: forge-system
+  labels:
+    app: forge-controller
+spec:
+  selector:
+    app: forge-controller
+  ports:
+  - name: metrics
+    port: 8080
+    targetPort: metrics
+    protocol: TCP
+  - name: health
+    port: 8081
+    targetPort: health
+    protocol: TCP
+  type: ClusterIP

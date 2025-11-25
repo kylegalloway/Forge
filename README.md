@@ -316,16 +316,13 @@ forge/
 │   ├── telemetry/               # OpenTelemetry integration
 │   ├── leaderelection/          # HA leader election
 │   └── webhook/                 # Admission webhook
-├── config/
-│   ├── crd/                     # CRD manifests
-│   ├── manager/                 # Controller deployment (cluster-wide)
-│   ├── rbac/                    # RBAC manifests (ClusterRole)
-│   ├── namespace-scoped/        # Namespace-scoped deployment (Role)
-│   ├── network/                 # Network policies
-│   ├── samples/                 # Example ZarfPackageJobs
-│   ├── prometheus/              # Alerts
-│   ├── grafana/                 # Dashboards
-│   └── otel-collector/          # OTel Collector config
+├── chart/forge/                 # Helm chart for deployment
+│   ├── templates/               # Kubernetes manifests
+│   ├── crds/                    # CRD definitions
+│   ├── dashboards/              # Grafana dashboards
+│   └── values*.yaml             # Configuration options
+├── examples/                    # Example resources
+│   └── samples/                 # ZarfPackageJob examples
 ├── docs/                        # Documentation
 └── cmd/                         # Entrypoints (controller, webhook)
 ```

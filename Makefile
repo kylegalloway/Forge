@@ -132,15 +132,11 @@ uninstall: ## Uninstall Forge using Helm.
 
 .PHONY: apply-sample
 apply-sample: ## Apply sample ZarfPackageJob resource.
-	kubectl apply -f config/samples/forge_v1alpha1_forge.yaml
-
-.PHONY: apply-custom-sample
-apply-custom-sample: ## Apply custom script sample.
-	kubectl apply -f config/samples/forge_custom_script.yaml
+	kubectl apply -f examples/samples/v1alpha1/build-only-git.yaml
 
 .PHONY: delete-samples
 delete-samples: ## Delete sample resources.
-	kubectl delete -f config/samples/ --ignore-not-found=true
+	kubectl delete -f examples/samples/ --ignore-not-found=true
 
 ##@ Status
 

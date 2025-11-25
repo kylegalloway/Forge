@@ -485,3 +485,89 @@ func hasSubstring(s, substr string) bool {
 	}
 	return false
 }
+
+func TestValidatePublish_LocalDestination(t *testing.T) {
+	sa := &corev1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-sa",
+			Namespace: "default",
+		},
+	}
+
+	client := fake.NewSimpleClientset(sa)
+	validator := NewZarfPackageJobValidator(client)
+
+	publish := &zarfv1alpha1.PublishConfig{
+		Destination: zarfv1alpha1.PublishDestination{
+			Type: zarfv1alpha1.DestinationTypeLocal,
+			Local: &zarfv1alpha1.LocalDestination{
+				Path:    "/tmp/output",
+				DevMode: true,
+			},
+		},
+	}
+
+	err := validator.validatePublish(sa, publish)
+	if err != nil {
+		t.Errorf("validatePublish() with local destination failed: %v", err)
+	}
+}
+
+func TestValidatePublish_UnknownDestination(t *testing.T) {
+	sa := &corev1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-sa",
+			Namespace: "default",
+		},
+	}
+
+	client := fake.NewSimpleClientset(sa)
+	validator := NewZarfPackageJobValidator(client)
+
+	publish := &zarfv1alpha1.PublishConfig{
+		Destination: zarfv1alpha1.PublishDestination{
+			Type: "UnknownType",
+		},
+	}
+
+	err := validator.validatePublish(sa, publish)
+	if err == nil {
+		t.Error("validatePublish() with unknown destination should fail")
+	}
+	if !contains(err.Error(), "unknown publish destination type") {
+		t.Errorf("Expected error about unknown type, got: %v", err)
+	}
+}
+
+func TestValidateSource_UnknownType(t *testing.T) {
+	sa := &corev1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-sa",
+			Namespace: "default",
+		},
+	}
+
+	client := fake.NewSimpleClientset(sa)
+	validator := NewZarfPackageJobValidator(client)
+
+	source := &zarfv1alpha1.PackageSource{
+		Type: "UnknownSourceType",
+	}
+
+	err := validator.validateSource(sa, source)
+	if err == nil {
+		t.Error("validateSource() with unknown type should fail")
+	}
+	if !contains(err.Error(), "unknown source type") {
+		t.Errorf("Expected error about unknown source type, got: %v", err)
+	}
+}
+
+func TestMatchesGlob_InvalidPattern(t *testing.T) {
+	// Test with an invalid glob pattern (malformed bracket expression)
+	result := matchesGlob("test-value", "[invalid")
+	// Invalid patterns should not match
+	if result {
+		t.Error("matchesGlob() with invalid pattern should return false")
+	}
+}

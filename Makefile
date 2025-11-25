@@ -81,29 +81,72 @@ docker-push: container-push ## Alias for container-push (legacy).
 
 ##@ Deployment
 
+# Helm values file (can be overridden)
+HELM_VALUES ?= chart/forge/values.yaml
+
+.PHONY: helm-lint
+helm-lint: ## Lint the Helm chart.
+	helm lint chart/forge
+
+.PHONY: helm-template
+helm-template: ## Generate manifests from Helm chart (dry-run).
+	helm template forge chart/forge -f $(HELM_VALUES) --namespace $(NAMESPACE)
+
+.PHONY: install
+install: ## Install Forge using Helm with default values.
+	helm install forge chart/forge \
+		--namespace $(NAMESPACE) \
+		--create-namespace \
+		--wait
+
+.PHONY: install-mature
+install-mature: ## Install Forge for mature cluster (existing monitoring).
+	helm install forge chart/forge \
+		-f chart/forge/values-mature-cluster.yaml \
+		--namespace $(NAMESPACE) \
+		--create-namespace \
+		--wait
+
+.PHONY: install-new
+install-new: ## Install Forge with full observability stack for new cluster.
+	helm install forge chart/forge \
+		-f chart/forge/values-new-cluster.yaml \
+		--namespace $(NAMESPACE) \
+		--create-namespace \
+		--wait
+
+.PHONY: upgrade
+upgrade: ## Upgrade Forge installation using Helm.
+	helm upgrade forge chart/forge \
+		--namespace $(NAMESPACE) \
+		--wait
+
+.PHONY: uninstall
+uninstall: ## Uninstall Forge using Helm.
+	helm uninstall forge --namespace $(NAMESPACE) || true
+
+# Legacy deployment targets (for backwards compatibility)
 .PHONY: install-crd
-install-crd: ## Install CRDs into the K8s cluster specified in ~/.kube/config.
+install-crd: ## [LEGACY] Install CRDs directly (use 'make install' instead).
+	@echo "WARNING: This is a legacy target. Use 'make install' to deploy with Helm."
 	kubectl apply -f config/crd/
 
 .PHONY: uninstall-crd
-uninstall-crd: ## Uninstall CRDs from the K8s cluster specified in ~/.kube/config.
+uninstall-crd: ## [LEGACY] Uninstall CRDs directly.
+	@echo "WARNING: This is a legacy target. Use 'make uninstall' instead."
 	kubectl delete -f config/crd/
 
 .PHONY: deploy
-deploy: ## Deploy controller to the K8s cluster specified in ~/.kube/config.
-	kubectl apply -f config/manager/
-	kubectl apply -f config/rbac/
+deploy: ## [LEGACY] Deploy controller directly (use 'make install' instead).
+	@echo "WARNING: This is a legacy target. Use 'make install' to deploy with Helm."
+	kubectl apply -f config/legacy/manager/
+	kubectl apply -f config/legacy/rbac/
 
 .PHONY: undeploy
-undeploy: ## Undeploy controller from the K8s cluster specified in ~/.kube/config.
-	kubectl delete -f config/rbac/ --ignore-not-found=true
-	kubectl delete -f config/manager/ --ignore-not-found=true
-
-.PHONY: install
-install: install-crd deploy ## Install CRDs and deploy controller.
-
-.PHONY: uninstall
-uninstall: undeploy uninstall-crd ## Undeploy controller and uninstall CRDs.
+undeploy: ## [LEGACY] Undeploy controller directly.
+	@echo "WARNING: This is a legacy target. Use 'make uninstall' instead."
+	kubectl delete -f config/legacy/rbac/ --ignore-not-found=true
+	kubectl delete -f config/legacy/manager/ --ignore-not-found=true
 
 ##@ Samples
 
@@ -194,7 +237,15 @@ kind-load: container-build ## Build and load the controller image into kind.
 	kind load docker-image $(IMG) --name $(KIND_CLUSTER_NAME)
 
 .PHONY: kind-deploy
-kind-deploy: kind-load install ## Build, load image to kind, and deploy controller.
+kind-deploy: kind-load ## Build, load image to kind, and deploy controller with Helm.
+	@echo "Deploying with Helm..."
+	@helm install forge chart/forge \
+		--namespace $(NAMESPACE) \
+		--create-namespace \
+		--set controller.image.repository=forge-controller \
+		--set controller.image.tag=latest \
+		--set observability.deployStack=false \
+		--wait
 	@echo "Deployment complete. Checking status..."
 	@sleep 3
 	@$(MAKE) status

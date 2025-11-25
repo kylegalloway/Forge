@@ -1,0 +1,23 @@
+{{- if and .Values.metrics.enabled .Values.metrics.serviceMonitor.enabled -}}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "forge.fullname" . }}-controller
+  namespace: {{ include "forge.namespace" . }}
+  labels:
+    {{- include "forge.controller.labels" . | nindent 4 }}
+    {{- with .Values.metrics.serviceMonitor.additionalLabels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "forge.controller.selectorLabels" . | nindent 6 }}
+      component: metrics
+  endpoints:
+  - port: metrics
+    interval: {{ .Values.metrics.serviceMonitor.interval }}
+    path: /metrics
+    scheme: http
+    scrapeTimeout: {{ .Values.metrics.serviceMonitor.scrapeTimeout }}
+{{- end }}

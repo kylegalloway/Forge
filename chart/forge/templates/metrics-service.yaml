@@ -1,0 +1,19 @@
+{{- if .Values.metrics.enabled -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "forge.fullname" . }}-controller-metrics
+  namespace: {{ include "forge.namespace" . }}
+  labels:
+    {{- include "forge.controller.labels" . | nindent 4 }}
+    component: metrics
+spec:
+  type: {{ .Values.metrics.service.type }}
+  ports:
+  - name: metrics
+    port: {{ .Values.metrics.service.port }}
+    protocol: TCP
+    targetPort: 8080
+  selector:
+    {{- include "forge.controller.selectorLabels" . | nindent 4 }}
+{{- end }}

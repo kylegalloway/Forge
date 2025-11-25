@@ -1,0 +1,75 @@
+# Values for deploying Forge into a mature cluster
+# with existing observability infrastructure (Grafana, Prometheus, OTEL)
+#
+# Usage:
+#   helm install forge ./chart/forge -f chart/forge/values-mature-cluster.yaml
+
+# Observability stack configuration
+observability:
+  # Do not deploy observability stack - use existing infrastructure
+  deployStack: false
+
+  # OpenTelemetry Collector configuration
+  otelCollector:
+    # Disable OTEL Collector deployment (use existing)
+    enabled: false
+
+    # Configure external OTEL endpoint
+    external:
+      # Replace with your existing OTEL collector endpoint
+      endpoint: "otel-collector.monitoring.svc.cluster.local:4317"
+      tls:
+        enabled: true
+        insecure: false
+
+  # Prometheus configuration
+  prometheus:
+    # Disable Prometheus deployment (use existing)
+    enabled: false
+
+    # Configure external Prometheus
+    external:
+      # Replace with your existing Prometheus URL
+      url: "http://prometheus.monitoring.svc.cluster.local:9090"
+
+  # Grafana configuration
+  grafana:
+    # Disable Grafana deployment (use existing)
+    enabled: false
+
+    # Configure external Grafana
+    external:
+      # Replace with your existing Grafana URL
+      url: "http://grafana.monitoring.svc.cluster.local"
+
+# Metrics configuration
+metrics:
+  # Enable metrics service
+  enabled: true
+
+  # ServiceMonitor for Prometheus Operator
+  serviceMonitor:
+    # Enable ServiceMonitor if using Prometheus Operator
+    enabled: true
+    # Adjust labels to match your Prometheus instance
+    additionalLabels:
+      prometheus: kube-prometheus
+      release: prometheus-operator
+
+# Prometheus alerts configuration
+alerts:
+  # Enable PrometheusRule creation if using Prometheus Operator
+  enabled: true
+  # Adjust labels to match your Prometheus instance
+  additionalLabels:
+    prometheus: kube-prometheus
+    role: alert-rules
+    release: prometheus-operator
+
+# Network policies
+networkPolicies:
+  # Enable if your cluster uses network policies
+  enabled: false
+
+# Example: Adjust these based on your cluster's monitoring namespace
+# You may need to customize network policies to allow traffic from your monitoring namespace

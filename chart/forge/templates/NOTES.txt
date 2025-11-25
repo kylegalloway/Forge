@@ -1,0 +1,107 @@
+Thank you for installing {{ .Chart.Name }}!
+
+Your release is named {{ .Release.Name }}.
+Namespace: {{ include "forge.namespace" . }}
+
+{{- if .Values.observability.deployStack }}
+
+🎉 FULL OBSERVABILITY STACK DEPLOYED
+
+The following components have been deployed:
+  ✅ Forge Controller
+  ✅ OpenTelemetry Collector
+  {{- if .Values.observability.prometheus.enabled }}
+  ✅ Prometheus
+  {{- end }}
+  {{- if .Values.observability.grafana.enabled }}
+  ✅ Grafana
+  {{- end }}
+
+To access the Forge controller metrics:
+  kubectl port-forward -n {{ include "forge.namespace" . }} svc/{{ include "forge.fullname" . }}-controller-metrics 8080:8080
+  Then visit: http://localhost:8080/metrics
+
+{{- if .Values.observability.prometheus.enabled }}
+
+To access Prometheus:
+  kubectl port-forward -n {{ include "forge.namespace" . }} svc/prometheus-server 9090:9090
+  Then visit: http://localhost:9090
+{{- end }}
+
+{{- if .Values.observability.grafana.enabled }}
+
+To access Grafana:
+  kubectl port-forward -n {{ include "forge.namespace" . }} svc/grafana 3000:80
+  Then visit: http://localhost:3000
+
+  Default credentials:
+    Username: {{ .Values.observability.grafana.config.adminUser }}
+    Password: {{ .Values.observability.grafana.config.adminPassword }}
+
+  ⚠️  IMPORTANT: Change the default Grafana password immediately!
+
+{{- if .Values.observability.grafana.config.ingress.enabled }}
+  Grafana is also available at:
+  {{- range .Values.observability.grafana.config.ingress.hosts }}
+    https://{{ . }}
+  {{- end }}
+{{- end }}
+{{- end }}
+
+{{- else }}
+
+🔗 USING EXISTING OBSERVABILITY INFRASTRUCTURE
+
+Forge has been configured to use your existing monitoring stack:
+  ✅ Forge Controller
+
+{{- if .Values.observability.otelCollector.external.endpoint }}
+  🔗 External OTEL Collector: {{ .Values.observability.otelCollector.external.endpoint }}
+{{- end }}
+{{- if .Values.observability.prometheus.external.url }}
+  🔗 External Prometheus: {{ .Values.observability.prometheus.external.url }}
+{{- end }}
+{{- if .Values.observability.grafana.external.url }}
+  🔗 External Grafana: {{ .Values.observability.grafana.external.url }}
+{{- end }}
+
+{{- if .Values.metrics.serviceMonitor.enabled }}
+
+ServiceMonitor has been created for Prometheus Operator to scrape metrics.
+Make sure your Prometheus instance has the following label selectors:
+{{- range $key, $value := .Values.metrics.serviceMonitor.additionalLabels }}
+  {{ $key }}: {{ $value }}
+{{- end }}
+{{- end }}
+
+To access the Forge controller metrics:
+  kubectl port-forward -n {{ include "forge.namespace" . }} svc/{{ include "forge.fullname" . }}-controller-metrics 8080:8080
+  Then visit: http://localhost:8080/metrics
+
+{{- end }}
+
+📊 Next Steps:
+
+1. Verify the controller is running:
+   kubectl get pods -n {{ include "forge.namespace" . }} -l app=forge-controller
+
+2. Check controller logs:
+   kubectl logs -n {{ include "forge.namespace" . }} -l app=forge-controller -f
+
+3. Create a ZarfPackageJob:
+   kubectl apply -f config/samples/v1alpha1/build-only-git.yaml
+
+4. Monitor the job:
+   kubectl get zarfpackagejobs -A
+   kubectl describe zarfpackagejob <job-name> -n <namespace>
+
+{{- if .Values.alerts.enabled }}
+
+5. Prometheus alerts have been configured. Check your Prometheus instance for Forge alerts.
+{{- end }}
+
+📖 Documentation:
+   Project: https://github.com/kylegalloway/forge
+   Helm Chart: {{ .Chart.Home }}
+
+For help, visit: https://github.com/kylegalloway/forge/issues

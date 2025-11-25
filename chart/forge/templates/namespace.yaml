@@ -1,0 +1,13 @@
+{{- if .Values.global.createNamespace }}
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ include "forge.namespace" . }}
+  labels:
+    {{- include "forge.labels" . | nindent 4 }}
+    {{- with .Values.podSecurityStandards }}
+    pod-security.kubernetes.io/enforce: {{ .enforce }}
+    pod-security.kubernetes.io/audit: {{ .audit }}
+    pod-security.kubernetes.io/warn: {{ .warn }}
+    {{- end }}
+{{- end }}

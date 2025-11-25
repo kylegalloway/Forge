@@ -1,0 +1,455 @@
+# Default values for forge.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+# Global settings
+global:
+  # Namespace to deploy into
+  namespace: forge-system
+
+  # Whether to create the namespace
+  createNamespace: true
+
+# Controller configuration
+controller:
+  # Number of controller replicas
+  replicaCount: 1
+
+  # Controller image configuration
+  image:
+    repository: forge-controller
+    pullPolicy: IfNotPresent
+    tag: "latest"
+
+  # Image pull secrets
+  imagePullSecrets: []
+
+  # Controller command arguments
+  args:
+    - "-v=2"
+
+  # Resource limits and requests
+  resources:
+    limits:
+      cpu: "1"
+      memory: 512Mi
+    requests:
+      cpu: 250m
+      memory: 256Mi
+
+  # Security context for the controller pod
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 65532
+    fsGroup: 65532
+    seccompProfile:
+      type: RuntimeDefault
+
+  # Security context for the controller container
+  securityContext:
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+      - ALL
+    runAsNonRoot: true
+    runAsUser: 65532
+    readOnlyRootFilesystem: true
+    seccompProfile:
+      type: RuntimeDefault
+
+  # Liveness probe configuration
+  livenessProbe:
+    httpGet:
+      path: /healthz
+      port: 8081
+    initialDelaySeconds: 15
+    periodSeconds: 20
+
+  # Readiness probe configuration
+  readinessProbe:
+    httpGet:
+      path: /readyz
+      port: 8081
+    initialDelaySeconds: 5
+    periodSeconds: 10
+
+  # Node selector
+  nodeSelector: {}
+
+  # Tolerations
+  tolerations: []
+
+  # Affinity
+  affinity: {}
+
+  # Pod annotations
+  podAnnotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "8080"
+    prometheus.io/path: "/metrics"
+
+# Service Account configuration
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: "forge-controller"
+
+# RBAC configuration
+rbac:
+  # Specifies whether RBAC resources should be created
+  create: true
+
+# Metrics configuration
+metrics:
+  # Enable metrics service
+  enabled: true
+
+  # Service configuration
+  service:
+    type: ClusterIP
+    port: 8080
+
+  # ServiceMonitor for Prometheus Operator
+  serviceMonitor:
+    # Enable ServiceMonitor creation
+    enabled: true
+    # Additional labels for ServiceMonitor (e.g., for Prometheus to discover)
+    additionalLabels:
+      prometheus: kube-prometheus
+    # Scrape interval
+    interval: 30s
+    # Scrape timeout
+    scrapeTimeout: 10s
+
+# Observability stack configuration
+# Set observability.deployStack to false if you have existing monitoring infrastructure
+observability:
+  # Deploy full observability stack (OTEL, Prometheus, Grafana)
+  # Set to false for mature clusters with existing monitoring
+  deployStack: true
+
+  # OpenTelemetry Collector configuration
+  otelCollector:
+    # Enable OTEL Collector deployment
+    enabled: true
+
+    image:
+      repository: otel/opentelemetry-collector-contrib
+      tag: "0.110.0"
+      pullPolicy: IfNotPresent
+
+    replicaCount: 1
+
+    resources:
+      requests:
+        cpu: 200m
+        memory: 256Mi
+      limits:
+        cpu: 1000m
+        memory: 512Mi
+
+    # OTEL Collector configuration
+    # This will be used as ConfigMap data
+    config:
+      receivers:
+        otlp:
+          protocols:
+            grpc:
+              endpoint: "0.0.0.0:4317"
+            http:
+              endpoint: "0.0.0.0:4318"
+        prometheus:
+          config:
+            scrape_configs:
+              - job_name: 'forge-controller'
+                scrape_interval: 15s
+                static_configs:
+                  - targets: ['forge-controller-metrics:8080']
+                    labels:
+                      service: 'forge-controller'
+
+      processors:
+        batch:
+          timeout: 10s
+          send_batch_size: 1024
+        memory_limiter:
+          check_interval: 1s
+          limit_mib: 512
+          spike_limit_mib: 128
+        resource:
+          attributes:
+            - key: service.name
+              value: forge-controller
+              action: upsert
+            - key: service.namespace
+              value: forge-system
+              action: upsert
+        attributes:
+          actions:
+            - key: k8s.namespace.name
+              from_attribute: namespace
+              action: upsert
+            - key: k8s.pod.name
+              from_attribute: pod
+              action: upsert
+
+      exporters:
+        prometheus:
+          endpoint: "0.0.0.0:8889"
+          namespace: forge
+          const_labels:
+            service: forge-controller
+        logging:
+          loglevel: info
+          sampling_initial: 5
+          sampling_thereafter: 200
+        # These exporters are configured for the deployed Prometheus
+        prometheusremotewrite:
+          endpoint: "http://prometheus-server:9090/api/v1/write"
+          tls:
+            insecure: true
+
+      extensions:
+        health_check:
+          endpoint: "0.0.0.0:13133"
+        pprof:
+          endpoint: "0.0.0.0:1777"
+        zpages:
+          endpoint: "0.0.0.0:55679"
+
+      service:
+        extensions: [health_check, pprof, zpages]
+        pipelines:
+          traces:
+            receivers: [otlp]
+            processors: [memory_limiter, resource, attributes, batch]
+            exporters: [logging]
+          metrics:
+            receivers: [otlp, prometheus]
+            processors: [memory_limiter, resource, batch]
+            exporters: [logging, prometheus, prometheusremotewrite]
+
+    # External OTEL endpoint (for mature clusters)
+    # Used when observability.deployStack is false
+    external:
+      # Endpoint of existing OTEL collector
+      endpoint: ""
+      # Whether to use TLS
+      tls:
+        enabled: true
+        insecure: false
+
+    # Service configuration
+    service:
+      type: ClusterIP
+      ports:
+        otlpGrpc: 4317
+        otlpHttp: 4318
+        prometheus: 8889
+        health: 13133
+
+    # ServiceMonitor for OTEL Collector metrics
+    serviceMonitor:
+      enabled: true
+      interval: 30s
+
+  # Prometheus configuration
+  prometheus:
+    # Enable Prometheus deployment
+    # Only used when observability.deployStack is true
+    enabled: true
+
+    # Use kube-prometheus-stack Helm chart as subchart
+    # Set to true to deploy Prometheus via subchart dependency
+    useSubchart: true
+
+    # Prometheus configuration (passed to kube-prometheus-stack)
+    config:
+      # Storage configuration
+      persistence:
+        enabled: true
+        size: 50Gi
+        storageClass: ""
+
+      # Retention settings
+      retention: 15d
+
+      # Resource limits
+      resources:
+        requests:
+          cpu: 500m
+          memory: 2Gi
+        limits:
+          cpu: 2000m
+          memory: 4Gi
+
+      # Service configuration
+      service:
+        type: ClusterIP
+        port: 9090
+
+      # Additional scrape configs
+      additionalScrapeConfigs: []
+
+    # External Prometheus (for mature clusters)
+    # Used when observability.deployStack is false
+    external:
+      # URL of existing Prometheus instance
+      url: ""
+
+  # Grafana configuration
+  grafana:
+    # Enable Grafana deployment
+    # Only used when observability.deployStack is true
+    enabled: true
+
+    # Use grafana Helm chart as subchart
+    useSubchart: true
+
+    # Grafana configuration
+    config:
+      # Admin credentials
+      adminUser: admin
+      adminPassword: "forge-admin-changeme"
+
+      # Resource limits
+      resources:
+        requests:
+          cpu: 250m
+          memory: 256Mi
+        limits:
+          cpu: 500m
+          memory: 512Mi
+
+      # Service configuration
+      service:
+        type: ClusterIP
+        port: 80
+
+      # Persistence
+      persistence:
+        enabled: true
+        size: 10Gi
+        storageClass: ""
+
+      # Datasources (will be configured to point to Prometheus)
+      datasources:
+        datasources.yaml:
+          apiVersion: 1
+          datasources:
+            - name: Prometheus
+              type: prometheus
+              url: http://prometheus-server:9090
+              access: proxy
+              isDefault: true
+
+      # Dashboard providers
+      dashboardProviders:
+        dashboardproviders.yaml:
+          apiVersion: 1
+          providers:
+            - name: 'default'
+              orgId: 1
+              folder: ''
+              type: file
+              disableDeletion: false
+              editable: true
+              options:
+                path: /var/lib/grafana/dashboards/default
+
+      # Import existing Forge dashboard
+      dashboards:
+        default:
+          forge-dashboard:
+            json: |
+              # Dashboard JSON will be loaded from configmap
+
+      # Ingress configuration
+      ingress:
+        enabled: false
+        ingressClassName: nginx
+        annotations: {}
+        hosts:
+          - grafana.example.com
+        tls: []
+
+    # External Grafana (for mature clusters)
+    # Used when observability.deployStack is false
+    external:
+      # URL of existing Grafana instance
+      url: ""
+
+# Prometheus alerts configuration
+alerts:
+  # Enable PrometheusRule creation
+  enabled: true
+
+  # Additional labels for PrometheusRule
+  additionalLabels:
+    prometheus: kube-prometheus
+    role: alert-rules
+
+# Network policies
+networkPolicies:
+  # Enable network policies
+  enabled: false
+
+  # Controller network policy
+  controller:
+    # Ingress rules
+    ingress:
+      # Allow metrics scraping
+      - from:
+        - namespaceSelector:
+            matchLabels:
+              name: monitoring
+        ports:
+        - protocol: TCP
+          port: 8080
+      # Allow health checks
+      - from:
+        - namespaceSelector: {}
+        ports:
+        - protocol: TCP
+          port: 8081
+
+    # Egress rules
+    egress:
+      # Allow DNS
+      - to:
+        - namespaceSelector:
+            matchLabels:
+              name: kube-system
+        ports:
+        - protocol: UDP
+          port: 53
+      # Allow Kubernetes API
+      - to:
+        - namespaceSelector: {}
+        ports:
+        - protocol: TCP
+          port: 6443
+      - to:
+        - namespaceSelector: {}
+        ports:
+        - protocol: TCP
+          port: 443
+
+# Pod Security Standards
+podSecurityStandards:
+  # Enforce restricted pod security standard
+  enforce: restricted
+  audit: restricted
+  warn: restricted
+
+# CRD configuration
+crds:
+  # Install CRDs
+  install: true
+
+  # Keep CRDs on uninstall
+  keep: true

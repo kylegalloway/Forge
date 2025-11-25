@@ -1,0 +1,10 @@
+{{- if .Values.crds.install -}}
+{{- $crdPath := print .Template.BasePath "/../../../config/crd/forge.dev_zarfpackagejobs.yaml" -}}
+{{- if .Files.Get "../../config/crd/forge.dev_zarfpackagejobs.yaml" -}}
+{{ .Files.Get "../../config/crd/forge.dev_zarfpackagejobs.yaml" }}
+{{- else -}}
+# CRD should be copied from config/crd/forge.dev_zarfpackagejobs.yaml
+# Run: cp config/crd/forge.dev_zarfpackagejobs.yaml chart/forge/crds/
+# Helm will automatically install files from the crds/ directory
+{{- end -}}
+{{- end -}}

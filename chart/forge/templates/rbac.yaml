@@ -1,0 +1,96 @@
+{{- if .Values.rbac.create -}}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "forge.fullname" . }}-controller-role
+  labels:
+    {{- include "forge.labels" . | nindent 4 }}
+rules:
+# Permissions for ZarfPackageJob resources
+- apiGroups:
+  - forge.dev
+  resources:
+  - zarfpackagejobs
+  verbs:
+  - get
+  - list
+  - watch
+# Permissions to update ZarfPackageJob status
+- apiGroups:
+  - forge.dev
+  resources:
+  - zarfpackagejobs/status
+  verbs:
+  - get
+  - update
+  - patch
+# Permissions to read ServiceAccounts for policy validation
+- apiGroups:
+  - ""
+  resources:
+  - serviceaccounts
+  verbs:
+  - get
+  - list
+  - watch
+# Permissions to read Secrets for credential validation
+- apiGroups:
+  - ""
+  resources:
+  - secrets
+  verbs:
+  - get
+  - list
+# Permissions for Jobs - create and read only
+- apiGroups:
+  - batch
+  resources:
+  - jobs
+  verbs:
+  - create
+  - get
+  - list
+  - watch
+# Permissions for Pods - read only
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  verbs:
+  - get
+  - list
+  - watch
+# Permissions for Events
+- apiGroups:
+  - ""
+  resources:
+  - events
+  verbs:
+  - create
+  - patch
+# Permissions for leader election
+- apiGroups:
+  - coordination.k8s.io
+  resources:
+  - leases
+  verbs:
+  - create
+  - get
+  - list
+  - update
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "forge.fullname" . }}-controller-rolebinding
+  labels:
+    {{- include "forge.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ include "forge.fullname" . }}-controller-role
+subjects:
+- kind: ServiceAccount
+  name: {{ include "forge.serviceAccountName" . }}
+  namespace: {{ include "forge.namespace" . }}
+{{- end }}

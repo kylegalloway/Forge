@@ -1,0 +1,25 @@
+{{- if and .Values.observability.otelCollector.enabled .Values.observability.deployStack -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "forge.fullname" . }}-otel-collector-config
+  namespace: {{ include "forge.namespace" . }}
+  labels:
+    {{- include "forge.otel.labels" . | nindent 4 }}
+data:
+  otel-collector-config.yaml: |
+    receivers:
+      {{- toYaml .Values.observability.otelCollector.config.receivers | nindent 6 }}
+
+    processors:
+      {{- toYaml .Values.observability.otelCollector.config.processors | nindent 6 }}
+
+    exporters:
+      {{- toYaml .Values.observability.otelCollector.config.exporters | nindent 6 }}
+
+    extensions:
+      {{- toYaml .Values.observability.otelCollector.config.extensions | nindent 6 }}
+
+    service:
+      {{- toYaml .Values.observability.otelCollector.config.service | nindent 6 }}
+{{- end }}

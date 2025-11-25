@@ -241,40 +241,49 @@ Production readiness checklist for deploying Forge - the Kubernetes-native Zarf 
 
 ---
 
-## Phase 7: Supply Chain Security & Attestation (PENDING ⏸️)
+## Phase 7: Supply Chain Security & Attestation (IN PROGRESS 🚧)
 
-*Status: 0/15 items complete (0%)*
+*Status: 9/20 items complete (45%)*
 
-### Provenance & Attestation
+### Forge Self-Attestation (Controller/Webhook Images)
 
-- [ ] ⏸️ SLSA provenance generation for builds
-- [ ] ⏸️ In-toto attestation framework integration
-- [ ] ⏸️ Build attestation (source → artifact)
-- [ ] ⏸️ Publish attestation (artifact → registry)
-- [ ] ⏸️ Deploy attestation (registry → cluster)
-- [ ] ⏸️ Attestation storage (OCI registry or dedicated store)
+- [x] ✅ SLSA provenance generation for Forge builds (GitHub Actions)
+- [x] ✅ Cosign keyless signing (GitHub OIDC)
+- [x] ✅ SBOM generation (SPDX + CycloneDX)
+- [x] ✅ SBOM attestation to images
+- [x] ✅ Vulnerability scanning (Trivy)
+- [x] ✅ Rekor transparency log integration
+- [x] ✅ Multi-arch builds (amd64, arm64)
+- [x] ✅ Reproducible builds (trimpath, consistent ldflags)
+- [x] ✅ Verification documentation
+
+### Package Attestation (Zarf Packages Built BY Forge)
+
+- [x] 🚧 In-toto attestation framework (types implemented)
+- [x] 🚧 Build attestation generator (source → artifact)
+- [x] 🚧 Publish attestation generator (artifact → registry)
+- [x] 🚧 Deploy attestation generator (registry → cluster)
+- [ ] ⏸️ Attestation storage (OCI registry implementation)
 - [ ] ⏸️ Attestation verification in controller
-
-### Signing & Verification
-
-- [ ] ⏸️ Artifact signing with Sigstore/Cosign
 - [ ] ⏸️ Package signature verification before deploy
-- [ ] ⏸️ Keyless signing support (OIDC)
 - [ ] ⏸️ Policy-based signature requirements
 - [ ] ⏸️ Signature validation webhook
 
 ### Supply Chain Tracking
 
-- [ ] ⏸️ Build material tracking (dependencies, tools)
-- [ ] ⏸️ SBOM (Software Bill of Materials) generation
-- [ ] ⏸️ Vulnerability scanning integration
+- [x] ✅ SBOM generation for Forge images
+- [ ] ⏸️ SBOM generation for Zarf packages
 - [ ] ⏸️ Supply chain policy enforcement
 
 **Rationale**: Supply chain security is critical for production deployments. Attestations provide cryptographic proof of provenance, enabling auditability and compliance. SLSA framework provides industry-standard approach to supply chain integrity.
 
+**Two-Tier Approach**:
+1. **Forge Self-Attestation**: Prove Forge controller/webhook images are authentic
+2. **Package Attestation**: Forge generates attestations for packages it builds
+
 **Target Standards**:
-- SLSA Level 2 minimum (isolated builds, signed provenance)
-- SLSA Level 3 goal (hardened builds, non-falsifiable provenance)
+- SLSA Build Level 3 for Forge images (✅ ACHIEVED)
+- SLSA Level 2 minimum for Zarf packages (🚧 IN PROGRESS)
 - In-toto attestation predicates for each operation stage
 - Sigstore integration for keyless signing
 
@@ -360,12 +369,12 @@ Production readiness checklist for deploying Forge - the Kubernetes-native Zarf 
 | 4 | Production Hardening | ✅ Complete | 100% |
 | 5 | Testing & Validation | ✅ Complete | 100% |
 | 6 | Documentation | ✅ Complete | 100% |
-| 7 | Supply Chain Security | ⏸️ Pending | 0% |
+| 7 | Supply Chain Security | 🚧 In Progress | 45% |
 | 8 | CI/CD Pipeline | ✅ Complete | 100% |
 | 9 | Compliance & Audit | ⏸️ Pending | 0% |
 | 10 | Launch Preparation | ⏸️ Pending | 0% |
 
-### Overall Progress: 103 / 130 items (79%)
+### Overall Progress: 112 / 135 items (83%)
 
 ### Critical Path to Production
 

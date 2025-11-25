@@ -60,17 +60,32 @@ func (s *OCIStorageImpl) Store(ctx context.Context, bundle *AttestationBundle, o
 	// Create attestation layer
 	layer := static.NewLayer(attestationJSON, types.MediaType("application/vnd.in-toto+json"))
 
-	// Create base image
-	img := mutate.AppendLayers(empty.Image, layer)
+	// Create base image with layer
+	img, err := mutate.AppendLayers(empty.Image, layer)
+	if err != nil {
+		return fmt.Errorf("failed to append layer: %w", err)
+	}
 
-	// Add annotations
-	img = mutate.Annotations(img, map[string]string{
-		"dev.forge.attestation.zarfPackageJob": opts.ZarfPackageJob,
-		"dev.forge.attestation.namespace":      opts.Namespace,
-		"dev.forge.attestation.operation":      opts.Operation,
-		"dev.forge.attestation.digest":         opts.ArtifactDigest,
-		"org.opencontainers.image.created":     bundle.Statement.PredicateType.String(),
-	}).(mutate.Annotatable)
+	// Get config file and add labels (annotations on the config, not manifest)
+	configFile, err := img.ConfigFile()
+	if err != nil {
+		return fmt.Errorf("failed to get config file: %w", err)
+	}
+
+	// Add labels to config
+	if configFile.Config.Labels == nil {
+		configFile.Config.Labels = make(map[string]string)
+	}
+	configFile.Config.Labels["dev.forge.attestation.zarfPackageJob"] = opts.ZarfPackageJob
+	configFile.Config.Labels["dev.forge.attestation.namespace"] = opts.Namespace
+	configFile.Config.Labels["dev.forge.attestation.operation"] = opts.Operation
+	configFile.Config.Labels["dev.forge.attestation.digest"] = opts.ArtifactDigest
+	configFile.Config.Labels["dev.forge.attestation.predicateType"] = string(bundle.Statement.PredicateType)
+
+	img, err = mutate.ConfigFile(img, configFile)
+	if err != nil {
+		return fmt.Errorf("failed to set config file: %w", err)
+	}
 
 	// Generate reference
 	// Format: registry/repository:attestation-{namespace}-{zpj}-{operation}-{digest}

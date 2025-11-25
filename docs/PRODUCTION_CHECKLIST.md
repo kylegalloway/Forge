@@ -243,27 +243,40 @@ Production readiness checklist for deploying Forge - the Kubernetes-native Zarf 
 
 ## Phase 7: Supply Chain Security & Attestation (IN PROGRESS 🚧)
 
-*Status: 9/20 items complete (45%)*
+*Status: 15/25 items complete (60%)*
 
-### Forge Self-Attestation (Controller/Webhook Images)
+### Forge Self-Attestation (Controller/Webhook Images) ✅ COMPLETE
 
 - [x] ✅ SLSA provenance generation for Forge builds (GitHub Actions)
 - [x] ✅ Cosign keyless signing (GitHub OIDC)
 - [x] ✅ SBOM generation (SPDX + CycloneDX)
 - [x] ✅ SBOM attestation to images
-- [x] ✅ Vulnerability scanning (Trivy)
+- [x] ✅ Vulnerability scanning (Trivy + SARIF upload)
 - [x] ✅ Rekor transparency log integration
 - [x] ✅ Multi-arch builds (amd64, arm64)
 - [x] ✅ Reproducible builds (trimpath, consistent ldflags)
-- [x] ✅ Verification documentation
+- [x] ✅ Attestation workflow (`.github/workflows/attest.yaml`)
+- [x] ✅ Verification documentation (docs/ATTESTATION_VERIFICATION.md)
+- [x] ✅ Verification script (scripts/verify-forge-image.sh)
+- [x] ✅ Admission policy examples (Sigstore Policy Controller, Kyverno)
 
-### Package Attestation (Zarf Packages Built BY Forge)
+### Package Attestation Framework (Zarf Packages Built BY Forge) 🚧 PARTIAL
 
-- [x] 🚧 In-toto attestation framework (types implemented)
-- [x] 🚧 Build attestation generator (source → artifact)
-- [x] 🚧 Publish attestation generator (artifact → registry)
-- [x] 🚧 Deploy attestation generator (registry → cluster)
-- [ ] ⏸️ Attestation storage (OCI registry implementation)
+**Attestation Types & Generation:**
+- [x] ✅ In-toto attestation types (pkg/attestation/types.go)
+- [x] ✅ SLSA provenance structures
+- [x] ✅ Forge operation predicates
+- [x] ✅ Build attestation generator (source → artifact)
+- [x] ✅ Publish attestation generator (artifact → registry)
+- [x] ✅ Deploy attestation generator (registry → cluster)
+- [x] ✅ Comprehensive unit tests (347 lines)
+- [x] ✅ Package documentation (pkg/attestation/README.md)
+
+**Storage & Integration:**
+- [x] 🚧 Storage interface defined (Local/OCI/ConfigMap)
+- [x] 🚧 Local storage implementation (development)
+- [ ] ⏸️ OCI storage implementation (production)
+- [ ] ⏸️ Controller integration (reconciliation loop)
 - [ ] ⏸️ Attestation verification in controller
 - [ ] ⏸️ Package signature verification before deploy
 - [ ] ⏸️ Policy-based signature requirements
@@ -271,7 +284,7 @@ Production readiness checklist for deploying Forge - the Kubernetes-native Zarf 
 
 ### Supply Chain Tracking
 
-- [x] ✅ SBOM generation for Forge images
+- [x] ✅ SBOM generation for Forge images (automated)
 - [ ] ⏸️ SBOM generation for Zarf packages
 - [ ] ⏸️ Supply chain policy enforcement
 
@@ -281,11 +294,23 @@ Production readiness checklist for deploying Forge - the Kubernetes-native Zarf 
 1. **Forge Self-Attestation**: Prove Forge controller/webhook images are authentic
 2. **Package Attestation**: Forge generates attestations for packages it builds
 
+**Achievements**:
+- ✅ **SLSA Build Level 3 for Forge images** - Isolated, signed, non-falsifiable, hermetic
+- 🚧 **Package attestation framework** - Types, generators, storage interface complete
+- ✅ **Verification tooling** - CLI script, documentation, CI/CD examples
+- ✅ **Transparency** - All signatures recorded in Rekor public log
+
 **Target Standards**:
-- SLSA Build Level 3 for Forge images (✅ ACHIEVED)
-- SLSA Level 2 minimum for Zarf packages (🚧 IN PROGRESS)
-- In-toto attestation predicates for each operation stage
-- Sigstore integration for keyless signing
+- ✅ SLSA Build Level 3 for Forge images (ACHIEVED)
+- 🚧 SLSA Level 2+ for Zarf packages (framework ready, integration pending)
+- 🚧 In-toto attestation predicates (implemented, not yet integrated)
+- ✅ Sigstore keyless signing (Cosign + GitHub OIDC)
+
+**Files Added**:
+- `.github/workflows/attest.yaml` - Attestation workflow (319 lines)
+- `docs/ATTESTATION_VERIFICATION.md` - Verification guide (369 lines)
+- `scripts/verify-forge-image.sh` - Verification script (210 lines)
+- `pkg/attestation/*.go` - Attestation framework (1,200 lines)
 
 ---
 
@@ -369,12 +394,12 @@ Production readiness checklist for deploying Forge - the Kubernetes-native Zarf 
 | 4 | Production Hardening | ✅ Complete | 100% |
 | 5 | Testing & Validation | ✅ Complete | 100% |
 | 6 | Documentation | ✅ Complete | 100% |
-| 7 | Supply Chain Security | 🚧 In Progress | 45% |
+| 7 | Supply Chain Security | 🚧 In Progress | 60% |
 | 8 | CI/CD Pipeline | ✅ Complete | 100% |
 | 9 | Compliance & Audit | ⏸️ Pending | 0% |
 | 10 | Launch Preparation | ⏸️ Pending | 0% |
 
-### Overall Progress: 112 / 135 items (83%)
+### Overall Progress: 118 / 140 items (84%)
 
 ### Critical Path to Production
 
@@ -386,10 +411,11 @@ Minimum viable path (fastest route):
 4. **REQUIRED**: Phase 10 - Launch Prep (verification, capacity planning) - 1 week
 
 **Estimated time to production**:
-- Without supply chain security: 3-4 weeks
-- With supply chain security (recommended): 7-9 weeks
+- Forge images ready NOW (self-attestation complete)
+- Package attestation integration: 2-3 weeks
+- Full deployment with compliance: 3-4 weeks
 
-**Note**: Phase 7 (Supply Chain Security) is highly recommended for production but not strictly required for initial deployment in controlled environments.
+**Note**: Forge self-attestation (SLSA L3) is production-ready. Package attestation framework complete but needs controller integration.
 
 ---
 
@@ -399,20 +425,27 @@ Minimum viable path (fastest route):
 - Core infrastructure, security, observability, hardening complete
 - Testing, documentation, and CI/CD pipelines fully implemented
 
-### Weeks 1-4: Phase 7 (Supply Chain Security) - RECOMMENDED
+### ✅ Forge Self-Attestation: COMPLETE
 
-- Week 1-2: SLSA provenance and attestation framework
-  - Implement build provenance generation
-  - Set up attestation storage (OCI registry)
-  - Create attestation predicates for each operation
-- Week 3: Signing and verification
-  - Integrate Sigstore/Cosign for artifact signing
-  - Implement signature verification in controller
-  - Add keyless signing support (OIDC)
-- Week 4: Supply chain tracking
-  - Add SBOM generation
-  - Integrate vulnerability scanning
-  - Implement supply chain policy enforcement
+Forge images are production-ready with SLSA Build Level 3:
+- SLSA provenance, Cosign signing, SBOM generation all automated
+- Verification tooling and documentation complete
+- Can deploy Forge controller NOW with full attestation
+
+### Weeks 1-3: Phase 7 Completion (Package Attestation Integration)
+
+- Week 1: OCI storage implementation
+  - Implement OCI push/pull for attestations
+  - Add OCI client with authentication
+  - Test with real registries (GHCR, ECR, etc.)
+- Week 2: Controller integration
+  - Wire attestation generation into reconciliation loop
+  - Add attestation storage after operations
+  - Update status with attestation references
+- Week 3: Verification and policy
+  - Implement signature verification before deploy
+  - Add policy-based signature requirements
+  - Create signature validation webhook
 
 ### Weeks 5-6: Phase 9 (Compliance Audit)
 

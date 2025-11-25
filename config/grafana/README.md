@@ -1,6 +1,8 @@
 # Grafana Dashboard for Forge
 
-This directory contains the Grafana dashboard for monitoring Forge controller.
+**⚠️ Primary Location**: Dashboard is now in [../../chart/forge/dashboards/](../../chart/forge/dashboards/)
+
+This directory is kept for reference. The Helm chart includes the dashboard and can deploy it automatically.
 
 ## Dashboard Overview
 
@@ -146,8 +148,15 @@ This dashboard doesn't include alerts. Configure alerts via:
 - Verify rate() interval (5m) has sufficient data points
 - Adjust time range to "Last 5 minutes" for immediate feedback
 
+## Deployment with Helm
+
+If using the Helm chart, the dashboard is automatically available in the chart's `dashboards/` directory
+and can be configured via Grafana values.
+
+See [../../chart/forge/values.yaml](../../chart/forge/values.yaml) for Grafana configuration options.
+
 ## References
 
-- [Prometheus Metrics](../../pkg/metrics/metrics.go)
-- [ServiceMonitor](../metrics/servicemonitor.yaml)
+- [Prometheus Metrics](../../pkg/telemetry/metrics.go)
+- [Helm Chart](../../chart/forge/)
 - [Production Checklist](../../docs/PRODUCTION_CHECKLIST.md#batch-4-observability--monitoring)

@@ -417,6 +417,506 @@ func TestMatchAny(t *testing.T) {
 	}
 }
 
+func TestValidate_PublishDestinationS3(t *testing.T) {
+	sa := &corev1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-sa",
+			Namespace: "default",
+			Annotations: map[string]string{
+				AnnotationAllowedActions:        "Publish",
+				AnnotationAllowedSourceRepos:    "*",
+				AnnotationAllowedPublishBuckets: "my-bucket-*",
+			},
+		},
+	}
+
+	client := fake.NewSimpleClientset(sa)
+	engine := NewEngine(client)
+
+	pkg := &zarfv1alpha1.ZarfPackageJob{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-pkg",
+			Namespace: "default",
+		},
+		Spec: zarfv1alpha1.ZarfPackageJobSpec{
+			ServiceAccountName: "test-sa",
+			Action:             zarfv1alpha1.ActionPublish,
+			Source: zarfv1alpha1.PackageSource{
+				Type: zarfv1alpha1.SourceTypeGit,
+				Git: &zarfv1alpha1.GitSource{
+					URL: "https://github.com/test/repo",
+					Ref: "main",
+				},
+			},
+			Publish: &zarfv1alpha1.PublishConfig{
+				Destination: zarfv1alpha1.PublishDestination{
+					Type: zarfv1alpha1.DestinationTypeS3,
+					S3: &zarfv1alpha1.S3Destination{
+						Bucket:    "my-bucket-prod",
+						KeyPrefix: "packages/",
+						Region:    "us-west-2",
+					},
+				},
+			},
+		},
+	}
+
+	err := engine.Validate(context.Background(), pkg)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestValidate_PublishDestinationS3NotAllowed(t *testing.T) {
+	sa := &corev1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-sa",
+			Namespace: "default",
+			Annotations: map[string]string{
+				AnnotationAllowedActions:        "Publish",
+				AnnotationAllowedSourceRepos:    "*",
+				AnnotationAllowedPublishBuckets: "my-bucket-*",
+			},
+		},
+	}
+
+	client := fake.NewSimpleClientset(sa)
+	engine := NewEngine(client)
+
+	pkg := &zarfv1alpha1.ZarfPackageJob{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-pkg",
+			Namespace: "default",
+		},
+		Spec: zarfv1alpha1.ZarfPackageJobSpec{
+			ServiceAccountName: "test-sa",
+			Action:             zarfv1alpha1.ActionPublish,
+			Source: zarfv1alpha1.PackageSource{
+				Type: zarfv1alpha1.SourceTypeGit,
+				Git: &zarfv1alpha1.GitSource{
+					URL: "https://github.com/test/repo",
+					Ref: "main",
+				},
+			},
+			Publish: &zarfv1alpha1.PublishConfig{
+				Destination: zarfv1alpha1.PublishDestination{
+					Type: zarfv1alpha1.DestinationTypeS3,
+					S3: &zarfv1alpha1.S3Destination{
+						Bucket: "other-bucket",
+						Region: "us-west-2",
+					},
+				},
+			},
+		},
+	}
+
+	err := engine.Validate(context.Background(), pkg)
+	if err == nil {
+		t.Fatal("expected error for disallowed S3 bucket, got nil")
+	}
+	if !contains(err.Error(), "is not allowed") {
+		t.Errorf("unexpected error message: %v", err)
+	}
+}
+
+func TestValidate_PublishDestinationOCI(t *testing.T) {
+	sa := &corev1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-sa",
+			Namespace: "default",
+			Annotations: map[string]string{
+				AnnotationAllowedActions:           "Publish",
+				AnnotationAllowedSourceRepos:       "*",
+				AnnotationAllowedPublishRegistries: "ghcr.io",
+			},
+		},
+	}
+
+	client := fake.NewSimpleClientset(sa)
+	engine := NewEngine(client)
+
+	pkg := &zarfv1alpha1.ZarfPackageJob{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-pkg",
+			Namespace: "default",
+		},
+		Spec: zarfv1alpha1.ZarfPackageJobSpec{
+			ServiceAccountName: "test-sa",
+			Action:             zarfv1alpha1.ActionPublish,
+			Source: zarfv1alpha1.PackageSource{
+				Type: zarfv1alpha1.SourceTypeGit,
+				Git: &zarfv1alpha1.GitSource{
+					URL: "https://github.com/test/repo",
+					Ref: "main",
+				},
+			},
+			Publish: &zarfv1alpha1.PublishConfig{
+				Destination: zarfv1alpha1.PublishDestination{
+					Type: zarfv1alpha1.DestinationTypeOCI,
+					OCI: &zarfv1alpha1.OCIDestination{
+						Registry:   "ghcr.io",
+						Repository: "test/packages",
+						Tag:        "v1.0.0",
+					},
+				},
+			},
+		},
+	}
+
+	err := engine.Validate(context.Background(), pkg)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestValidate_PublishDestinationOCINotAllowed(t *testing.T) {
+	sa := &corev1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-sa",
+			Namespace: "default",
+			Annotations: map[string]string{
+				AnnotationAllowedActions:           "Publish",
+				AnnotationAllowedSourceRepos:       "*",
+				AnnotationAllowedPublishRegistries: "ghcr.io",
+			},
+		},
+	}
+
+	client := fake.NewSimpleClientset(sa)
+	engine := NewEngine(client)
+
+	pkg := &zarfv1alpha1.ZarfPackageJob{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-pkg",
+			Namespace: "default",
+		},
+		Spec: zarfv1alpha1.ZarfPackageJobSpec{
+			ServiceAccountName: "test-sa",
+			Action:             zarfv1alpha1.ActionPublish,
+			Source: zarfv1alpha1.PackageSource{
+				Type: zarfv1alpha1.SourceTypeGit,
+				Git: &zarfv1alpha1.GitSource{
+					URL: "https://github.com/test/repo",
+					Ref: "main",
+				},
+			},
+			Publish: &zarfv1alpha1.PublishConfig{
+				Destination: zarfv1alpha1.PublishDestination{
+					Type: zarfv1alpha1.DestinationTypeOCI,
+					OCI: &zarfv1alpha1.OCIDestination{
+						Registry:   "docker.io",
+						Repository: "test/packages",
+						Tag:        "v1.0.0",
+					},
+				},
+			},
+		},
+	}
+
+	err := engine.Validate(context.Background(), pkg)
+	if err == nil {
+		t.Fatal("expected error for disallowed OCI registry, got nil")
+	}
+	if !contains(err.Error(), "is not allowed") {
+		t.Errorf("unexpected error message: %v", err)
+	}
+}
+
+func TestValidate_PublishDestinationLocal(t *testing.T) {
+	sa := &corev1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-sa",
+			Namespace: "default",
+			Annotations: map[string]string{
+				AnnotationAllowedActions:     "Publish",
+				AnnotationAllowedSourceRepos: "*",
+				AnnotationAllowLocalSources:  "true",
+			},
+		},
+	}
+
+	client := fake.NewSimpleClientset(sa)
+	engine := NewEngine(client)
+
+	pkg := &zarfv1alpha1.ZarfPackageJob{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-pkg",
+			Namespace: "default",
+		},
+		Spec: zarfv1alpha1.ZarfPackageJobSpec{
+			ServiceAccountName: "test-sa",
+			Action:             zarfv1alpha1.ActionPublish,
+			Source: zarfv1alpha1.PackageSource{
+				Type: zarfv1alpha1.SourceTypeGit,
+				Git: &zarfv1alpha1.GitSource{
+					URL: "https://github.com/test/repo",
+					Ref: "main",
+				},
+			},
+			Publish: &zarfv1alpha1.PublishConfig{
+				Destination: zarfv1alpha1.PublishDestination{
+					Type: zarfv1alpha1.DestinationTypeLocal,
+					Local: &zarfv1alpha1.LocalDestination{
+						Path:    "/tmp/output",
+						DevMode: true,
+					},
+				},
+			},
+		},
+	}
+
+	err := engine.Validate(context.Background(), pkg)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestValidate_PublishDestinationLocalNotAllowed(t *testing.T) {
+	sa := &corev1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-sa",
+			Namespace: "default",
+			Annotations: map[string]string{
+				AnnotationAllowedActions:     "Publish",
+				AnnotationAllowedSourceRepos: "*",
+			},
+		},
+	}
+
+	client := fake.NewSimpleClientset(sa)
+	engine := NewEngine(client)
+
+	pkg := &zarfv1alpha1.ZarfPackageJob{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-pkg",
+			Namespace: "default",
+		},
+		Spec: zarfv1alpha1.ZarfPackageJobSpec{
+			ServiceAccountName: "test-sa",
+			Action:             zarfv1alpha1.ActionPublish,
+			Source: zarfv1alpha1.PackageSource{
+				Type: zarfv1alpha1.SourceTypeGit,
+				Git: &zarfv1alpha1.GitSource{
+					URL: "https://github.com/test/repo",
+					Ref: "main",
+				},
+			},
+			Publish: &zarfv1alpha1.PublishConfig{
+				Destination: zarfv1alpha1.PublishDestination{
+					Type: zarfv1alpha1.DestinationTypeLocal,
+					Local: &zarfv1alpha1.LocalDestination{
+						Path: "/tmp/output",
+					},
+				},
+			},
+		},
+	}
+
+	err := engine.Validate(context.Background(), pkg)
+	if err == nil {
+		t.Fatal("expected error for disallowed local destination, got nil")
+	}
+	if !contains(err.Error(), "not allowed") {
+		t.Errorf("unexpected error message: %v", err)
+	}
+}
+
+func TestValidate_OCISource(t *testing.T) {
+	sa := &corev1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-sa",
+			Namespace: "default",
+			Annotations: map[string]string{
+				AnnotationAllowedActions:          "Deploy",
+				AnnotationAllowedSourceRegistries: "ghcr.io/*",
+				AnnotationAllowedDeployTargets:    "InCluster",
+			},
+		},
+	}
+
+	client := fake.NewSimpleClientset(sa)
+	engine := NewEngine(client)
+
+	pkg := &zarfv1alpha1.ZarfPackageJob{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-pkg",
+			Namespace: "default",
+		},
+		Spec: zarfv1alpha1.ZarfPackageJobSpec{
+			ServiceAccountName: "test-sa",
+			Action:             zarfv1alpha1.ActionDeploy,
+			Source: zarfv1alpha1.PackageSource{
+				Type: zarfv1alpha1.SourceTypeOCI,
+				OCI: &zarfv1alpha1.OCISource{
+					Image: "ghcr.io/test/package:v1.0.0",
+				},
+			},
+			Deploy: &zarfv1alpha1.DeployConfig{
+				Target:    zarfv1alpha1.DeployTargetInCluster,
+				Namespace: "default",
+			},
+		},
+	}
+
+	err := engine.Validate(context.Background(), pkg)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestValidate_OCISourceNotAllowed(t *testing.T) {
+	sa := &corev1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-sa",
+			Namespace: "default",
+			Annotations: map[string]string{
+				AnnotationAllowedActions:          "Deploy",
+				AnnotationAllowedSourceRegistries: "ghcr.io/*",
+				AnnotationAllowedDeployTargets:    "InCluster",
+			},
+		},
+	}
+
+	client := fake.NewSimpleClientset(sa)
+	engine := NewEngine(client)
+
+	pkg := &zarfv1alpha1.ZarfPackageJob{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-pkg",
+			Namespace: "default",
+		},
+		Spec: zarfv1alpha1.ZarfPackageJobSpec{
+			ServiceAccountName: "test-sa",
+			Action:             zarfv1alpha1.ActionDeploy,
+			Source: zarfv1alpha1.PackageSource{
+				Type: zarfv1alpha1.SourceTypeOCI,
+				OCI: &zarfv1alpha1.OCISource{
+					Image: "docker.io/test/package:v1.0.0",
+				},
+			},
+			Deploy: &zarfv1alpha1.DeployConfig{
+				Target:    zarfv1alpha1.DeployTargetInCluster,
+				Namespace: "default",
+			},
+		},
+	}
+
+	err := engine.Validate(context.Background(), pkg)
+	if err == nil {
+		t.Fatal("expected error for disallowed OCI registry, got nil")
+	}
+	if !contains(err.Error(), "is not allowed") {
+		t.Errorf("unexpected error message: %v", err)
+	}
+}
+
+func TestValidate_DeployTargetAllowed(t *testing.T) {
+	sa := &corev1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-sa",
+			Namespace: "default",
+			Annotations: map[string]string{
+				AnnotationAllowedActions:       "Deploy",
+				AnnotationAllowedSourceRepos:   "*",
+				AnnotationAllowedDeployTargets: "InCluster",
+			},
+		},
+	}
+
+	client := fake.NewSimpleClientset(sa)
+	engine := NewEngine(client)
+
+	pkg := &zarfv1alpha1.ZarfPackageJob{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-pkg",
+			Namespace: "default",
+		},
+		Spec: zarfv1alpha1.ZarfPackageJobSpec{
+			ServiceAccountName: "test-sa",
+			Action:             zarfv1alpha1.ActionDeploy,
+			Source: zarfv1alpha1.PackageSource{
+				Type: zarfv1alpha1.SourceTypeGit,
+				Git: &zarfv1alpha1.GitSource{
+					URL: "https://github.com/test/repo",
+					Ref: "main",
+				},
+			},
+			Deploy: &zarfv1alpha1.DeployConfig{
+				Target:    zarfv1alpha1.DeployTargetInCluster,
+				Namespace: "default",
+			},
+		},
+	}
+
+	err := engine.Validate(context.Background(), pkg)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestValidate_DeployTargetNotAllowed(t *testing.T) {
+	sa := &corev1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-sa",
+			Namespace: "default",
+			Annotations: map[string]string{
+				AnnotationAllowedActions:       "Deploy",
+				AnnotationAllowedSourceRepos:   "*",
+				AnnotationAllowedDeployTargets: "InCluster",
+			},
+		},
+	}
+
+	client := fake.NewSimpleClientset(sa)
+	engine := NewEngine(client)
+
+	pkg := &zarfv1alpha1.ZarfPackageJob{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-pkg",
+			Namespace: "default",
+		},
+		Spec: zarfv1alpha1.ZarfPackageJobSpec{
+			ServiceAccountName: "test-sa",
+			Action:             zarfv1alpha1.ActionDeploy,
+			Source: zarfv1alpha1.PackageSource{
+				Type: zarfv1alpha1.SourceTypeGit,
+				Git: &zarfv1alpha1.GitSource{
+					URL: "https://github.com/test/repo",
+					Ref: "main",
+				},
+			},
+			Deploy: &zarfv1alpha1.DeployConfig{
+				Target: zarfv1alpha1.DeployTargetExternalCluster,
+				ExternalCluster: &zarfv1alpha1.ExternalClusterConfig{
+					KubeconfigSecretRef: zarfv1alpha1.SecretReference{ // pragma: allowlist secret
+						Name: "external-kubeconfig",
+					},
+				},
+			},
+		},
+	}
+
+	err := engine.Validate(context.Background(), pkg)
+	if err == nil {
+		t.Fatal("expected error for disallowed deploy target, got nil")
+	}
+	if !contains(err.Error(), "not allowed") {
+		t.Errorf("unexpected error message: %v", err)
+	}
+}
+
+func TestMatchAny_InvalidPattern(t *testing.T) {
+	// Test the error handling path in matchAny for invalid glob patterns
+	patterns := []string{"[invalid"}
+	value := "test-value"
+
+	// This should not panic, just return false for the invalid pattern
+	result := matchAny(patterns, value)
+	if result {
+		t.Error("matchAny should return false for invalid patterns")
+	}
+}
+
 func contains(s, substr string) bool {
 	return len(s) >= len(substr) && (s == substr || len(s) > len(substr) && containsRec(s, substr))
 }

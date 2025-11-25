@@ -157,6 +157,22 @@ quick-test: ## Run quick smoke test to verify controller works.
 e2e-test: ## Run comprehensive end-to-end test suite.
 	@./scripts/test-e2e.sh
 
+.PHONY: integration-test
+integration-test: ## Run full integration test with Kind cluster.
+	@./scripts/test-integration-kind.sh
+
+.PHONY: integration-test-keep
+integration-test-keep: ## Run integration test and keep cluster on success.
+	@CLEANUP_ON_SUCCESS=false ./scripts/test-integration-kind.sh
+
+.PHONY: integration-test-registry
+integration-test-registry: ## Run integration test with Gitea registry for publish workflows.
+	@./scripts/test-integration-registry.sh
+
+.PHONY: integration-test-registry-keep
+integration-test-registry-keep: ## Run registry integration test and keep cluster on success.
+	@CLEANUP_ON_SUCCESS=false ./scripts/test-integration-registry.sh
+
 ##@ Local Development (Kind)
 
 .PHONY: kind-create

@@ -161,19 +161,6 @@ helm install forge ./chart/forge \
 📖 **Quick Start**: See [chart/QUICKSTART.md](chart/QUICKSTART.md) for step-by-step installation
 📖 **Helm Chart Docs**: See [chart/README.md](chart/README.md) for all configuration options
 
-### Legacy Installation (Not Recommended)
-
-For backwards compatibility, raw Kubernetes manifests are available in `config/legacy/`:
-
-```bash
-# Legacy cluster-wide deployment
-kubectl apply -f config/crd/
-kubectl apply -f config/legacy/rbac/
-kubectl apply -f config/legacy/manager/
-```
-
-**Note**: Helm deployment is recommended for better manageability and configuration options.
-
 ## Observability
 
 Forge includes production-grade observability:

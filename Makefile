@@ -125,28 +125,8 @@ upgrade: ## Upgrade Forge installation using Helm.
 uninstall: ## Uninstall Forge using Helm.
 	helm uninstall forge --namespace $(NAMESPACE) || true
 
-# Legacy deployment targets (for backwards compatibility)
-.PHONY: install-crd
-install-crd: ## [LEGACY] Install CRDs directly (use 'make install' instead).
-	@echo "WARNING: This is a legacy target. Use 'make install' to deploy with Helm."
-	kubectl apply -f config/crd/
-
-.PHONY: uninstall-crd
-uninstall-crd: ## [LEGACY] Uninstall CRDs directly.
-	@echo "WARNING: This is a legacy target. Use 'make uninstall' instead."
-	kubectl delete -f config/crd/
-
-.PHONY: deploy
-deploy: ## [LEGACY] Deploy controller directly (use 'make install' instead).
-	@echo "WARNING: This is a legacy target. Use 'make install' to deploy with Helm."
-	kubectl apply -f config/legacy/manager/
-	kubectl apply -f config/legacy/rbac/
-
-.PHONY: undeploy
-undeploy: ## [LEGACY] Undeploy controller directly.
-	@echo "WARNING: This is a legacy target. Use 'make uninstall' instead."
-	kubectl delete -f config/legacy/rbac/ --ignore-not-found=true
-	kubectl delete -f config/legacy/manager/ --ignore-not-found=true
+# Note: Legacy raw manifest targets removed. Use Helm for all deployments.
+# CRDs are included in the Helm chart's crds/ directory and installed automatically.
 
 ##@ Samples
 

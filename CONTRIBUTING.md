@@ -76,13 +76,10 @@ make container-build
 # 3. Load image into kind
 make kind-load
 
-# 4. Install CRD
-make install-crd
+# 4. Deploy with Helm
+make install
 
-# 5. Deploy controller
-make deploy
-
-# 6. Check status
+# 5. Check status
 kubectl get pods -n forge-system
 ```
 
@@ -157,11 +154,15 @@ spec:
       pattern: '^[0-9]+[smh]$'
 ```
 
-### Redeploy CRD
+### Redeploy with Helm
 
 ```bash
-kubectl delete crd zarfpackagejobs.forge.dev
-make install-crd
+# Upgrade existing installation
+make upgrade
+
+# Or uninstall and reinstall
+make uninstall
+make install
 ```
 
 ## Modifying Controller Logic

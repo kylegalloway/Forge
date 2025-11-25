@@ -117,49 +117,62 @@ The admission webhook validates all operations against these policies before cre
 
 ## Installation
 
-### Cluster-Wide Deployment (Default)
+Forge is deployed using Helm charts that support two deployment scenarios:
 
-For platform teams managing multi-tenant environments with full cluster access:
-
-```bash
-# Install CRDs (requires cluster-admin)
-kubectl apply -f config/crd/forge.dev_zarfpackagejobs.yaml
-
-# Install Forge controller with ClusterRole
-kubectl apply -f config/rbac/rbac.yaml
-kubectl apply -f config/manager/deployment.yaml
-
-# Install admission webhook (for policy enforcement)
-kubectl apply -f webhook/deploy/
-```
-
-**Watches**: All namespaces
-**Permissions**: Cluster-wide (ClusterRole)
-**Use Case**: Platform teams, multi-tenant management
-
-### Namespace-Scoped Deployment (Restricted)
-
-For restricted environments where ClusterRole permissions aren't available:
+### Quick Start (Recommended)
 
 ```bash
-# Install CRDs (requires cluster-admin - one-time setup)
-kubectl apply -f config/crd/forge.dev_zarfpackagejobs.yaml
-
-# Create namespace
-kubectl create namespace forge-system
-
-# Install Forge controller with Role (namespace-only)
-kubectl apply -f config/namespace-scoped/rbac.yaml
-kubectl apply -f config/namespace-scoped/deployment.yaml
+# Install with default configuration
+helm install forge ./chart/forge \
+  --namespace forge-system \
+  --create-namespace
 ```
 
-**Watches**: Single namespace (forge-system)
-**Permissions**: Namespace-only (Role)
-**Use Case**: Restricted clusters, individual teams, compliance-heavy environments
+### Mature Cluster (Existing Monitoring Infrastructure)
 
-**Important**: In namespace-scoped mode, all resources (ZarfPackageJobs, ServiceAccounts, Secrets) must be created in the `forge-system` namespace.
+For clusters with existing Grafana, Prometheus, and OTEL Collector:
 
-📖 **Full Guide**: See [NAMESPACE_SCOPED_DEPLOYMENT.md](docs/NAMESPACE_SCOPED_DEPLOYMENT.md) for detailed instructions, migration paths, and multi-tenant patterns.
+```bash
+# Install without observability stack
+helm install forge ./chart/forge \
+  -f chart/forge/values-mature-cluster.yaml \
+  --namespace forge-system \
+  --create-namespace
+```
+
+**Includes**: Forge controller, ServiceMonitor, PrometheusRule
+**Excludes**: OTEL Collector, Prometheus, Grafana (uses existing)
+
+### New Cluster (Full Observability Stack)
+
+For new clusters that need complete monitoring setup:
+
+```bash
+# Install with full observability stack
+helm install forge ./chart/forge \
+  -f chart/forge/values-new-cluster.yaml \
+  --namespace forge-system \
+  --create-namespace
+```
+
+**Includes**: Forge controller, OTEL Collector, Prometheus, Grafana, dashboards, alerts
+
+📖 **Deployment Guide**: See [DEPLOYMENT.md](DEPLOYMENT.md) for complete deployment options and configurations
+📖 **Quick Start**: See [chart/QUICKSTART.md](chart/QUICKSTART.md) for step-by-step installation
+📖 **Helm Chart Docs**: See [chart/README.md](chart/README.md) for all configuration options
+
+### Legacy Installation (Not Recommended)
+
+For backwards compatibility, raw Kubernetes manifests are available in `config/legacy/`:
+
+```bash
+# Legacy cluster-wide deployment
+kubectl apply -f config/crd/
+kubectl apply -f config/legacy/rbac/
+kubectl apply -f config/legacy/manager/
+```
+
+**Note**: Helm deployment is recommended for better manageability and configuration options.
 
 ## Observability
 

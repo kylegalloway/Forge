@@ -73,8 +73,9 @@ make e2e-test
 
 **Prerequisites:**
 - Running Kubernetes cluster
-- Forge controller deployed
+- Forge deployed via Helm (or legacy manifests)
 - kubectl configured
+- helm installed (for new deployments)
 
 ### 4. Integration Tests (Kind)
 
@@ -96,10 +97,10 @@ CLEANUP_ON_SUCCESS=false \
 
 **What It Tests:**
 
-1. **Prerequisites Check** - Validates required tools (kind, kubectl, docker)
+1. **Prerequisites Check** - Validates required tools (kind, kubectl, docker, helm)
 2. **Cluster Creation** - Creates fresh Kind cluster
 3. **Image Build & Load** - Builds controller image and loads into Kind
-4. **Forge Deployment** - Deploys CRDs, RBAC, and controller
+4. **Forge Deployment** - Deploys Forge via Helm chart
 5. **ServiceAccount Policies** - Creates dev and platform ServiceAccounts
 6. **Build Action** - Tests authorized Build operation
 7. **Policy Enforcement** - Tests unauthorized action blocking
@@ -158,7 +159,7 @@ CLEANUP_ON_SUCCESS=false \
 4. **Gitea Configuration** - Configures users and container registry
 5. **Registry Credentials** - Creates Kubernetes secrets for registry auth
 6. **Image Build & Load** - Builds controller image and loads into Kind
-7. **Forge Deployment** - Deploys CRDs, RBAC, and controller
+7. **Forge Deployment** - Deploys Forge via Helm chart
 8. **Publish ServiceAccount** - Creates SA with OCI publish permissions
 9. **BuildPublish to OCI** - Tests Build→Publish workflow to Gitea registry
 10. **Build Then Publish** - Tests separate Build and Publish operations

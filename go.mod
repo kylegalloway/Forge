@@ -3,6 +3,7 @@ module github.com/kylegalloway/forge
 go 1.24
 
 require (
+	github.com/google/go-containerregistry v0.19.0
 	github.com/prometheus/client_golang v1.23.2
 	go.opentelemetry.io/otel v1.38.0
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc v1.38.0

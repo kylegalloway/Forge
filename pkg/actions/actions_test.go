@@ -378,6 +378,271 @@ func TestPublishHandlerExecute_MissingPublishConfig(t *testing.T) {
 	}
 }
 
+func TestBuildHandlerExecute_LocalSource(t *testing.T) {
+	kubeClient := fake.NewSimpleClientset()
+	handler := NewBuildHandler(kubeClient, mustNewMetrics(), telemetry.NewTracer())
+
+	pkg := &zarfv1alpha1.ZarfPackageJob{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-local-build",
+			Namespace: "default",
+		},
+		Spec: zarfv1alpha1.ZarfPackageJobSpec{
+			ServiceAccountName: "test-sa",
+			Action:             zarfv1alpha1.ActionBuild,
+			Source: zarfv1alpha1.PackageSource{
+				Type: zarfv1alpha1.SourceTypeLocal,
+				Local: &zarfv1alpha1.LocalSource{
+					Path:    "/tmp/package",
+					DevMode: true,
+				},
+			},
+		},
+	}
+
+	result, err := handler.Execute(context.Background(), pkg)
+	if err != nil {
+		t.Errorf("BuildHandler.Execute() with local source failed: %v", err)
+	}
+	if result == nil {
+		t.Fatal("Expected non-nil result")
+	}
+
+	// Verify the job was created without init containers (local source)
+	jobs, err := kubeClient.BatchV1().Jobs("default").List(context.Background(), metav1.ListOptions{})
+	if err != nil {
+		t.Fatalf("Failed to list jobs: %v", err)
+	}
+
+	if len(jobs.Items) != 1 {
+		t.Errorf("Expected 1 job, got %d", len(jobs.Items))
+	}
+
+	job := jobs.Items[0]
+	if len(job.Spec.Template.Spec.InitContainers) != 0 {
+		t.Errorf("Expected 0 init containers for local source, got %d", len(job.Spec.Template.Spec.InitContainers))
+	}
+}
+
+func TestPublishHandlerExecute_LocalSource(t *testing.T) {
+	kubeClient := fake.NewSimpleClientset()
+	handler := NewPublishHandler(kubeClient, mustNewMetrics(), telemetry.NewTracer())
+
+	pkg := &zarfv1alpha1.ZarfPackageJob{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-local-publish",
+			Namespace: "default",
+		},
+		Spec: zarfv1alpha1.ZarfPackageJobSpec{
+			ServiceAccountName: "test-sa",
+			Action:             zarfv1alpha1.ActionPublish,
+			Source: zarfv1alpha1.PackageSource{
+				Type: zarfv1alpha1.SourceTypeLocal,
+				Local: &zarfv1alpha1.LocalSource{
+					Path:    "/tmp/package.tar.zst",
+					DevMode: true,
+				},
+			},
+			Publish: &zarfv1alpha1.PublishConfig{
+				Destination: zarfv1alpha1.PublishDestination{
+					Type: zarfv1alpha1.DestinationTypeOCI,
+					OCI: &zarfv1alpha1.OCIDestination{
+						Registry:   "ghcr.io",
+						Repository: "test/package",
+						Tag:        "v1.0.0",
+					},
+				},
+			},
+		},
+	}
+
+	result, err := handler.Execute(context.Background(), pkg, "/workspace/test.tar.zst")
+	if err != nil {
+		t.Errorf("PublishHandler.Execute() with local source failed: %v", err)
+	}
+	if result == nil {
+		t.Fatal("Expected non-nil result")
+	}
+
+	// Verify no init containers for local source
+	jobs, err := kubeClient.BatchV1().Jobs("default").List(context.Background(), metav1.ListOptions{})
+	if err != nil {
+		t.Fatalf("Failed to list jobs: %v", err)
+	}
+
+	if len(jobs.Items) != 1 {
+		t.Errorf("Expected 1 job, got %d", len(jobs.Items))
+	}
+
+	job := jobs.Items[0]
+	if len(job.Spec.Template.Spec.InitContainers) != 0 {
+		t.Errorf("Expected 0 init containers for local source, got %d", len(job.Spec.Template.Spec.InitContainers))
+	}
+}
+
+func TestDeployHandlerExecute_LocalSource(t *testing.T) {
+	kubeClient := fake.NewSimpleClientset()
+	handler := NewDeployHandler(kubeClient, mustNewMetrics(), telemetry.NewTracer())
+
+	pkg := &zarfv1alpha1.ZarfPackageJob{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-local-deploy",
+			Namespace: "default",
+		},
+		Spec: zarfv1alpha1.ZarfPackageJobSpec{
+			ServiceAccountName: "test-sa",
+			Action:             zarfv1alpha1.ActionDeploy,
+			Source: zarfv1alpha1.PackageSource{
+				Type: zarfv1alpha1.SourceTypeLocal,
+				Local: &zarfv1alpha1.LocalSource{
+					Path:    "/tmp/package.tar.zst",
+					DevMode: true,
+				},
+			},
+			Deploy: &zarfv1alpha1.DeployConfig{
+				Target:    zarfv1alpha1.DeployTargetInCluster,
+				Namespace: "default",
+			},
+		},
+	}
+
+	result, err := handler.Execute(context.Background(), pkg, "/workspace/test.tar.zst")
+	if err != nil {
+		t.Errorf("DeployHandler.Execute() with local source failed: %v", err)
+	}
+	if result == nil {
+		t.Fatal("Expected non-nil result")
+	}
+
+	// Verify no init containers for local source
+	jobs, err := kubeClient.BatchV1().Jobs("default").List(context.Background(), metav1.ListOptions{})
+	if err != nil {
+		t.Fatalf("Failed to list jobs: %v", err)
+	}
+
+	if len(jobs.Items) != 1 {
+		t.Errorf("Expected 1 job, got %d", len(jobs.Items))
+	}
+
+	job := jobs.Items[0]
+	if len(job.Spec.Template.Spec.InitContainers) != 0 {
+		t.Errorf("Expected 0 init containers for local source, got %d", len(job.Spec.Template.Spec.InitContainers))
+	}
+}
+
+func TestDeployHandlerExecute_WithComponentsAndVariables(t *testing.T) {
+	kubeClient := fake.NewSimpleClientset()
+	handler := NewDeployHandler(kubeClient, mustNewMetrics(), telemetry.NewTracer())
+
+	pkg := &zarfv1alpha1.ZarfPackageJob{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-deploy-advanced",
+			Namespace: "default",
+		},
+		Spec: zarfv1alpha1.ZarfPackageJobSpec{
+			ServiceAccountName: "test-sa",
+			Action:             zarfv1alpha1.ActionDeploy,
+			Source: zarfv1alpha1.PackageSource{
+				Type: zarfv1alpha1.SourceTypeLocal,
+				Local: &zarfv1alpha1.LocalSource{
+					Path:    "/tmp/package.tar.zst",
+					DevMode: true,
+				},
+			},
+			Deploy: &zarfv1alpha1.DeployConfig{
+				Target:     zarfv1alpha1.DeployTargetInCluster,
+				Namespace:  "test-namespace",
+				Components: []string{"component1", "component2"},
+				SetVariables: map[string]string{
+					"IMAGE_TAG": "v1.2.3",
+					"REPLICAS":  "3",
+				},
+			},
+		},
+	}
+
+	result, err := handler.Execute(context.Background(), pkg, "/workspace/test.tar.zst")
+	if err != nil {
+		t.Errorf("DeployHandler.Execute() with components and variables failed: %v", err)
+	}
+	if result == nil {
+		t.Fatal("Expected non-nil result")
+	}
+
+	// Verify the job was created
+	jobs, err := kubeClient.BatchV1().Jobs("default").List(context.Background(), metav1.ListOptions{})
+	if err != nil {
+		t.Fatalf("Failed to list jobs: %v", err)
+	}
+
+	if len(jobs.Items) != 1 {
+		t.Errorf("Expected 1 job, got %d", len(jobs.Items))
+	}
+
+	// Verify environment variables include namespace
+	job := jobs.Items[0]
+	foundNamespaceEnv := false
+	for _, env := range job.Spec.Template.Spec.Containers[0].Env {
+		if env.Name == "ZARF_NAMESPACE" && env.Value == "test-namespace" {
+			foundNamespaceEnv = true
+			break
+		}
+	}
+	if !foundNamespaceEnv {
+		t.Error("Expected ZARF_NAMESPACE environment variable not found")
+	}
+}
+
+func TestDeployHandlerExecute_ExternalClusterWithContext(t *testing.T) {
+	kubeClient := fake.NewSimpleClientset()
+	handler := NewDeployHandler(kubeClient, mustNewMetrics(), telemetry.NewTracer())
+
+	pkg := &zarfv1alpha1.ZarfPackageJob{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-deploy-external-context",
+			Namespace: "default",
+		},
+		Spec: zarfv1alpha1.ZarfPackageJobSpec{
+			ServiceAccountName: "test-sa",
+			Action:             zarfv1alpha1.ActionDeploy,
+			Source: zarfv1alpha1.PackageSource{
+				Type: zarfv1alpha1.SourceTypeLocal,
+				Local: &zarfv1alpha1.LocalSource{
+					Path:    "/tmp/package.tar.zst",
+					DevMode: true,
+				},
+			},
+			Deploy: &zarfv1alpha1.DeployConfig{
+				Target: zarfv1alpha1.DeployTargetExternalCluster,
+				ExternalCluster: &zarfv1alpha1.ExternalClusterConfig{
+					KubeconfigSecretRef: zarfv1alpha1.SecretReference{ // pragma: allowlist secret
+						Name: "external-kubeconfig",
+					},
+					Context: "production-cluster",
+				},
+			},
+		},
+	}
+
+	result, err := handler.Execute(context.Background(), pkg, "/workspace/test.tar.zst")
+	if err != nil {
+		t.Errorf("DeployHandler.Execute() with external cluster context failed: %v", err)
+	}
+	if result == nil {
+		t.Fatal("Expected non-nil result")
+	}
+
+	// Verify the job was created
+	jobs, err := kubeClient.BatchV1().Jobs("default").List(context.Background(), metav1.ListOptions{})
+	if err != nil {
+		t.Fatalf("Failed to list jobs: %v", err)
+	}
+
+	if len(jobs.Items) != 1 {
+		t.Errorf("Expected 1 job, got %d", len(jobs.Items))
+	}
+}
+
 func mustNewMetrics() *telemetry.Metrics {
 	m, err := telemetry.NewMetrics()
 	if err != nil {

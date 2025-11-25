@@ -251,6 +251,133 @@ func TestDeployHandlerExecute(t *testing.T) {
 	}
 }
 
+func TestDeployHandlerExecute_ExternalCluster(t *testing.T) {
+	client := fake.NewSimpleClientset()
+	handler := NewDeployHandler(client, mustNewMetrics(), telemetry.NewTracer())
+
+	pkg := &zarfv1alpha1.ZarfPackageJob{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-deploy-external",
+			Namespace: "default",
+		},
+		Spec: zarfv1alpha1.ZarfPackageJobSpec{
+			ServiceAccountName: "test-sa",
+			Action:             zarfv1alpha1.ActionDeploy,
+			Source: zarfv1alpha1.PackageSource{
+				Type: zarfv1alpha1.SourceTypeLocal,
+			},
+			Deploy: &zarfv1alpha1.DeployConfig{
+				Target: zarfv1alpha1.DeployTargetExternalCluster,
+				ExternalCluster: &zarfv1alpha1.ExternalClusterConfig{
+					KubeconfigSecretRef: zarfv1alpha1.SecretReference{
+						Name: "external-kubeconfig",
+					},
+				},
+			},
+		},
+	}
+
+	result, err := handler.Execute(context.Background(), pkg, "/workspace/test.tar.zst")
+	if err != nil {
+		t.Errorf("DeployHandler.Execute() with external cluster failed: %v", err)
+	}
+
+	if result == nil {
+		t.Fatal("Expected non-nil result")
+	}
+
+	// Verify the job was created
+	jobs, err := client.BatchV1().Jobs("default").List(context.Background(), metav1.ListOptions{})
+	if err != nil {
+		t.Fatalf("Failed to list jobs: %v", err)
+	}
+
+	if len(jobs.Items) != 1 {
+		t.Errorf("Expected 1 job, got %d", len(jobs.Items))
+	}
+
+	// Verify kubeconfig volume was added
+	job := jobs.Items[0]
+	foundVolume := false
+	for _, vol := range job.Spec.Template.Spec.Volumes {
+		if vol.Name == "kubeconfig" {
+			foundVolume = true
+			if vol.Secret == nil || vol.Secret.SecretName != "external-kubeconfig" { // pragma: allowlist secret
+				t.Error("Kubeconfig volume not configured correctly")
+			}
+			break
+		}
+	}
+	if !foundVolume {
+		t.Error("Kubeconfig volume not found in job spec")
+	}
+
+	// Verify kubeconfig volume mount was added
+	foundMount := false
+	for _, mount := range job.Spec.Template.Spec.Containers[0].VolumeMounts {
+		if mount.Name == "kubeconfig" {
+			foundMount = true
+			if mount.MountPath != "/kubeconfig" || !mount.ReadOnly {
+				t.Error("Kubeconfig volume mount not configured correctly")
+			}
+			break
+		}
+	}
+	if !foundMount {
+		t.Error("Kubeconfig volume mount not found in container spec")
+	}
+}
+
+func TestDeployHandlerExecute_MissingDeployConfig(t *testing.T) {
+	client := fake.NewSimpleClientset()
+	handler := NewDeployHandler(client, mustNewMetrics(), telemetry.NewTracer())
+
+	pkg := &zarfv1alpha1.ZarfPackageJob{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-deploy-no-config",
+			Namespace: "default",
+		},
+		Spec: zarfv1alpha1.ZarfPackageJobSpec{
+			ServiceAccountName: "test-sa",
+			Action:             zarfv1alpha1.ActionDeploy,
+			Source: zarfv1alpha1.PackageSource{
+				Type: zarfv1alpha1.SourceTypeLocal,
+			},
+			// Deploy is nil
+		},
+	}
+
+	_, err := handler.Execute(context.Background(), pkg, "/workspace/test.tar.zst")
+	if err == nil {
+		t.Error("Expected error for missing deploy config")
+	}
+}
+
+func TestPublishHandlerExecute_MissingPublishConfig(t *testing.T) {
+	client := fake.NewSimpleClientset()
+	handler := NewPublishHandler(client, mustNewMetrics(), telemetry.NewTracer())
+
+	pkg := &zarfv1alpha1.ZarfPackageJob{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-publish-no-config",
+			Namespace: "default",
+		},
+		Spec: zarfv1alpha1.ZarfPackageJobSpec{
+			ServiceAccountName: "test-sa",
+			Action:             zarfv1alpha1.ActionPublish,
+			Source: zarfv1alpha1.PackageSource{
+				Type: zarfv1alpha1.SourceTypeLocal,
+			},
+			// Publish is nil
+		},
+	}
+
+	_, err := handler.Execute(context.Background(), pkg, "/workspace/test.tar.zst")
+	if err == nil {
+		t.Error("Expected error for missing publish config")
+	}
+}
+
 func mustNewMetrics() *telemetry.Metrics {
 	m, err := telemetry.NewMetrics()
 	if err != nil {

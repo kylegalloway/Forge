@@ -370,18 +370,37 @@ deploy_forge() {
     log_info "Creating namespace..."
     kubectl create namespace "${NAMESPACE}" --dry-run=client -o yaml | kubectl apply -f -
 
-    log_info "Installing CRDs..."
-    kubectl apply -f config/crd/
+    log_info "Installing Forge with Helm..."
+    helm install forge chart/forge \
+        --namespace "${NAMESPACE}" \
+        --create-namespace \
+        --set controller.image.repository=forge-controller \
+        --set controller.image.tag=test \
+        --set controller.image.pullPolicy=IfNotPresent \
+        --set observability.deployStack=false \
+        --set metrics.serviceMonitor.enabled=false \
+        --wait \
+        --timeout=3m
 
-    log_info "Installing RBAC..."
-    kubectl apply -f config/rbac/
+    if [ $? -ne 0 ]; then
+        test_fail "Helm install failed"
+        kubectl logs -n "${NAMESPACE}" -l app=forge-controller --tail=50 2>/dev/null || true
+        exit 1
+    fi
 
-    log_info "Installing controller..."
-    kubectl apply -f config/manager/
-    kubectl set image deployment/forge-controller -n "${NAMESPACE}" manager="${CONTROLLER_IMAGE}"
+    log_info "Verifying Helm installation..."
+    helm list -n "${NAMESPACE}"
 
     log_info "Waiting for controller to be ready..."
-    kubectl rollout status deployment/forge-controller -n "${NAMESPACE}" --timeout=120s
+    # Helm generates deployment name
+    DEPLOYMENT_NAME=$(kubectl get deployment -n "${NAMESPACE}" -l app=forge-controller -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)
+    if [ -z "$DEPLOYMENT_NAME" ]; then
+        test_fail "Controller deployment not found"
+        kubectl get deployments -n "${NAMESPACE}"
+        exit 1
+    fi
+
+    kubectl rollout status deployment/"${DEPLOYMENT_NAME}" -n "${NAMESPACE}" --timeout=120s
 
     if [ $? -ne 0 ]; then
         test_fail "Controller failed to become ready"
@@ -389,7 +408,7 @@ deploy_forge() {
         exit 1
     fi
 
-    test_pass "Forge controller deployed and ready"
+    test_pass "Forge controller deployed and ready via Helm"
 }
 
 # Test: ServiceAccount with publish permissions

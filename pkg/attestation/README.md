@@ -216,7 +216,18 @@ Custom predicate for Forge-specific operations that captures:
 - Requires registry access
 - More complex setup
 
-**TODO:** Implement OCI push/pull
+**Status:** ✅ Implemented (see `oci.go`)
+
+**Usage:**
+```go
+storage := attestation.NewOCIStorageImpl(
+    "ghcr.io",
+    "myorg/attestations",
+    authn.DefaultKeychain,
+)
+
+err := storage.Store(ctx, bundle, opts)
+```
 
 ### ConfigMap Storage
 
@@ -236,7 +247,50 @@ Custom predicate for Forge-specific operations that captures:
 
 ## Integration with Controller
 
-The attestation generator should be integrated into the controller's reconciliation loop:
+The attestation generator should be integrated into the controller's reconciliation loop.
+
+### Quick Start
+
+```go
+// In controller initialization
+gen := attestation.NewGenerator("forge-controller", "forge-system", "v0.1.0")
+storage := attestation.NewOCIStorageImpl("ghcr.io", "myorg/attestations", auth)
+integration := attestation.NewControllerIntegration(gen, storage)
+
+// In reconciliation loop, after successful build
+if attestation.ShouldGenerateAttestation(zpj.Annotations) {
+    err := integration.OnBuildComplete(ctx, attestation.BuildCompletionOptions{
+        ZarfPackageJob: zpj.Name,
+        Namespace:      zpj.Namespace,
+        ServiceAccount: zpj.Spec.ServiceAccountName,
+        Annotations:    zpj.Annotations,
+        Source:         extractSourceInfo(zpj),
+        StartTime:      startTime,
+        EndTime:        time.Now(),
+        JobName:        job.Name,
+        ArtifactPath:   "/output/package.tar.zst",
+        ArtifactDigest: digest,
+    })
+}
+```
+
+### Enabling Attestation
+
+Add annotations to ZarfPackageJob:
+
+```yaml
+apiVersion: forge.dev/v1alpha1
+kind: ZarfPackageJob
+metadata:
+  name: my-package
+  annotations:
+    forge.forge.dev/generate-attestation: "true"
+    forge.forge.dev/track-provenance: "true"
+spec:
+  # ... rest of spec
+```
+
+### Integration Steps
 
 1. **Start of operation** - Record start time, invocation ID
 2. **During operation** - Collect source/destination metadata
@@ -246,25 +300,32 @@ The attestation generator should be integrated into the controller's reconciliat
 
 ## Future Enhancements
 
-### Phase 1 (Current)
-- ✅ Basic attestation types
-- ✅ SLSA provenance generation
+### Phase 1 (Current) ✅ COMPLETE
+- ✅ Basic attestation types (types.go)
+- ✅ SLSA provenance generation (generator.go)
 - ✅ Forge operation predicates
-- ✅ Local storage backend
-- ✅ Unit tests
+- ✅ Local storage backend (storage.go)
+- ✅ Unit tests (347 lines)
+- ✅ OCI storage implementation (oci.go)
+- ✅ Controller integration helpers (controller_integration.go)
+- ✅ Attestation annotations and helpers (helpers.go)
 
-### Phase 2 (Next)
-- [ ] OCI registry storage implementation
-- [ ] Attestation signing (Cosign integration)
-- [ ] Signature verification
-- [ ] Controller integration
+### Phase 2 (Next) 🚧 IN PROGRESS
+- [x] ✅ OCI registry storage implementation (completed)
+- [x] ✅ Controller integration pattern (completed)
+- [x] ✅ Annotation constants (completed)
+- [ ] ⏸️ Controller reconciliation loop integration
+- [ ] ⏸️ Attestation signing (Cosign integration)
+- [ ] ⏸️ Signature verification
+- [ ] ⏸️ Status field updates
 
 ### Phase 3 (Future)
-- [ ] SBOM generation
+- [ ] SBOM generation for packages
 - [ ] Vulnerability scanning integration
 - [ ] Policy-based attestation requirements
 - [ ] Attestation verification webhook
 - [ ] Grafana dashboard for attestations
+- [ ] Multi-registry support
 
 ## Standards & References
 

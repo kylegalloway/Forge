@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"testing"
 
+	batchv1 "k8s.io/api/batch/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -502,6 +504,392 @@ func (f *fakeResponseWriter) Write(data []byte) (int, error) {
 
 func (f *fakeResponseWriter) WriteHeader(statusCode int) {
 	f.status = statusCode
+}
+
+func TestProcessJobStatus(t *testing.T) {
+	scheme := runtime.NewScheme()
+	_ = zarfv1alpha1.AddToScheme(scheme)
+	dynamicClient := dynamicfake.NewSimpleDynamicClient(scheme)
+	kubeClient := fake.NewSimpleClientset()
+	ctrl := NewController(kubeClient, dynamicClient, "forge-system", mustNewMetrics(), telemetry.NewTracer())
+
+	// Create a ZarfPackageJob first
+	pkg := &zarfv1alpha1.ZarfPackageJob{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "forge.dev/v1alpha1",
+			Kind:       "ZarfPackageJob",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-package",
+			Namespace: "forge-system",
+		},
+		Spec: zarfv1alpha1.ZarfPackageJobSpec{
+			Action: zarfv1alpha1.ActionBuild,
+		},
+	}
+
+	unstrObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(pkg)
+	if err != nil {
+		t.Fatalf("Failed to convert to unstructured: %v", err)
+	}
+	u := &unstructured.Unstructured{Object: unstrObj}
+	u.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   "forge.dev",
+		Version: "v1alpha1",
+		Kind:    "ZarfPackageJob",
+	})
+
+	_, err = dynamicClient.Resource(ZarfPackageJobGVR).Namespace("forge-system").Create(
+		context.Background(), u, metav1.CreateOptions{})
+	if err != nil {
+		t.Fatalf("Failed to create ZarfPackageJob: %v", err)
+	}
+
+	tests := []struct {
+		name          string
+		job           *batchv1.Job
+		expectUpdate  bool
+		expectedPhase string
+	}{
+		{
+			name: "job missing package label",
+			job: &batchv1.Job{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-job-1",
+					Namespace: "forge-system",
+					Labels: map[string]string{
+						"app": "forge",
+					},
+				},
+			},
+			expectUpdate: false,
+		},
+		{
+			name: "job missing action label",
+			job: &batchv1.Job{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-job-2",
+					Namespace: "forge-system",
+					Labels: map[string]string{
+						"app":                     "forge",
+						"forge.forge.dev/package": "test-package",
+					},
+				},
+			},
+			expectUpdate: false,
+		},
+		{
+			name: "job still running",
+			job: &batchv1.Job{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-job-3",
+					Namespace: "forge-system",
+					Labels: map[string]string{
+						"app":                     "forge",
+						"forge.forge.dev/package": "test-package",
+						"forge.forge.dev/action":  "build",
+					},
+				},
+				Status: batchv1.JobStatus{
+					Active: 1,
+				},
+			},
+			expectUpdate: false,
+		},
+		{
+			name: "job completed successfully",
+			job: &batchv1.Job{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-job-4",
+					Namespace: "forge-system",
+					Labels: map[string]string{
+						"app":                     "forge",
+						"forge.forge.dev/package": "test-package",
+						"forge.forge.dev/action":  "build",
+					},
+				},
+				Status: batchv1.JobStatus{
+					Succeeded: 1,
+					Conditions: []batchv1.JobCondition{
+						{
+							Type:               batchv1.JobComplete,
+							Status:             corev1.ConditionTrue,
+							LastTransitionTime: metav1.Now(),
+						},
+					},
+				},
+			},
+			expectUpdate:  true,
+			expectedPhase: "Completed",
+		},
+		{
+			name: "job failed",
+			job: &batchv1.Job{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-job-5",
+					Namespace: "forge-system",
+					Labels: map[string]string{
+						"app":                     "forge",
+						"forge.forge.dev/package": "test-package",
+						"forge.forge.dev/action":  "build",
+					},
+				},
+				Status: batchv1.JobStatus{
+					Failed: 1,
+					Conditions: []batchv1.JobCondition{
+						{
+							Type:               batchv1.JobFailed,
+							Status:             corev1.ConditionTrue,
+							Message:            "Pod failed",
+							LastTransitionTime: metav1.Now(),
+						},
+					},
+				},
+			},
+			expectUpdate:  true,
+			expectedPhase: "Failed",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := ctrl.processJobStatus(context.Background(), tt.job)
+			if err != nil {
+				t.Errorf("processJobStatus() error = %v", err)
+			}
+
+			if tt.expectUpdate {
+				// Verify the ZarfPackageJob status was updated
+				updated, getErr := dynamicClient.Resource(ZarfPackageJobGVR).Namespace("forge-system").Get(
+					context.Background(), "test-package", metav1.GetOptions{})
+				if getErr != nil {
+					t.Fatalf("Failed to get updated ZarfPackageJob: %v", getErr)
+				}
+
+				status, found, _ := unstructured.NestedMap(updated.Object, "status")
+				if !found {
+					t.Fatal("Status not found after job completion")
+				}
+
+				phase, _, _ := unstructured.NestedString(status, "phase")
+				if phase != tt.expectedPhase {
+					t.Errorf("Expected phase %q, got %q", tt.expectedPhase, phase)
+				}
+			}
+		})
+	}
+}
+
+func TestCheckJobStatuses(t *testing.T) {
+	scheme := runtime.NewScheme()
+	_ = zarfv1alpha1.AddToScheme(scheme)
+	dynamicClient := dynamicfake.NewSimpleDynamicClient(scheme)
+	kubeClient := fake.NewSimpleClientset()
+	ctrl := NewController(kubeClient, dynamicClient, "forge-system", mustNewMetrics(), telemetry.NewTracer())
+
+	// Create some test Jobs in the fake client
+	job1 := &batchv1.Job{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-job-1",
+			Namespace: "forge-system",
+			Labels: map[string]string{
+				"app": "forge",
+			},
+		},
+	}
+	_, err := kubeClient.BatchV1().Jobs("forge-system").Create(context.Background(), job1, metav1.CreateOptions{})
+	if err != nil {
+		t.Fatalf("Failed to create test job: %v", err)
+	}
+
+	// This should not error even with no matching jobs
+	err = ctrl.checkJobStatuses(context.Background())
+	if err != nil {
+		t.Errorf("checkJobStatuses() error = %v", err)
+	}
+}
+
+func TestHandleActionChaining(t *testing.T) {
+	scheme := runtime.NewScheme()
+	_ = zarfv1alpha1.AddToScheme(scheme)
+	dynamicClient := dynamicfake.NewSimpleDynamicClient(scheme)
+	kubeClient := fake.NewSimpleClientset()
+	ctrl := NewController(kubeClient, dynamicClient, "forge-system", mustNewMetrics(), telemetry.NewTracer())
+
+	tests := []struct {
+		name            string
+		pkg             *zarfv1alpha1.ZarfPackageJob
+		completedAction string
+		expectChain     bool
+	}{
+		{
+			name: "BuildPublish chain - build completed",
+			pkg: &zarfv1alpha1.ZarfPackageJob{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "forge.dev/v1alpha1",
+					Kind:       "ZarfPackageJob",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-buildpublish",
+					Namespace: "forge-system",
+				},
+				Spec: zarfv1alpha1.ZarfPackageJobSpec{
+					Action: "BuildPublish",
+					Publish: &zarfv1alpha1.PublishConfig{
+						Destination: zarfv1alpha1.PublishDestination{
+							Type: zarfv1alpha1.DestinationTypeOCI,
+							OCI: &zarfv1alpha1.OCIDestination{
+								Registry:   "ghcr.io",
+								Repository: "test/package",
+								Tag:        "v1.0.0",
+							},
+						},
+					},
+				},
+			},
+			completedAction: "build",
+			expectChain:     true,
+		},
+		{
+			name: "BuildDeploy chain - build completed",
+			pkg: &zarfv1alpha1.ZarfPackageJob{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "forge.dev/v1alpha1",
+					Kind:       "ZarfPackageJob",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-builddeploy",
+					Namespace: "forge-system",
+				},
+				Spec: zarfv1alpha1.ZarfPackageJobSpec{
+					Action: "BuildDeploy",
+					Deploy: &zarfv1alpha1.DeployConfig{
+						Target: zarfv1alpha1.DeployTargetInCluster,
+					},
+				},
+			},
+			completedAction: "build",
+			expectChain:     true,
+		},
+		{
+			name: "PublishDeploy chain - publish completed",
+			pkg: &zarfv1alpha1.ZarfPackageJob{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "forge.dev/v1alpha1",
+					Kind:       "ZarfPackageJob",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-publishdeploy",
+					Namespace: "forge-system",
+				},
+				Spec: zarfv1alpha1.ZarfPackageJobSpec{
+					Action: "PublishDeploy",
+					Deploy: &zarfv1alpha1.DeployConfig{
+						Target: zarfv1alpha1.DeployTargetInCluster,
+					},
+				},
+			},
+			completedAction: "publish",
+			expectChain:     true,
+		},
+		{
+			name: "BuildPublishDeploy chain - build completed",
+			pkg: &zarfv1alpha1.ZarfPackageJob{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "forge.dev/v1alpha1",
+					Kind:       "ZarfPackageJob",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-buildpublishdeploy",
+					Namespace: "forge-system",
+				},
+				Spec: zarfv1alpha1.ZarfPackageJobSpec{
+					Action: "BuildPublishDeploy",
+					Publish: &zarfv1alpha1.PublishConfig{
+						Destination: zarfv1alpha1.PublishDestination{
+							Type: zarfv1alpha1.DestinationTypeOCI,
+							OCI: &zarfv1alpha1.OCIDestination{
+								Registry:   "ghcr.io",
+								Repository: "test/package",
+								Tag:        "v1.0.0",
+							},
+						},
+					},
+				},
+			},
+			completedAction: "build",
+			expectChain:     true,
+		},
+		{
+			name: "BuildPublishDeploy chain - publish completed",
+			pkg: &zarfv1alpha1.ZarfPackageJob{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "forge.dev/v1alpha1",
+					Kind:       "ZarfPackageJob",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-bpd-publish",
+					Namespace: "forge-system",
+				},
+				Spec: zarfv1alpha1.ZarfPackageJobSpec{
+					Action: "BuildPublishDeploy",
+					Deploy: &zarfv1alpha1.DeployConfig{
+						Target: zarfv1alpha1.DeployTargetInCluster,
+					},
+				},
+			},
+			completedAction: "publish",
+			expectChain:     true,
+		},
+		{
+			name: "single Build action - no chaining",
+			pkg: &zarfv1alpha1.ZarfPackageJob{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "forge.dev/v1alpha1",
+					Kind:       "ZarfPackageJob",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-build-only",
+					Namespace: "forge-system",
+				},
+				Spec: zarfv1alpha1.ZarfPackageJobSpec{
+					Action: zarfv1alpha1.ActionBuild,
+				},
+			},
+			completedAction: "build",
+			expectChain:     false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			unstrObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(tt.pkg)
+			if err != nil {
+				t.Fatalf("Failed to convert to unstructured: %v", err)
+			}
+			u := &unstructured.Unstructured{Object: unstrObj}
+			u.SetGroupVersionKind(schema.GroupVersionKind{
+				Group:   "forge.dev",
+				Version: "v1alpha1",
+				Kind:    "ZarfPackageJob",
+			})
+
+			// Create the resource
+			_, err = dynamicClient.Resource(ZarfPackageJobGVR).Namespace(tt.pkg.Namespace).Create(
+				context.Background(), u, metav1.CreateOptions{})
+			if err != nil {
+				t.Fatalf("Failed to create test resource: %v", err)
+			}
+
+			err = ctrl.handleActionChaining(context.Background(), u, tt.completedAction, "/workspace/package.tar.zst")
+			// We expect errors for chained actions since handlers will fail without real infrastructure
+			// But we verify the function executed without panic
+			if err != nil && !tt.expectChain {
+				t.Errorf("handleActionChaining() unexpected error for non-chained action: %v", err)
+			}
+			// For chained actions, errors are expected (missing infra), just verify no panic
+		})
+	}
 }
 
 func mustNewMetrics() *telemetry.Metrics {

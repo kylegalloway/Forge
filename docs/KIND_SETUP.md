@@ -12,6 +12,8 @@ Complete guide for running Forge in a local Kind cluster with full observability
 
 ## Quick Start (Copy-Paste Ready)
 
+> **Note:** These commands use Docker by default. If you're using Podman, see the commented alternatives in steps 4-5 below.
+
 ```bash
 # 1. Create Kind cluster with port mappings for Grafana
 cat <<EOF | kind create cluster --name forge-demo --config=-
@@ -41,23 +43,28 @@ helm upgrade --install kube-prometheus-stack prometheus-community/kube-prometheu
 make container-build IMG=forge-controller:demo
 
 # 4. Load images into Kind
-# For Docker users:
+# Choose commands based on your container runtime (Docker or Podman)
+
+# For Docker:
 kind load docker-image forge-controller:demo --name forge-demo
 
-# For Podman users:
-podman save localhost/forge-controller:demo -o /tmp/forge-controller.tar && \
-kind load image-archive /tmp/forge-controller.tar --name forge-demo && \
+# For Podman:
+podman save localhost/forge-controller:demo -o /tmp/forge-controller.tar
+kind load image-archive /tmp/forge-controller.tar --name forge-demo
 rm /tmp/forge-controller.tar
 
-# 5. Build Zarf CLI image (Zarf doesn't publish container images)
+# 5. Build and load Zarf CLI image
+# Zarf doesn't publish container images - build from included Dockerfile
+
+# For Docker:
 docker build -t ghcr.io/defenseunicorns/zarf:v0.66.0 images/zarf-cli/
 kind load docker-image ghcr.io/defenseunicorns/zarf:v0.66.0 --name forge-demo
 
-# For Podman users:
-# podman build -t ghcr.io/defenseunicorns/zarf:v0.66.0 images/zarf-cli/
-# podman save ghcr.io/defenseunicorns/zarf:v0.66.0 -o /tmp/zarf-cli.tar && \
-# kind load image-archive /tmp/zarf-cli.tar --name forge-demo && \
-# rm /tmp/zarf-cli.tar
+# For Podman:
+podman build -t ghcr.io/defenseunicorns/zarf:v0.66.0 images/zarf-cli/
+podman save ghcr.io/defenseunicorns/zarf:v0.66.0 -o /tmp/zarf-cli.tar
+kind load image-archive /tmp/zarf-cli.tar --name forge-demo
+rm /tmp/zarf-cli.tar
 
 # 6. Install Forge
 helm upgrade --install forge ./chart/forge \
@@ -159,9 +166,10 @@ kind load image-archive /tmp/forge-controller.tar --name forge-demo
 rm /tmp/forge-controller.tar
 ```
 
-Verify the image is loaded:
+Verify the images are loaded:
 ```bash
-docker exec -it forge-demo-control-plane crictl images | grep forge
+# Check images in Kind cluster (works with both Docker and Podman)
+docker exec -it forge-demo-control-plane crictl images | grep -E 'forge|zarf'
 ```
 
 **Build and load Zarf CLI image:**
@@ -381,11 +389,18 @@ kubectl run -it --rm debug --image=busybox -n forge-system -- \
 If pods show `ImagePullBackOff`:
 
 ```bash
-# Check images in Kind
-docker exec -it forge-demo-control-plane crictl images | grep forge
+# Check images in Kind cluster
+docker exec -it forge-demo-control-plane crictl images | grep -E 'forge|zarf'
 
-# Reload image
+# Reload images (choose based on your container runtime)
+# For Docker:
 kind load docker-image forge-controller:demo --name forge-demo
+kind load docker-image ghcr.io/defenseunicorns/zarf:v0.66.0 --name forge-demo
+
+# For Podman:
+podman save localhost/forge-controller:demo -o /tmp/forge-controller.tar
+kind load image-archive /tmp/forge-controller.tar --name forge-demo
+rm /tmp/forge-controller.tar
 ```
 
 ### Port Already in Use
@@ -406,24 +421,35 @@ lsof -i :3000
 
 Works out of the box with Kind:
 ```bash
+# Build Forge controller
 make container-build IMG=forge-controller:demo
 kind load docker-image forge-controller:demo --name forge-demo
+
+# Build Zarf CLI image
+docker build -t ghcr.io/defenseunicorns/zarf:v0.66.0 images/zarf-cli/
+kind load docker-image ghcr.io/defenseunicorns/zarf:v0.66.0 --name forge-demo
 ```
 
 ### Using Podman
 
-Requires extra steps:
+Requires extra steps (save/load via tar):
 ```bash
-# Set Podman as builder
+# Build Forge controller
 make container-build IMG=forge-controller:demo DOCKER=podman
 
-# Load into Kind via tar
+# Load Forge controller into Kind
 podman save localhost/forge-controller:demo -o /tmp/forge-controller.tar
 kind load image-archive /tmp/forge-controller.tar --name forge-demo
 rm /tmp/forge-controller.tar
+
+# Build and load Zarf CLI image
+podman build -t ghcr.io/defenseunicorns/zarf:v0.66.0 images/zarf-cli/
+podman save ghcr.io/defenseunicorns/zarf:v0.66.0 -o /tmp/zarf-cli.tar
+kind load image-archive /tmp/zarf-cli.tar --name forge-demo
+rm /tmp/zarf-cli.tar
 ```
 
-Alternatively, alias podman to docker:
+**Tip:** You can alias podman to docker if you prefer:
 ```bash
 alias docker=podman
 ```

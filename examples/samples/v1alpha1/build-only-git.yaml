@@ -15,11 +15,9 @@ spec:
   source:
     type: Git
     git:
-      url: https://github.com/myorg/my-package
+      url: https://github.com/defenseunicorns/zarf
       ref: main
       path: .
-      credentialsSecretRef:
-        name: github-token
 
   # No publish or deploy config needed
   # Built artifact will be stored in job pod (for local testing)

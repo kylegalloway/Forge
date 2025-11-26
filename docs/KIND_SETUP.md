@@ -221,11 +221,15 @@ kubectl get secret -n monitoring kube-prometheus-stack-grafana -o jsonpath="{.da
 Once in Grafana:
 
 1. Click **Dashboards** → **Import**
-2. Upload `config/grafana/forge-dashboard.json` from the Forge repo
-3. Select **Prometheus** as the data source
-4. Click **Import**
+2. Click **Upload JSON file**
+3. Select `chart/forge/dashboards/forge-dashboard.json` from the Forge repo
+4. Select **Prometheus** as the data source (should auto-detect)
+5. Click **Import**
 
 You should now see the Forge Operations dashboard with metrics from your controller.
+
+**Alternative (using dashboard ID):**
+If the dashboard has been published to grafana.com, you can import by ID instead of uploading the JSON file.
 
 ### 9. Test Forge
 

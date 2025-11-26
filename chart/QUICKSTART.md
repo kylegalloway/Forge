@@ -213,7 +213,7 @@ kubectl delete crd zarfpackagejobs.forge.dev
 
 1. **Review the full documentation**: [chart/README.md](README.md)
 2. **Configure alerts**: Edit PrometheusRule settings in values.yaml
-3. **Import dashboard**: Load `config/grafana/forge-dashboard.json` into Grafana
+3. **Import dashboard**: Load `chart/forge/dashboards/forge-dashboard.json` into Grafana
 4. **Set up ingress**: Configure ingress for external Grafana access
 5. **Enable network policies**: Lock down pod communication
 6. **Configure backups**: Set up backup for Prometheus and Grafana data

@@ -217,7 +217,7 @@ In a mature cluster, you already have:
 3. Configure external Prometheus URL
 4. Configure external Grafana URL
 5. Ensure ServiceMonitor labels match your Prometheus selector
-6. Import Forge dashboard into your Grafana (from `config/grafana/forge-dashboard.json`)
+6. Import Forge dashboard into your Grafana (from `chart/forge/dashboards/forge-dashboard.json`)
 
 ### New Cluster Deployment
 
@@ -263,7 +263,7 @@ The chart includes pre-configured alerts for:
 
 ### Grafana Dashboard
 
-A pre-built dashboard is available at `config/grafana/forge-dashboard.json`. It includes:
+A pre-built dashboard is available at `chart/forge/dashboards/forge-dashboard.json`. It includes:
 - Controller health status
 - Job creation and completion rates
 - Error rates and types

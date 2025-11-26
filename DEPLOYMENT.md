@@ -422,7 +422,7 @@ kubectl run -it --rm debug --image=busybox -n forge-system -- \
 - **Quick Start Guide**: [chart/QUICKSTART.md](chart/QUICKSTART.md)
 - **Full Chart Documentation**: [chart/README.md](chart/README.md)
 - **Helm Chart Values**: [chart/forge/values.yaml](chart/forge/values.yaml)
-- **Grafana Dashboard**: [config/grafana/forge-dashboard.json](config/grafana/forge-dashboard.json)
+- **Grafana Dashboard**: [chart/forge/dashboards/forge-dashboard.json](chart/forge/dashboards/forge-dashboard.json)
 
 ## Support
 

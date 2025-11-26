@@ -57,12 +57,12 @@ rm /tmp/forge-controller.tar
 # Zarf doesn't publish container images - build from included Dockerfile
 
 # For Docker:
-docker build -t ghcr.io/defenseunicorns/zarf:v0.66.0 images/zarf-cli/
-kind load docker-image ghcr.io/defenseunicorns/zarf:v0.66.0 --name forge-demo
+docker build -t localhost/zarf:v0.66.0 images/zarf-cli/
+kind load docker-image localhost/zarf:v0.66.0 --name forge-demo
 
 # For Podman:
-podman build -t ghcr.io/defenseunicorns/zarf:v0.66.0 images/zarf-cli/
-podman save ghcr.io/defenseunicorns/zarf:v0.66.0 -o /tmp/zarf-cli.tar
+podman build -t localhost/zarf:v0.66.0 images/zarf-cli/
+podman save localhost/zarf:v0.66.0 -o /tmp/zarf-cli.tar
 kind load image-archive /tmp/zarf-cli.tar --name forge-demo
 rm /tmp/zarf-cli.tar
 
@@ -178,16 +178,16 @@ Zarf doesn't publish container images - only binaries. Forge includes a Dockerfi
 
 ```bash
 # Build the image
-docker build -t ghcr.io/defenseunicorns/zarf:v0.66.0 images/zarf-cli/
+docker build -t localhost/zarf:v0.66.0 images/zarf-cli/
 
 # Load into Kind
-kind load docker-image ghcr.io/defenseunicorns/zarf:v0.66.0 --name forge-demo
+kind load docker-image localhost/zarf:v0.66.0 --name forge-demo
 ```
 
 **For Podman users:**
 ```bash
-podman build -t ghcr.io/defenseunicorns/zarf:v0.66.0 images/zarf-cli/
-podman save ghcr.io/defenseunicorns/zarf:v0.66.0 -o /tmp/zarf-cli.tar
+podman build -t localhost/zarf:v0.66.0 images/zarf-cli/
+podman save localhost/zarf:v0.66.0 -o /tmp/zarf-cli.tar
 kind load image-archive /tmp/zarf-cli.tar --name forge-demo
 rm /tmp/zarf-cli.tar
 ```
@@ -225,9 +225,9 @@ kubectl get pods -n monitoring
 
 Expected output in `forge-system`:
 ```
-NAME                                  READY   STATUS    RESTARTS   AGE
-forge-controller-xxxxx                1/1     Running   0          1m
-forge-otel-collector-xxxxx            1/1     Running   0          1m
+NAME                                    READY   STATUS    RESTARTS   AGE
+forge-controller-xxxxx                  1/1     Running   0          1m
+forge-otel-collector-xxxxx              1/1     Running   0          1m
 ```
 
 Check ServiceMonitor is created:
@@ -395,7 +395,7 @@ docker exec -it forge-demo-control-plane crictl images | grep -E 'forge|zarf'
 # Reload images (choose based on your container runtime)
 # For Docker:
 kind load docker-image forge-controller:demo --name forge-demo
-kind load docker-image ghcr.io/defenseunicorns/zarf:v0.66.0 --name forge-demo
+kind load docker-image localhost/zarf:v0.66.0 --name forge-demo
 
 # For Podman:
 podman save localhost/forge-controller:demo -o /tmp/forge-controller.tar
@@ -426,8 +426,8 @@ make container-build IMG=forge-controller:demo
 kind load docker-image forge-controller:demo --name forge-demo
 
 # Build Zarf CLI image
-docker build -t ghcr.io/defenseunicorns/zarf:v0.66.0 images/zarf-cli/
-kind load docker-image ghcr.io/defenseunicorns/zarf:v0.66.0 --name forge-demo
+docker build -t localhost/zarf:v0.66.0 images/zarf-cli/
+kind load docker-image localhost/zarf:v0.66.0 --name forge-demo
 ```
 
 ### Using Podman
@@ -443,8 +443,8 @@ kind load image-archive /tmp/forge-controller.tar --name forge-demo
 rm /tmp/forge-controller.tar
 
 # Build and load Zarf CLI image
-podman build -t ghcr.io/defenseunicorns/zarf:v0.66.0 images/zarf-cli/
-podman save ghcr.io/defenseunicorns/zarf:v0.66.0 -o /tmp/zarf-cli.tar
+podman build -t localhost/zarf:v0.66.0 images/zarf-cli/
+podman save localhost/zarf:v0.66.0 -o /tmp/zarf-cli.tar
 kind load image-archive /tmp/zarf-cli.tar --name forge-demo
 rm /tmp/zarf-cli.tar
 ```

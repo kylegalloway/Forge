@@ -15,7 +15,7 @@ spec:
   source:
     type: OCI
     oci:
-      image: ghcr.io/defenseunicorns/packages/init:v0.66.0
+      image: localhost/packages/init:v0.66.0
       credentialsSecretRef:
         name: ghcr-pull-secret
 

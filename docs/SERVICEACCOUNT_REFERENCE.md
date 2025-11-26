@@ -157,7 +157,7 @@ S3 bucket prod-bucket is not allowed (allowed buckets: [dev-*,staging-*])
 ```yaml
 # Specific package
 annotations:
-  forge.forge.dev/allowed-source-registries: "ghcr.io/defenseunicorns/packages/zarf"
+  forge.forge.dev/allowed-source-registries: "localhost/packages/zarf"
 
 # Organization packages
 annotations:

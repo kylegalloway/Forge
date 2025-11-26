@@ -12,16 +12,16 @@ This Dockerfile packages the official Zarf CLI binary into an Alpine-based conta
 
 ```bash
 # Build for your local architecture
-docker build -t ghcr.io/defenseunicorns/zarf:v0.66.0 images/zarf-cli/
+docker build -t localhost/zarf:v0.66.0 images/zarf-cli/
 
 # Or build for a specific Zarf version
-docker build -t ghcr.io/defenseunicorns/zarf:v0.42.0 \
+docker build -t localhost/zarf:v0.42.0 \
   --build-arg ZARF_VERSION=v0.42.0 \
   images/zarf-cli/
 
 # Build multi-arch (requires docker buildx)
 docker buildx build --platform linux/amd64,linux/arm64 \
-  -t ghcr.io/defenseunicorns/zarf:v0.66.0 \
+  -t localhost/zarf:v0.66.0 \
   images/zarf-cli/ --push
 ```
 
@@ -29,10 +29,10 @@ docker buildx build --platform linux/amd64,linux/arm64 \
 
 ```bash
 # Build the image
-docker build -t ghcr.io/defenseunicorns/zarf:v0.66.0 images/zarf-cli/
+docker build -t localhost/zarf:v0.66.0 images/zarf-cli/
 
 # Load into Kind cluster
-kind load docker-image ghcr.io/defenseunicorns/zarf:v0.66.0 --name forge-demo
+kind load docker-image localhost/zarf:v0.66.0 --name forge-demo
 ```
 
 ## For Production

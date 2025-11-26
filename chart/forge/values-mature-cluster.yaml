@@ -2,7 +2,7 @@
 # with existing observability infrastructure (Grafana, Prometheus, OTEL)
 #
 # Usage:
-#   helm install forge ./chart/forge -f chart/forge/values-mature-cluster.yaml
+#   helm upgrade --install forge ./chart/forge -f chart/forge/values-mature-cluster.yaml
 
 # Observability stack configuration
 observability:

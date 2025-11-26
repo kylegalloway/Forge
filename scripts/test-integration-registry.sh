@@ -204,7 +204,7 @@ deploy_gitea() {
     helm repo update
 
     log_info "Installing Gitea..."
-    helm install gitea gitea-charts/gitea \
+    helm upgrade --install gitea gitea-charts/gitea \
         --namespace "${GITEA_NAMESPACE}" \
         --set postgresql-ha.enabled=false \
         --set postgresql.enabled=true \
@@ -389,7 +389,7 @@ deploy_forge() {
         image_repo="localhost/forge-controller"
     fi
 
-    helm install forge chart/forge \
+    helm upgrade --install forge chart/forge \
         --namespace "${NAMESPACE}" \
         --create-namespace \
         --set controller.image.repository="${image_repo}" \

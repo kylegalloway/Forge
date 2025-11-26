@@ -94,14 +94,14 @@ helm-template: ## Generate manifests from Helm chart (dry-run).
 
 .PHONY: install
 install: ## Install Forge using Helm with default values.
-	helm install forge chart/forge \
+	helm upgrade --install forge chart/forge \
 		--namespace $(NAMESPACE) \
 		--create-namespace \
 		--wait
 
 .PHONY: install-mature
 install-mature: ## Install Forge for mature cluster (existing monitoring).
-	helm install forge chart/forge \
+	helm upgrade --install forge chart/forge \
 		-f chart/forge/values-mature-cluster.yaml \
 		--namespace $(NAMESPACE) \
 		--create-namespace \
@@ -109,7 +109,7 @@ install-mature: ## Install Forge for mature cluster (existing monitoring).
 
 .PHONY: install-new
 install-new: ## Install Forge with full observability stack for new cluster.
-	helm install forge chart/forge \
+	helm upgrade --install forge chart/forge \
 		-f chart/forge/values-new-cluster.yaml \
 		--namespace $(NAMESPACE) \
 		--create-namespace \
@@ -215,7 +215,7 @@ kind-load: container-build ## Build and load the controller image into kind.
 .PHONY: kind-deploy
 kind-deploy: kind-load ## Build, load image to kind, and deploy controller with Helm.
 	@echo "Deploying with Helm..."
-	@helm install forge chart/forge \
+	@helm upgrade --install forge chart/forge \
 		--namespace $(NAMESPACE) \
 		--create-namespace \
 		--set controller.image.repository=forge-controller \

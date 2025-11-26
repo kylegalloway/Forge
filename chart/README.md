@@ -48,7 +48,7 @@ If you already have Grafana, Prometheus, and OTEL Collector deployed:
 
 ```bash
 # Install Forge without observability stack
-helm install forge ./chart/forge \
+helm upgrade --install forge ./chart/forge \
   -f chart/forge/values-mature-cluster.yaml \
   --namespace forge-system \
   --create-namespace
@@ -76,7 +76,7 @@ If you need a complete observability stack:
 
 ```bash
 # Install Forge with full observability stack
-helm install forge ./chart/forge \
+helm upgrade --install forge ./chart/forge \
   -f chart/forge/values-new-cluster.yaml \
   --namespace forge-system \
   --create-namespace
@@ -167,7 +167,7 @@ networkPolicies:
 ### Install with Custom Values
 
 ```bash
-helm install forge ./chart/forge \
+helm upgrade --install forge ./chart/forge \
   --set controller.replicaCount=2 \
   --set observability.deployStack=false \
   --namespace forge-system \

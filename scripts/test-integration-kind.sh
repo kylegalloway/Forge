@@ -227,7 +227,7 @@ deploy_forge() {
         image_repo="localhost/forge-controller"
     fi
 
-    helm install forge chart/forge \
+    helm upgrade --install forge chart/forge \
         --namespace "${NAMESPACE}" \
         --create-namespace \
         --set controller.image.repository="${image_repo}" \

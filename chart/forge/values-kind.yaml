@@ -3,7 +3,7 @@
 # You must install kube-prometheus-stack separately (see docs/KIND_SETUP.md)
 #
 # Usage:
-#   helm install forge ./chart/forge -f chart/forge/values-kind.yaml
+#   helm upgrade --install forge ./chart/forge -f chart/forge/values-kind.yaml
 
 # Observability stack configuration
 observability:

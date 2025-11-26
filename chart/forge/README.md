@@ -7,19 +7,19 @@ Helm chart for deploying Forge - a Kubernetes controller for managing Zarf packa
 ### Mature Cluster (with existing monitoring)
 
 ```bash
-helm install forge . -f values-mature-cluster.yaml --namespace forge-system --create-namespace
+helm upgrade --install forge . -f values-mature-cluster.yaml --namespace forge-system --create-namespace
 ```
 
 ### New Cluster (deploy full observability stack)
 
 ```bash
-helm install forge . -f values-new-cluster.yaml --namespace forge-system --create-namespace
+helm upgrade --install forge . -f values-new-cluster.yaml --namespace forge-system --create-namespace
 ```
 
 ### Default Installation
 
 ```bash
-helm install forge . --namespace forge-system --create-namespace
+helm upgrade --install forge . --namespace forge-system --create-namespace
 ```
 
 ## Configuration

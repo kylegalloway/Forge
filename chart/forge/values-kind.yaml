@@ -1,0 +1,63 @@
+# Values for deploying Forge into a Kind cluster
+# Note: This chart does NOT include Grafana/Prometheus templates
+# You must install kube-prometheus-stack separately (see docs/KIND_SETUP.md)
+#
+# Usage:
+#   helm install forge ./chart/forge -f chart/forge/values-kind.yaml
+
+# Observability stack configuration
+observability:
+  # The Forge chart only deploys OTEL Collector
+  # Grafana and Prometheus must be installed separately
+  deployStack: false
+
+  # OpenTelemetry Collector configuration
+  otelCollector:
+    enabled: true
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 256Mi
+    # Disable ServiceMonitor (will be created by kube-prometheus-stack)
+    serviceMonitor:
+      enabled: false
+
+# Metrics configuration
+metrics:
+  enabled: true
+  # Disable ServiceMonitor (requires Prometheus Operator)
+  serviceMonitor:
+    enabled: false
+
+# Prometheus alerts configuration
+alerts:
+  # Disable PrometheusRule (requires Prometheus Operator)
+  enabled: false
+
+# Network policies
+networkPolicies:
+  # Disable for Kind (simplicity)
+  enabled: false
+
+# Controller configuration
+controller:
+  # Single replica for Kind
+  replicaCount: 1
+
+  # Lightweight resources
+  resources:
+    limits:
+      cpu: "1"
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+  # Image configuration (override with --set for local builds)
+  image:
+    repository: localhost/forge-controller
+    pullPolicy: IfNotPresent
+    tag: "demo"

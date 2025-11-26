@@ -1,4 +1,4 @@
-{{- if and .Values.observability.otelCollector.enabled .Values.observability.deployStack .Values.observability.otelCollector.serviceMonitor.enabled -}}
+{{- if and .Values.observability.otelCollector.enabled .Values.observability.otelCollector.serviceMonitor.enabled -}}
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:

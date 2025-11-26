@@ -1,4 +1,4 @@
-{{- if and .Values.observability.otelCollector.enabled .Values.observability.deployStack -}}
+{{- if .Values.observability.otelCollector.enabled -}}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -73,6 +73,8 @@ spec:
           capabilities:
             drop:
               - ALL
+          seccompProfile:
+            type: RuntimeDefault
       volumes:
       - name: otel-collector-config
         configMap:

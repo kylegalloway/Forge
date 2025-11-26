@@ -157,6 +157,34 @@ helm install forge ./chart/forge \
 
 **Includes**: Forge controller, OTEL Collector, Prometheus, Grafana, dashboards, alerts
 
+### Local Development (Kind)
+
+For local development and testing with Kind:
+
+```bash
+# Install kube-prometheus-stack first (provides Grafana + Prometheus)
+helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+helm repo update
+helm install kube-prometheus-stack prometheus-community/kube-prometheus-stack \
+  --namespace monitoring \
+  --create-namespace \
+  --set prometheus.prometheusSpec.serviceMonitorSelectorNilUsesHelmValues=false \
+  --set grafana.service.type=NodePort \
+  --set grafana.service.nodePort=30000 \
+  --wait
+
+# Then install Forge
+helm install forge ./chart/forge \
+  -f chart/forge/values-kind.yaml \
+  --namespace forge-system \
+  --create-namespace
+```
+
+**Includes**: Forge controller, OTEL Collector, ServiceMonitor
+**Requires**: kube-prometheus-stack for Grafana and Prometheus
+**Access Grafana**: http://localhost:3000 (admin/prom-operator)
+
+📖 **Kind Setup Guide**: See [docs/KIND_SETUP.md](docs/KIND_SETUP.md) for complete local development setup
 📖 **Deployment Guide**: See [DEPLOYMENT.md](DEPLOYMENT.md) for complete deployment options and configurations
 📖 **Quick Start**: See [chart/QUICKSTART.md](chart/QUICKSTART.md) for step-by-step installation
 📖 **Helm Chart Docs**: See [chart/README.md](chart/README.md) for all configuration options

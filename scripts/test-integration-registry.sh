@@ -351,11 +351,24 @@ build_and_load_images() {
     fi
 
     log_info "Loading controller image into kind cluster..."
-    kind load docker-image "${CONTROLLER_IMAGE}" --name "${KIND_CLUSTER_NAME}"
 
-    if [ $? -ne 0 ]; then
-        test_fail "Failed to load controller image"
-        exit 1
+    # Detect container runtime
+    if command -v podman &> /dev/null && ! command -v docker &> /dev/null; then
+        log_info "Using Podman - exporting image as archive..."
+        podman save "localhost/${CONTROLLER_IMAGE}" -o /tmp/forge-controller.tar
+        kind load image-archive /tmp/forge-controller.tar --name "${KIND_CLUSTER_NAME}"
+        local load_result=$?
+        rm -f /tmp/forge-controller.tar
+        if [ $load_result -ne 0 ]; then
+            test_fail "Failed to load controller image"
+            exit 1
+        fi
+    else
+        kind load docker-image "${CONTROLLER_IMAGE}" --name "${KIND_CLUSTER_NAME}"
+        if [ $? -ne 0 ]; then
+            test_fail "Failed to load controller image"
+            exit 1
+        fi
     fi
 
     test_pass "Images built and loaded successfully"
@@ -367,18 +380,24 @@ deploy_forge() {
 
     cd "${PROJECT_ROOT}"
 
-    log_info "Creating namespace..."
-    kubectl create namespace "${NAMESPACE}" --dry-run=client -o yaml | kubectl apply -f -
-
     log_info "Installing Forge with Helm..."
+
+    # Detect the actual image name in the cluster
+    local image_repo="forge-controller"
+    if command -v podman &> /dev/null && ! command -v docker &> /dev/null; then
+        # Podman adds localhost/ prefix
+        image_repo="localhost/forge-controller"
+    fi
+
     helm install forge chart/forge \
         --namespace "${NAMESPACE}" \
         --create-namespace \
-        --set controller.image.repository=forge-controller \
+        --set controller.image.repository="${image_repo}" \
         --set controller.image.tag=test \
         --set controller.image.pullPolicy=IfNotPresent \
         --set observability.deployStack=false \
         --set metrics.serviceMonitor.enabled=false \
+        --set alerts.enabled=false \
         --wait \
         --timeout=3m
 
@@ -467,7 +486,9 @@ spec:
       oci:
         registry: ${GITEA_REGISTRY}
         repository: forgeuser/zarf-packages
-        credentialsSecret: gitea-registry-creds
+        tag: latest
+        credentialsSecretRef:
+          name: gitea-registry-creds
 EOF
 
     if [ $? -ne 0 ]; then
@@ -593,7 +614,9 @@ spec:
       oci:
         registry: ${GITEA_REGISTRY}
         repository: forgeuser/zarf-packages
-        credentialsSecret: gitea-registry-creds
+        tag: latest
+        credentialsSecretRef:
+          name: gitea-registry-creds
 EOF
 
     if [ $? -ne 0 ]; then
@@ -659,7 +682,9 @@ spec:
       oci:
         registry: ${GITEA_REGISTRY}
         repository: forgeuser/unauthorized
-        credentialsSecret: gitea-registry-creds
+        tag: latest
+        credentialsSecretRef:
+          name: gitea-registry-creds
 EOF
 )
 

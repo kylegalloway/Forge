@@ -117,13 +117,17 @@ Install kube-prometheus-stack which provides Prometheus, Grafana, and Alertmanag
 helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
 helm repo update
 
-# Install with NodePort for Grafana
+# Install with NodePort for Grafana and relaxed probe settings for Kind
 helm upgrade --install kube-prometheus-stack prometheus-community/kube-prometheus-stack \
   --namespace monitoring \
   --create-namespace \
   --set prometheus.prometheusSpec.serviceMonitorSelectorNilUsesHelmValues=false \
   --set grafana.service.type=NodePort \
   --set grafana.service.nodePort=30000 \
+  --set prometheus.prometheusSpec.resources.requests.cpu=100m \
+  --set prometheus.prometheusSpec.resources.requests.memory=512Mi \
+  --set prometheus.prometheusSpec.resources.limits.cpu=500m \
+  --set prometheus.prometheusSpec.resources.limits.memory=1Gi \
   --timeout 10m \
   --wait
 ```
@@ -131,6 +135,7 @@ helm upgrade --install kube-prometheus-stack prometheus-community/kube-prometheu
 **Why these settings?**
 - `serviceMonitorSelectorNilUsesHelmValues=false` - Allows Prometheus to discover ServiceMonitors in any namespace
 - `grafana.service.type=NodePort` - Exposes Grafana on port 30000 (mapped to host port 3000)
+- `resources.requests/limits` - Reduced resources suitable for Kind (prevents probe timeouts)
 - `--timeout 10m` - kube-prometheus-stack deploys many resources and needs more than the default 5m timeout
 
 Verify monitoring stack is running:

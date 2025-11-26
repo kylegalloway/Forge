@@ -208,7 +208,8 @@ helm upgrade --install forge ./chart/forge \
 **What gets deployed:**
 - Forge controller (1 replica)
 - OTEL Collector
-- ServiceMonitor (for Prometheus integration)
+- ServiceMonitor (for Prometheus to scrape controller metrics)
+- PrometheusRule (for alerts)
 - Metrics Service
 
 **What does NOT get deployed:**
@@ -230,9 +231,19 @@ forge-controller-xxxxx                  1/1     Running   0          1m
 forge-otel-collector-xxxxx              1/1     Running   0          1m
 ```
 
-Check ServiceMonitor is created:
+Check ServiceMonitor and PrometheusRule are created:
 ```bash
 kubectl get servicemonitor -n forge-system
+kubectl get prometheusrule -n forge-system
+```
+
+Expected output:
+```
+NAME               AGE
+forge-controller   1m
+
+NAME           AGE
+forge-alerts   1m
 ```
 
 ### 7. Access Grafana

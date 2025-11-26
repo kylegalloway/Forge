@@ -28,14 +28,19 @@ observability:
 # Metrics configuration
 metrics:
   enabled: true
-  # Disable ServiceMonitor (requires Prometheus Operator)
+  # Enable ServiceMonitor (kube-prometheus-stack includes Prometheus Operator)
   serviceMonitor:
-    enabled: false
+    enabled: true
+    additionalLabels:
+      prometheus: kube-prometheus
 
 # Prometheus alerts configuration
 alerts:
-  # Disable PrometheusRule (requires Prometheus Operator)
-  enabled: false
+  # Enable PrometheusRule (kube-prometheus-stack includes Prometheus Operator)
+  enabled: true
+  additionalLabels:
+    prometheus: kube-prometheus
+    role: alert-rules
 
 # Network policies
 networkPolicies:

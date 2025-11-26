@@ -27,7 +27,7 @@ If you already have Prometheus, Grafana, and OTEL Collector:
 vi chart/forge/values-mature-cluster.yaml
 
 # Install Forge
-helm install forge ./chart/forge \
+helm upgrade --install forge ./chart/forge \
   -f chart/forge/values-mature-cluster.yaml \
   --namespace forge-system \
   --create-namespace
@@ -42,7 +42,7 @@ If you need monitoring tools deployed:
 vi chart/forge/values-new-cluster.yaml
 
 # Install Forge with full observability stack
-helm install forge ./chart/forge \
+helm upgrade --install forge ./chart/forge \
   -f chart/forge/values-new-cluster.yaml \
   --namespace forge-system \
   --create-namespace
@@ -210,7 +210,7 @@ controller:
 ### Basic Installation
 
 ```bash
-helm install forge ./chart/forge \
+helm upgrade --install forge ./chart/forge \
   --namespace forge-system \
   --create-namespace
 ```
@@ -218,7 +218,7 @@ helm install forge ./chart/forge \
 ### With Custom Values
 
 ```bash
-helm install forge ./chart/forge \
+helm upgrade --install forge ./chart/forge \
   -f chart/forge/values-mature-cluster.yaml \
   --set controller.replicaCount=3 \
   --namespace forge-system \
@@ -228,7 +228,7 @@ helm install forge ./chart/forge \
 ### Dry Run (Preview)
 
 ```bash
-helm install forge ./chart/forge \
+helm upgrade --install forge ./chart/forge \
   -f chart/forge/values-new-cluster.yaml \
   --namespace forge-system \
   --dry-run --debug

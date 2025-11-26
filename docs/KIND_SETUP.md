@@ -28,7 +28,7 @@ EOF
 # 2. Install kube-prometheus-stack (Prometheus + Grafana)
 helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
 helm repo update
-helm install kube-prometheus-stack prometheus-community/kube-prometheus-stack \
+helm upgrade --install kube-prometheus-stack prometheus-community/kube-prometheus-stack \
   --namespace monitoring \
   --create-namespace \
   --set prometheus.prometheusSpec.serviceMonitorSelectorNilUsesHelmValues=false \
@@ -50,7 +50,7 @@ kind load image-archive /tmp/forge-controller.tar --name forge-demo && \
 rm /tmp/forge-controller.tar
 
 # 5. Install Forge
-helm install forge ./chart/forge \
+helm upgrade --install forge ./chart/forge \
   -f chart/forge/values-kind.yaml \
   --namespace forge-system \
   --create-namespace
@@ -100,7 +100,7 @@ helm repo add prometheus-community https://prometheus-community.github.io/helm-c
 helm repo update
 
 # Install with NodePort for Grafana
-helm install kube-prometheus-stack prometheus-community/kube-prometheus-stack \
+helm upgrade --install kube-prometheus-stack prometheus-community/kube-prometheus-stack \
   --namespace monitoring \
   --create-namespace \
   --set prometheus.prometheusSpec.serviceMonitorSelectorNilUsesHelmValues=false \
@@ -158,7 +158,7 @@ docker exec -it forge-demo-control-plane crictl images | grep forge
 Install Forge using the Kind-specific values file:
 
 ```bash
-helm install forge ./chart/forge \
+helm upgrade --install forge ./chart/forge \
   -f chart/forge/values-kind.yaml \
   --namespace forge-system \
   --create-namespace

@@ -123,7 +123,7 @@ Forge is deployed using Helm charts that support two deployment scenarios:
 
 ```bash
 # Install with default configuration
-helm install forge ./chart/forge \
+helm upgrade --install forge ./chart/forge \
   --namespace forge-system \
   --create-namespace
 ```
@@ -134,7 +134,7 @@ For clusters with existing Grafana, Prometheus, and OTEL Collector:
 
 ```bash
 # Install without observability stack
-helm install forge ./chart/forge \
+helm upgrade --install forge ./chart/forge \
   -f chart/forge/values-mature-cluster.yaml \
   --namespace forge-system \
   --create-namespace
@@ -149,7 +149,7 @@ For new clusters that need complete monitoring setup:
 
 ```bash
 # Install with full observability stack
-helm install forge ./chart/forge \
+helm upgrade --install forge ./chart/forge \
   -f chart/forge/values-new-cluster.yaml \
   --namespace forge-system \
   --create-namespace
@@ -165,7 +165,7 @@ For local development and testing with Kind:
 # Install kube-prometheus-stack first (provides Grafana + Prometheus)
 helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
 helm repo update
-helm install kube-prometheus-stack prometheus-community/kube-prometheus-stack \
+helm upgrade --install kube-prometheus-stack prometheus-community/kube-prometheus-stack \
   --namespace monitoring \
   --create-namespace \
   --set prometheus.prometheusSpec.serviceMonitorSelectorNilUsesHelmValues=false \
@@ -175,7 +175,7 @@ helm install kube-prometheus-stack prometheus-community/kube-prometheus-stack \
   --wait
 
 # Then install Forge
-helm install forge ./chart/forge \
+helm upgrade --install forge ./chart/forge \
   -f chart/forge/values-kind.yaml \
   --namespace forge-system \
   --create-namespace

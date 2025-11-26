@@ -22,7 +22,7 @@ This guide will help you quickly deploy Forge to your Kubernetes cluster.
 vim chart/forge/values-mature-cluster.yaml
 
 # 2. Install Forge
-helm install forge ./chart/forge \
+helm upgrade --install forge ./chart/forge \
   -f chart/forge/values-mature-cluster.yaml \
   --namespace forge-system \
   --create-namespace
@@ -46,7 +46,7 @@ vim chart/forge/values-new-cluster.yaml
 # Edit the ingress section in values-new-cluster.yaml
 
 # 3. Install Forge with full stack
-helm install forge ./chart/forge \
+helm upgrade --install forge ./chart/forge \
   -f chart/forge/values-new-cluster.yaml \
   --namespace forge-system \
   --create-namespace

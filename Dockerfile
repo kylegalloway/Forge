@@ -15,7 +15,9 @@ COPY cmd/ cmd/
 COPY pkg/ pkg/
 
 # Build the controller
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -o controller cmd/controller/main.go
+# Use TARGETARCH to build for the target platform (set by Docker/Podman automatically)
+ARG TARGETARCH
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=${TARGETARCH:-amd64} go build -a -o controller cmd/controller/main.go
 
 # Runtime stage
 FROM alpine:3.20

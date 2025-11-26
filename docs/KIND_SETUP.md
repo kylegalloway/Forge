@@ -236,8 +236,18 @@ If the dashboard has been published to grafana.com, you can import by ID instead
 Create a sample ZarfPackageJob:
 
 ```bash
-kubectl apply -f examples/samples/build-only-git.yaml
+# First, create the required ServiceAccount with policy annotations
+kubectl apply -f examples/samples/service-account-example.yaml
+
+# Then apply the sample job
+kubectl apply -f examples/samples/v1alpha1/build-only-git.yaml
 ```
+
+**Note:** The build job requires pulling the Zarf CLI image from GHCR. For production use, you'll need to:
+- Configure imagePullSecrets for GHCR authentication
+- Or use a self-hosted/cached Zarf image
+
+For now, the job will demonstrate policy validation and job creation (it may fail on image pull without GHCR credentials).
 
 Watch the job:
 ```bash
@@ -247,6 +257,12 @@ kubectl get zarfpackagejobs -A -w
 View controller logs:
 ```bash
 kubectl logs -n forge-system -l app=forge-controller -f
+```
+
+Check job pod status:
+```bash
+kubectl get pods -n default
+kubectl describe pod <job-pod-name> -n default
 ```
 
 Check metrics in Grafana:

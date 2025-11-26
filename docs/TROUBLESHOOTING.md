@@ -191,6 +191,57 @@ kubectl logs job/my-package-build-xxxxx
 
    **Solution:** Create kubernetes.io/dockerconfigjson Secret and reference it
 
+### ImagePullBackOff or ErrImagePull
+
+**Symptoms:**
+
+```bash
+kubectl get pods -n default
+# Shows: STATUS = ImagePullBackOff or ErrImagePull
+```
+
+```text
+Failed to pull image "ghcr.io/defenseunicorns/zarf:v0.66.0":
+failed to authorize: failed to fetch anonymous token: 403 Forbidden
+```
+
+**Cause:**
+The Zarf CLI image requires authentication to pull from GitHub Container Registry (GHCR).
+
+**Solutions:**
+
+1. **Create imagePullSecret for GHCR (Recommended for production):**
+
+   ```bash
+   # Create a GitHub Personal Access Token with read:packages scope
+   # Then create the secret:
+   kubectl create secret docker-registry ghcr-secret \
+     --docker-server=ghcr.io \
+     --docker-username=<github-username> \
+     --docker-password=<github-token> \
+     -n <namespace>
+
+   # Add to your namespace's default ServiceAccount
+   kubectl patch serviceaccount default \
+     -n <namespace> \
+     -p '{"imagePullSecrets": [{"name": "ghcr-secret"}]}'
+   ```
+
+2. **Use a self-hosted Zarf image:**
+
+   Build and push the Zarf CLI to your own registry and update `pkg/actions/build.go` to reference your image.
+
+3. **For Kind/testing (pull and load manually):**
+
+   ```bash
+   # Pull with authentication on your host
+   docker login ghcr.io -u <username> -p <token>
+   docker pull ghcr.io/defenseunicorns/zarf:v0.66.0
+
+   # Load into Kind cluster
+   kind load docker-image ghcr.io/defenseunicorns/zarf:v0.66.0 --name forge-demo
+   ```
+
 ### Job exceeds active deadline
 
 **Symptoms:**

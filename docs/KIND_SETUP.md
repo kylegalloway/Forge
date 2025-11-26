@@ -40,7 +40,7 @@ helm upgrade --install kube-prometheus-stack prometheus-community/kube-prometheu
 # 3. Build Forge controller image
 make container-build IMG=forge-controller:demo
 
-# 4. Load image into Kind
+# 4. Load images into Kind
 # For Docker users:
 kind load docker-image forge-controller:demo --name forge-demo
 
@@ -49,17 +49,21 @@ podman save localhost/forge-controller:demo -o /tmp/forge-controller.tar && \
 kind load image-archive /tmp/forge-controller.tar --name forge-demo && \
 rm /tmp/forge-controller.tar
 
-# 5. Install Forge
+# 5. Pre-load Zarf CLI image (so samples work without GHCR credentials)
+docker pull ghcr.io/defenseunicorns/zarf:v0.66.0
+kind load docker-image ghcr.io/defenseunicorns/zarf:v0.66.0 --name forge-demo
+
+# 6. Install Forge
 helm upgrade --install forge ./chart/forge \
   -f chart/forge/values-kind.yaml \
   --namespace forge-system \
   --create-namespace
 
-# 6. Wait for everything to be ready
+# 7. Wait for everything to be ready
 kubectl wait --for=condition=Ready pods --all -n forge-system --timeout=300s
 kubectl wait --for=condition=Ready pods --all -n monitoring --timeout=300s
 
-# 7. Access Grafana
+# 8. Access Grafana
 open http://localhost:3000
 # Username: admin
 # Password: Get it with the command below:
@@ -154,6 +158,17 @@ Verify the image is loaded:
 docker exec -it forge-demo-control-plane crictl images | grep forge
 ```
 
+**Load Zarf CLI image (so samples work):**
+```bash
+# Pull from GHCR (requires Docker to be logged in to GHCR)
+docker pull ghcr.io/defenseunicorns/zarf:v0.66.0
+
+# Load into Kind
+kind load docker-image ghcr.io/defenseunicorns/zarf:v0.66.0 --name forge-demo
+```
+
+This pre-loads the Zarf CLI image that build/deploy jobs need. Without this, job pods will fail with ImagePullBackOff since Kind clusters can't pull from GHCR without credentials configured.
+
 ### 5. Install Forge
 
 Install Forge using the Kind-specific values file:
@@ -243,11 +258,7 @@ kubectl apply -f examples/samples/service-account-example.yaml
 kubectl apply -f examples/samples/v1alpha1/build-only-git.yaml
 ```
 
-**Note:** The build job requires pulling the Zarf CLI image from GHCR. For production use, you'll need to:
-- Configure imagePullSecrets for GHCR authentication
-- Or use a self-hosted/cached Zarf image
-
-For now, the job will demonstrate policy validation and job creation (it may fail on image pull without GHCR credentials).
+**Note:** If you completed step 4 and pre-loaded the Zarf CLI image, the build job should work without issues. The job will clone the Zarf repository and attempt to build a package (which will fail since it's a real build, but demonstrates the full workflow).
 
 Watch the job:
 ```bash

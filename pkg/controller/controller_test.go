@@ -173,8 +173,8 @@ func TestHandleEvent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to convert to unstructured: %v", err)
 	}
-	u := &unstructured.Unstructured{Object: unstrObj}
-	u.SetGroupVersionKind(schema.GroupVersionKind{
+	unstructuredObj := &unstructured.Unstructured{Object: unstrObj}
+	unstructuredObj.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "forge.dev",
 		Version: "v1alpha1",
 		Kind:    "ZarfPackageJob",
@@ -216,7 +216,7 @@ func TestHandleEvent(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			event := watch.Event{
 				Type:   tt.eventType,
-				Object: u,
+				Object: unstructuredObj,
 			}
 			err := ctrl.handleEvent(context.Background(), event)
 			if (err != nil) != tt.wantErr {
@@ -249,8 +249,8 @@ func TestUpdateStatus(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to convert to unstructured: %v", err)
 	}
-	u := &unstructured.Unstructured{Object: unstrObj}
-	u.SetGroupVersionKind(schema.GroupVersionKind{
+	unstructuredObj := &unstructured.Unstructured{Object: unstrObj}
+	unstructuredObj.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "forge.dev",
 		Version: "v1alpha1",
 		Kind:    "ZarfPackageJob",
@@ -258,12 +258,12 @@ func TestUpdateStatus(t *testing.T) {
 
 	// Create the resource first
 	_, err = dynamicClient.Resource(ZarfPackageJobGVR).Namespace("forge-system").Create(
-		context.Background(), u, metav1.CreateOptions{})
+		context.Background(), unstructuredObj, metav1.CreateOptions{})
 	if err != nil {
 		t.Fatalf("Failed to create test resource: %v", err)
 	}
 
-	err = ctrl.updateStatus(context.Background(), u, "Running", "Test message", nil)
+	err = ctrl.updateStatus(context.Background(), unstructuredObj, "Running", "Test message", nil)
 	if err != nil {
 		t.Errorf("updateStatus() error = %v", err)
 	}
@@ -359,8 +359,8 @@ func TestReconcilePackage(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Failed to convert to unstructured: %v", err)
 			}
-			u := &unstructured.Unstructured{Object: unstrObj}
-			u.SetGroupVersionKind(schema.GroupVersionKind{
+			unstructuredObj := &unstructured.Unstructured{Object: unstrObj}
+			unstructuredObj.SetGroupVersionKind(schema.GroupVersionKind{
 				Group:   "forge.dev",
 				Version: "v1alpha1",
 				Kind:    "ZarfPackageJob",
@@ -368,12 +368,12 @@ func TestReconcilePackage(t *testing.T) {
 
 			// Create the resource
 			_, err = dynamicClient.Resource(ZarfPackageJobGVR).Namespace(tt.pkg.Namespace).Create(
-				context.Background(), u, metav1.CreateOptions{})
+				context.Background(), unstructuredObj, metav1.CreateOptions{})
 			if err != nil {
 				t.Fatalf("Failed to create test resource: %v", err)
 			}
 
-			err = ctrl.reconcilePackage(context.Background(), u, tt.pkg)
+			err = ctrl.reconcilePackage(context.Background(), unstructuredObj, tt.pkg)
 			if tt.expectStatusError && err == nil {
 				t.Error("Expected error from reconcilePackage, got nil")
 			}
@@ -430,14 +430,14 @@ func TestHealthzHandlerResponse(t *testing.T) {
 			handler := ctrl.HealthzHandler()
 
 			req := &http.Request{}
-			w := &fakeResponseWriter{status: 200, body: []byte{}}
-			handler(w, req)
+			writer := &fakeResponseWriter{status: 200, body: []byte{}}
+			handler(writer, req)
 
-			if w.status != tt.expectedStatus {
-				t.Errorf("Expected status %d, got %d", tt.expectedStatus, w.status)
+			if writer.status != tt.expectedStatus {
+				t.Errorf("Expected status %d, got %d", tt.expectedStatus, writer.status)
 			}
-			if string(w.body) != tt.expectedBody {
-				t.Errorf("Expected body %q, got %q", tt.expectedBody, string(w.body))
+			if string(writer.body) != tt.expectedBody {
+				t.Errorf("Expected body %q, got %q", tt.expectedBody, string(writer.body))
 			}
 		})
 	}
@@ -474,14 +474,14 @@ func TestReadyzHandlerResponse(t *testing.T) {
 			handler := ctrl.ReadyzHandler()
 
 			req := &http.Request{}
-			w := &fakeResponseWriter{status: 200, body: []byte{}}
-			handler(w, req)
+			writer := &fakeResponseWriter{status: 200, body: []byte{}}
+			handler(writer, req)
 
-			if w.status != tt.expectedStatus {
-				t.Errorf("Expected status %d, got %d", tt.expectedStatus, w.status)
+			if writer.status != tt.expectedStatus {
+				t.Errorf("Expected status %d, got %d", tt.expectedStatus, writer.status)
 			}
-			if string(w.body) != tt.expectedBody {
-				t.Errorf("Expected body %q, got %q", tt.expectedBody, string(w.body))
+			if string(writer.body) != tt.expectedBody {
+				t.Errorf("Expected body %q, got %q", tt.expectedBody, string(writer.body))
 			}
 		})
 	}
@@ -532,15 +532,15 @@ func TestProcessJobStatus(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to convert to unstructured: %v", err)
 	}
-	u := &unstructured.Unstructured{Object: unstrObj}
-	u.SetGroupVersionKind(schema.GroupVersionKind{
+	unstructuredObj := &unstructured.Unstructured{Object: unstrObj}
+	unstructuredObj.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "forge.dev",
 		Version: "v1alpha1",
 		Kind:    "ZarfPackageJob",
 	})
 
 	_, err = dynamicClient.Resource(ZarfPackageJobGVR).Namespace("forge-system").Create(
-		context.Background(), u, metav1.CreateOptions{})
+		context.Background(), unstructuredObj, metav1.CreateOptions{})
 	if err != nil {
 		t.Fatalf("Failed to create ZarfPackageJob: %v", err)
 	}
@@ -867,8 +867,8 @@ func TestHandleActionChaining(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Failed to convert to unstructured: %v", err)
 			}
-			u := &unstructured.Unstructured{Object: unstrObj}
-			u.SetGroupVersionKind(schema.GroupVersionKind{
+			unstructuredObj := &unstructured.Unstructured{Object: unstrObj}
+			unstructuredObj.SetGroupVersionKind(schema.GroupVersionKind{
 				Group:   "forge.dev",
 				Version: "v1alpha1",
 				Kind:    "ZarfPackageJob",
@@ -876,12 +876,12 @@ func TestHandleActionChaining(t *testing.T) {
 
 			// Create the resource
 			_, err = dynamicClient.Resource(ZarfPackageJobGVR).Namespace(tt.pkg.Namespace).Create(
-				context.Background(), u, metav1.CreateOptions{})
+				context.Background(), unstructuredObj, metav1.CreateOptions{})
 			if err != nil {
 				t.Fatalf("Failed to create test resource: %v", err)
 			}
 
-			err = ctrl.handleActionChaining(context.Background(), u, tt.completedAction, "/workspace/package.tar.zst")
+			err = ctrl.handleActionChaining(context.Background(), unstructuredObj, tt.completedAction, "/workspace/package.tar.zst")
 			// We expect errors for chained actions since handlers will fail without real infrastructure
 			// But we verify the function executed without panic
 			if err != nil && !tt.expectChain {
@@ -893,9 +893,9 @@ func TestHandleActionChaining(t *testing.T) {
 }
 
 func mustNewMetrics() *telemetry.Metrics {
-	m, err := telemetry.NewMetrics()
+	metrics, err := telemetry.NewMetrics()
 	if err != nil {
 		panic(err)
 	}
-	return m
+	return metrics
 }

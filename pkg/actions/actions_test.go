@@ -644,9 +644,9 @@ func TestDeployHandlerExecute_ExternalClusterWithContext(t *testing.T) {
 }
 
 func mustNewMetrics() *telemetry.Metrics {
-	m, err := telemetry.NewMetrics()
+	metrics, err := telemetry.NewMetrics()
 	if err != nil {
 		panic(err)
 	}
-	return m
+	return metrics
 }

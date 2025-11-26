@@ -477,9 +477,9 @@ func contains(s, substr string) bool {
 			len(s) > len(substr) && len(substr) > 0 && hasSubstring(s, substr)))
 }
 
-func hasSubstring(s, substr string) bool {
-	for i := 0; i <= len(s)-len(substr); i++ {
-		if s[i:i+len(substr)] == substr {
+func hasSubstring(str, substr string) bool {
+	for index := 0; index <= len(str)-len(substr); index++ {
+		if str[index:index+len(substr)] == substr {
 			return true
 		}
 	}

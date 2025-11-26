@@ -41,7 +41,7 @@ func TestYAMLSyntax(t *testing.T) {
 
 				// Split on --- for multi-document YAML
 				docs := strings.Split(string(data), "\n---\n")
-				for i, doc := range docs {
+				for docIndex, doc := range docs {
 					doc = strings.TrimSpace(doc)
 					if doc == "" {
 						continue
@@ -49,7 +49,7 @@ func TestYAMLSyntax(t *testing.T) {
 
 					var obj interface{}
 					if err := yaml.Unmarshal([]byte(doc), &obj); err != nil {
-						t.Errorf("Document %d in %s has invalid YAML syntax: %v", i, path, err)
+						t.Errorf("Document %d in %s has invalid YAML syntax: %v", docIndex, path, err)
 					}
 				}
 			})

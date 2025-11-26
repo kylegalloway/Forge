@@ -40,7 +40,7 @@ func ptr[T any](v T) *T {
 }
 
 // mustParseQuantity parses a resource quantity or panics
-func mustParseQuantity(s string) resource.Quantity {
-	q := resource.MustParse(s)
-	return q
+func mustParseQuantity(quantityStr string) resource.Quantity {
+	quantity := resource.MustParse(quantityStr)
+	return quantity
 }

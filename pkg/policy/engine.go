@@ -197,8 +197,8 @@ func isActionAllowed(action zarfv1alpha1.Action, allowed []string) bool {
 	if len(allowed) == 0 {
 		return false
 	}
-	for _, a := range allowed {
-		if string(action) == a || a == "*" {
+	for _, allowedAction := range allowed {
+		if string(action) == allowedAction || allowedAction == "*" {
 			return true
 		}
 	}
@@ -209,22 +209,22 @@ func isDeployTargetAllowed(target zarfv1alpha1.DeployTargetType, allowed []strin
 	if len(allowed) == 0 {
 		return false
 	}
-	for _, t := range allowed {
-		if string(target) == t || t == "*" {
+	for _, allowedTarget := range allowed {
+		if string(target) == allowedTarget || allowedTarget == "*" {
 			return true
 		}
 	}
 	return false
 }
 
-func parseList(s string) []string {
-	if s == "" {
+func parseList(input string) []string {
+	if input == "" {
 		return nil
 	}
-	parts := strings.Split(s, ",")
+	parts := strings.Split(input, ",")
 	var result []string
-	for _, p := range parts {
-		result = append(result, strings.TrimSpace(p))
+	for _, part := range parts {
+		result = append(result, strings.TrimSpace(part))
 	}
 	return result
 }

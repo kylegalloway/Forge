@@ -6,117 +6,117 @@ import (
 )
 
 func TestNewMetrics(t *testing.T) {
-	m, err := NewMetrics()
+	metrics, err := NewMetrics()
 	if err != nil {
 		t.Fatalf("NewMetrics() error = %v", err)
 	}
-	if m == nil {
+	if metrics == nil {
 		t.Fatal("NewMetrics() returned nil")
 	}
-	if m.zarfPackageJobsCreated == nil {
+	if metrics.zarfPackageJobsCreated == nil {
 		t.Error("zarfPackageJobsCreated not initialized")
 	}
-	if m.zarfPackageJobsActive == nil {
+	if metrics.zarfPackageJobsActive == nil {
 		t.Error("zarfPackageJobsActive not initialized")
 	}
-	if m.jobsCreated == nil {
+	if metrics.jobsCreated == nil {
 		t.Error("jobsCreated not initialized")
 	}
-	if m.actionDuration == nil {
+	if metrics.actionDuration == nil {
 		t.Error("actionDuration not initialized")
 	}
 }
 
 func TestRecordZarfPackageJobCreated(t *testing.T) {
-	m, err := NewMetrics()
+	metrics, err := NewMetrics()
 	if err != nil {
 		t.Fatalf("NewMetrics() error = %v", err)
 	}
 
 	ctx := context.Background()
 	// Should not panic
-	m.RecordZarfPackageJobCreated(ctx, "default")
+	metrics.RecordZarfPackageJobCreated(ctx, "default")
 }
 
 func TestRecordZarfPackageJobDeleted(t *testing.T) {
-	m, err := NewMetrics()
+	metrics, err := NewMetrics()
 	if err != nil {
 		t.Fatalf("NewMetrics() error = %v", err)
 	}
 
 	ctx := context.Background()
 	// Should not panic
-	m.RecordZarfPackageJobDeleted(ctx, "default")
+	metrics.RecordZarfPackageJobDeleted(ctx, "default")
 }
 
 func TestRecordJobCreated(t *testing.T) {
-	m, err := NewMetrics()
+	metrics, err := NewMetrics()
 	if err != nil {
 		t.Fatalf("NewMetrics() error = %v", err)
 	}
 
 	ctx := context.Background()
-	m.RecordJobCreated(ctx, "default", "test-pkg", "Build")
+	metrics.RecordJobCreated(ctx, "default", "test-pkg", "Build")
 }
 
 func TestRecordJobCompleted(t *testing.T) {
-	m, err := NewMetrics()
+	metrics, err := NewMetrics()
 	if err != nil {
 		t.Fatalf("NewMetrics() error = %v", err)
 	}
 
 	ctx := context.Background()
-	m.RecordJobCompleted(ctx, "default", "test-pkg", "Build")
+	metrics.RecordJobCompleted(ctx, "default", "test-pkg", "Build")
 }
 
 func TestRecordJobFailed(t *testing.T) {
-	m, err := NewMetrics()
+	metrics, err := NewMetrics()
 	if err != nil {
 		t.Fatalf("NewMetrics() error = %v", err)
 	}
 
 	ctx := context.Background()
-	m.RecordJobFailed(ctx, "default", "test-pkg", "Build")
+	metrics.RecordJobFailed(ctx, "default", "test-pkg", "Build")
 }
 
 func TestRecordBuildActions(t *testing.T) {
-	m, err := NewMetrics()
+	metrics, err := NewMetrics()
 	if err != nil {
 		t.Fatalf("NewMetrics() error = %v", err)
 	}
 
 	ctx := context.Background()
-	m.RecordBuildStarted(ctx, "default", "test-pkg")
-	m.RecordBuildCompleted(ctx, "default", "test-pkg")
-	m.RecordBuildFailed(ctx, "default", "test-pkg")
+	metrics.RecordBuildStarted(ctx, "default", "test-pkg")
+	metrics.RecordBuildCompleted(ctx, "default", "test-pkg")
+	metrics.RecordBuildFailed(ctx, "default", "test-pkg")
 }
 
 func TestRecordPublishActions(t *testing.T) {
-	m, err := NewMetrics()
+	metrics, err := NewMetrics()
 	if err != nil {
 		t.Fatalf("NewMetrics() error = %v", err)
 	}
 
 	ctx := context.Background()
-	m.RecordPublishStarted(ctx, "default", "test-pkg")
-	m.RecordPublishCompleted(ctx, "default", "test-pkg")
-	m.RecordPublishFailed(ctx, "default", "test-pkg")
+	metrics.RecordPublishStarted(ctx, "default", "test-pkg")
+	metrics.RecordPublishCompleted(ctx, "default", "test-pkg")
+	metrics.RecordPublishFailed(ctx, "default", "test-pkg")
 }
 
 func TestRecordDeployActions(t *testing.T) {
-	m, err := NewMetrics()
+	metrics, err := NewMetrics()
 	if err != nil {
 		t.Fatalf("NewMetrics() error = %v", err)
 	}
 
 	ctx := context.Background()
-	m.RecordDeployStarted(ctx, "default", "test-pkg")
-	m.RecordDeployCompleted(ctx, "default", "test-pkg")
-	m.RecordDeployFailed(ctx, "default", "test-pkg")
+	metrics.RecordDeployStarted(ctx, "default", "test-pkg")
+	metrics.RecordDeployCompleted(ctx, "default", "test-pkg")
+	metrics.RecordDeployFailed(ctx, "default", "test-pkg")
 }
 
 func TestRecordActionDuration(t *testing.T) {
-	m, err := NewMetrics()
+	metrics, err := NewMetrics()
 	if err != nil {
 		t.Fatalf("NewMetrics() error = %v", err)
 	}
@@ -134,34 +134,34 @@ func TestRecordActionDuration(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(_ *testing.T) {
-			m.RecordActionDuration(ctx, "default", "test-pkg", "Build", tt.duration, tt.status)
+			metrics.RecordActionDuration(ctx, "default", "test-pkg", "Build", tt.duration, tt.status)
 		})
 	}
 }
 
 func TestRecordReconcileError(t *testing.T) {
-	m, err := NewMetrics()
+	metrics, err := NewMetrics()
 	if err != nil {
 		t.Fatalf("NewMetrics() error = %v", err)
 	}
 
 	ctx := context.Background()
-	m.RecordReconcileError(ctx, "policy_violation")
-	m.RecordReconcileError(ctx, "job_creation_failed")
+	metrics.RecordReconcileError(ctx, "policy_violation")
+	metrics.RecordReconcileError(ctx, "job_creation_failed")
 }
 
 func TestRecordReconcileDuration(t *testing.T) {
-	m, err := NewMetrics()
+	metrics, err := NewMetrics()
 	if err != nil {
 		t.Fatalf("NewMetrics() error = %v", err)
 	}
 
 	ctx := context.Background()
-	m.RecordReconcileDuration(ctx, 0.123)
+	metrics.RecordReconcileDuration(ctx, 0.123)
 }
 
 func TestRecordWebhookValidation(t *testing.T) {
-	m, err := NewMetrics()
+	metrics, err := NewMetrics()
 	if err != nil {
 		t.Fatalf("NewMetrics() error = %v", err)
 	}
@@ -179,7 +179,7 @@ func TestRecordWebhookValidation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(_ *testing.T) {
-			m.RecordWebhookValidation(ctx, tt.allowed, tt.reason)
+			metrics.RecordWebhookValidation(ctx, tt.allowed, tt.reason)
 		})
 	}
 }

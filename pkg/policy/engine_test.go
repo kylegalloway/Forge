@@ -365,9 +365,9 @@ func TestParseList(t *testing.T) {
 				t.Errorf("expected %d items, got %d", len(tt.expected), len(result))
 				return
 			}
-			for i := range result {
-				if result[i] != tt.expected[i] {
-					t.Errorf("item %d: expected %s, got %s", i, tt.expected[i], result[i])
+			for index := range result {
+				if result[index] != tt.expected[index] {
+					t.Errorf("item %d: expected %s, got %s", index, tt.expected[index], result[index])
 				}
 			}
 		})
@@ -917,13 +917,13 @@ func TestMatchAny_InvalidPattern(t *testing.T) {
 	}
 }
 
-func contains(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr || len(s) > len(substr) && containsRec(s, substr))
+func contains(str, substr string) bool {
+	return len(str) >= len(substr) && (str == substr || len(str) > len(substr) && containsRec(str, substr))
 }
 
-func containsRec(s, substr string) bool {
-	for i := 0; i <= len(s)-len(substr); i++ {
-		if s[i:i+len(substr)] == substr {
+func containsRec(str, substr string) bool {
+	for index := 0; index <= len(str)-len(substr); index++ {
+		if str[index:index+len(substr)] == substr {
 			return true
 		}
 	}

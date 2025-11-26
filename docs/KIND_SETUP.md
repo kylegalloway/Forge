@@ -62,7 +62,8 @@ kubectl wait --for=condition=Ready pods --all -n monitoring --timeout=300s
 # 7. Access Grafana
 open http://localhost:3000
 # Username: admin
-# Password: prom-operator (default for kube-prometheus-stack)
+# Password: Get it with the command below:
+kubectl get secret -n monitoring kube-prometheus-stack-grafana -o jsonpath="{.data.admin-password}" | base64 -d
 ```
 
 ## Step-by-Step Instructions
@@ -206,11 +207,11 @@ open http://localhost:3000
 kubectl port-forward -n monitoring svc/kube-prometheus-stack-grafana 3000:80
 ```
 
-**Default credentials:**
+**Credentials:**
 - Username: `admin`
-- Password: `prom-operator` (default for kube-prometheus-stack) <!-- pragma: allowlist secret -->
+- Password: Randomly generated on install
 
-To get the actual password:
+Get the password:
 ```bash
 kubectl get secret -n monitoring kube-prometheus-stack-grafana -o jsonpath="{.data.admin-password}" | base64 -d
 ```

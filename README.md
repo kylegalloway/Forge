@@ -183,7 +183,7 @@ helm upgrade --install forge ./chart/forge \
 
 **Includes**: Forge controller, OTEL Collector, ServiceMonitor
 **Requires**: kube-prometheus-stack for Grafana and Prometheus
-**Access Grafana**: http://localhost:3000 (admin/prom-operator)
+**Access Grafana**: http://localhost:3000 (admin/<get-password-from-secret>)
 
 📖 **Kind Setup Guide**: See [docs/KIND_SETUP.md](docs/KIND_SETUP.md) for complete local development setup
 📖 **Deployment Guide**: See [DEPLOYMENT.md](DEPLOYMENT.md) for complete deployment options and configurations

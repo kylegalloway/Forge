@@ -171,6 +171,7 @@ helm install kube-prometheus-stack prometheus-community/kube-prometheus-stack \
   --set prometheus.prometheusSpec.serviceMonitorSelectorNilUsesHelmValues=false \
   --set grafana.service.type=NodePort \
   --set grafana.service.nodePort=30000 \
+  --timeout 10m \
   --wait
 
 # Then install Forge

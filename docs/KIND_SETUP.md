@@ -34,6 +34,7 @@ helm install kube-prometheus-stack prometheus-community/kube-prometheus-stack \
   --set prometheus.prometheusSpec.serviceMonitorSelectorNilUsesHelmValues=false \
   --set grafana.service.type=NodePort \
   --set grafana.service.nodePort=30000 \
+  --timeout 10m \
   --wait
 
 # 3. Build Forge controller image
@@ -105,12 +106,14 @@ helm install kube-prometheus-stack prometheus-community/kube-prometheus-stack \
   --set prometheus.prometheusSpec.serviceMonitorSelectorNilUsesHelmValues=false \
   --set grafana.service.type=NodePort \
   --set grafana.service.nodePort=30000 \
+  --timeout 10m \
   --wait
 ```
 
 **Why these settings?**
 - `serviceMonitorSelectorNilUsesHelmValues=false` - Allows Prometheus to discover ServiceMonitors in any namespace
 - `grafana.service.type=NodePort` - Exposes Grafana on port 30000 (mapped to host port 3000)
+- `--timeout 10m` - kube-prometheus-stack deploys many resources and needs more than the default 5m timeout
 
 Verify monitoring stack is running:
 ```bash
@@ -254,6 +257,24 @@ kind delete cluster --name forge-demo
 ```
 
 ## Troubleshooting
+
+### Helm Install Shows "failed" but Pods Are Running
+
+If `helm list -n monitoring` shows status `failed` but all pods are running:
+
+```bash
+# Check if pods are actually healthy
+kubectl get pods -n monitoring
+
+# If everything is Running, the install actually succeeded
+# The "failed" status is from --wait timeout, not deployment failure
+# Fix by marking release as deployed:
+helm upgrade kube-prometheus-stack prometheus-community/kube-prometheus-stack \
+  --namespace monitoring \
+  --reuse-values
+```
+
+This happens when the chart takes longer than the timeout to deploy all resources. The pods are fine, Helm just gave up waiting.
 
 ### Grafana Not Accessible
 

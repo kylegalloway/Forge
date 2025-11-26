@@ -206,40 +206,53 @@ failed to authorize: failed to fetch anonymous token: 403 Forbidden
 ```
 
 **Cause:**
-The Zarf CLI image requires authentication to pull from GitHub Container Registry (GHCR).
+The Zarf project does not publish container images - they only distribute binaries. The image `ghcr.io/defenseunicorns/zarf:v0.66.0` referenced in the code doesn't exist in any public registry.
 
 **Solutions:**
 
-1. **Create imagePullSecret for GHCR (Recommended for production):**
+1. **Build the Zarf CLI image (Recommended for testing/Kind):**
+
+   Forge includes a Dockerfile that packages the official Zarf CLI binary:
 
    ```bash
-   # Create a GitHub Personal Access Token with read:packages scope
-   # Then create the secret:
-   kubectl create secret docker-registry ghcr-secret \
-     --docker-server=ghcr.io \
-     --docker-username=<github-username> \
-     --docker-password=<github-token> \
+   # Build the image
+   docker build -t ghcr.io/defenseunicorns/zarf:v0.66.0 images/zarf-cli/
+
+   # For Kind clusters, load it
+   kind load docker-image ghcr.io/defenseunicorns/zarf:v0.66.0 --name <cluster-name>
+
+   # For Podman users:
+   podman build -t ghcr.io/defenseunicorns/zarf:v0.66.0 images/zarf-cli/
+   podman save ghcr.io/defenseunicorns/zarf:v0.66.0 -o /tmp/zarf-cli.tar
+   kind load image-archive /tmp/zarf-cli.tar --name <cluster-name>
+   rm /tmp/zarf-cli.tar
+   ```
+
+2. **Build and push to your registry (Recommended for production):**
+
+   ```bash
+   # Build and tag for your registry
+   docker build -t your-registry.io/zarf:v0.66.0 images/zarf-cli/
+   docker push your-registry.io/zarf:v0.66.0
+
+   # Update pkg/actions/build.go to reference your registry
+   # Change: ZarfCLIImage = "ghcr.io/defenseunicorns/zarf:v0.66.0"
+   # To: ZarfCLIImage = "your-registry.io/zarf:v0.66.0"
+   ```
+
+3. **Configure imagePullSecrets (if you pushed to a private registry):**
+
+   ```bash
+   kubectl create secret docker-registry registry-secret \
+     --docker-server=your-registry.io \
+     --docker-username=<username> \
+     --docker-password=<password> \
      -n <namespace>
 
    # Add to your namespace's default ServiceAccount
    kubectl patch serviceaccount default \
      -n <namespace> \
-     -p '{"imagePullSecrets": [{"name": "ghcr-secret"}]}'
-   ```
-
-2. **Use a self-hosted Zarf image:**
-
-   Build and push the Zarf CLI to your own registry and update `pkg/actions/build.go` to reference your image.
-
-3. **For Kind/testing (pull and load manually):**
-
-   ```bash
-   # Pull with authentication on your host
-   docker login ghcr.io -u <username> -p <token>
-   docker pull ghcr.io/defenseunicorns/zarf:v0.66.0
-
-   # Load into Kind cluster
-   kind load docker-image ghcr.io/defenseunicorns/zarf:v0.66.0 --name forge-demo
+     -p '{"imagePullSecrets": [{"name": "registry-secret"}]}'
    ```
 
 ### Job exceeds active deadline

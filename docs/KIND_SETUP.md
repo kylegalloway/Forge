@@ -49,9 +49,15 @@ podman save localhost/forge-controller:demo -o /tmp/forge-controller.tar && \
 kind load image-archive /tmp/forge-controller.tar --name forge-demo && \
 rm /tmp/forge-controller.tar
 
-# 5. Pre-load Zarf CLI image (so samples work without GHCR credentials)
-docker pull ghcr.io/defenseunicorns/zarf:v0.66.0
+# 5. Build Zarf CLI image (Zarf doesn't publish container images)
+docker build -t ghcr.io/defenseunicorns/zarf:v0.66.0 images/zarf-cli/
 kind load docker-image ghcr.io/defenseunicorns/zarf:v0.66.0 --name forge-demo
+
+# For Podman users:
+# podman build -t ghcr.io/defenseunicorns/zarf:v0.66.0 images/zarf-cli/
+# podman save ghcr.io/defenseunicorns/zarf:v0.66.0 -o /tmp/zarf-cli.tar && \
+# kind load image-archive /tmp/zarf-cli.tar --name forge-demo && \
+# rm /tmp/zarf-cli.tar
 
 # 6. Install Forge
 helm upgrade --install forge ./chart/forge \
@@ -158,16 +164,27 @@ Verify the image is loaded:
 docker exec -it forge-demo-control-plane crictl images | grep forge
 ```
 
-**Load Zarf CLI image (so samples work):**
+**Build and load Zarf CLI image:**
+
+Zarf doesn't publish container images - only binaries. Forge includes a Dockerfile that packages the official Zarf CLI binary into a container image for use in Job pods.
+
 ```bash
-# Pull from GHCR (requires Docker to be logged in to GHCR)
-docker pull ghcr.io/defenseunicorns/zarf:v0.66.0
+# Build the image
+docker build -t ghcr.io/defenseunicorns/zarf:v0.66.0 images/zarf-cli/
 
 # Load into Kind
 kind load docker-image ghcr.io/defenseunicorns/zarf:v0.66.0 --name forge-demo
 ```
 
-This pre-loads the Zarf CLI image that build/deploy jobs need. Without this, job pods will fail with ImagePullBackOff since Kind clusters can't pull from GHCR without credentials configured.
+**For Podman users:**
+```bash
+podman build -t ghcr.io/defenseunicorns/zarf:v0.66.0 images/zarf-cli/
+podman save ghcr.io/defenseunicorns/zarf:v0.66.0 -o /tmp/zarf-cli.tar
+kind load image-archive /tmp/zarf-cli.tar --name forge-demo
+rm /tmp/zarf-cli.tar
+```
+
+This packages the Zarf CLI so build/deploy jobs can run. Without this, job pods will fail with ImagePullBackOff.
 
 ### 5. Install Forge
 

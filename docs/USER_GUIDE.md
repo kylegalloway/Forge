@@ -6,57 +6,33 @@ Forge allows you to manage Zarf packages using Kubernetes Custom Resources. This
 
 ## Installation
 
-Forge supports two deployment modes depending on your cluster permissions and security requirements.
+Forge is deployed using Helm charts. See the [README](../README.md#installation) for full installation options.
 
-### Option 1: Cluster-Wide Deployment (Recommended)
-
-For platform teams managing multi-tenant environments with full cluster access:
+### Quick Install
 
 ```bash
-# 1. Install Custom Resource Definitions (requires cluster-admin)
-kubectl apply -f config/crd/forge.dev_zarfpackagejobs.yaml
-
-# 2. Install the Forge Controller with ClusterRole
-kubectl apply -f config/rbac/rbac.yaml
-kubectl apply -f config/manager/deployment.yaml
-
-# 3. Install the Admission Webhook (Required for policy enforcement)
-kubectl apply -f webhook/deploy/
+helm upgrade --install forge ./chart/forge \
+  --namespace forge-system \
+  --create-namespace
 ```
 
-**Features**:
+### Deployment Modes
 
+Forge supports two deployment modes depending on your cluster permissions and security requirements.
+
+**Cluster-Wide Deployment (Default)**:
 - Watches all namespaces
 - ZarfPackageJobs can be created in any namespace
 - ServiceAccounts can be in any namespace
 - Suitable for platform teams
 
-### Option 2: Namespace-Scoped Deployment (Restricted)
-
-For restricted environments where ClusterRole permissions aren't available:
-
-```bash
-# 1. Install CRDs (requires cluster-admin - one-time setup)
-kubectl apply -f config/crd/forge.dev_zarfpackagejobs.yaml
-
-# 2. Create namespace
-kubectl create namespace forge-system
-
-# 3. Install Forge with Role (namespace-only permissions)
-kubectl apply -f config/namespace-scoped/rbac.yaml
-kubectl apply -f config/namespace-scoped/deployment.yaml
-```
-
-**Features**:
-
+**Namespace-Scoped Deployment**:
 - Watches only forge-system namespace
 - All resources must be in forge-system
 - Minimal permissions (Role, not ClusterRole)
 - Suitable for restricted clusters, individual teams
 
-**Important**: In namespace-scoped mode, all ZarfPackageJobs, ServiceAccounts, and Secrets must be created in the `forge-system` namespace.
-
-📖 **Detailed Guide**: See [NAMESPACE_SCOPED_DEPLOYMENT.md](./NAMESPACE_SCOPED_DEPLOYMENT.md) for complete instructions, migration paths, and multi-tenant patterns.
+📖 **Detailed Guide**: See [NAMESPACE_SCOPED_DEPLOYMENT.md](NAMESPACE_SCOPED_DEPLOYMENT.md) for complete instructions.
 
 ## Core Concepts
 

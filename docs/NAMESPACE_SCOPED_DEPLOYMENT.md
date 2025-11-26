@@ -56,53 +56,54 @@ Deploy Forge with namespace-scoped permissions instead of cluster-wide access.
 
 ## Prerequisites
 
-1. **CRDs must be installed cluster-wide** (requires cluster admin):
-
-   ```bash
-   kubectl apply -f config/crd/forge.dev_zarfpackagejobs.yaml
-   ```
-
-2. **Namespace creation permission** (or pre-created namespace):
-
-   ```bash
-   kubectl create namespace forge-system
-   ```
+- Helm 3.8+
+- kubectl configured
+- Namespace creation permission (or pre-created namespace)
 
 ## Installation
 
-### Option 1: Quick Install
+Forge is deployed using Helm charts. The namespace-scoped mode is enabled via Helm values.
+
+### Quick Install
 
 ```bash
-# Install namespace-scoped deployment
-kubectl apply -f config/namespace-scoped/rbac.yaml
-kubectl apply -f config/namespace-scoped/deployment.yaml
+helm upgrade --install forge ./chart/forge \
+  --namespace forge-system \
+  --create-namespace \
+  --set controller.namespaceScope=true
 ```
 
-### Option 2: Manual Install
+**Note**: The above command:
+- Creates CRDs automatically (included in Helm chart)
+- Deploys controller with namespace-scoped RBAC (Role instead of ClusterRole)
+- Controller watches only the forge-system namespace
 
-**1. Create Namespace:**
+### Custom Values File
+
+Create a values file for namespace-scoped deployment:
+
+```yaml
+# values-namespace-scoped.yaml
+controller:
+  namespaceScope: true
+  replicaCount: 1
+
+networkPolicies:
+  enabled: true
+```
+
+Install with custom values:
 
 ```bash
-kubectl create namespace forge-system
-kubectl label namespace forge-system \
-  pod-security.kubernetes.io/enforce=restricted \
-  pod-security.kubernetes.io/audit=restricted \
-  pod-security.kubernetes.io/warn=restricted
+helm upgrade --install forge ./chart/forge \
+  -f values-namespace-scoped.yaml \
+  --namespace forge-system \
+  --create-namespace
 ```
 
-**2. Install RBAC:**
+### Manual Steps (if needed)
 
-```bash
-kubectl apply -f config/namespace-scoped/rbac.yaml
-```
-
-**3. Deploy Controller:**
-
-```bash
-kubectl apply -f config/namespace-scoped/deployment.yaml
-```
-
-**4. Verify Installation:**
+**Verify Installation:**
 
 ```bash
 # Check controller is running
@@ -435,7 +436,7 @@ kubectl get all,zarfpackagejobs,sa,secrets -n forge-system -o yaml > forge-backu
 
 ## Examples
 
-See [config/samples/](../config/samples/) for examples. All examples work in namespace-scoped mode when applied to forge-system namespace.
+See [examples/samples/](../examples/samples/) for examples. All examples work in namespace-scoped mode when applied to forge-system namespace.
 
 ---
 

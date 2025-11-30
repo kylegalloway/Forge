@@ -1,6 +1,7 @@
 ---
 # Example: Build a minimal test package that will succeed
 # This demonstrates a successful Forge workflow in Kind
+# Uses the hello-forge test package in this repository
 apiVersion: forge.dev/v1alpha1
 kind: ZarfPackageJob
 metadata:
@@ -16,9 +17,9 @@ spec:
   source:
     type: Git
     git:
-      url: https://github.com/defenseunicorns/zarf
+      url: https://github.com/kylegalloway/forge
       ref: main
-      path: examples/dos-games
+      path: examples/test-packages/hello-forge
 
   # No publish or deploy config needed
   # Built artifact will be stored in job pod for verification

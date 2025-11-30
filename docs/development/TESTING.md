@@ -44,6 +44,7 @@ make test-validation
 ```
 
 Tests include:
+
 - CRD schema validation
 - RBAC manifest correctness
 - Sample resource validation
@@ -63,6 +64,7 @@ make e2e-test
 ```
 
 **Test Scenarios:**
+
 - ServiceAccount policy creation
 - Build-only ZarfPackageJobs
 - Policy violation detection (unauthorized actions)
@@ -72,6 +74,7 @@ make e2e-test
 - Status field population
 
 **Prerequisites:**
+
 - Running Kubernetes cluster
 - Forge deployed via Helm (or legacy manifests)
 - kubectl configured
@@ -123,12 +126,14 @@ CLEANUP_ON_SUCCESS=false \
 | `FAIL_FAST` | `false` | Stop on first failure |
 
 **Output:**
+
 - Color-coded test results
 - Pass/fail tracking for each test
 - Summary with total/passed/failed counts
 - Detailed logs for debugging
 
 **Cleanup:**
+
 - Automatically deletes test resources
 - Deletes Kind cluster on success (configurable)
 - Keeps cluster on failure for debugging
@@ -180,6 +185,7 @@ CLEANUP_ON_SUCCESS=false \
 | `CLEANUP_ON_SUCCESS` | `true` | Delete cluster on success |
 
 **Features:**
+
 - Deploys full Gitea instance with OCI registry support
 - Tests real OCI publish workflows (not mocked)
 - Validates registry authentication
@@ -204,10 +210,13 @@ All tests run automatically in CI:
 
 ```yaml
 # .github/workflows/ci.yaml
+
 - name: Run Unit Tests
+
   run: make test
 
 - name: Upload Coverage
+
   uses: codecov/codecov-action@v3
   with:
     files: ./cover.out
@@ -222,6 +231,7 @@ test:
   script:
     - make test
     - go tool cover -func=cover.out
+
   coverage: '/^total:.*?(\d+\.\d+)%$/'
 ```
 
@@ -314,6 +324,7 @@ kubectl get events -n forge-system --sort-by='.lastTimestamp'
 
 1. Create test file: `pkg/mypackage/myfile_test.go`
 2. Follow existing patterns:
+
    ```go
    func TestMyFunction(t *testing.T) {
        // Arrange
@@ -370,6 +381,7 @@ main() {
 ## Test Best Practices
 
 ### Unit Tests
+
 - ✅ Test one thing per test
 - ✅ Use table-driven tests for multiple cases
 - ✅ Mock external dependencies
@@ -378,6 +390,7 @@ main() {
 - ❌ Don't make tests depend on each other
 
 ### Integration Tests
+
 - ✅ Test real workflows end-to-end
 - ✅ Clean up resources in defer/trap
 - ✅ Use unique names with timestamps
@@ -386,6 +399,7 @@ main() {
 - ❌ Don't leave resources behind
 
 ### E2E Tests
+
 - ✅ Test from user perspective
 - ✅ Validate policy enforcement
 - ✅ Check status fields and events
@@ -406,11 +420,13 @@ main() {
 ## Continuous Improvement
 
 ### Tracking Progress
+
 - Coverage reports in CI/CD
 - Codecov integration for PRs
 - Regular coverage reviews
 
 ### Quality Metrics
+
 - All PRs require tests
 - No decrease in coverage
 - Integration tests pass before merge

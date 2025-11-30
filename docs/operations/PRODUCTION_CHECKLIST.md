@@ -263,6 +263,7 @@ Production readiness checklist for deploying Forge - the Kubernetes-native Zarf 
 ### Package Attestation Framework (Zarf Packages Built BY Forge) 🚧 PARTIAL
 
 **Attestation Types & Generation:**
+
 - [x] ✅ In-toto attestation types (pkg/attestation/types.go)
 - [x] ✅ SLSA provenance structures
 - [x] ✅ Forge operation predicates
@@ -273,6 +274,7 @@ Production readiness checklist for deploying Forge - the Kubernetes-native Zarf 
 - [x] ✅ Package documentation (pkg/attestation/README.md)
 
 **Storage & Integration:**
+
 - [x] 🚧 Storage interface defined (Local/OCI/ConfigMap)
 - [x] 🚧 Local storage implementation (development)
 - [ ] ⏸️ OCI storage implementation (production)
@@ -291,22 +293,26 @@ Production readiness checklist for deploying Forge - the Kubernetes-native Zarf 
 **Rationale**: Supply chain security is critical for production deployments. Attestations provide cryptographic proof of provenance, enabling auditability and compliance. SLSA framework provides industry-standard approach to supply chain integrity.
 
 **Two-Tier Approach**:
+
 1. **Forge Self-Attestation**: Prove Forge controller/webhook images are authentic
 2. **Package Attestation**: Forge generates attestations for packages it builds
 
 **Achievements**:
+
 - ✅ **SLSA Build Level 3 for Forge images** - Isolated, signed, non-falsifiable, hermetic
 - 🚧 **Package attestation framework** - Types, generators, storage interface complete
 - ✅ **Verification tooling** - CLI script, documentation, CI/CD examples
 - ✅ **Transparency** - All signatures recorded in Rekor public log
 
 **Target Standards**:
+
 - ✅ SLSA Build Level 3 for Forge images (ACHIEVED)
 - 🚧 SLSA Level 2+ for Zarf packages (framework ready, integration pending)
 - 🚧 In-toto attestation predicates (implemented, not yet integrated)
 - ✅ Sigstore keyless signing (Cosign + GitHub OIDC)
 
 **Files Added**:
+
 - `.github/workflows/attest.yaml` - Attestation workflow (319 lines)
 - `docs/ATTESTATION_VERIFICATION.md` - Verification guide (369 lines)
 - `scripts/verify-forge-image.sh` - Verification script (210 lines)
@@ -411,6 +417,7 @@ Minimum viable path (fastest route):
 4. **REQUIRED**: Phase 10 - Launch Prep (verification, capacity planning) - 1 week
 
 **Estimated time to production**:
+
 - Forge images ready NOW (self-attestation complete)
 - Package attestation integration: 2-3 weeks
 - Full deployment with compliance: 3-4 weeks
@@ -422,12 +429,14 @@ Minimum viable path (fastest route):
 ## Recommended Execution Order
 
 ### ✅ Phases 1-6, 8: COMPLETED
+
 - Core infrastructure, security, observability, hardening complete
 - Testing, documentation, and CI/CD pipelines fully implemented
 
 ### ✅ Forge Self-Attestation: COMPLETE
 
 Forge images are production-ready with SLSA Build Level 3:
+
 - SLSA provenance, Cosign signing, SBOM generation all automated
 - Verification tooling and documentation complete
 - Can deploy Forge controller NOW with full attestation

@@ -5,6 +5,7 @@ The attestation package provides SLSA provenance and supply chain attestation ca
 ## Overview
 
 This package implements:
+
 - **SLSA Provenance v1.0** - Industry-standard build provenance
 - **In-toto Attestations** - Attestation framework for software supply chain
 - **Forge Operation Predicates** - Custom predicates for Forge-specific operations
@@ -164,6 +165,7 @@ err = ociStorage.Store(ctx, bundle, opts)
 SLSA (Supply-chain Levels for Software Artifacts) provenance provides a standard way to describe how a software artifact was built.
 
 **Key fields:**
+
 - `buildDefinition` - Describes the build process
   - `buildType` - Identifier for the build system
   - `externalParameters` - Top-level build inputs
@@ -173,6 +175,7 @@ SLSA (Supply-chain Levels for Software Artifacts) provenance provides a standard
   - `metadata` - Timestamps and invocation ID
 
 **SLSA Level 2 Requirements:**
+
 - ✅ Isolated build environment
 - ✅ Signed provenance
 - ✅ Build service identity
@@ -180,6 +183,7 @@ SLSA (Supply-chain Levels for Software Artifacts) provenance provides a standard
 ### Forge Operation Predicate
 
 Custom predicate for Forge-specific operations that captures:
+
 - Operation type (Build, Publish, Deploy)
 - ZarfPackageJob metadata
 - ServiceAccount information
@@ -194,10 +198,12 @@ Custom predicate for Forge-specific operations that captures:
 **Use case:** Development and testing
 
 **Pros:**
+
 - Simple, no external dependencies
 - Easy debugging
 
 **Cons:**
+
 - Not suitable for production
 - No redundancy
 - Limited querying
@@ -207,12 +213,14 @@ Custom predicate for Forge-specific operations that captures:
 **Use case:** Production deployments
 
 **Pros:**
+
 - Industry-standard
 - Integrates with existing registries
 - Supports signing (Cosign)
 - Built-in access control
 
 **Cons:**
+
 - Requires registry access
 - More complex setup
 
@@ -234,11 +242,13 @@ err := storage.Store(ctx, bundle, opts)
 **Use case:** Kubernetes-native deployments
 
 **Pros:**
+
 - Native Kubernetes resource
 - Easy RBAC integration
 - Simple backup/restore
 
 **Cons:**
+
 - Size limits (1MB per ConfigMap)
 - Not suitable for large attestations
 - Limited querying
@@ -301,6 +311,7 @@ spec:
 ## Future Enhancements
 
 ### Phase 1 (Current) ✅ COMPLETE
+
 - ✅ Basic attestation types (types.go)
 - ✅ SLSA provenance generation (generator.go)
 - ✅ Forge operation predicates
@@ -311,6 +322,7 @@ spec:
 - ✅ Attestation annotations and helpers (helpers.go)
 
 ### Phase 2 (Next) 🚧 IN PROGRESS
+
 - [x] ✅ OCI registry storage implementation (completed)
 - [x] ✅ Controller integration pattern (completed)
 - [x] ✅ Annotation constants (completed)
@@ -320,6 +332,7 @@ spec:
 - [ ] ⏸️ Status field updates
 
 ### Phase 3 (Future)
+
 - [ ] SBOM generation for packages
 - [ ] Vulnerability scanning integration
 - [ ] Policy-based attestation requirements

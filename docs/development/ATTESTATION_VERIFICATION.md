@@ -5,6 +5,7 @@ This guide explains how to verify the authenticity and provenance of Forge conta
 ## Overview
 
 Forge images are signed and attested using:
+
 - **Cosign** - Keyless signing with GitHub OIDC
 - **SLSA Provenance** - Build provenance metadata
 - **SBOM** - Software Bill of Materials (SPDX + CycloneDX)
@@ -49,6 +50,7 @@ cosign verify \
 ```
 
 **What this proves:**
+
 - ✅ Image was built by GitHub Actions
 - ✅ Built from the official Forge repository
 - ✅ Signature recorded in Rekor transparency log
@@ -68,6 +70,7 @@ cosign verify-attestation \
 ```
 
 **Provenance contains:**
+
 - Build environment details
 - Source repository and commit
 - Build inputs and parameters
@@ -75,6 +78,7 @@ cosign verify-attestation \
 - Timestamps
 
 **SLSA Level:** Build Level 3
+
 - ✅ Isolated build environment
 - ✅ Signed provenance
 - ✅ Non-falsifiable (OIDC identity)
@@ -97,6 +101,7 @@ cat sbom.spdx.json | jq '.packages[] | select(.name) | {name, version, type}'
 ```
 
 **SBOM includes:**
+
 - All Go dependencies with versions
 - Operating system packages
 - License information
@@ -155,11 +160,14 @@ metadata:
 spec:
   images:
   - glob: "ghcr.io/kylegalloway/forge/*"
+
   authorities:
   - keyless:
+
       url: https://fulcio.sigstore.dev
       identities:
       - issuer: https://token.actions.githubusercontent.com
+
         subjectRegExp: "https://github.com/kylegalloway/forge/.*"
 ```
 
@@ -180,17 +188,22 @@ spec:
   webhookTimeoutSeconds: 30
   rules:
   - name: verify-signature
+
     match:
       any:
       - resources:
+
           kinds:
           - Pod
+
     verifyImages:
     - imageReferences:
       - "ghcr.io/kylegalloway/forge/*"
+
       attestors:
       - entries:
         - keyless:
+
             subject: "https://github.com/kylegalloway/forge/.github/workflows/attest.yaml@refs/heads/main"
             issuer: "https://token.actions.githubusercontent.com"
             rekor:
@@ -211,6 +224,7 @@ rekor-cli get --uuid <UUID>
 ```
 
 **What Rekor provides:**
+
 - Immutable audit trail
 - Tamper-evident log
 - Public verification
@@ -239,6 +253,7 @@ verify-forge-images:
   image: gcr.io/projectsigstore/cosign:latest
   script:
     - cosign verify
+
         --certificate-identity-regexp="https://github.com/kylegalloway/forge"
         --certificate-oidc-issuer="https://token.actions.githubusercontent.com"
         ghcr.io/kylegalloway/forge/forge-controller:${CI_COMMIT_TAG}
@@ -248,6 +263,7 @@ verify-forge-images:
 
 ```yaml
 - name: Verify Forge image
+
   run: |
     cosign verify \
       --certificate-identity-regexp="https://github.com/kylegalloway/forge" \
@@ -262,6 +278,7 @@ verify-forge-images:
 **Cause:** Image not signed or pulled from wrong registry
 
 **Solution:**
+
 1. Ensure you're using the official registry: `ghcr.io/kylegalloway/forge`
 2. Verify the image exists and is signed
 3. Check you have the latest Cosign version
@@ -271,6 +288,7 @@ verify-forge-images:
 **Cause:** Image signed with different identity
 
 **Solution:**
+
 1. Verify the `--certificate-identity-regexp` matches the repository
 2. For forks, adjust the identity pattern
 
@@ -279,6 +297,7 @@ verify-forge-images:
 **Cause:** Image tampered with or signature invalid
 
 **Solution:**
+
 1. **DO NOT USE THIS IMAGE**
 2. Report to security@forge.dev (if this existed)
 3. Pull fresh image from registry

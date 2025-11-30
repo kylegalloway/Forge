@@ -629,6 +629,7 @@ spec:
     spec:
       containers:
       - name: controller
+
         resources:
           requests:
             cpu: 500m

@@ -74,6 +74,7 @@ helm upgrade --install forge ./chart/forge \
 ```
 
 **Note**: The above command:
+
 - Creates CRDs automatically (included in Helm chart)
 - Deploys controller with namespace-scoped RBAC (Role instead of ClusterRole)
 - Controller watches only the forge-system namespace
@@ -189,10 +190,12 @@ spec:
     spec:
       containers:
       - name: controller
+
         args:
         - -v=2
         - --namespace=forge-system
         - --enable-leader-election=true  # Add this
+
 ```
 
 **2. Add PodDisruptionBudget:**

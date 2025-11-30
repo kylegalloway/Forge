@@ -44,6 +44,7 @@ For complete documentation, see the [Chart README](../README.md).
 ### 1. Mature Cluster
 
 Use `values-mature-cluster.yaml` when you have:
+
 - Existing Prometheus setup
 - Existing Grafana instance
 - Existing OTEL Collector
@@ -53,6 +54,7 @@ This deploys only the Forge controller and connects to your existing infrastruct
 ### 2. New Cluster
 
 Use `values-new-cluster.yaml` when you need:
+
 - Full observability stack
 - Prometheus for metrics
 - Grafana for visualization

@@ -292,14 +292,14 @@ If the dashboard has been published to grafana.com, you can import by ID instead
 Create a sample ZarfPackageJob:
 
 ```bash
-# First, create the required ServiceAccount with policy annotations
+# Create the required ServiceAccount with policy annotations
 kubectl apply -f examples/samples/service-account-example.yaml
 
-# Then apply the sample job
+# Apply a sample job
 kubectl apply -f examples/samples/v1alpha1/build-only-git.yaml
 ```
 
-**Note:** If you completed step 4 and pre-loaded the Zarf CLI image, the build job should work without issues. The job will clone the Zarf repository and attempt to build a package (which will fail since it's a real build, but demonstrates the full workflow).
+**Note:** The build job will attempt to build the full Zarf repository, which is expected to fail in a test environment due to resource constraints and missing dependencies. The purpose is to verify that Forge can create jobs and the controller processes them correctly.
 
 Watch the job:
 ```bash
@@ -311,15 +311,41 @@ View controller logs:
 kubectl logs -n forge-system -l app=forge-controller -f
 ```
 
-Check job pod status:
+Verify the controller processed the job:
 ```bash
-kubectl get pods -n default
-kubectl describe pod <job-pod-name> -n default
+# Check the ZarfPackageJob resource
+kubectl describe zarfpackagejob build-only-example -n default
+
+# Check if the underlying Kubernetes Job was created
+kubectl get jobs -n default
 ```
 
-Check metrics in Grafana:
-- Navigate to the Forge dashboard
-- You should see metrics for jobs created, actions performed, etc.
+**Expected behavior:**
+- The controller should create a Kubernetes Job for the ZarfPackageJob
+- The Job will clone the Git repository and attempt to run Zarf
+- The Job will likely fail due to the complexity of building Zarf itself, but this demonstrates the full workflow
+
+### 10. View Metrics
+
+**Current Status:** The Forge controller currently exposes standard Go runtime metrics (goroutines, memory, GC stats) through the OTEL collector. Custom Forge-specific metrics (like `forge_jobs_created_total`, `forge_resources_active`) are planned but not yet implemented.
+
+Check available metrics:
+```bash
+# View metrics in Prometheus
+kubectl port-forward -n monitoring svc/kube-prometheus-stack-prometheus 9090:9090
+
+# Visit http://localhost:9090
+# Query for: forge_go_goroutines
+```
+
+Access Grafana:
+```bash
+# Already accessible at http://localhost:3000 via NodePort
+# Or use port-forward:
+kubectl port-forward -n monitoring svc/kube-prometheus-stack-grafana 3000:80
+```
+
+**Dashboard Note:** The included Grafana dashboard (`chart/forge/dashboards/forge-dashboard.json`) expects custom Forge metrics that are not yet implemented. You can still import the dashboard to see its structure, but panels will show "No data" until custom metrics are added to the controller.
 
 ## Cleanup
 

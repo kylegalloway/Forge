@@ -17,7 +17,7 @@ The Forge Helm chart supports two primary deployment scenarios:
 
 ## Chart Structure
 
-```
+```text
 chart/forge/
 ├── Chart.yaml                          # Chart metadata
 ├── values.yaml                         # Default values
@@ -155,7 +155,7 @@ alerts:
   enabled: true                # Create PrometheusRule with alerts
 ```
 
-#### Network Policies
+#### Network Policy Configuration
 
 ```yaml
 networkPolicies:
@@ -199,11 +199,13 @@ kubectl delete crd zarfpackagejobs.forge.dev
 ### Mature Cluster Deployment
 
 In a mature cluster, you already have:
+
 - Prometheus Operator with ServiceMonitor support
 - Grafana with configured dashboards
 - OTEL Collector for telemetry aggregation
 
 **What gets deployed:**
+
 - ✅ Forge Controller
 - ✅ ServiceMonitor (points to existing Prometheus)
 - ✅ PrometheusRule (alerts for existing Prometheus)
@@ -212,6 +214,7 @@ In a mature cluster, you already have:
 - ❌ Grafana (uses existing)
 
 **Configuration checklist:**
+
 1. Set `observability.deployStack: false`
 2. Configure external OTEL endpoint
 3. Configure external Prometheus URL
@@ -224,6 +227,7 @@ In a mature cluster, you already have:
 In a new cluster, you need a complete monitoring setup.
 
 **What gets deployed:**
+
 - ✅ Forge Controller
 - ✅ OpenTelemetry Collector
 - ✅ Prometheus (via configuration or subchart)
@@ -233,6 +237,7 @@ In a new cluster, you need a complete monitoring setup.
 - ✅ Forge Dashboard (pre-loaded in Grafana)
 
 **Configuration checklist:**
+
 1. Set `observability.deployStack: true`
 2. Configure storage classes for Prometheus and Grafana persistence
 3. Set strong Grafana admin password
@@ -254,6 +259,7 @@ curl http://localhost:8080/metrics
 ### Prometheus Alerts
 
 The chart includes pre-configured alerts for:
+
 - Controller health and availability
 - High error rates in reconciliation
 - Slow reconciliation performance
@@ -264,6 +270,7 @@ The chart includes pre-configured alerts for:
 ### Grafana Dashboard
 
 A pre-built dashboard is available at `chart/forge/dashboards/forge-dashboard.json`. It includes:
+
 - Controller health status
 - Job creation and completion rates
 - Error rates and types
@@ -273,10 +280,12 @@ A pre-built dashboard is available at `chart/forge/dashboards/forge-dashboard.js
 ### OTEL Collector Integration
 
 The controller can export telemetry to OTEL Collector via:
+
 - OTLP gRPC (port 4317)
 - OTLP HTTP (port 4318)
 
 The OTEL Collector then forwards to:
+
 - Prometheus (for metrics)
 - Jaeger (for traces, if configured)
 - Other backends (Datadog, New Relic, Honeycomb, etc.)
@@ -297,6 +306,7 @@ podSecurityStandards:
 ### Security Contexts
 
 All containers run with:
+
 - Non-root user (UID 65532 for controller, 10001 for OTEL)
 - Read-only root filesystem
 - Dropped capabilities
@@ -312,12 +322,14 @@ networkPolicies:
 ```
 
 This restricts:
+
 - Ingress to metrics and health endpoints only
 - Egress to Kubernetes API, DNS, and OTEL endpoints only
 
 ### RBAC
 
 The chart follows least-privilege principles:
+
 - Controller only has permissions for required resources
 - ServiceAccount is dedicated to Forge
 - ClusterRole is scoped to necessary operations

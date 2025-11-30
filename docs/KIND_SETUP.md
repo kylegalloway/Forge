@@ -295,11 +295,11 @@ Create a sample ZarfPackageJob:
 # Create the required ServiceAccount with policy annotations
 kubectl apply -f examples/samples/service-account-example.yaml
 
-# Apply a sample job
-kubectl apply -f examples/samples/v1alpha1/build-only-git.yaml
+# Apply the hello-forge test job (lightweight, will succeed)
+kubectl apply -f examples/samples/v1alpha1/hello-forge-test.yaml
 ```
 
-**Note:** The build job will attempt to build the full Zarf repository, which is expected to fail in a test environment due to resource constraints and missing dependencies. The purpose is to verify that Forge can create jobs and the controller processes them correctly.
+**Note:** This uses a minimal test package specifically designed for resource-constrained environments. The build should complete successfully in 15-30 seconds.
 
 Watch the job:
 ```bash
@@ -314,16 +314,30 @@ kubectl logs -n forge-system -l app=forge-controller -f
 Verify the controller processed the job:
 ```bash
 # Check the ZarfPackageJob resource
-kubectl describe zarfpackagejob build-only-example -n default
+kubectl describe zarfpackagejob hello-forge-test -n default
 
 # Check if the underlying Kubernetes Job was created
 kubectl get jobs -n default
+
+# Watch the job complete
+kubectl get pods -n default -w
 ```
 
 **Expected behavior:**
-- The controller should create a Kubernetes Job for the ZarfPackageJob
-- The Job will clone the Git repository and attempt to run Zarf
-- The Job will likely fail due to the complexity of building Zarf itself, but this demonstrates the full workflow
+- The controller creates a Kubernetes Job for the ZarfPackageJob
+- The Job clones the Git repository
+- Zarf builds the minimal test package
+- The build completes successfully (Status: Completed)
+- You should see phase change from Pending → Running → Succeeded
+
+Check the job logs to see the successful build:
+```bash
+# Find the pod name
+kubectl get pods -n default
+
+# View the build output
+kubectl logs -n default <pod-name> -c zarf-build
+```
 
 ### 10. View Metrics
 

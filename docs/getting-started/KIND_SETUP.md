@@ -68,7 +68,7 @@ rm /tmp/zarf-cli.tar
 
 # 6. Install Forge
 helm upgrade --install forge ./chart/forge \
-  -f chart/forge/values-kind.yaml \
+  -f chart/forge/examples/values-kind.yaml \
   --namespace forge-system \
   --create-namespace
 
@@ -299,7 +299,7 @@ Create a sample ZarfPackageJob:
 
 ```bash
 # Create the required ServiceAccount with policy annotations
-kubectl apply -f examples/service-accounts/service-account-example.yaml
+kubectl apply -f examples/service-accounts/simple-test-sa.yaml
 
 # Apply the hello-forge test job (lightweight, will succeed)
 kubectl apply -f examples/zarfpackagejobs/hello-forge-test.yaml

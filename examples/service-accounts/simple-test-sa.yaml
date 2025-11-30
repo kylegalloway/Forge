@@ -1,0 +1,23 @@
+---
+# Simple test ServiceAccount for quick testing in Kind
+# This SA has permissions to build from the test repository
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: developer-forge-sa
+  namespace: default
+  annotations:
+    # Allow Build and Publish actions
+    forge.forge.dev/allowed-actions: "Build,Publish"
+
+    # Allow test repositories (hello-forge test + zarf-public-test for dos-games)
+    forge.forge.dev/allowed-source-repos: "https://github.com/defenseunicorns/zarf-public-test,https://github.com/kylegalloway/forge"
+
+    # Allow publishing to test registries
+    forge.forge.dev/allowed-publish-registries: "ghcr.io/*"
+
+    # Allow in-cluster deployments
+    forge.forge.dev/allowed-deploy-targets: "InCluster"
+
+    # Allow local sources for testing
+    forge.forge.dev/allow-local-sources: "true"

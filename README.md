@@ -91,7 +91,7 @@ spec:
 
 ## Policy Enforcement
 
-Forge uses ServiceAccount annotations for fine-grained access control. See [SERVICEACCOUNT_REFERENCE.md](docs/SERVICEACCOUNT_REFERENCE.md) for complete reference.
+Forge uses ServiceAccount annotations for fine-grained access control. See [SERVICEACCOUNT_REFERENCE.md](docs/development/SERVICEACCOUNT_REFERENCE.md) for complete reference.
 
 **Quick Example:**
 
@@ -185,7 +185,7 @@ helm upgrade --install forge ./chart/forge \
 **Requires**: kube-prometheus-stack for Grafana and Prometheus
 **Access Grafana**: http://localhost:3000 (admin/<get-password-from-secret>)
 
-📖 **Kind Setup Guide**: See [docs/KIND_SETUP.md](docs/KIND_SETUP.md) for complete local development setup
+📖 **Kind Setup Guide**: See [docs/getting-started/KIND_SETUP.md](docs/getting-started/KIND_SETUP.md) for complete local development setup
 📖 **Deployment Guide**: See [DEPLOYMENT.md](DEPLOYMENT.md) for complete deployment options and configurations
 📖 **Quick Start**: See [chart/QUICKSTART.md](chart/QUICKSTART.md) for step-by-step installation
 📖 **Helm Chart Docs**: See [chart/README.md](chart/README.md) for all configuration options
@@ -241,13 +241,13 @@ Forge includes production-grade observability:
 
 ## Documentation
 
-- **User Guide**: [USER_GUIDE.md](docs/USER_GUIDE.md) - Complete usage examples
-- **ServiceAccount Reference**: [SERVICEACCOUNT_REFERENCE.md](docs/SERVICEACCOUNT_REFERENCE.md) - Policy annotations
-- **Namespace-Scoped**: [NAMESPACE_SCOPED_DEPLOYMENT.md](docs/NAMESPACE_SCOPED_DEPLOYMENT.md) - Restricted deployment mode
-- **Testing Guide**: [TESTING.md](docs/TESTING.md) - Unit, E2E, and integration testing
-- **Runbook**: [RUNBOOK.md](docs/RUNBOOK.md) - Operations and incident response
-- **Troubleshooting**: [TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) - Common issues and solutions
-- **Production Checklist**: [PRODUCTION_CHECKLIST.md](docs/PRODUCTION_CHECKLIST.md) - Production readiness tracking
+- **User Guide**: [USER_GUIDE.md](docs/getting-started/USER_GUIDE.md) - Complete usage examples
+- **ServiceAccount Reference**: [SERVICEACCOUNT_REFERENCE.md](docs/development/SERVICEACCOUNT_REFERENCE.md) - Policy annotations
+- **Namespace-Scoped**: [NAMESPACE_SCOPED_DEPLOYMENT.md](docs/operations/NAMESPACE_SCOPED_DEPLOYMENT.md) - Restricted deployment mode
+- **Testing Guide**: [TESTING.md](docs/development/TESTING.md) - Unit, E2E, and integration testing
+- **Runbook**: [RUNBOOK.md](docs/operations/RUNBOOK.md) - Operations and incident response
+- **Troubleshooting**: [TROUBLESHOOTING.md](docs/operations/TROUBLESHOOTING.md) - Common issues and solutions
+- **Production Checklist**: [PRODUCTION_CHECKLIST.md](docs/operations/PRODUCTION_CHECKLIST.md) - Production readiness tracking
 
 ## Development
 
@@ -358,7 +358,7 @@ forge/
 
 ## Roadmap
 
-See [PRODUCTION_CHECKLIST.md](docs/PRODUCTION_CHECKLIST.md) for detailed progress tracking.
+See [PRODUCTION_CHECKLIST.md](docs/operations/PRODUCTION_CHECKLIST.md) for detailed progress tracking.
 
 **Phase 1-3: Foundation** (Completed ✅)
 

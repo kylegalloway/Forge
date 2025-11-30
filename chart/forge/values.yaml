@@ -201,8 +201,6 @@ observability:
         prometheus:
           endpoint: "0.0.0.0:8889"
           namespace: forge
-          const_labels:
-            service: forge-controller
         logging:
           loglevel: info
           sampling_initial: 5
@@ -314,7 +312,7 @@ observability:
     config:
       # Admin credentials
       adminUser: admin
-      adminPassword: "forge-admin-changeme"
+      adminPassword: "forge-admin-changeme"  # pragma: allowlist secret
 
       # Resource limits
       resources:

@@ -25,7 +25,7 @@ zarf package create . --confirm
 
 ## Using with Forge
 
-This package is used by the test ZarfPackageJob in `examples/samples/v1alpha1/hello-forge-test.yaml`.
+This package is used by the test ZarfPackageJob in `examples/zarfpackagejobs/hello-forge-test.yaml`.
 
 The job will:
 

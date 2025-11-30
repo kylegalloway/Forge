@@ -13,6 +13,7 @@ This guide will help you quickly deploy Forge to your Kubernetes cluster.
 ### Scenario 1: I have an existing monitoring setup 🔧
 
 **Use this if you already have:**
+
 - Prometheus deployed
 - Grafana deployed
 - OpenTelemetry Collector deployed
@@ -34,6 +35,7 @@ kubectl get pods -n forge-system
 ### Scenario 2: I need monitoring tools installed 🚀
 
 **Use this if you need:**
+
 - Complete observability stack
 - Prometheus, Grafana, and OTEL Collector
 

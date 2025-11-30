@@ -133,6 +133,7 @@ helm upgrade --install kube-prometheus-stack prometheus-community/kube-prometheu
 ```
 
 **Why these settings?**
+
 - `serviceMonitorSelectorNilUsesHelmValues=false` - Allows Prometheus to discover ServiceMonitors in any namespace
 - `grafana.service.type=NodePort` - Exposes Grafana on port 30000 (mapped to host port 3000)
 - `resources.requests/limits` - Reduced resources suitable for Kind (prevents probe timeouts)
@@ -211,6 +212,7 @@ helm upgrade --install forge ./chart/forge \
 ```
 
 **What gets deployed:**
+
 - Forge controller (1 replica)
 - OTEL Collector
 - ServiceMonitor (for Prometheus to scrape controller metrics)
@@ -218,6 +220,7 @@ helm upgrade --install forge ./chart/forge \
 - Metrics Service
 
 **What does NOT get deployed:**
+
 - Grafana (provided by kube-prometheus-stack)
 - Prometheus (provided by kube-prometheus-stack)
 
@@ -230,7 +233,8 @@ kubectl get pods -n monitoring
 ```
 
 Expected output in `forge-system`:
-```
+
+```text
 NAME                                    READY   STATUS    RESTARTS   AGE
 forge-controller-xxxxx                  1/1     Running   0          1m
 forge-otel-collector-xxxxx              1/1     Running   0          1m
@@ -243,7 +247,8 @@ kubectl get prometheusrule -n forge-system
 ```
 
 Expected output:
-```
+
+```text
 NAME               AGE
 forge-controller   1m
 
@@ -264,6 +269,7 @@ kubectl port-forward -n monitoring svc/kube-prometheus-stack-grafana 3000:80
 ```
 
 **Credentials:**
+
 - Username: `admin`
 - Password: Randomly generated on install
 
@@ -324,6 +330,7 @@ kubectl get pods -n default -w
 ```
 
 **Expected behavior:**
+
 - The controller creates a Kubernetes Job for the ZarfPackageJob
 - The Job clones the Git repository
 - Zarf builds the minimal test package

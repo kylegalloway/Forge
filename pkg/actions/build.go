@@ -45,16 +45,24 @@ func (h *BuildHandler) Execute(ctx context.Context, pkg *zarfv1alpha1.ZarfPackag
 
 	klog.InfoS("Executing Build action", "name", pkg.Name, "namespace", pkg.Namespace)
 
+	// Record build started
+	h.metrics.RecordBuildStarted(ctx, pkg.Namespace, pkg.Name)
+
 	// Validate source is provided
 	if pkg.Spec.Source.Type == "" {
+		h.metrics.RecordBuildFailed(ctx, pkg.Namespace, pkg.Name)
 		return nil, fmt.Errorf("source type is required for Build action")
 	}
 
 	// Create Kubernetes Job to build the package
 	job, err := h.createBuildJob(ctx, pkg)
 	if err != nil {
+		h.metrics.RecordBuildFailed(ctx, pkg.Namespace, pkg.Name)
 		return nil, fmt.Errorf("failed to create build job: %w", err)
 	}
+
+	// Record Job creation
+	h.metrics.RecordJobCreated(ctx, pkg.Namespace, pkg.Name, "build")
 
 	klog.InfoS("Build job created", "name", pkg.Name, "job", job.Name)
 

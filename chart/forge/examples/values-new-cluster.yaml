@@ -61,7 +61,7 @@ observability:
 
     config:
       # Set strong admin password
-      adminPassword: "CHANGE-ME-STRONG-PASSWORD"
+      adminPassword: "CHANGE-ME-STRONG-PASSWORD"  # pragma: allowlist secret
 
       # Production resource limits
       resources:
@@ -84,11 +84,11 @@ observability:
         enabled: true
         ingressClassName: nginx
         annotations:
-          cert-manager.io/cluster-issuer: "letsencrypt-prod"
+          cert-manager.io/cluster-issuer: "letsencrypt-prod"  # pragma: allowlist secret
         hosts:
           - grafana.example.com
         tls:
-          - secretName: grafana-tls
+          - secretName: grafana-tls  # pragma: allowlist secret
             hosts:
               - grafana.example.com
 

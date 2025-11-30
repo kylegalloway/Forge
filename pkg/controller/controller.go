@@ -147,6 +147,8 @@ func (c *Controller) handleEvent(ctx context.Context, event watch.Event) error {
 		if !ok {
 			return fmt.Errorf("unexpected object type in deleted event")
 		}
+		// Record deletion in metrics (decrement active counter)
+		c.metrics.RecordZarfPackageJobDeleted(ctx, obj.GetNamespace())
 		klog.InfoS("ZarfPackageJob deleted", "name", obj.GetName(), "namespace", obj.GetNamespace())
 		return nil
 	case watch.Error:
@@ -183,7 +185,13 @@ func (c *Controller) handleZarfPackageJob(ctx context.Context, unstrObj *unstruc
 	pkg := &zarfv1alpha1.ZarfPackageJob{}
 	if err := runtime.DefaultUnstructuredConverter.FromUnstructured(unstrObj.Object, pkg); err != nil {
 		klog.ErrorS(err, "Failed to convert unstructured to ZarfPackageJob", "name", name, "namespace", namespace)
+		c.metrics.RecordReconcileError(ctx, "conversion_error")
 		return c.updateStatus(ctx, unstrObj, "Failed", fmt.Sprintf("Invalid ZarfPackageJob: %v", err), nil)
+	}
+
+	// Record ZarfPackageJob creation if this is the first reconciliation
+	if pkg.Status.Phase == "" {
+		c.metrics.RecordZarfPackageJobCreated(ctx, namespace)
 	}
 
 	return c.reconcilePackage(ctx, unstrObj, pkg)
@@ -200,6 +208,7 @@ func (c *Controller) reconcilePackage(ctx context.Context, unstrObj *unstructure
 	// Validate policy
 	if err := c.policyEngine.Validate(ctx, pkg); err != nil {
 		klog.ErrorS(err, "Policy validation failed", "name", name, "namespace", namespace)
+		c.metrics.RecordReconcileError(ctx, "policy_violation")
 		return c.updateStatus(ctx, unstrObj, "Failed", fmt.Sprintf("Policy violation: %v", err), nil)
 	}
 
@@ -244,6 +253,10 @@ func (c *Controller) reconcilePackage(ctx context.Context, unstrObj *unstructure
 	// Update status based on result
 	if err != nil {
 		klog.ErrorS(err, "Action failed", "name", name, "namespace", namespace, "action", pkg.Spec.Action)
+		c.metrics.RecordReconcileError(ctx, "action_failed")
+		// Record reconcile duration even on failure
+		duration := time.Since(startTime)
+		c.metrics.RecordReconcileDuration(ctx, duration.Seconds())
 		return c.updateStatus(ctx, unstrObj, "Failed", err.Error(), nil)
 	}
 
@@ -257,10 +270,12 @@ func (c *Controller) reconcilePackage(ctx context.Context, unstrObj *unstructure
 		}
 		if err := c.updateStatus(ctx, unstrObj, result.Phase, result.Message, opStatus); err != nil {
 			klog.ErrorS(err, "Failed to update status", "name", name, "namespace", namespace)
+			c.metrics.RecordReconcileError(ctx, "status_update_failed")
 		}
 	}
 
 	duration := time.Since(startTime)
+	c.metrics.RecordReconcileDuration(ctx, duration.Seconds())
 	klog.InfoS("Reconciliation complete", "name", name, "namespace", namespace, "duration", duration)
 
 	return nil

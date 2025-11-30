@@ -1,0 +1,33 @@
+# Forge Documentation
+
+Documentation for the Forge Zarf Package Job controller.
+
+## Getting Started
+
+New to Forge? Start here:
+
+- **[User Guide](getting-started/USER_GUIDE.md)** - Overview of Forge concepts and basic usage
+- **[Kind Setup](getting-started/KIND_SETUP.md)** - Complete guide for local development with Kind
+
+## Operations
+
+Running Forge in production:
+
+- **[Production Checklist](operations/PRODUCTION_CHECKLIST.md)** - Pre-deployment validation and best practices
+- **[Runbook](operations/RUNBOOK.md)** - Common operational tasks and procedures
+- **[Troubleshooting](operations/TROUBLESHOOTING.md)** - Debugging guide for common issues
+- **[Namespace-Scoped Deployment](operations/NAMESPACE_SCOPED_DEPLOYMENT.md)** - Running Forge in namespace-scoped mode
+
+## Development
+
+Contributing to Forge:
+
+- **[Testing Guide](development/TESTING.md)** - Running tests and writing new ones
+- **[Attestation Verification](development/ATTESTATION_VERIFICATION.md)** - SLSA provenance and verification
+- **[ServiceAccount Reference](development/SERVICEACCOUNT_REFERENCE.md)** - Policy annotations and RBAC
+
+## Additional Resources
+
+- **[Chart Documentation](../chart/forge/README.md)** - Helm chart configuration reference
+- **[Examples](../examples/README.md)** - Sample ZarfPackageJob manifests
+- **[Main README](../README.md)** - Project overview and quick start

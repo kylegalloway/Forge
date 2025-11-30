@@ -89,6 +89,26 @@ func (c *Controller) processJobStatus(ctx context.Context, job *batchv1.Job) err
 			message = fmt.Sprintf("%s job %s completed successfully", action, job.Name)
 			completed = true
 			completionTime = condition.LastTransitionTime.DeepCopy()
+
+			// Record job completion metrics
+			c.metrics.RecordJobCompleted(ctx, job.Namespace, packageName, action)
+
+			// Record action-specific completion metrics
+			switch action {
+			case actionBuild:
+				c.metrics.RecordBuildCompleted(ctx, job.Namespace, packageName)
+			case actionPublish:
+				c.metrics.RecordPublishCompleted(ctx, job.Namespace, packageName)
+			case actionDeploy:
+				c.metrics.RecordDeployCompleted(ctx, job.Namespace, packageName)
+			}
+
+			// Calculate and record action duration if start time is available
+			if job.Status.StartTime != nil {
+				duration := completionTime.Sub(job.Status.StartTime.Time).Seconds()
+				c.metrics.RecordActionDuration(ctx, job.Namespace, packageName, action, duration, "success")
+			}
+
 			break
 		}
 		if condition.Type == batchv1.JobFailed && condition.Status == corev1.ConditionTrue {
@@ -96,6 +116,26 @@ func (c *Controller) processJobStatus(ctx context.Context, job *batchv1.Job) err
 			message = fmt.Sprintf("%s job %s failed: %s", action, job.Name, condition.Message)
 			completed = true
 			completionTime = condition.LastTransitionTime.DeepCopy()
+
+			// Record job failure metrics
+			c.metrics.RecordJobFailed(ctx, job.Namespace, packageName, action)
+
+			// Record action-specific failure metrics
+			switch action {
+			case actionBuild:
+				c.metrics.RecordBuildFailed(ctx, job.Namespace, packageName)
+			case actionPublish:
+				c.metrics.RecordPublishFailed(ctx, job.Namespace, packageName)
+			case actionDeploy:
+				c.metrics.RecordDeployFailed(ctx, job.Namespace, packageName)
+			}
+
+			// Calculate and record action duration if start time is available
+			if job.Status.StartTime != nil {
+				duration := completionTime.Sub(job.Status.StartTime.Time).Seconds()
+				c.metrics.RecordActionDuration(ctx, job.Namespace, packageName, action, duration, "failure")
+			}
+
 			break
 		}
 	}

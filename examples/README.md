@@ -1,45 +1,57 @@
 # Forge Examples
 
-This directory contains example resources and configurations for Forge.
+Example resources for Forge deployment and usage.
 
-## 📋 ZarfPackageJob Examples
+## Directory Structure
 
-See [samples/](samples/) for complete ZarfPackageJob resource examples:
-
-- **Build workflows** - Building Zarf packages from Git, S3, or OCI sources
-- **Publish workflows** - Publishing packages to S3 or OCI registries
-- **Deploy workflows** - Deploying packages to clusters
-- **Multi-action workflows** - Combined build/publish/deploy operations
-- **ServiceAccount examples** - Policy configuration examples
-
-## 🚀 Quick Start
-
-After installing Forge with Helm:
-
-```bash
-# Apply a simple build-only example
-kubectl apply -f samples/v1alpha1/build-only-git.yaml
-
-# Check the job status
-kubectl get zarfpackagejobs -A
-
-# View logs
-kubectl logs -n forge-system -l app=forge-controller
+```
+examples/
+├── zarfpackagejobs/     # ZarfPackageJob CRD examples
+├── service-accounts/     # ServiceAccount policy examples
+└── test-packages/        # Minimal Zarf packages for testing
 ```
 
-## 📖 Documentation
+## ZarfPackageJob Examples
 
-For complete documentation on creating ZarfPackageJobs:
+See [zarfpackagejobs/](zarfpackagejobs/) for complete workflow examples:
 
-- [User Guide](../docs/USER_GUIDE.md) - Complete usage guide
-- [ServiceAccount Reference](../docs/SERVICEACCOUNT_REFERENCE.md) - Policy configuration
-- [Helm Chart](../chart/README.md) - Deployment configuration
+- **[hello-forge-test.yaml](zarfpackagejobs/hello-forge-test.yaml)** - Minimal test that succeeds in Kind
+- **[build-only-git.yaml](zarfpackagejobs/build-only-git.yaml)** - Build package from Git source
+- **[build-publish-deploy-git.yaml](zarfpackagejobs/build-publish-deploy-git.yaml)** - Full workflow example
+- **[deploy-from-oci.yaml](zarfpackagejobs/deploy-from-oci.yaml)** - Deploy pre-built package
+- **[publish-s3-to-oci.yaml](zarfpackagejobs/publish-s3-to-oci.yaml)** - Cross-registry publishing
+- **[local-dev-testing.yaml](zarfpackagejobs/local-dev-testing.yaml)** - Development/testing workflow
 
-## 🔐 ServiceAccount Policies
+## ServiceAccount Examples
 
-See [samples/service-account-example.yaml](samples/service-account-example.yaml) for examples of:
+See [service-accounts/](service-accounts/) for policy configuration:
 
-- Allowed actions configuration
-- Repository whitelisting
-- Registry access control
-- Namespace restrictions
+- **[service-account-example.yaml](service-accounts/service-account-example.yaml)** - Policy annotations and RBAC examples
+
+## Test Packages
+
+See [test-packages/](test-packages/) for lightweight Zarf packages:
+
+- **[hello-forge/](test-packages/hello-forge/)** - Minimal package for testing in resource-constrained environments
+
+## Quick Start
+
+```bash
+# Create ServiceAccount with policies
+kubectl apply -f service-accounts/service-account-example.yaml
+
+# Run a test build
+kubectl apply -f zarfpackagejobs/hello-forge-test.yaml
+
+# Check status
+kubectl get zarfpackagejobs -A
+
+# View controller logs
+kubectl logs -n forge-system -l app=forge-controller -f
+```
+
+## Documentation
+
+- **[User Guide](../docs/getting-started/USER_GUIDE.md)** - Complete usage guide
+- **[ServiceAccount Reference](../docs/development/SERVICEACCOUNT_REFERENCE.md)** - Policy configuration
+- **[KIND Setup](../docs/getting-started/KIND_SETUP.md)** - Local testing with Kind

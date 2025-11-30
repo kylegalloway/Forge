@@ -21,18 +21,18 @@ observability:
       limits:
         cpu: 500m
         memory: 256Mi
-    # Disable ServiceMonitor (will be created by kube-prometheus-stack)
+    # Enable ServiceMonitor for Prometheus to scrape OTEL prometheus exporter
     serviceMonitor:
-      enabled: false
+      enabled: true
+      additionalLabels:
+        prometheus: kube-prometheus
 
 # Metrics configuration
 metrics:
   enabled: true
-  # Enable ServiceMonitor (kube-prometheus-stack includes Prometheus Operator)
+  # Disable controller ServiceMonitor (controller uses OTEL, scrape OTEL collector instead)
   serviceMonitor:
-    enabled: true
-    additionalLabels:
-      prometheus: kube-prometheus
+    enabled: false
 
 # Prometheus alerts configuration
 alerts:

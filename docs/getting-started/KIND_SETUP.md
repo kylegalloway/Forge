@@ -293,10 +293,10 @@ Create a sample ZarfPackageJob:
 
 ```bash
 # Create the required ServiceAccount with policy annotations
-kubectl apply -f examples/samples/service-account-example.yaml
+kubectl apply -f examples/service-accounts/service-account-example.yaml
 
 # Apply the hello-forge test job (lightweight, will succeed)
-kubectl apply -f examples/samples/v1alpha1/hello-forge-test.yaml
+kubectl apply -f examples/zarfpackagejobs/hello-forge-test.yaml
 ```
 
 **Note:** This uses a minimal test package specifically designed for resource-constrained environments. The build should complete successfully in 15-30 seconds.

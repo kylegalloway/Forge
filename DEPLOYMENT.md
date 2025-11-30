@@ -180,7 +180,7 @@ observability:
   grafana:
     config:
       # IMPORTANT: Set a strong password!
-      adminPassword: "YOUR-STRONG-PASSWORD-HERE"
+      adminPassword: "YOUR-STRONG-PASSWORD-HERE" # pragma: allowlist secret
 
       # Enable ingress for external access
       ingress:
@@ -256,7 +256,7 @@ kubectl get crd zarfpackagejobs.forge.dev
 
 ```bash
 # Create a test job
-kubectl apply -f config/samples/v1alpha1/build-only-git.yaml
+kubectl apply -f examples/zarfpackagejobs/build-only-git.yaml
 
 # Watch the job
 kubectl get zarfpackagejobs -A

@@ -75,7 +75,7 @@ kubectl get pods -n forge-system
 
 ```bash
 # Create a sample ZarfPackageJob
-kubectl apply -f config/samples/v1alpha1/build-only-git.yaml
+kubectl apply -f examples/zarfpackagejobs/build-only-git.yaml
 
 # Watch the job
 kubectl get zarfpackagejobs -A -w

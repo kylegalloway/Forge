@@ -512,7 +512,7 @@ forge.forge.dev/allowed-source-repos: "https://github.com/myorg/one-specific-rep
 
 ## Troubleshooting
 
-See [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) for common policy-related issues and solutions.
+See [TROUBLESHOOTING.md](../operations/TROUBLESHOOTING.md) for common policy-related issues and solutions.
 
 ---
 

@@ -32,7 +32,7 @@ Forge supports two deployment modes depending on your cluster permissions and se
 - Minimal permissions (Role, not ClusterRole)
 - Suitable for restricted clusters, individual teams
 
-📖 **Detailed Guide**: See [NAMESPACE_SCOPED_DEPLOYMENT.md](NAMESPACE_SCOPED_DEPLOYMENT.md) for complete instructions.
+📖 **Detailed Guide**: See [NAMESPACE_SCOPED_DEPLOYMENT.md](../operations/NAMESPACE_SCOPED_DEPLOYMENT.md) for complete instructions.
 
 ## Core Concepts
 

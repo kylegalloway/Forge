@@ -52,7 +52,7 @@ helm upgrade --install forge ./chart/forge \
 
 ### Architecture 1: Mature Cluster Integration
 
-```
+```text
 ┌─────────────────────────────────────────┐
 │         Existing Infrastructure         │
 │  ┌─────────┐  ┌──────────┐  ┌────────┐ │
@@ -74,12 +74,14 @@ helm upgrade --install forge ./chart/forge \
 ```
 
 **What gets deployed:**
+
 - ✅ Forge Controller
 - ✅ ServiceMonitor (connects to existing Prometheus)
 - ✅ PrometheusRule (alerts)
 - ✅ Metrics Service
 
 **What you configure:**
+
 - OTEL Collector endpoint
 - Prometheus URL
 - Grafana URL
@@ -87,7 +89,7 @@ helm upgrade --install forge ./chart/forge \
 
 ### Architecture 2: New Cluster Full Stack
 
-```
+```text
 ┌────────────────────────────────────────────┐
 │           New Full Stack                   │
 │                                            │
@@ -125,6 +127,7 @@ helm upgrade --install forge ./chart/forge \
 ```
 
 **What gets deployed:**
+
 - ✅ Forge Controller
 - ✅ OpenTelemetry Collector
 - ✅ Prometheus (with persistent storage)
@@ -337,6 +340,7 @@ pod-security.kubernetes.io/warn: restricted
 ### RBAC
 
 The controller uses a dedicated ServiceAccount with minimal permissions:
+
 - Read/write ZarfPackageJob resources
 - Create Jobs
 - Read ServiceAccounts and Secrets (for validation)

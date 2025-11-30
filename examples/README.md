@@ -4,7 +4,7 @@ Example resources for Forge deployment and usage.
 
 ## Directory Structure
 
-```
+```text
 examples/
 ├── zarfpackagejobs/     # ZarfPackageJob CRD examples
 ├── service-accounts/     # ServiceAccount policy examples

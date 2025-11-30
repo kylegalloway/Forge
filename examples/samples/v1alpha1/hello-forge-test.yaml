@@ -16,9 +16,9 @@ spec:
   source:
     type: Git
     git:
-      url: https://github.com/kylegalloway/forge
+      url: https://github.com/defenseunicorns/zarf
       ref: main
-      path: examples/test-packages/hello-forge
+      path: examples/dos-games
 
   # No publish or deploy config needed
   # Built artifact will be stored in job pod for verification

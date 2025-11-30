@@ -41,28 +41,28 @@ func NewBuildHandler(kubeClient kubernetes.Interface, metrics *telemetry.Metrics
 }
 
 // Execute performs a Build action for the given ZarfPackageJob
-func (h *BuildHandler) Execute(ctx context.Context, pkg *zarfv1alpha1.ZarfPackageJob) (*ActionResult, error) {
+func (handler *BuildHandler) Execute(ctx context.Context, pkg *zarfv1alpha1.ZarfPackageJob) (*ActionResult, error) {
 
 	klog.InfoS("Executing Build action", "name", pkg.Name, "namespace", pkg.Namespace)
 
 	// Record build started
-	h.metrics.RecordBuildStarted(ctx, pkg.Namespace, pkg.Name)
+	handler.metrics.RecordBuildStarted(ctx, pkg.Namespace, pkg.Name)
 
 	// Validate source is provided
 	if pkg.Spec.Source.Type == "" {
-		h.metrics.RecordBuildFailed(ctx, pkg.Namespace, pkg.Name)
+		handler.metrics.RecordBuildFailed(ctx, pkg.Namespace, pkg.Name)
 		return nil, fmt.Errorf("source type is required for Build action")
 	}
 
 	// Create Kubernetes Job to build the package
-	job, err := h.createBuildJob(ctx, pkg)
+	job, err := handler.createBuildJob(ctx, pkg)
 	if err != nil {
-		h.metrics.RecordBuildFailed(ctx, pkg.Namespace, pkg.Name)
+		handler.metrics.RecordBuildFailed(ctx, pkg.Namespace, pkg.Name)
 		return nil, fmt.Errorf("failed to create build job: %w", err)
 	}
 
 	// Record Job creation
-	h.metrics.RecordJobCreated(ctx, pkg.Namespace, pkg.Name, "build")
+	handler.metrics.RecordJobCreated(ctx, pkg.Namespace, pkg.Name, "build")
 
 	klog.InfoS("Build job created", "name", pkg.Name, "job", job.Name)
 
@@ -78,18 +78,18 @@ func (h *BuildHandler) Execute(ctx context.Context, pkg *zarfv1alpha1.ZarfPackag
 }
 
 // createBuildJob creates a Kubernetes Job to build a Zarf package
-func (h *BuildHandler) createBuildJob(ctx context.Context, pkg *zarfv1alpha1.ZarfPackageJob) (*batchv1.Job, error) {
+func (handler *BuildHandler) createBuildJob(ctx context.Context, pkg *zarfv1alpha1.ZarfPackageJob) (*batchv1.Job, error) {
 	jobName := fmt.Sprintf("%s-build", pkg.Name)
 	namespace := pkg.Namespace
 
 	// Build zarf command based on source type
-	zarfCmd, workingDir, err := h.buildZarfCommand(pkg)
+	zarfCmd, workingDir, err := handler.buildZarfCommand(pkg)
 	if err != nil {
 		return nil, err
 	}
 
 	// Build init containers
-	initContainers, err := h.buildInitContainers(pkg)
+	initContainers, err := handler.buildInitContainers(pkg)
 	if err != nil {
 		return nil, fmt.Errorf("failed to build init containers: %w", err)
 	}
@@ -212,7 +212,7 @@ func (h *BuildHandler) createBuildJob(ctx context.Context, pkg *zarfv1alpha1.Zar
 	}
 
 	// Create the job
-	createdJob, err := h.kubeClient.BatchV1().Jobs(namespace).Create(ctx, job, metav1.CreateOptions{})
+	createdJob, err := handler.kubeClient.BatchV1().Jobs(namespace).Create(ctx, job, metav1.CreateOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create job: %w", err)
 	}
@@ -221,7 +221,7 @@ func (h *BuildHandler) createBuildJob(ctx context.Context, pkg *zarfv1alpha1.Zar
 }
 
 // buildZarfCommand builds the zarf CLI command based on package source
-func (h *BuildHandler) buildZarfCommand(_ *zarfv1alpha1.ZarfPackageJob) (string, string, error) {
+func (handler *BuildHandler) buildZarfCommand(_ *zarfv1alpha1.ZarfPackageJob) (string, string, error) {
 	workingDir := "/workspace"
 
 	// Basic zarf package create command
@@ -231,7 +231,7 @@ func (h *BuildHandler) buildZarfCommand(_ *zarfv1alpha1.ZarfPackageJob) (string,
 }
 
 // buildInitContainers creates init containers for source artifact retrieval
-func (h *BuildHandler) buildInitContainers(pkg *zarfv1alpha1.ZarfPackageJob) ([]corev1.Container, error) {
+func (handler *BuildHandler) buildInitContainers(pkg *zarfv1alpha1.ZarfPackageJob) ([]corev1.Container, error) {
 	sourceHandler, err := sources.New(pkg)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create source handler: %w", err)

@@ -238,22 +238,22 @@ func NewMetrics() (*Metrics, error) {
 }
 
 // RecordZarfPackageCreated increments the ZarfPackageJob created counter
-func (m *Metrics) RecordZarfPackageJobCreated(ctx context.Context, namespace string) {
-	m.zarfPackageJobsCreated.Add(ctx, 1,
+func (metrics *Metrics) RecordZarfPackageJobCreated(ctx context.Context, namespace string) {
+	metrics.zarfPackageJobsCreated.Add(ctx, 1,
 		metric.WithAttributes(attribute.String("namespace", namespace)))
-	m.zarfPackageJobsActive.Add(ctx, 1,
+	metrics.zarfPackageJobsActive.Add(ctx, 1,
 		metric.WithAttributes(attribute.String("namespace", namespace)))
 }
 
 // RecordZarfPackageDeleted decrements the active ZarfPackageJob counter
-func (m *Metrics) RecordZarfPackageJobDeleted(ctx context.Context, namespace string) {
-	m.zarfPackageJobsActive.Add(ctx, -1,
+func (metrics *Metrics) RecordZarfPackageJobDeleted(ctx context.Context, namespace string) {
+	metrics.zarfPackageJobsActive.Add(ctx, -1,
 		metric.WithAttributes(attribute.String("namespace", namespace)))
 }
 
 // RecordJobCreated increments the Job created counter
-func (m *Metrics) RecordJobCreated(ctx context.Context, namespace, packageName, action string) {
-	m.jobsCreated.Add(ctx, 1,
+func (metrics *Metrics) RecordJobCreated(ctx context.Context, namespace, packageName, action string) {
+	metrics.jobsCreated.Add(ctx, 1,
 		metric.WithAttributes(
 			attribute.String("namespace", namespace),
 			attribute.String("package", packageName),
@@ -262,8 +262,8 @@ func (m *Metrics) RecordJobCreated(ctx context.Context, namespace, packageName, 
 }
 
 // RecordJobCompleted increments the Job completed counter
-func (m *Metrics) RecordJobCompleted(ctx context.Context, namespace, packageName, action string) {
-	m.jobsCompleted.Add(ctx, 1,
+func (metrics *Metrics) RecordJobCompleted(ctx context.Context, namespace, packageName, action string) {
+	metrics.jobsCompleted.Add(ctx, 1,
 		metric.WithAttributes(
 			attribute.String("namespace", namespace),
 			attribute.String("package", packageName),
@@ -272,8 +272,8 @@ func (m *Metrics) RecordJobCompleted(ctx context.Context, namespace, packageName
 }
 
 // RecordJobFailed increments the Job failed counter
-func (m *Metrics) RecordJobFailed(ctx context.Context, namespace, packageName, action string) {
-	m.jobsFailed.Add(ctx, 1,
+func (metrics *Metrics) RecordJobFailed(ctx context.Context, namespace, packageName, action string) {
+	metrics.jobsFailed.Add(ctx, 1,
 		metric.WithAttributes(
 			attribute.String("namespace", namespace),
 			attribute.String("package", packageName),
@@ -282,8 +282,8 @@ func (m *Metrics) RecordJobFailed(ctx context.Context, namespace, packageName, a
 }
 
 // RecordBuildStarted increments the build started counter
-func (m *Metrics) RecordBuildStarted(ctx context.Context, namespace, packageName string) {
-	m.buildsStarted.Add(ctx, 1,
+func (metrics *Metrics) RecordBuildStarted(ctx context.Context, namespace, packageName string) {
+	metrics.buildsStarted.Add(ctx, 1,
 		metric.WithAttributes(
 			attribute.String("namespace", namespace),
 			attribute.String("package", packageName),
@@ -291,8 +291,8 @@ func (m *Metrics) RecordBuildStarted(ctx context.Context, namespace, packageName
 }
 
 // RecordBuildCompleted increments the build completed counter
-func (m *Metrics) RecordBuildCompleted(ctx context.Context, namespace, packageName string) {
-	m.buildsCompleted.Add(ctx, 1,
+func (metrics *Metrics) RecordBuildCompleted(ctx context.Context, namespace, packageName string) {
+	metrics.buildsCompleted.Add(ctx, 1,
 		metric.WithAttributes(
 			attribute.String("namespace", namespace),
 			attribute.String("package", packageName),
@@ -300,8 +300,8 @@ func (m *Metrics) RecordBuildCompleted(ctx context.Context, namespace, packageNa
 }
 
 // RecordBuildFailed increments the build failed counter
-func (m *Metrics) RecordBuildFailed(ctx context.Context, namespace, packageName string) {
-	m.buildsFailed.Add(ctx, 1,
+func (metrics *Metrics) RecordBuildFailed(ctx context.Context, namespace, packageName string) {
+	metrics.buildsFailed.Add(ctx, 1,
 		metric.WithAttributes(
 			attribute.String("namespace", namespace),
 			attribute.String("package", packageName),
@@ -309,8 +309,8 @@ func (m *Metrics) RecordBuildFailed(ctx context.Context, namespace, packageName 
 }
 
 // RecordPublishStarted increments the publish started counter
-func (m *Metrics) RecordPublishStarted(ctx context.Context, namespace, packageName string) {
-	m.publishesStarted.Add(ctx, 1,
+func (metrics *Metrics) RecordPublishStarted(ctx context.Context, namespace, packageName string) {
+	metrics.publishesStarted.Add(ctx, 1,
 		metric.WithAttributes(
 			attribute.String("namespace", namespace),
 			attribute.String("package", packageName),
@@ -318,8 +318,8 @@ func (m *Metrics) RecordPublishStarted(ctx context.Context, namespace, packageNa
 }
 
 // RecordPublishCompleted increments the publish completed counter
-func (m *Metrics) RecordPublishCompleted(ctx context.Context, namespace, packageName string) {
-	m.publishesCompleted.Add(ctx, 1,
+func (metrics *Metrics) RecordPublishCompleted(ctx context.Context, namespace, packageName string) {
+	metrics.publishesCompleted.Add(ctx, 1,
 		metric.WithAttributes(
 			attribute.String("namespace", namespace),
 			attribute.String("package", packageName),
@@ -327,8 +327,8 @@ func (m *Metrics) RecordPublishCompleted(ctx context.Context, namespace, package
 }
 
 // RecordPublishFailed increments the publish failed counter
-func (m *Metrics) RecordPublishFailed(ctx context.Context, namespace, packageName string) {
-	m.publishesFailed.Add(ctx, 1,
+func (metrics *Metrics) RecordPublishFailed(ctx context.Context, namespace, packageName string) {
+	metrics.publishesFailed.Add(ctx, 1,
 		metric.WithAttributes(
 			attribute.String("namespace", namespace),
 			attribute.String("package", packageName),
@@ -336,8 +336,8 @@ func (m *Metrics) RecordPublishFailed(ctx context.Context, namespace, packageNam
 }
 
 // RecordDeployStarted increments the deploy started counter
-func (m *Metrics) RecordDeployStarted(ctx context.Context, namespace, packageName string) {
-	m.deploysStarted.Add(ctx, 1,
+func (metrics *Metrics) RecordDeployStarted(ctx context.Context, namespace, packageName string) {
+	metrics.deploysStarted.Add(ctx, 1,
 		metric.WithAttributes(
 			attribute.String("namespace", namespace),
 			attribute.String("package", packageName),
@@ -345,8 +345,8 @@ func (m *Metrics) RecordDeployStarted(ctx context.Context, namespace, packageNam
 }
 
 // RecordDeployCompleted increments the deploy completed counter
-func (m *Metrics) RecordDeployCompleted(ctx context.Context, namespace, packageName string) {
-	m.deploysCompleted.Add(ctx, 1,
+func (metrics *Metrics) RecordDeployCompleted(ctx context.Context, namespace, packageName string) {
+	metrics.deploysCompleted.Add(ctx, 1,
 		metric.WithAttributes(
 			attribute.String("namespace", namespace),
 			attribute.String("package", packageName),
@@ -354,8 +354,8 @@ func (m *Metrics) RecordDeployCompleted(ctx context.Context, namespace, packageN
 }
 
 // RecordDeployFailed increments the deploy failed counter
-func (m *Metrics) RecordDeployFailed(ctx context.Context, namespace, packageName string) {
-	m.deploysFailed.Add(ctx, 1,
+func (metrics *Metrics) RecordDeployFailed(ctx context.Context, namespace, packageName string) {
+	metrics.deploysFailed.Add(ctx, 1,
 		metric.WithAttributes(
 			attribute.String("namespace", namespace),
 			attribute.String("package", packageName),
@@ -363,8 +363,8 @@ func (m *Metrics) RecordDeployFailed(ctx context.Context, namespace, packageName
 }
 
 // RecordActionDuration records the duration of an action (build/publish/deploy)
-func (m *Metrics) RecordActionDuration(ctx context.Context, namespace, packageName, action string, durationSeconds float64, status string) {
-	m.actionDuration.Record(ctx, durationSeconds,
+func (metrics *Metrics) RecordActionDuration(ctx context.Context, namespace, packageName, action string, durationSeconds float64, status string) {
+	metrics.actionDuration.Record(ctx, durationSeconds,
 		metric.WithAttributes(
 			attribute.String("namespace", namespace),
 			attribute.String("package", packageName),
@@ -374,23 +374,23 @@ func (m *Metrics) RecordActionDuration(ctx context.Context, namespace, packageNa
 }
 
 // RecordReconcileError increments the reconcile error counter
-func (m *Metrics) RecordReconcileError(ctx context.Context, errorType string) {
-	m.reconcileErrors.Add(ctx, 1,
+func (metrics *Metrics) RecordReconcileError(ctx context.Context, errorType string) {
+	metrics.reconcileErrors.Add(ctx, 1,
 		metric.WithAttributes(attribute.String("error_type", errorType)))
 }
 
 // RecordReconcileDuration records the duration of a reconciliation loop
-func (m *Metrics) RecordReconcileDuration(ctx context.Context, durationSeconds float64) {
-	m.reconcileDuration.Record(ctx, durationSeconds)
+func (metrics *Metrics) RecordReconcileDuration(ctx context.Context, durationSeconds float64) {
+	metrics.reconcileDuration.Record(ctx, durationSeconds)
 }
 
 // RecordWebhookValidation increments the webhook validation counter
-func (m *Metrics) RecordWebhookValidation(ctx context.Context, allowed bool, reason string) {
+func (metrics *Metrics) RecordWebhookValidation(ctx context.Context, allowed bool, reason string) {
 	status := "allowed"
 	if !allowed {
 		status = "denied"
 	}
-	m.webhookValidations.Add(ctx, 1,
+	metrics.webhookValidations.Add(ctx, 1,
 		metric.WithAttributes(
 			attribute.String("status", status),
 			attribute.String("reason", reason),

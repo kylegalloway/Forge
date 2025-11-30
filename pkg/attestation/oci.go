@@ -43,10 +43,10 @@ func NewOCIStorageImpl(registry, repository string, auth authn.Authenticator) *O
 }
 
 // Store saves an attestation to an OCI registry as an artifact
-func (s *OCIStorageImpl) Store(ctx context.Context, bundle *AttestationBundle, opts StoreOptions) error {
+func (storage *OCIStorageImpl) Store(ctx context.Context, bundle *AttestationBundle, opts StoreOptions) error {
 	klog.InfoS("Storing attestation in OCI registry",
-		"registry", s.Registry,
-		"repository", s.Repository,
+		"registry", storage.Registry,
+		"repository", storage.Repository,
 		"zarfPackageJob", opts.ZarfPackageJob,
 		"operation", opts.Operation,
 	)
@@ -96,13 +96,13 @@ func (s *OCIStorageImpl) Store(ctx context.Context, bundle *AttestationBundle, o
 		opts.ArtifactDigest[:12],
 	)
 
-	ref, err := name.NewTag(fmt.Sprintf("%s/%s:%s", s.Registry, s.Repository, tag))
+	ref, err := name.NewTag(fmt.Sprintf("%s/%s:%s", storage.Registry, storage.Repository, tag))
 	if err != nil {
 		return fmt.Errorf("failed to create reference: %w", err)
 	}
 
 	// Push to registry
-	if err := remote.Write(ref, img, s.Options...); err != nil {
+	if err := remote.Write(ref, img, storage.Options...); err != nil {
 		return fmt.Errorf("failed to push attestation: %w", err)
 	}
 
@@ -115,9 +115,9 @@ func (s *OCIStorageImpl) Store(ctx context.Context, bundle *AttestationBundle, o
 }
 
 // Retrieve retrieves an attestation from an OCI registry by digest
-func (s *OCIStorageImpl) Retrieve(ctx context.Context, digest string) (*AttestationBundle, error) {
+func (storage *OCIStorageImpl) Retrieve(ctx context.Context, digest string) (*AttestationBundle, error) {
 	klog.InfoS("Retrieving attestation from OCI registry",
-		"registry", s.Registry,
+		"registry", storage.Registry,
 		"digest", digest[:12],
 	)
 
@@ -131,9 +131,9 @@ func (s *OCIStorageImpl) Retrieve(ctx context.Context, digest string) (*Attestat
 }
 
 // List lists attestations from an OCI registry
-func (s *OCIStorageImpl) List(ctx context.Context, opts ListOptions) ([]*AttestationBundle, error) {
+func (storage *OCIStorageImpl) List(ctx context.Context, opts ListOptions) ([]*AttestationBundle, error) {
 	klog.InfoS("Listing attestations from OCI registry",
-		"registry", s.Registry,
+		"registry", storage.Registry,
 		"zarfPackageJob", opts.ZarfPackageJob,
 	)
 
@@ -147,7 +147,7 @@ func (s *OCIStorageImpl) List(ctx context.Context, opts ListOptions) ([]*Attesta
 }
 
 // RetrieveByReference retrieves an attestation by full OCI reference
-func (s *OCIStorageImpl) RetrieveByReference(ctx context.Context, reference string) (*AttestationBundle, error) {
+func (storage *OCIStorageImpl) RetrieveByReference(ctx context.Context, reference string) (*AttestationBundle, error) {
 	klog.InfoS("Retrieving attestation by reference", "reference", reference)
 
 	ref, err := name.ParseReference(reference)
@@ -156,7 +156,7 @@ func (s *OCIStorageImpl) RetrieveByReference(ctx context.Context, reference stri
 	}
 
 	// Pull image
-	img, err := remote.Image(ref, s.Options...)
+	img, err := remote.Image(ref, storage.Options...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to pull attestation image: %w", err)
 	}
@@ -191,7 +191,7 @@ func (s *OCIStorageImpl) RetrieveByReference(ctx context.Context, reference stri
 }
 
 // GetReferenceForAttestation generates an OCI reference for an attestation
-func (s *OCIStorageImpl) GetReferenceForAttestation(opts StoreOptions) (string, error) {
+func (storage *OCIStorageImpl) GetReferenceForAttestation(opts StoreOptions) (string, error) {
 	tag := fmt.Sprintf("attestation-%s-%s-%s-%s",
 		opts.Namespace,
 		opts.ZarfPackageJob,
@@ -199,5 +199,5 @@ func (s *OCIStorageImpl) GetReferenceForAttestation(opts StoreOptions) (string, 
 		opts.ArtifactDigest[:12],
 	)
 
-	return fmt.Sprintf("%s/%s:%s", s.Registry, s.Repository, tag), nil
+	return fmt.Sprintf("%s/%s:%s", storage.Registry, storage.Repository, tag), nil
 }

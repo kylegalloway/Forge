@@ -11,30 +11,30 @@ import (
 type S3Destination struct{}
 
 // GetPublishCommand returns the aws s3 cp command
-func (d *S3Destination) GetPublishCommand(pkg *zarfv1alpha1.ZarfPackageJob, artifactPath string) (string, error) {
-	dest := pkg.Spec.Publish.Destination.S3
-	if dest == nil {
+func (destination *S3Destination) GetPublishCommand(pkg *zarfv1alpha1.ZarfPackageJob, artifactPath string) (string, error) {
+	s3Config := pkg.Spec.Publish.Destination.S3
+	if s3Config == nil {
 		return "", fmt.Errorf("s3 destination configuration is missing")
 	}
 
-	s3Path := fmt.Sprintf("s3://%s/%s", dest.Bucket, dest.KeyPrefix)
-	return fmt.Sprintf("aws s3 cp %s %s --region %s", artifactPath, s3Path, dest.Region), nil
+	s3Path := fmt.Sprintf("s3://%s/%s", s3Config.Bucket, s3Config.KeyPrefix)
+	return fmt.Sprintf("aws s3 cp %s %s --region %s", artifactPath, s3Path, s3Config.Region), nil
 }
 
 // GetJobConfiguration returns the AWS credentials env vars
-func (d *S3Destination) GetJobConfiguration(pkg *zarfv1alpha1.ZarfPackageJob) (*JobConfig, error) {
-	dest := pkg.Spec.Publish.Destination.S3
-	if dest == nil {
+func (destination *S3Destination) GetJobConfiguration(pkg *zarfv1alpha1.ZarfPackageJob) (*JobConfig, error) {
+	s3Config := pkg.Spec.Publish.Destination.S3
+	if s3Config == nil {
 		return nil, fmt.Errorf("s3 destination configuration is missing")
 	}
 
 	config := &JobConfig{}
 
-	if dest.CredentialsSecretRef != nil {
+	if s3Config.CredentialsSecretRef != nil {
 		config.EnvFrom = append(config.EnvFrom, corev1.EnvFromSource{
 			SecretRef: &corev1.SecretEnvSource{
 				LocalObjectReference: corev1.LocalObjectReference{
-					Name: dest.CredentialsSecretRef.Name,
+					Name: s3Config.CredentialsSecretRef.Name,
 				},
 			},
 		})

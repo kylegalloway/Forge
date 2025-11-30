@@ -11,31 +11,31 @@ import (
 type OCIDestination struct{}
 
 // GetPublishCommand returns the zarf package publish command
-func (d *OCIDestination) GetPublishCommand(pkg *zarfv1alpha1.ZarfPackageJob, artifactPath string) (string, error) {
-	dest := pkg.Spec.Publish.Destination.OCI
-	if dest == nil {
+func (destination *OCIDestination) GetPublishCommand(pkg *zarfv1alpha1.ZarfPackageJob, artifactPath string) (string, error) {
+	ociConfig := pkg.Spec.Publish.Destination.OCI
+	if ociConfig == nil {
 		return "", fmt.Errorf("oci destination configuration is missing")
 	}
 
 	ociRef := fmt.Sprintf("oci://%s/%s:%s",
-		dest.Registry,
-		dest.Repository,
-		dest.Tag,
+		ociConfig.Registry,
+		ociConfig.Repository,
+		ociConfig.Tag,
 	)
 	return fmt.Sprintf("zarf package publish %s %s --confirm", artifactPath, ociRef), nil
 }
 
 // GetJobConfiguration returns the docker config volume mount
-func (d *OCIDestination) GetJobConfiguration(pkg *zarfv1alpha1.ZarfPackageJob) (*JobConfig, error) {
-	dest := pkg.Spec.Publish.Destination.OCI
-	if dest == nil {
+func (destination *OCIDestination) GetJobConfiguration(pkg *zarfv1alpha1.ZarfPackageJob) (*JobConfig, error) {
+	ociConfig := pkg.Spec.Publish.Destination.OCI
+	if ociConfig == nil {
 		return nil, fmt.Errorf("oci destination configuration is missing")
 	}
 
 	config := &JobConfig{}
 
-	if dest.CredentialsSecretRef != nil {
-		secretName := dest.CredentialsSecretRef.Name
+	if ociConfig.CredentialsSecretRef != nil {
+		secretName := ociConfig.CredentialsSecretRef.Name
 		config.Volumes = append(config.Volumes, corev1.Volume{
 			Name: "registry-creds",
 			VolumeSource: corev1.VolumeSource{

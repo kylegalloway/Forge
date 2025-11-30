@@ -33,7 +33,7 @@ func NewPublishHandler(kubeClient kubernetes.Interface, metrics *telemetry.Metri
 }
 
 // Execute performs a Publish action for the given ZarfPackageJob
-func (h *PublishHandler) Execute(ctx context.Context, pkg *zarfv1alpha1.ZarfPackageJob, artifactPath string) (*ActionResult, error) {
+func (handler *PublishHandler) Execute(ctx context.Context, pkg *zarfv1alpha1.ZarfPackageJob, artifactPath string) (*ActionResult, error) {
 	klog.InfoS("Executing Publish action", "name", pkg.Name, "namespace", pkg.Namespace)
 
 	// Validate publish destination is provided
@@ -42,7 +42,7 @@ func (h *PublishHandler) Execute(ctx context.Context, pkg *zarfv1alpha1.ZarfPack
 	}
 
 	// Create Kubernetes Job to publish the package
-	job, err := h.createPublishJob(ctx, pkg, artifactPath)
+	job, err := handler.createPublishJob(ctx, pkg, artifactPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create publish job: %w", err)
 	}
@@ -61,7 +61,7 @@ func (h *PublishHandler) Execute(ctx context.Context, pkg *zarfv1alpha1.ZarfPack
 }
 
 // createPublishJob creates a Kubernetes Job to publish a Zarf package
-func (h *PublishHandler) createPublishJob(ctx context.Context, pkg *zarfv1alpha1.ZarfPackageJob, artifactPath string) (*batchv1.Job, error) {
+func (handler *PublishHandler) createPublishJob(ctx context.Context, pkg *zarfv1alpha1.ZarfPackageJob, artifactPath string) (*batchv1.Job, error) {
 	jobName := fmt.Sprintf("%s-publish", pkg.Name)
 	namespace := pkg.Namespace
 
@@ -78,7 +78,7 @@ func (h *PublishHandler) createPublishJob(ctx context.Context, pkg *zarfv1alpha1
 	}
 
 	// Build init containers for artifact retrieval
-	initContainers, err := h.buildInitContainers(pkg)
+	initContainers, err := handler.buildInitContainers(pkg)
 	if err != nil {
 		return nil, fmt.Errorf("failed to build init containers: %w", err)
 	}
@@ -204,7 +204,7 @@ func (h *PublishHandler) createPublishJob(ctx context.Context, pkg *zarfv1alpha1
 	}
 
 	// Create the job
-	createdJob, err := h.kubeClient.BatchV1().Jobs(namespace).Create(ctx, job, metav1.CreateOptions{})
+	createdJob, err := handler.kubeClient.BatchV1().Jobs(namespace).Create(ctx, job, metav1.CreateOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create job: %w", err)
 	}
@@ -213,7 +213,7 @@ func (h *PublishHandler) createPublishJob(ctx context.Context, pkg *zarfv1alpha1
 }
 
 // buildInitContainers creates init containers for artifact retrieval
-func (h *PublishHandler) buildInitContainers(pkg *zarfv1alpha1.ZarfPackageJob) ([]corev1.Container, error) {
+func (handler *PublishHandler) buildInitContainers(pkg *zarfv1alpha1.ZarfPackageJob) ([]corev1.Container, error) {
 	sourceHandler, err := sources.New(pkg)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create source handler: %w", err)

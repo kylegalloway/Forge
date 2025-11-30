@@ -91,20 +91,20 @@ func NewController(
 }
 
 // Run starts the controller's main reconciliation loop
-func (c *Controller) Run(ctx context.Context) error {
+func (controller *Controller) Run(ctx context.Context) error {
 	klog.Info("Starting Forge controller")
 
 	// Start Job monitoring in background
-	go c.startJobMonitoring(ctx)
+	go controller.startJobMonitoring(ctx)
 
 	// Watch ZarfPackageJob resources
-	watcher, err := c.dynamicClient.Resource(ZarfPackageJobGVR).Namespace(c.namespace).Watch(ctx, metav1.ListOptions{})
+	watcher, err := controller.dynamicClient.Resource(ZarfPackageJobGVR).Namespace(controller.namespace).Watch(ctx, metav1.ListOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to create watcher: %w", err)
 	}
 	defer watcher.Stop()
 
-	c.ready = true
+	controller.ready = true
 	klog.Info("Forge controller is ready")
 
 	// Main event loop
@@ -119,14 +119,14 @@ func (c *Controller) Run(ctx context.Context) error {
 				klog.Warning("Watch channel closed, restarting watcher")
 				// Recreate watcher
 				var watchErr error
-				watcher, watchErr = c.dynamicClient.Resource(ZarfPackageJobGVR).Namespace(c.namespace).Watch(ctx, metav1.ListOptions{})
+				watcher, watchErr = controller.dynamicClient.Resource(ZarfPackageJobGVR).Namespace(controller.namespace).Watch(ctx, metav1.ListOptions{})
 				if watchErr != nil {
 					return fmt.Errorf("failed to recreate watcher: %w", watchErr)
 				}
 				continue
 			}
 
-			if handleErr := c.handleEvent(ctx, event); handleErr != nil {
+			if handleErr := controller.handleEvent(ctx, event); handleErr != nil {
 				klog.ErrorS(handleErr, "Error handling event", "type", event.Type)
 				// Don't return error, continue processing
 			}
@@ -135,12 +135,12 @@ func (c *Controller) Run(ctx context.Context) error {
 }
 
 // handleEvent processes a single watch event
-func (c *Controller) handleEvent(ctx context.Context, event watch.Event) error {
+func (controller *Controller) handleEvent(ctx context.Context, event watch.Event) error {
 	switch event.Type {
 	case watch.Added:
-		return c.handleObject(ctx, event.Object)
+		return controller.handleObject(ctx, event.Object)
 	case watch.Modified:
-		return c.handleObject(ctx, event.Object)
+		return controller.handleObject(ctx, event.Object)
 	case watch.Deleted:
 		// Cleanup handled by owner references
 		obj, ok := event.Object.(*unstructured.Unstructured)
@@ -148,7 +148,7 @@ func (c *Controller) handleEvent(ctx context.Context, event watch.Event) error {
 			return fmt.Errorf("unexpected object type in deleted event")
 		}
 		// Record deletion in metrics (decrement active counter)
-		c.metrics.RecordZarfPackageJobDeleted(ctx, obj.GetNamespace())
+		controller.metrics.RecordZarfPackageJobDeleted(ctx, obj.GetNamespace())
 		klog.InfoS("ZarfPackageJob deleted", "name", obj.GetName(), "namespace", obj.GetNamespace())
 		return nil
 	case watch.Error:
@@ -160,7 +160,7 @@ func (c *Controller) handleEvent(ctx context.Context, event watch.Event) error {
 }
 
 // handleObject dispatches to the appropriate handler based on kind
-func (c *Controller) handleObject(ctx context.Context, obj interface{}) error {
+func (controller *Controller) handleObject(ctx context.Context, obj interface{}) error {
 	unstrObj, ok := obj.(*unstructured.Unstructured)
 	if !ok {
 		return fmt.Errorf("unexpected object type: %T", obj)
@@ -168,14 +168,14 @@ func (c *Controller) handleObject(ctx context.Context, obj interface{}) error {
 
 	gvk := unstrObj.GroupVersionKind()
 	if gvk.Group == ZarfPackageJobGroup && gvk.Kind == "ZarfPackageJob" {
-		return c.handleZarfPackageJob(ctx, unstrObj)
+		return controller.handleZarfPackageJob(ctx, unstrObj)
 	}
 
 	return fmt.Errorf("unsupported kind: %s", gvk.Kind)
 }
 
 // handleZarfPackage reconciles a ZarfPackageJob resource
-func (c *Controller) handleZarfPackageJob(ctx context.Context, unstrObj *unstructured.Unstructured) error {
+func (controller *Controller) handleZarfPackageJob(ctx context.Context, unstrObj *unstructured.Unstructured) error {
 	name := unstrObj.GetName()
 	namespace := unstrObj.GetNamespace()
 
@@ -185,20 +185,20 @@ func (c *Controller) handleZarfPackageJob(ctx context.Context, unstrObj *unstruc
 	pkg := &zarfv1alpha1.ZarfPackageJob{}
 	if err := runtime.DefaultUnstructuredConverter.FromUnstructured(unstrObj.Object, pkg); err != nil {
 		klog.ErrorS(err, "Failed to convert unstructured to ZarfPackageJob", "name", name, "namespace", namespace)
-		c.metrics.RecordReconcileError(ctx, "conversion_error")
-		return c.updateStatus(ctx, unstrObj, "Failed", fmt.Sprintf("Invalid ZarfPackageJob: %v", err), nil)
+		controller.metrics.RecordReconcileError(ctx, "conversion_error")
+		return controller.updateStatus(ctx, unstrObj, "Failed", fmt.Sprintf("Invalid ZarfPackageJob: %v", err), nil)
 	}
 
 	// Record ZarfPackageJob creation if this is the first reconciliation
 	if pkg.Status.Phase == "" {
-		c.metrics.RecordZarfPackageJobCreated(ctx, namespace)
+		controller.metrics.RecordZarfPackageJobCreated(ctx, namespace)
 	}
 
-	return c.reconcilePackage(ctx, unstrObj, pkg)
+	return controller.reconcilePackage(ctx, unstrObj, pkg)
 }
 
 // reconcilePackage performs the actual reconciliation logic
-func (c *Controller) reconcilePackage(ctx context.Context, unstrObj *unstructured.Unstructured, pkg *zarfv1alpha1.ZarfPackageJob) error {
+func (controller *Controller) reconcilePackage(ctx context.Context, unstrObj *unstructured.Unstructured, pkg *zarfv1alpha1.ZarfPackageJob) error {
 	startTime := time.Now()
 	name := pkg.Name
 	namespace := pkg.Namespace
@@ -206,10 +206,10 @@ func (c *Controller) reconcilePackage(ctx context.Context, unstrObj *unstructure
 	klog.InfoS("Processing ZarfPackageJob action", "name", name, "namespace", namespace, "action", pkg.Spec.Action)
 
 	// Validate policy
-	if err := c.policyEngine.Validate(ctx, pkg); err != nil {
+	if err := controller.policyEngine.Validate(ctx, pkg); err != nil {
 		klog.ErrorS(err, "Policy validation failed", "name", name, "namespace", namespace)
-		c.metrics.RecordReconcileError(ctx, "policy_violation")
-		return c.updateStatus(ctx, unstrObj, "Failed", fmt.Sprintf("Policy violation: %v", err), nil)
+		controller.metrics.RecordReconcileError(ctx, "policy_violation")
+		return controller.updateStatus(ctx, unstrObj, "Failed", fmt.Sprintf("Policy violation: %v", err), nil)
 	}
 
 	// Dispatch to appropriate action handler
@@ -218,33 +218,33 @@ func (c *Controller) reconcilePackage(ctx context.Context, unstrObj *unstructure
 
 	switch pkg.Spec.Action {
 	case zarfv1alpha1.ActionBuild:
-		result, err = c.buildHandler.Execute(ctx, pkg)
+		result, err = controller.buildHandler.Execute(ctx, pkg)
 
 	case zarfv1alpha1.ActionPublish:
 		// For standalone publish, assume artifact is already available
 		// TODO: Implement artifact fetching from source
-		result, err = c.publishHandler.Execute(ctx, pkg, "/workspace/package.tar.zst")
+		result, err = controller.publishHandler.Execute(ctx, pkg, "/workspace/package.tar.zst")
 
 	case zarfv1alpha1.ActionDeploy:
 		// For standalone deploy, assume artifact is already available
 		// TODO: Implement artifact fetching from source
-		result, err = c.deployHandler.Execute(ctx, pkg, "/workspace/package.tar.zst")
+		result, err = controller.deployHandler.Execute(ctx, pkg, "/workspace/package.tar.zst")
 
 	case zarfv1alpha1.ActionBuildPublish:
 		// Execute build first, job monitor will trigger publish when build completes
-		result, err = c.buildHandler.Execute(ctx, pkg)
+		result, err = controller.buildHandler.Execute(ctx, pkg)
 
 	case zarfv1alpha1.ActionBuildDeploy:
 		// Execute build first, job monitor will trigger deploy when build completes
-		result, err = c.buildHandler.Execute(ctx, pkg)
+		result, err = controller.buildHandler.Execute(ctx, pkg)
 
 	case zarfv1alpha1.ActionPublishDeploy:
 		// Execute publish first, job monitor will trigger deploy when publish completes
-		result, err = c.publishHandler.Execute(ctx, pkg, "/workspace/package.tar.zst")
+		result, err = controller.publishHandler.Execute(ctx, pkg, "/workspace/package.tar.zst")
 
 	case zarfv1alpha1.ActionBuildPublishDeploy:
 		// Execute build first, job monitor will chain publish → deploy
-		result, err = c.buildHandler.Execute(ctx, pkg)
+		result, err = controller.buildHandler.Execute(ctx, pkg)
 
 	default:
 		err = fmt.Errorf("action %s not yet implemented", pkg.Spec.Action)
@@ -253,11 +253,11 @@ func (c *Controller) reconcilePackage(ctx context.Context, unstrObj *unstructure
 	// Update status based on result
 	if err != nil {
 		klog.ErrorS(err, "Action failed", "name", name, "namespace", namespace, "action", pkg.Spec.Action)
-		c.metrics.RecordReconcileError(ctx, "action_failed")
+		controller.metrics.RecordReconcileError(ctx, "action_failed")
 		// Record reconcile duration even on failure
 		duration := time.Since(startTime)
-		c.metrics.RecordReconcileDuration(ctx, duration.Seconds())
-		return c.updateStatus(ctx, unstrObj, "Failed", err.Error(), nil)
+		controller.metrics.RecordReconcileDuration(ctx, duration.Seconds())
+		return controller.updateStatus(ctx, unstrObj, "Failed", err.Error(), nil)
 	}
 
 	if result != nil {
@@ -268,21 +268,21 @@ func (c *Controller) reconcilePackage(ctx context.Context, unstrObj *unstructure
 				"startTime": result.StartTime.Format(time.RFC3339),
 			},
 		}
-		if err := c.updateStatus(ctx, unstrObj, result.Phase, result.Message, opStatus); err != nil {
+		if err := controller.updateStatus(ctx, unstrObj, result.Phase, result.Message, opStatus); err != nil {
 			klog.ErrorS(err, "Failed to update status", "name", name, "namespace", namespace)
-			c.metrics.RecordReconcileError(ctx, "status_update_failed")
+			controller.metrics.RecordReconcileError(ctx, "status_update_failed")
 		}
 	}
 
 	duration := time.Since(startTime)
-	c.metrics.RecordReconcileDuration(ctx, duration.Seconds())
+	controller.metrics.RecordReconcileDuration(ctx, duration.Seconds())
 	klog.InfoS("Reconciliation complete", "name", name, "namespace", namespace, "duration", duration)
 
 	return nil
 }
 
 // updateStatus updates the status of a ZarfPackageJob resource
-func (c *Controller) updateStatus(ctx context.Context, obj *unstructured.Unstructured, phase, message string, operationStatus map[string]interface{}) error {
+func (controller *Controller) updateStatus(ctx context.Context, obj *unstructured.Unstructured, phase, message string, operationStatus map[string]interface{}) error {
 	name := obj.GetName()
 	namespace := obj.GetNamespace()
 
@@ -302,7 +302,7 @@ func (c *Controller) updateStatus(ctx context.Context, obj *unstructured.Unstruc
 	// Update status subresource
 	obj.Object["status"] = status
 
-	_, err := c.dynamicClient.Resource(ZarfPackageJobGVR).Namespace(namespace).UpdateStatus(ctx, obj, metav1.UpdateOptions{})
+	_, err := controller.dynamicClient.Resource(ZarfPackageJobGVR).Namespace(namespace).UpdateStatus(ctx, obj, metav1.UpdateOptions{})
 	if err != nil {
 		if errors.IsNotFound(err) {
 			klog.V(4).InfoS("ZarfPackageJob not found during status update", "name", name, "namespace", namespace)
@@ -316,16 +316,16 @@ func (c *Controller) updateStatus(ctx context.Context, obj *unstructured.Unstruc
 }
 
 // HealthzHandler returns an HTTP handler for health checks
-func (c *Controller) HealthzHandler() http.HandlerFunc {
-	return func(w http.ResponseWriter, _ *http.Request) {
-		if c.healthy {
-			w.WriteHeader(http.StatusOK)
-			if _, err := w.Write([]byte("ok")); err != nil {
+func (controller *Controller) HealthzHandler() http.HandlerFunc {
+	return func(responseWriter http.ResponseWriter, _ *http.Request) {
+		if controller.healthy {
+			responseWriter.WriteHeader(http.StatusOK)
+			if _, err := responseWriter.Write([]byte("ok")); err != nil {
 				klog.ErrorS(err, "Failed to write health response")
 			}
 		} else {
-			w.WriteHeader(http.StatusServiceUnavailable)
-			if _, err := w.Write([]byte("unhealthy")); err != nil {
+			responseWriter.WriteHeader(http.StatusServiceUnavailable)
+			if _, err := responseWriter.Write([]byte("unhealthy")); err != nil {
 				klog.ErrorS(err, "Failed to write unhealthy response")
 			}
 		}
@@ -333,16 +333,16 @@ func (c *Controller) HealthzHandler() http.HandlerFunc {
 }
 
 // ReadyzHandler returns an HTTP handler for readiness checks
-func (c *Controller) ReadyzHandler() http.HandlerFunc {
-	return func(w http.ResponseWriter, _ *http.Request) {
-		if c.ready {
-			w.WriteHeader(http.StatusOK)
-			if _, err := w.Write([]byte("ready")); err != nil {
+func (controller *Controller) ReadyzHandler() http.HandlerFunc {
+	return func(responseWriter http.ResponseWriter, _ *http.Request) {
+		if controller.ready {
+			responseWriter.WriteHeader(http.StatusOK)
+			if _, err := responseWriter.Write([]byte("ready")); err != nil {
 				klog.ErrorS(err, "Failed to write ready response")
 			}
 		} else {
-			w.WriteHeader(http.StatusServiceUnavailable)
-			if _, err := w.Write([]byte("not ready")); err != nil {
+			responseWriter.WriteHeader(http.StatusServiceUnavailable)
+			if _, err := responseWriter.Write([]byte("not ready")); err != nil {
 				klog.ErrorS(err, "Failed to write not ready response")
 			}
 		}

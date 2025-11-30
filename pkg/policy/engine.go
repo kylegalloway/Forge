@@ -45,14 +45,14 @@ func NewEngine(kubeClient kubernetes.Interface) *Engine {
 }
 
 // Validate checks if the operation is allowed based on the ServiceAccount permissions
-func (e *Engine) Validate(ctx context.Context, pkg *zarfv1alpha1.ZarfPackageJob) error {
+func (engine *Engine) Validate(ctx context.Context, pkg *zarfv1alpha1.ZarfPackageJob) error {
 	// 1. Fetch ServiceAccount
 	saName := pkg.Spec.ServiceAccountName
 	if saName == "" {
 		return fmt.Errorf("serviceAccountName is required")
 	}
 
-	sa, err := e.kubeClient.CoreV1().ServiceAccounts(pkg.Namespace).Get(ctx, saName, metav1.GetOptions{})
+	sa, err := engine.kubeClient.CoreV1().ServiceAccounts(pkg.Namespace).Get(ctx, saName, metav1.GetOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to get ServiceAccount %s: %w", saName, err)
 	}
@@ -77,13 +77,13 @@ func (e *Engine) Validate(ctx context.Context, pkg *zarfv1alpha1.ZarfPackageJob)
 		"serviceAccount", saName)
 
 	// 3. Check Allowed Sources
-	if err := e.validateSource(pkg.Spec.Source, annotations, saName); err != nil {
+	if err := engine.validateSource(pkg.Spec.Source, annotations, saName); err != nil {
 		return err
 	}
 
 	// 4. Check Allowed Destinations
 	if pkg.Spec.Publish != nil {
-		if err := e.validateDestination(pkg.Spec.Publish.Destination, annotations, saName); err != nil {
+		if err := engine.validateDestination(pkg.Spec.Publish.Destination, annotations, saName); err != nil {
 			return err
 		}
 	}
@@ -101,7 +101,7 @@ func (e *Engine) Validate(ctx context.Context, pkg *zarfv1alpha1.ZarfPackageJob)
 }
 
 // validateSource checks if the source is allowed
-func (e *Engine) validateSource(source zarfv1alpha1.PackageSource, annotations map[string]string, saName string) error {
+func (engine *Engine) validateSource(source zarfv1alpha1.PackageSource, annotations map[string]string, saName string) error {
 	// If no restrictions are defined, is it allowed?
 	// "Security by default" implies denied. But let's assume if annotation is missing, it's denied?
 	// Or maybe if annotation is missing, it's allowed?
@@ -156,7 +156,7 @@ func (e *Engine) validateSource(source zarfv1alpha1.PackageSource, annotations m
 }
 
 // validateDestination checks if the destination is allowed
-func (e *Engine) validateDestination(dest zarfv1alpha1.PublishDestination, annotations map[string]string, saName string) error {
+func (engine *Engine) validateDestination(dest zarfv1alpha1.PublishDestination, annotations map[string]string, saName string) error {
 	switch dest.Type {
 	case zarfv1alpha1.DestinationTypeS3:
 		allowedBuckets := parseList(annotations[AnnotationAllowedPublishBuckets])

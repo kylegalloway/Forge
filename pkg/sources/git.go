@@ -12,7 +12,7 @@ import (
 type GitSource struct{}
 
 // GetInitContainer returns an init container to clone the git repository
-func (s *GitSource) GetInitContainer(pkg *zarfv1alpha1.ZarfPackageJob) (*corev1.Container, error) {
+func (source *GitSource) GetInitContainer(pkg *zarfv1alpha1.ZarfPackageJob) (*corev1.Container, error) {
 	gitSource := pkg.Spec.Source.Git
 	if gitSource == nil {
 		return nil, fmt.Errorf("git source configuration is missing")

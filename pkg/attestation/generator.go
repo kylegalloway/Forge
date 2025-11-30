@@ -44,7 +44,7 @@ func NewGenerator(name, namespace, version string) *Generator {
 }
 
 // GenerateForBuild generates an attestation for a Build operation
-func (g *Generator) GenerateForBuild(opts BuildAttestationOptions) (*AttestationBundle, error) {
+func (generator *Generator) GenerateForBuild(opts BuildAttestationOptions) (*AttestationBundle, error) {
 	klog.InfoS("Generating build attestation", "zarfPackageJob", opts.ZarfPackageJob, "namespace", opts.Namespace)
 
 	// Create subject for the built artifact
@@ -59,7 +59,7 @@ func (g *Generator) GenerateForBuild(opts BuildAttestationOptions) (*Attestation
 	}
 
 	// Generate SLSA provenance
-	provenance := g.generateSLSAProvenance(opts.CommonOptions)
+	provenance := generator.generateSLSAProvenance(opts.CommonOptions)
 
 	// Create attestation statement
 	statement := Statement{
@@ -70,7 +70,7 @@ func (g *Generator) GenerateForBuild(opts BuildAttestationOptions) (*Attestation
 	}
 
 	// Also generate Forge operation predicate for additional metadata
-	forgePredicate := g.generateForgeOperationPredicate("Build", opts.CommonOptions)
+	forgePredicate := generator.generateForgeOperationPredicate("Build", opts.CommonOptions)
 
 	// Create bundle with both attestations
 	bundle := &AttestationBundle{
@@ -86,7 +86,7 @@ func (g *Generator) GenerateForBuild(opts BuildAttestationOptions) (*Attestation
 }
 
 // GenerateForPublish generates an attestation for a Publish operation
-func (g *Generator) GenerateForPublish(opts PublishAttestationOptions) (*AttestationBundle, error) {
+func (generator *Generator) GenerateForPublish(opts PublishAttestationOptions) (*AttestationBundle, error) {
 	klog.InfoS("Generating publish attestation", "zarfPackageJob", opts.ZarfPackageJob, "namespace", opts.Namespace)
 
 	// Create subject for the published artifact
@@ -101,7 +101,7 @@ func (g *Generator) GenerateForPublish(opts PublishAttestationOptions) (*Attesta
 	}
 
 	// Generate Forge operation predicate
-	forgePredicate := g.generateForgeOperationPredicate("Publish", opts.CommonOptions)
+	forgePredicate := generator.generateForgeOperationPredicate("Publish", opts.CommonOptions)
 	if opts.Destination != nil {
 		forgePredicate.Destination = opts.Destination
 	}
@@ -124,7 +124,7 @@ func (g *Generator) GenerateForPublish(opts PublishAttestationOptions) (*Attesta
 }
 
 // GenerateForDeploy generates an attestation for a Deploy operation
-func (g *Generator) GenerateForDeploy(opts DeployAttestationOptions) (*AttestationBundle, error) {
+func (generator *Generator) GenerateForDeploy(opts DeployAttestationOptions) (*AttestationBundle, error) {
 	klog.InfoS("Generating deploy attestation", "zarfPackageJob", opts.ZarfPackageJob, "namespace", opts.Namespace)
 
 	// Create subject for the deployed package
@@ -139,7 +139,7 @@ func (g *Generator) GenerateForDeploy(opts DeployAttestationOptions) (*Attestati
 	}
 
 	// Generate Forge operation predicate
-	forgePredicate := g.generateForgeOperationPredicate("Deploy", opts.CommonOptions)
+	forgePredicate := generator.generateForgeOperationPredicate("Deploy", opts.CommonOptions)
 	if opts.DeployTarget != nil {
 		forgePredicate.DeployTarget = opts.DeployTarget
 	}
@@ -162,7 +162,7 @@ func (g *Generator) GenerateForDeploy(opts DeployAttestationOptions) (*Attestati
 }
 
 // generateSLSAProvenance generates SLSA provenance metadata
-func (g *Generator) generateSLSAProvenance(opts CommonOptions) SLSAProvenance {
+func (generator *Generator) generateSLSAProvenance(opts CommonOptions) SLSAProvenance {
 	// Build definition
 	externalParams := map[string]interface{}{
 		"zarfPackageJob": opts.ZarfPackageJob,
@@ -199,7 +199,7 @@ func (g *Generator) generateSLSAProvenance(opts CommonOptions) SLSAProvenance {
 	builder := Builder{
 		ID: ForgeBuilderID,
 		Version: map[string]string{
-			"forge": g.ControllerVersion,
+			"forge": generator.ControllerVersion,
 		},
 	}
 
@@ -221,7 +221,7 @@ func (g *Generator) generateSLSAProvenance(opts CommonOptions) SLSAProvenance {
 }
 
 // generateForgeOperationPredicate generates a Forge operation predicate
-func (g *Generator) generateForgeOperationPredicate(operation string, opts CommonOptions) ForgeOperationPredicate {
+func (generator *Generator) generateForgeOperationPredicate(operation string, opts CommonOptions) ForgeOperationPredicate {
 	return ForgeOperationPredicate{
 		Operation:      operation,
 		ZarfPackageJob: opts.ZarfPackageJob,
@@ -234,10 +234,10 @@ func (g *Generator) generateForgeOperationPredicate(operation string, opts Commo
 		JobName:        opts.JobName,
 		PodName:        opts.PodName,
 		Controller: ControllerInfo{
-			Name:      g.ControllerName,
-			Namespace: g.ControllerNamespace,
-			Version:   g.ControllerVersion,
-			PodName:   g.PodName,
+			Name:      generator.ControllerName,
+			Namespace: generator.ControllerNamespace,
+			Version:   generator.ControllerVersion,
+			PodName:   generator.PodName,
 		},
 	}
 }

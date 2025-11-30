@@ -53,35 +53,35 @@ func NewZarfPackageJobValidator(kubeClient kubernetes.Interface) *ZarfPackageJob
 }
 
 // ValidateZarfPackageJob validates a ZarfPackageJob resource against ServiceAccount permissions
-func (v *ZarfPackageJobValidator) ValidateZarfPackageJob(ctx context.Context, pkg *zarfv1alpha1.ZarfPackageJob) error {
+func (validator *ZarfPackageJobValidator) ValidateZarfPackageJob(ctx context.Context, pkg *zarfv1alpha1.ZarfPackageJob) error {
 	klog.InfoS("Validating ZarfPackageJob", "name", pkg.Name, "namespace", pkg.Namespace)
 
 	// Get the ServiceAccount
-	sa, err := v.kubeClient.CoreV1().ServiceAccounts(pkg.Namespace).Get(ctx, pkg.Spec.ServiceAccountName, metav1.GetOptions{})
+	sa, err := validator.kubeClient.CoreV1().ServiceAccounts(pkg.Namespace).Get(ctx, pkg.Spec.ServiceAccountName, metav1.GetOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to get ServiceAccount %s: %w", pkg.Spec.ServiceAccountName, err)
 	}
 
 	// Validate action is allowed
-	if err := v.validateAction(sa, pkg.Spec.Action); err != nil {
+	if err := validator.validateAction(sa, pkg.Spec.Action); err != nil {
 		return err
 	}
 
 	// Validate source permissions
-	if err := v.validateSource(sa, &pkg.Spec.Source); err != nil {
+	if err := validator.validateSource(sa, &pkg.Spec.Source); err != nil {
 		return err
 	}
 
 	// Validate publish permissions if publish config is specified
 	if pkg.Spec.Publish != nil {
-		if err := v.validatePublish(sa, pkg.Spec.Publish); err != nil {
+		if err := validator.validatePublish(sa, pkg.Spec.Publish); err != nil {
 			return err
 		}
 	}
 
 	// Validate deploy permissions if deploy config is specified
 	if pkg.Spec.Deploy != nil {
-		if err := v.validateDeploy(sa, pkg.Spec.Deploy); err != nil {
+		if err := validator.validateDeploy(sa, pkg.Spec.Deploy); err != nil {
 			return err
 		}
 	}
@@ -91,7 +91,7 @@ func (v *ZarfPackageJobValidator) ValidateZarfPackageJob(ctx context.Context, pk
 }
 
 // validateAction checks if the action is allowed by the ServiceAccount
-func (v *ZarfPackageJobValidator) validateAction(sa *corev1.ServiceAccount, action zarfv1alpha1.Action) error {
+func (validator *ZarfPackageJobValidator) validateAction(sa *corev1.ServiceAccount, action zarfv1alpha1.Action) error {
 	allowedActions := getAnnotation(sa, annotationAllowedActions)
 	if allowedActions == "" {
 		return fmt.Errorf("ServiceAccount %s has no allowed-actions annotation", sa.Name)
@@ -109,25 +109,25 @@ func (v *ZarfPackageJobValidator) validateAction(sa *corev1.ServiceAccount, acti
 }
 
 // validateSource validates the source configuration
-func (v *ZarfPackageJobValidator) validateSource(sa *corev1.ServiceAccount, source *zarfv1alpha1.PackageSource) error {
+func (validator *ZarfPackageJobValidator) validateSource(sa *corev1.ServiceAccount, source *zarfv1alpha1.PackageSource) error {
 	switch source.Type {
 	case zarfv1alpha1.SourceTypeGit:
 		if source.Git == nil {
 			return fmt.Errorf("git source configuration is required")
 		}
-		return v.validateGitSource(sa, source.Git)
+		return validator.validateGitSource(sa, source.Git)
 
 	case zarfv1alpha1.SourceTypeS3:
 		if source.S3 == nil {
 			return fmt.Errorf("s3 source configuration is required")
 		}
-		return v.validateS3Source(sa, source.S3)
+		return validator.validateS3Source(sa, source.S3)
 
 	case zarfv1alpha1.SourceTypeOCI:
 		if source.OCI == nil {
 			return fmt.Errorf("oci source configuration is required")
 		}
-		return v.validateOCISource(sa, source.OCI)
+		return validator.validateOCISource(sa, source.OCI)
 
 	case zarfv1alpha1.SourceTypeLocal:
 		// Local source is dev/testing only - could add annotation to control this
@@ -140,7 +140,7 @@ func (v *ZarfPackageJobValidator) validateSource(sa *corev1.ServiceAccount, sour
 }
 
 // validateGitSource validates Git source permissions
-func (v *ZarfPackageJobValidator) validateGitSource(sa *corev1.ServiceAccount, git *zarfv1alpha1.GitSource) error {
+func (validator *ZarfPackageJobValidator) validateGitSource(sa *corev1.ServiceAccount, git *zarfv1alpha1.GitSource) error {
 	allowedRepos := getAnnotation(sa, annotationAllowedSourceRepos)
 	if allowedRepos == "" {
 		return fmt.Errorf("ServiceAccount %s has no allowed-source-repos annotation", sa.Name)
@@ -159,7 +159,7 @@ func (v *ZarfPackageJobValidator) validateGitSource(sa *corev1.ServiceAccount, g
 }
 
 // validateS3Source validates S3 source permissions
-func (v *ZarfPackageJobValidator) validateS3Source(sa *corev1.ServiceAccount, s3 *zarfv1alpha1.S3Source) error {
+func (validator *ZarfPackageJobValidator) validateS3Source(sa *corev1.ServiceAccount, s3 *zarfv1alpha1.S3Source) error {
 	allowedBuckets := getAnnotation(sa, annotationAllowedSourceBuckets)
 	if allowedBuckets == "" {
 		return fmt.Errorf("ServiceAccount %s has no allowed-source-buckets annotation", sa.Name)
@@ -178,7 +178,7 @@ func (v *ZarfPackageJobValidator) validateS3Source(sa *corev1.ServiceAccount, s3
 }
 
 // validateOCISource validates OCI source permissions
-func (v *ZarfPackageJobValidator) validateOCISource(sa *corev1.ServiceAccount, oci *zarfv1alpha1.OCISource) error {
+func (validator *ZarfPackageJobValidator) validateOCISource(sa *corev1.ServiceAccount, oci *zarfv1alpha1.OCISource) error {
 	allowedRegistries := getAnnotation(sa, annotationAllowedSourceRegistries)
 	if allowedRegistries == "" {
 		return fmt.Errorf("ServiceAccount %s has no allowed-source-registries annotation", sa.Name)
@@ -197,19 +197,19 @@ func (v *ZarfPackageJobValidator) validateOCISource(sa *corev1.ServiceAccount, o
 }
 
 // validatePublish validates publish destination permissions
-func (v *ZarfPackageJobValidator) validatePublish(sa *corev1.ServiceAccount, publish *zarfv1alpha1.PublishConfig) error {
+func (validator *ZarfPackageJobValidator) validatePublish(sa *corev1.ServiceAccount, publish *zarfv1alpha1.PublishConfig) error {
 	switch publish.Destination.Type {
 	case zarfv1alpha1.DestinationTypeS3:
 		if publish.Destination.S3 == nil {
 			return fmt.Errorf("s3 publish destination is required")
 		}
-		return v.validateS3Publish(sa, publish.Destination.S3)
+		return validator.validateS3Publish(sa, publish.Destination.S3)
 
 	case zarfv1alpha1.DestinationTypeOCI:
 		if publish.Destination.OCI == nil {
 			return fmt.Errorf("oci publish destination is required")
 		}
-		return v.validateOCIPublish(sa, publish.Destination.OCI)
+		return validator.validateOCIPublish(sa, publish.Destination.OCI)
 
 	case zarfv1alpha1.DestinationTypeLocal:
 		// Local publish is dev/testing only
@@ -222,7 +222,7 @@ func (v *ZarfPackageJobValidator) validatePublish(sa *corev1.ServiceAccount, pub
 }
 
 // validateS3Publish validates S3 publish permissions
-func (v *ZarfPackageJobValidator) validateS3Publish(sa *corev1.ServiceAccount, s3 *zarfv1alpha1.S3Destination) error {
+func (validator *ZarfPackageJobValidator) validateS3Publish(sa *corev1.ServiceAccount, s3 *zarfv1alpha1.S3Destination) error {
 	allowedBuckets := getAnnotation(sa, annotationAllowedPublishBuckets)
 	if allowedBuckets == "" {
 		return fmt.Errorf("ServiceAccount %s has no allowed-publish-buckets annotation", sa.Name)
@@ -241,7 +241,7 @@ func (v *ZarfPackageJobValidator) validateS3Publish(sa *corev1.ServiceAccount, s
 }
 
 // validateOCIPublish validates OCI publish permissions
-func (v *ZarfPackageJobValidator) validateOCIPublish(sa *corev1.ServiceAccount, oci *zarfv1alpha1.OCIDestination) error {
+func (validator *ZarfPackageJobValidator) validateOCIPublish(sa *corev1.ServiceAccount, oci *zarfv1alpha1.OCIDestination) error {
 	allowedRegistries := getAnnotation(sa, annotationAllowedPublishRegistries)
 	if allowedRegistries == "" {
 		return fmt.Errorf("ServiceAccount %s has no allowed-publish-registries annotation", sa.Name)
@@ -263,7 +263,7 @@ func (v *ZarfPackageJobValidator) validateOCIPublish(sa *corev1.ServiceAccount, 
 }
 
 // validateDeploy validates deploy target permissions
-func (v *ZarfPackageJobValidator) validateDeploy(sa *corev1.ServiceAccount, deploy *zarfv1alpha1.DeployConfig) error {
+func (validator *ZarfPackageJobValidator) validateDeploy(sa *corev1.ServiceAccount, deploy *zarfv1alpha1.DeployConfig) error {
 	allowedTargets := getAnnotation(sa, annotationAllowedDeployTargets)
 	if allowedTargets == "" {
 		return fmt.Errorf("ServiceAccount %s has no allowed-deploy-targets annotation", sa.Name)

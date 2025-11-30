@@ -11,7 +11,7 @@ import (
 type S3Source struct{}
 
 // GetInitContainer returns an init container to download the artifact from S3
-func (s *S3Source) GetInitContainer(pkg *zarfv1alpha1.ZarfPackageJob) (*corev1.Container, error) {
+func (source *S3Source) GetInitContainer(pkg *zarfv1alpha1.ZarfPackageJob) (*corev1.Container, error) {
 	s3Source := pkg.Spec.Source.S3
 	if s3Source == nil {
 		return nil, fmt.Errorf("s3 source configuration is missing")

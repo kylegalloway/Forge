@@ -21,12 +21,14 @@ helm upgrade --install forge ./chart/forge \
 Forge supports two deployment modes depending on your cluster permissions and security requirements.
 
 **Cluster-Wide Deployment (Default)**:
+
 - Watches all namespaces
 - ZarfPackageJobs can be created in any namespace
 - ServiceAccounts can be in any namespace
 - Suitable for platform teams
 
 **Namespace-Scoped Deployment**:
+
 - Watches only forge-system namespace
 - All resources must be in forge-system
 - Minimal permissions (Role, not ClusterRole)

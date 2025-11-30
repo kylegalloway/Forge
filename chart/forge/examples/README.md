@@ -5,9 +5,11 @@ This directory contains example values files for different deployment scenarios.
 ## Available Examples
 
 ### [values-kind.yaml](values-kind.yaml)
+
 Configuration for local development using Kind (Kubernetes in Docker).
 
 **Key Features:**
+
 - Lightweight resource limits
 - Uses separate kube-prometheus-stack installation
 - Local image registry (localhost/forge-controller)
@@ -19,9 +21,11 @@ helm upgrade --install forge ../.. -f values-kind.yaml
 ```
 
 ### [values-new-cluster.yaml](values-new-cluster.yaml)
+
 Configuration for deploying into a new cluster with no existing monitoring infrastructure.
 
 **Key Features:**
+
 - Deploys full observability stack (OTEL, Prometheus, Grafana)
 - Production-grade resource limits
 - Persistent storage enabled
@@ -34,9 +38,11 @@ helm upgrade --install forge ../.. -f values-new-cluster.yaml
 ```
 
 ### [values-mature-cluster.yaml](values-mature-cluster.yaml)
+
 Configuration for deploying into a mature cluster with existing monitoring infrastructure.
 
 **Key Features:**
+
 - No observability stack deployment
 - Uses external OTEL collector endpoint
 - Uses external Prometheus and Grafana
@@ -73,6 +79,7 @@ You can use these examples in three ways:
 ## Default Values
 
 The main [../values.yaml](../values.yaml) file contains all configuration options with:
+
 - Comprehensive inline comments
 - Scenario-specific guidance (Kind/Production)
 - Examples for each setting

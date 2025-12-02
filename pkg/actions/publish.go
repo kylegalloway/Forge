@@ -194,6 +194,14 @@ func (handler *PublishHandler) createPublishJob(ctx context.Context, pkg *zarfv1
 		})
 	}
 
+	// Check if job already exists
+	existingJob, err := handler.kubeClient.BatchV1().Jobs(namespace).Get(ctx, jobName, metav1.GetOptions{})
+	if err == nil {
+		// Job already exists, return it
+		klog.V(2).InfoS("Job already exists, reusing", "name", pkg.Name, "job", jobName)
+		return existingJob, nil
+	}
+
 	// Create the job
 	createdJob, err := handler.kubeClient.BatchV1().Jobs(namespace).Create(ctx, job, metav1.CreateOptions{})
 	if err != nil {

@@ -8,6 +8,7 @@
 package v1alpha1
 
 import (
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -104,6 +105,11 @@ type ZarfPackageJobSpec struct {
 	// Deploy defines how to deploy the package (required if action includes Deploy)
 	// +optional
 	Deploy *DeployConfig `json:"deploy,omitempty"`
+
+	// Resources defines resource requirements for job pods
+	// If not specified, defaults to 200m CPU / 512Mi memory requests, 1 CPU / 2Gi limits
+	// +optional
+	Resources *corev1.ResourceRequirements `json:"resources,omitempty"`
 
 	// RBACPolicy defines policy restrictions for this resource
 	// +optional

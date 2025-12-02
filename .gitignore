@@ -43,6 +43,9 @@ kubeconfig
 # Build artifacts
 dist/
 
+# Local dev scripts
+.forge-version
+
 # macOS
 .DS_Store
 

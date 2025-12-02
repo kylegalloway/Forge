@@ -139,16 +139,7 @@ func (handler *PublishHandler) createPublishJob(ctx context.Context, pkg *zarfv1
 									Type: corev1.SeccompProfileTypeRuntimeDefault,
 								},
 							},
-							Resources: corev1.ResourceRequirements{
-								Requests: corev1.ResourceList{
-									corev1.ResourceCPU:    mustParseQuantity("250m"),
-									corev1.ResourceMemory: mustParseQuantity("512Mi"),
-								},
-								Limits: corev1.ResourceList{
-									corev1.ResourceCPU:    mustParseQuantity("1000m"),
-									corev1.ResourceMemory: mustParseQuantity("2Gi"),
-								},
-							},
+							Resources: handler.getResources(pkg),
 						},
 					},
 					Volumes: []corev1.Volume{
@@ -229,4 +220,25 @@ func (handler *PublishHandler) buildInitContainers(pkg *zarfv1alpha1.ZarfPackage
 	}
 
 	return []corev1.Container{*container}, nil
+}
+
+// getResources returns resource requirements for the job pod
+// Uses spec.resources if provided, otherwise falls back to sensible defaults
+func (handler *PublishHandler) getResources(pkg *zarfv1alpha1.ZarfPackageJob) corev1.ResourceRequirements {
+	// If custom resources specified, use them
+	if pkg.Spec.Resources != nil {
+		return *pkg.Spec.Resources
+	}
+
+	// Default resources for publish jobs (slightly less than build)
+	return corev1.ResourceRequirements{
+		Requests: corev1.ResourceList{
+			corev1.ResourceCPU:    mustParseQuantity("250m"),
+			corev1.ResourceMemory: mustParseQuantity("512Mi"),
+		},
+		Limits: corev1.ResourceList{
+			corev1.ResourceCPU:    mustParseQuantity("1000m"),
+			corev1.ResourceMemory: mustParseQuantity("2Gi"),
+		},
+	}
 }

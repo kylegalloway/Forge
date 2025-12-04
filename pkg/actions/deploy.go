@@ -36,16 +36,24 @@ func NewDeployHandler(kubeClient kubernetes.Interface, metrics *telemetry.Metric
 func (handler *DeployHandler) Execute(ctx context.Context, pkg *zarfv1alpha1.ZarfPackageJob, artifactPath string) (*ActionResult, error) {
 	klog.InfoS("Executing Deploy action", "name", pkg.Name, "namespace", pkg.Namespace)
 
+	// Record deploy started
+	handler.metrics.RecordDeployStarted(ctx, pkg.Namespace, pkg.Name)
+
 	// Validate deploy config is provided
 	if pkg.Spec.Deploy == nil {
+		handler.metrics.RecordDeployFailed(ctx, pkg.Namespace, pkg.Name)
 		return nil, fmt.Errorf("deploy configuration is required for Deploy action")
 	}
 
 	// Create Kubernetes Job to deploy the package
 	job, err := handler.createDeployJob(ctx, pkg, artifactPath)
 	if err != nil {
+		handler.metrics.RecordDeployFailed(ctx, pkg.Namespace, pkg.Name)
 		return nil, fmt.Errorf("failed to create deploy job: %w", err)
 	}
+
+	// Record Job creation
+	handler.metrics.RecordJobCreated(ctx, pkg.Namespace, pkg.Name, "deploy")
 
 	klog.InfoS("Deploy job created", "name", pkg.Name, "job", job.Name)
 

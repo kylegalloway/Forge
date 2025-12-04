@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/prometheus"
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 	corev1 "k8s.io/api/core/v1"
@@ -148,6 +149,9 @@ func startMetricsServer(_ context.Context) (*sdkmetric.MeterProvider, *http.Serv
 	meterProvider := sdkmetric.NewMeterProvider(
 		sdkmetric.WithReader(promExporter),
 	)
+
+	// Set as global meter provider so metrics are actually exported
+	otel.SetMeterProvider(meterProvider)
 
 	metricsMux := http.NewServeMux()
 	metricsMux.Handle("/metrics", promhttp.Handler())

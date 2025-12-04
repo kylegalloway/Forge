@@ -27,4 +27,4 @@ podman images | grep -E 'forge-controller|zarf'
 echo "${VERSION}" > .forge-version
 echo ""
 echo "📝 Version saved to .forge-version"
-echo "📝 Next: Load images into Kind cluster with script 2-setup-kind.sh"
+echo "📝 Next: Load images into Kind cluster with script ./scripts/local-dev/2-setup-kind.sh"

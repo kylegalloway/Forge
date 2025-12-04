@@ -36,16 +36,24 @@ func NewPublishHandler(kubeClient kubernetes.Interface, metrics *telemetry.Metri
 func (handler *PublishHandler) Execute(ctx context.Context, pkg *zarfv1alpha1.ZarfPackageJob, artifactPath string) (*ActionResult, error) {
 	klog.InfoS("Executing Publish action", "name", pkg.Name, "namespace", pkg.Namespace)
 
+	// Record publish started
+	handler.metrics.RecordPublishStarted(ctx, pkg.Namespace, pkg.Name)
+
 	// Validate publish destination is provided
 	if pkg.Spec.Publish == nil {
+		handler.metrics.RecordPublishFailed(ctx, pkg.Namespace, pkg.Name)
 		return nil, fmt.Errorf("publish configuration is required for Publish action")
 	}
 
 	// Create Kubernetes Job to publish the package
 	job, err := handler.createPublishJob(ctx, pkg, artifactPath)
 	if err != nil {
+		handler.metrics.RecordPublishFailed(ctx, pkg.Namespace, pkg.Name)
 		return nil, fmt.Errorf("failed to create publish job: %w", err)
 	}
+
+	// Record Job creation
+	handler.metrics.RecordJobCreated(ctx, pkg.Namespace, pkg.Name, "publish")
 
 	klog.InfoS("Publish job created", "name", pkg.Name, "job", job.Name)
 

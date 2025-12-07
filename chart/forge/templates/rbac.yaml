@@ -24,6 +24,24 @@ rules:
   - get
   - update
   - patch
+# Permissions for UDSBundleJob resources
+- apiGroups:
+  - forge.dev
+  resources:
+  - udsbundlejobs
+  verbs:
+  - get
+  - list
+  - watch
+# Permissions to update UDSBundleJob status
+- apiGroups:
+  - forge.dev
+  resources:
+  - udsbundlejobs/status
+  verbs:
+  - get
+  - update
+  - patch
 # Permissions to read ServiceAccounts for policy validation
 - apiGroups:
   - ""

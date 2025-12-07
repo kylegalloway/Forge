@@ -1,0 +1,471 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.19.0
+  name: udsbundlejobs.forge.dev
+spec:
+  group: forge.dev
+  names:
+    kind: UDSBundleJob
+    listKind: UDSBundleJobList
+    plural: udsbundlejobs
+    shortNames:
+    - ubj
+    singular: udsbundlejob
+  scope: Namespaced
+  versions:
+  - additionalPrinterColumns:
+    - jsonPath: .spec.action
+      name: Action
+      type: string
+    - jsonPath: .spec.source.type
+      name: Source
+      type: string
+    - jsonPath: .status.phase
+      name: Phase
+      type: string
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: UDSBundleJob represents a job to create, publish, or deploy a
+          UDS bundle
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: |-
+              UDSBundleJobSpec defines the desired state of a UDSBundleJob
+
+              This is a job specification that tells Forge what operations to perform on UDS bundles.
+              It is NOT a UDS bundle definition (which uses uds-bundle.yaml format).
+            properties:
+              action:
+                description: Action specifies what operation(s) to perform
+                enum:
+                - Create
+                - Publish
+                - Deploy
+                - CreatePublish
+                - CreateDeploy
+                - PublishDeploy
+                - CreatePublishDeploy
+                type: string
+              deploy:
+                description: Deploy defines deployment configuration (optional)
+                properties:
+                  components:
+                    description: Components to deploy (if empty, deploys all)
+                    items:
+                      type: string
+                    type: array
+                  kubeconfig:
+                    description: Kubeconfig for external cluster deployment
+                    properties:
+                      key:
+                        default: kubeconfig
+                        description: Key within the Secret containing the kubeconfig
+                        type: string
+                      secretRef:
+                        description: SecretRef references a Secret containing kubeconfig
+                          data
+                        properties:
+                          name:
+                            description: name is unique within a namespace to reference
+                              a secret resource.
+                            type: string
+                          namespace:
+                            description: namespace defines the space within which
+                              the secret name must be unique.
+                            type: string
+                        type: object
+                        x-kubernetes-map-type: atomic
+                    required:
+                    - secretRef
+                    type: object
+                  namespace:
+                    description: Namespace to deploy into (if applicable)
+                    type: string
+                  target:
+                    description: Target specifies where to deploy
+                    enum:
+                    - InCluster
+                    - ExternalCluster
+                    type: string
+                  timeout:
+                    default: 60m
+                    description: Timeout for deployment operations
+                    type: string
+                  variables:
+                    additionalProperties:
+                      type: string
+                    description: Variables to pass to the bundle deployment
+                    type: object
+                required:
+                - target
+                type: object
+              publish:
+                description: Publish defines where to publish the bundle artifact
+                  (optional)
+                properties:
+                  destination:
+                    description: Destination defines where to publish
+                    properties:
+                      oci:
+                        description: OCI destination configuration
+                        properties:
+                          credentialsSecretRef:
+                            description: CredentialsSecretRef references a Secret
+                              containing registry credentials
+                            properties:
+                              name:
+                                description: name is unique within a namespace to
+                                  reference a secret resource.
+                                type: string
+                              namespace:
+                                description: namespace defines the space within which
+                                  the secret name must be unique.
+                                type: string
+                            type: object
+                            x-kubernetes-map-type: atomic
+                          registry:
+                            description: Registry hostname
+                            type: string
+                          repository:
+                            description: Repository path
+                            type: string
+                          tag:
+                            description: Tag for the bundle artifact
+                            type: string
+                        required:
+                        - registry
+                        - repository
+                        - tag
+                        type: object
+                      s3:
+                        description: S3 destination configuration
+                        properties:
+                          bucket:
+                            description: Bucket name
+                            type: string
+                          credentialsSecretRef:
+                            description: CredentialsSecretRef references a Secret
+                              containing AWS credentials
+                            properties:
+                              name:
+                                description: name is unique within a namespace to
+                                  reference a secret resource.
+                                type: string
+                              namespace:
+                                description: namespace defines the space within which
+                                  the secret name must be unique.
+                                type: string
+                            type: object
+                            x-kubernetes-map-type: atomic
+                          endpoint:
+                            description: Endpoint for S3-compatible storage
+                            type: string
+                          key:
+                            description: Key is the object key/path within the bucket
+                            type: string
+                          region:
+                            description: Region is the AWS region
+                            type: string
+                        required:
+                        - bucket
+                        type: object
+                      type:
+                        description: Type specifies the destination type
+                        enum:
+                        - S3
+                        - OCI
+                        - Local
+                        type: string
+                    required:
+                    - type
+                    type: object
+                required:
+                - destination
+                type: object
+              resources:
+                description: Resources defines resource requirements for the Job pods
+                properties:
+                  claims:
+                    description: |-
+                      Claims lists the names of resources, defined in spec.resourceClaims,
+                      that are used by this container.
+
+                      This is an alpha field and requires enabling the
+                      DynamicResourceAllocation feature gate.
+
+                      This field is immutable. It can only be set for containers.
+                    items:
+                      description: ResourceClaim references one entry in PodSpec.ResourceClaims.
+                      properties:
+                        name:
+                          description: |-
+                            Name must match the name of one entry in pod.spec.resourceClaims of
+                            the Pod where this field is used. It makes that resource available
+                            inside a container.
+                          type: string
+                      required:
+                      - name
+                      type: object
+                    type: array
+                    x-kubernetes-list-map-keys:
+                    - name
+                    x-kubernetes-list-type: map
+                  limits:
+                    additionalProperties:
+                      anyOf:
+                      - type: integer
+                      - type: string
+                      pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                      x-kubernetes-int-or-string: true
+                    description: |-
+                      Limits describes the maximum amount of compute resources allowed.
+                      More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+                    type: object
+                  requests:
+                    additionalProperties:
+                      anyOf:
+                      - type: integer
+                      - type: string
+                      pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                      x-kubernetes-int-or-string: true
+                    description: |-
+                      Requests describes the minimum amount of compute resources required.
+                      If Requests is omitted for a container, it defaults to Limits if that is explicitly specified,
+                      otherwise to an implementation-defined value. Requests cannot exceed Limits.
+                      More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+                    type: object
+                type: object
+              serviceAccountName:
+                description: |-
+                  ServiceAccountName references the ServiceAccount that defines permissions for this job
+                  The ServiceAccount must have forge.forge.dev/* annotations defining allowed actions
+                  Cluster admins control what users can do by creating ServiceAccounts with appropriate annotations
+                type: string
+              source:
+                description: Source defines where the bundle definition or artifact
+                  comes from
+                properties:
+                  git:
+                    description: Git source for uds-bundle.yaml
+                    properties:
+                      credentialsSecretRef:
+                        description: CredentialsSecretRef references a Secret containing
+                          Git credentials
+                        properties:
+                          name:
+                            description: name is unique within a namespace to reference
+                              a secret resource.
+                            type: string
+                          namespace:
+                            description: namespace defines the space within which
+                              the secret name must be unique.
+                            type: string
+                        type: object
+                        x-kubernetes-map-type: atomic
+                      path:
+                        default: .
+                        description: Path to the uds-bundle.yaml file within the repository
+                        type: string
+                      ref:
+                        default: main
+                        description: Ref specifies the branch, tag, or commit to checkout
+                        type: string
+                      url:
+                        description: URL of the Git repository
+                        type: string
+                    required:
+                    - url
+                    type: object
+                  local:
+                    description: Local source for development only
+                    properties:
+                      path:
+                        description: Path to the local directory containing uds-bundle.yaml
+                        type: string
+                    required:
+                    - path
+                    type: object
+                  oci:
+                    description: OCI source for bundle from OCI registry
+                    properties:
+                      credentialsSecretRef:
+                        description: CredentialsSecretRef references a Secret containing
+                          registry credentials
+                        properties:
+                          name:
+                            description: name is unique within a namespace to reference
+                              a secret resource.
+                            type: string
+                          namespace:
+                            description: namespace defines the space within which
+                              the secret name must be unique.
+                            type: string
+                        type: object
+                        x-kubernetes-map-type: atomic
+                      reference:
+                        description: Reference is the full OCI reference (registry/repository:tag
+                          or @digest)
+                        type: string
+                    required:
+                    - reference
+                    type: object
+                  s3:
+                    description: S3 source for pre-built bundle tarball
+                    properties:
+                      bucket:
+                        description: Bucket name
+                        type: string
+                      credentialsSecretRef:
+                        description: CredentialsSecretRef references a Secret containing
+                          AWS credentials
+                        properties:
+                          name:
+                            description: name is unique within a namespace to reference
+                              a secret resource.
+                            type: string
+                          namespace:
+                            description: namespace defines the space within which
+                              the secret name must be unique.
+                            type: string
+                        type: object
+                        x-kubernetes-map-type: atomic
+                      endpoint:
+                        description: Endpoint for S3-compatible storage (e.g., MinIO)
+                        type: string
+                      key:
+                        description: Key is the object key/path within the bucket
+                        type: string
+                      region:
+                        description: Region is the AWS region
+                        type: string
+                    required:
+                    - bucket
+                    - key
+                    type: object
+                  type:
+                    description: Type specifies the source type
+                    enum:
+                    - Git
+                    - S3
+                    - OCI
+                    - Local
+                    type: string
+                required:
+                - type
+                type: object
+            required:
+            - action
+            - serviceAccountName
+            - source
+            type: object
+          status:
+            description: UDSBundleJobStatus defines the observed state of a UDSBundleJob
+            properties:
+              createStatus:
+                description: CreateStatus tracks the create operation status
+                properties:
+                  completionTime:
+                    description: CompletionTime is when the operation completed
+                    format: date-time
+                    type: string
+                  jobName:
+                    description: JobName is the Kubernetes Job name for this operation
+                    type: string
+                  message:
+                    description: Message provides operation-specific details
+                    type: string
+                  startTime:
+                    description: StartTime is when the operation started
+                    format: date-time
+                    type: string
+                  state:
+                    description: State represents the operation state
+                    type: string
+                type: object
+              deployStatus:
+                description: DeployStatus tracks the deploy operation status
+                properties:
+                  completionTime:
+                    description: CompletionTime is when the operation completed
+                    format: date-time
+                    type: string
+                  jobName:
+                    description: JobName is the Kubernetes Job name for this operation
+                    type: string
+                  message:
+                    description: Message provides operation-specific details
+                    type: string
+                  startTime:
+                    description: StartTime is when the operation started
+                    format: date-time
+                    type: string
+                  state:
+                    description: State represents the operation state
+                    type: string
+                type: object
+              lastUpdateTime:
+                description: LastUpdateTime is the last time the status was updated
+                format: date-time
+                type: string
+              message:
+                description: Message provides human-readable status information
+                type: string
+              observedGeneration:
+                description: ObservedGeneration reflects the generation of the most
+                  recently observed spec
+                format: int64
+                type: integer
+              phase:
+                description: Phase represents the current phase of the job
+                type: string
+              publishStatus:
+                description: PublishStatus tracks the publish operation status
+                properties:
+                  completionTime:
+                    description: CompletionTime is when the operation completed
+                    format: date-time
+                    type: string
+                  jobName:
+                    description: JobName is the Kubernetes Job name for this operation
+                    type: string
+                  message:
+                    description: Message provides operation-specific details
+                    type: string
+                  startTime:
+                    description: StartTime is when the operation started
+                    format: date-time
+                    type: string
+                  state:
+                    description: State represents the operation state
+                    type: string
+                type: object
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}

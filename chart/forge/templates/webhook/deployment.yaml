@@ -1,0 +1,64 @@
+{{- if .Values.webhook.enabled -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "forge.fullname" . }}-webhook
+  namespace: {{ include "forge.namespace" . }}
+  labels:
+    {{- include "forge.labels" . | nindent 4 }}
+    app.kubernetes.io/component: webhook
+spec:
+  replicas: {{ .Values.webhook.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "forge.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: webhook
+  template:
+    metadata:
+      labels:
+        {{- include "forge.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: webhook
+    spec:
+      serviceAccountName: {{ include "forge.serviceAccountName" . }}-webhook
+      containers:
+      - name: webhook
+        image: "{{ .Values.webhook.image.repository }}:{{ .Values.webhook.image.tag }}"
+        imagePullPolicy: {{ .Values.webhook.image.pullPolicy }}
+        ports:
+        - containerPort: 8443
+          name: webhook
+          protocol: TCP
+        - containerPort: 8080
+          name: metrics
+          protocol: TCP
+        volumeMounts:
+        - name: tls-certs
+          mountPath: /etc/webhook/certs
+          readOnly: true
+        env:
+        - name: TLS_CERT_PATH
+          value: /etc/webhook/certs/tls.crt
+        - name: TLS_KEY_PATH
+          value: /etc/webhook/certs/tls.key
+        resources:
+          {{- toYaml .Values.webhook.resources | nindent 10 }}
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 65532
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          seccompProfile:
+            type: RuntimeDefault
+      volumes:
+      - name: tls-certs
+        secret:
+          secretName: {{ .Values.webhook.tls.secretName }}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        fsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
+{{- end }}

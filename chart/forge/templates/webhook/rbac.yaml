@@ -1,0 +1,32 @@
+{{- if .Values.webhook.enabled -}}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "forge.fullname" . }}-webhook
+  labels:
+    {{- include "forge.labels" . | nindent 4 }}
+    app.kubernetes.io/component: webhook
+rules:
+- apiGroups: [""]
+  resources: ["serviceaccounts"]
+  verbs: ["get", "list"]
+- apiGroups: ["forge.dev"]
+  resources: ["zarfpackagejobs"]
+  verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "forge.fullname" . }}-webhook
+  labels:
+    {{- include "forge.labels" . | nindent 4 }}
+    app.kubernetes.io/component: webhook
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ include "forge.fullname" . }}-webhook
+subjects:
+- kind: ServiceAccount
+  name: {{ include "forge.serviceAccountName" . }}-webhook
+  namespace: {{ include "forge.namespace" . }}
+{{- end }}

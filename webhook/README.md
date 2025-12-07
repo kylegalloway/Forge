@@ -1,266 +1,69 @@
-# ZarfPackageJob Admission Webhook
+# Forge Admission Webhook
 
-This directory contains a validating admission webhook for ZarfPackageJob that enforces production security policies.
+The Forge admission webhook validates `ZarfPackageJob` resources before they are created or updated in the cluster.
 
-## Purpose
+## Implementation
 
-The webhook provides:
+The webhook is fully implemented and validates:
 
-1. **Script Whitelisting**: Only approved `scriptRef` values are allowed
-2. **Image Validation**: Only images from approved registries
-3. **Input Validation**: Validate input keys and sanitize values
-4. **Block Inline Scripts**: Prevent `script` field in production
-5. **Set Defaults**: Auto-populate image, resource limits, etc.
-6. **Audit Logging**: Log all ZarfPackageJob creation attempts
+- ServiceAccount existence and policy annotations
+- Allowed actions
+- Source patterns (Git repos, S3 buckets, OCI registries)
+- Publish destinations
+- Deploy targets
 
-## Quick Start
+See [pkg/webhook/zarfpackage_validator.go](../pkg/webhook/zarfpackage_validator.go) for implementation details.
 
-> **Note**: This is a skeleton implementation. For production use, you should implement the full validation logic based on your requirements.
+## Deployment
 
-### Prerequisites
+The webhook is deployed as part of the Forge Helm chart.
 
-- Kubernetes cluster with webhook support
-- cert-manager for TLS certificates
-
-### Deploy
-
-```bash
-# Install cert-manager (if not already installed)
-kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.13.0/cert-manager.yaml
-
-# Deploy the webhook
-kubectl apply -f deploy/
-
-# Verify
-kubectl get validatingwebhookconfiguration forge-webhook
-```
-
-### Test
-
-```bash
-# This should be allowed (approved script)
-kubectl apply -f - <<EOF
-apiVersion: forge.io/v1alpha1
-kind: ZarfPackageJob
-metadata:
-  name: test-allowed
-spec:
-  image: your-registry.io/forge-scripts:v1.0.0
-  scriptRef: /scripts/process-data.sh
-  inputs:
-    test: "value"
-EOF
-
-# This should be denied (inline script)
-kubectl apply -f - <<EOF
-apiVersion: forge.io/v1alpha1
-kind: ZarfPackageJob
-metadata:
-  name: test-denied
-spec:
-  script: "echo 'not allowed'"
-EOF
-```
-
-## Configuration
-
-Edit `deploy/webhook-config.yaml` to configure:
-
+Enable/disable via `values.yaml`:
 ```yaml
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: webhook-config
-  namespace: forge-system
-data:
-  config.yaml: |
-    # Approved scripts that users can run
-    approvedScripts:
-      - /scripts/process-data.sh
-      - /scripts/validate-inputs.sh
-      - /scripts/report-status.py
-
-    # Approved image registry prefix
-    approvedImagePrefix: your-registry.io/forge-scripts:
-
-    # Max values to prevent abuse
-    maxInputs: 20
-    maxInputValueLength: 1000
-    maxScriptArgs: 10
-    maxScriptArgLength: 200
-
-    # Whether to allow inline scripts (false for production)
-    allowInlineScripts: false
-
-    # Default values
-    defaults:
-      image: your-registry.io/forge-scripts:v1.0.0
-      resources:
-        requests:
-          cpu: 250m
-          memory: 256Mi
-        limits:
-          cpu: 1000m
-          memory: 1Gi
-      activeDeadlineSeconds: 600  # 10 minutes
-      ttlSecondsAfterFinished: 3600  # 1 hour
+webhook:
+  enabled: true  # Set to false to disable webhook
+  replicaCount: 2
 ```
 
-## Implementation Guide
+## Build
 
-### Step 1: Implement Validation Logic
-
-Edit `pkg/webhook/validator.go` to add your validation:
-
-```go
-func (v *Validator) validateZarfPackage(sr *forgev1alpha1.ZarfPackageJob) error {
-    // Check scriptRef is approved
-    if !v.isApprovedScript(sr.Spec.ScriptRef) {
-        return fmt.Errorf("scriptRef '%s' not in approved list", sr.Spec.ScriptRef)
-    }
-
-    // Check image is from approved registry
-    if !strings.HasPrefix(sr.Spec.Image, v.config.ApprovedImagePrefix) {
-        return fmt.Errorf("image must be from %s", v.config.ApprovedImagePrefix)
-    }
-
-    // Validate inputs
-    if len(sr.Spec.Inputs) > v.config.MaxInputs {
-        return fmt.Errorf("too many inputs (max %d)", v.config.MaxInputs)
-    }
-
-    for key, value := range sr.Spec.Inputs {
-        if !isValidInputKey(key) {
-            return fmt.Errorf("invalid input key: %s", key)
-        }
-        if len(value) > v.config.MaxInputValueLength {
-            return fmt.Errorf("input value too long: %s", key)
-        }
-    }
-
-    // Block inline scripts if configured
-    if !v.config.AllowInlineScripts && sr.Spec.Script != "" {
-        return errors.New("inline scripts not allowed in this environment")
-    }
-
-    return nil
-}
-```
-
-### Step 2: Add Default Values
-
-Implement mutation webhook to set defaults:
-
-```go
-func (v *Validator) setDefaults(sr *forgev1alpha1.ZarfPackageJob) {
-    // Set default image if not specified
-    if sr.Spec.Image == "" {
-        sr.Spec.Image = v.config.Defaults.Image
-    }
-
-    // Add default labels
-    if sr.Labels == nil {
-        sr.Labels = make(map[string]string)
-    }
-    sr.Labels["managed-by"] = "forge-webhook"
-}
-```
-
-### Step 3: Deploy Webhook
-
+Build webhook image:
 ```bash
-# Build webhook image
-podman build -t your-registry.io/forge-webhook:v1.0.0 .
-
-# Push to registry
-podman push your-registry.io/forge-webhook:v1.0.0
-
-# Deploy
-kubectl apply -f deploy/
+docker build -f Dockerfile.webhook -t ghcr.io/kylegalloway/forge-webhook:latest .
 ```
 
-## Webhook Types
+## TLS Certificates
 
-### Validating Webhook
+The webhook requires TLS certificates. Options:
 
-Validates ZarfPackageJob objects before they are created:
+1. **Auto-generate** (development):
+   - Set `webhook.tls.autoGenerate: true` in values.yaml
+   - Chart will generate self-signed certs
 
-- Checks scriptRef against whitelist
-- Validates image registry
-- Enforces input constraints
-- Blocks inline scripts (optional)
+2. **cert-manager** (production):
+   - Install cert-manager
+   - Create Certificate resource
+   - Chart will reference cert secret
 
-### Mutating Webhook
-
-Modifies ZarfPackageJob objects before creation:
-
-- Sets default image
-- Adds default labels
-- Sets resource limits
-- Configures TTL
-
-## Security Considerations
-
-1. **TLS Required**: Webhook must use TLS (cert-manager recommended)
-2. **Fail-Safe**: Configure webhook to fail closed (reject on error)
-3. **Audit Logging**: Log all validation decisions
-4. **Rate Limiting**: Prevent DoS attacks on webhook
-5. **Namespace Scoped**: Apply webhook rules based on namespace labels
+3. **Manual** (production):
+   - Generate certs manually
+   - Create secret: `kubectl create secret tls forge-webhook-tls --cert=tls.crt --key=tls.key`  # pragma: allowlist secret
+   - Set `webhook.tls.secretName: forge-webhook-tls`
 
 ## Testing
 
+Test webhook validation:
 ```bash
-# Unit tests
-go test ./pkg/webhook/...
+# Should succeed
+kubectl apply -f examples/samples/build-example.yaml
 
-# Integration tests
-go test ./test/integration/...
-
-# Manual testing
-kubectl apply -f test/fixtures/valid-forge.yaml
-kubectl apply -f test/fixtures/invalid-forge.yaml
+# Should fail (no ServiceAccount)
+kubectl apply -f examples/samples/invalid-no-sa.yaml
 ```
 
-## Troubleshooting
+## Code Location
 
-### Webhook not being called
-
-```bash
-# Check webhook configuration
-kubectl get validatingwebhookconfiguration forge-webhook -o yaml
-
-# Check certificate
-kubectl get certificate -n forge-system
-
-# Check webhook logs
-kubectl logs -n forge-system -l app=forge-webhook
-```
-
-### Certificate issues
-
-```bash
-# Recreate certificate
-kubectl delete certificate -n forge-system forge-webhook-cert
-kubectl apply -f deploy/certificate.yaml
-
-# Wait for cert-manager to issue
-kubectl wait --for=condition=Ready certificate/forge-webhook-cert -n forge-system
-```
-
-## Production Deployment
-
-For production use:
-
-1. **High Availability**: Run multiple webhook replicas
-2. **Monitoring**: Export metrics for webhook requests
-3. **Alerting**: Alert on webhook failures
-4. **Resource Limits**: Set appropriate CPU/memory limits
-5. **Pod Disruption Budget**: Ensure webhook availability
-
-See [PRODUCTION.md](../docs/PRODUCTION.md) for complete production deployment guide.
-
-## References
-
-- [Kubernetes Admission Webhooks](https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/)
-- [cert-manager Documentation](https://cert-manager.io/docs/)
-- [controller-runtime Webhook](https://book.kubebuilder.io/cronjob-tutorial/webhook-implementation.html)
+- Entrypoint: [cmd/webhook/main.go](../cmd/webhook/main.go)
+- Validator: [pkg/webhook/zarfpackage_validator.go](../pkg/webhook/zarfpackage_validator.go)
+- Policy Engine: [pkg/policy/engine.go](../pkg/policy/engine.go)
+- Dockerfile: [Dockerfile.webhook](../Dockerfile.webhook) (root)

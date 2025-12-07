@@ -315,6 +315,16 @@ func (controller *Controller) updateStatus(ctx context.Context, obj *unstructure
 	return nil
 }
 
+// Healthy returns the controller's health status
+func (controller *Controller) Healthy() bool {
+	return controller.healthy
+}
+
+// Ready returns whether the controller is ready to serve traffic
+func (controller *Controller) Ready() bool {
+	return controller.ready
+}
+
 // HealthzHandler returns an HTTP handler for health checks
 func (controller *Controller) HealthzHandler() http.HandlerFunc {
 	return func(responseWriter http.ResponseWriter, _ *http.Request) {

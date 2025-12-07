@@ -1,0 +1,13 @@
+kind: ZarfPackageConfig
+metadata:
+  name: bundle-component-app
+  description: Application component for UDS bundle
+  version: 1.0.0
+
+components:
+  - name: webapp
+    required: true
+    manifests:
+      - name: webapp-manifests
+        files:
+          - service.yaml

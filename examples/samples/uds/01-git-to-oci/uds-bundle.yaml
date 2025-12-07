@@ -1,0 +1,14 @@
+kind: UDSBundle
+metadata:
+  name: hello-git-to-oci-bundle
+  description: Example bundle created from Git source and published to OCI
+  version: 1.0.0
+
+packages:
+  - name: hello-app
+    repository: ghcr.io/defenseunicorns/packages/init
+    ref: v0.38.2
+
+  - name: local-hello
+    path: ./zarf-package
+    ref: 1.0.0

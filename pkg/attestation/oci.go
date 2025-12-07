@@ -43,7 +43,7 @@ func NewOCIStorageImpl(registry, repository string, auth authn.Authenticator) *O
 }
 
 // Store saves an attestation to an OCI registry as an artifact
-func (storage *OCIStorageImpl) Store(ctx context.Context, bundle *AttestationBundle, opts StoreOptions) error {
+func (storage *OCIStorageImpl) Store(_ context.Context, bundle *AttestationBundle, opts StoreOptions) error {
 	klog.InfoS("Storing attestation in OCI registry",
 		"registry", storage.Registry,
 		"repository", storage.Repository,
@@ -115,7 +115,7 @@ func (storage *OCIStorageImpl) Store(ctx context.Context, bundle *AttestationBun
 }
 
 // Retrieve retrieves an attestation from an OCI registry by digest
-func (storage *OCIStorageImpl) Retrieve(ctx context.Context, digest string) (*AttestationBundle, error) {
+func (storage *OCIStorageImpl) Retrieve(_ context.Context, digest string) (*AttestationBundle, error) {
 	klog.InfoS("Retrieving attestation from OCI registry",
 		"registry", storage.Registry,
 		"digest", digest[:12],
@@ -131,7 +131,7 @@ func (storage *OCIStorageImpl) Retrieve(ctx context.Context, digest string) (*At
 }
 
 // List lists attestations from an OCI registry
-func (storage *OCIStorageImpl) List(ctx context.Context, opts ListOptions) ([]*AttestationBundle, error) {
+func (storage *OCIStorageImpl) List(_ context.Context, opts ListOptions) ([]*AttestationBundle, error) {
 	klog.InfoS("Listing attestations from OCI registry",
 		"registry", storage.Registry,
 		"zarfPackageJob", opts.ZarfPackageJob,
@@ -147,7 +147,7 @@ func (storage *OCIStorageImpl) List(ctx context.Context, opts ListOptions) ([]*A
 }
 
 // RetrieveByReference retrieves an attestation by full OCI reference
-func (storage *OCIStorageImpl) RetrieveByReference(ctx context.Context, reference string) (*AttestationBundle, error) {
+func (storage *OCIStorageImpl) RetrieveByReference(_ context.Context, reference string) (*AttestationBundle, error) {
 	klog.InfoS("Retrieving attestation by reference", "reference", reference)
 
 	ref, err := name.ParseReference(reference)

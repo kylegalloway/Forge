@@ -72,7 +72,7 @@ func NewLocalStorage(basePath string) (*LocalStorage, error) {
 }
 
 // Store saves an attestation to the local filesystem
-func (s *LocalStorage) Store(ctx context.Context, bundle *AttestationBundle, opts StoreOptions) error {
+func (s *LocalStorage) Store(_ context.Context, bundle *AttestationBundle, opts StoreOptions) error {
 	klog.InfoS("Storing attestation locally", "zarfPackageJob", opts.ZarfPackageJob, "operation", opts.Operation)
 
 	// Create namespace directory
@@ -92,7 +92,7 @@ func (s *LocalStorage) Store(ctx context.Context, bundle *AttestationBundle, opt
 	}
 
 	// Write to file
-	if err := os.WriteFile(filePath, data, 0644); err != nil {
+	if err := os.WriteFile(filePath, data, 0600); err != nil {
 		return fmt.Errorf("failed to write attestation file: %w", err)
 	}
 
@@ -101,13 +101,13 @@ func (s *LocalStorage) Store(ctx context.Context, bundle *AttestationBundle, opt
 }
 
 // Retrieve retrieves an attestation by digest
-func (s *LocalStorage) Retrieve(ctx context.Context, digest string) (*AttestationBundle, error) {
+func (s *LocalStorage) Retrieve(_ context.Context, _ string) (*AttestationBundle, error) {
 	// TODO: Implement retrieve by walking directories
 	return nil, fmt.Errorf("retrieve not yet implemented for local storage")
 }
 
 // List lists attestations matching the given criteria
-func (s *LocalStorage) List(ctx context.Context, opts ListOptions) ([]*AttestationBundle, error) {
+func (s *LocalStorage) List(_ context.Context, _ ListOptions) ([]*AttestationBundle, error) {
 	// TODO: Implement list by walking directories
 	return nil, fmt.Errorf("list not yet implemented for local storage")
 }
@@ -133,8 +133,8 @@ func NewOCIStorage(registry, repository string) *OCIStorage {
 }
 
 // Store saves an attestation to an OCI registry
-func (s *OCIStorage) Store(ctx context.Context, bundle *AttestationBundle, opts StoreOptions) error {
-	klog.InfoS("Storing attestation in OCI registry", "registry", s.Registry, "zarfPackageJob", opts.ZarfPackageJob)
+func (s *OCIStorage) Store(_ context.Context, _ *AttestationBundle, _ StoreOptions) error {
+	klog.InfoS("Storing attestation in OCI registry", "registry", s.Registry)
 
 	// TODO: Implement OCI storage
 	// 1. Marshal attestation to JSON
@@ -146,13 +146,13 @@ func (s *OCIStorage) Store(ctx context.Context, bundle *AttestationBundle, opts 
 }
 
 // Retrieve retrieves an attestation from an OCI registry
-func (s *OCIStorage) Retrieve(ctx context.Context, digest string) (*AttestationBundle, error) {
+func (s *OCIStorage) Retrieve(_ context.Context, _ string) (*AttestationBundle, error) {
 	// TODO: Implement OCI retrieval
 	return nil, fmt.Errorf("OCI retrieval not yet implemented")
 }
 
 // List lists attestations from an OCI registry
-func (s *OCIStorage) List(ctx context.Context, opts ListOptions) ([]*AttestationBundle, error) {
+func (s *OCIStorage) List(_ context.Context, _ ListOptions) ([]*AttestationBundle, error) {
 	// TODO: Implement OCI list
 	return nil, fmt.Errorf("OCI list not yet implemented")
 }
@@ -174,8 +174,8 @@ func NewConfigMapStorage(namespace string) *ConfigMapStorage {
 }
 
 // Store saves an attestation to a ConfigMap
-func (s *ConfigMapStorage) Store(ctx context.Context, bundle *AttestationBundle, opts StoreOptions) error {
-	klog.InfoS("Storing attestation in ConfigMap", "namespace", s.Namespace, "zarfPackageJob", opts.ZarfPackageJob)
+func (s *ConfigMapStorage) Store(_ context.Context, _ *AttestationBundle, _ StoreOptions) error {
+	klog.InfoS("Storing attestation in ConfigMap", "namespace", s.Namespace)
 
 	// TODO: Implement ConfigMap storage
 	// 1. Marshal attestation to JSON
@@ -186,13 +186,13 @@ func (s *ConfigMapStorage) Store(ctx context.Context, bundle *AttestationBundle,
 }
 
 // Retrieve retrieves an attestation from a ConfigMap
-func (s *ConfigMapStorage) Retrieve(ctx context.Context, digest string) (*AttestationBundle, error) {
+func (s *ConfigMapStorage) Retrieve(_ context.Context, _ string) (*AttestationBundle, error) {
 	// TODO: Implement ConfigMap retrieval
 	return nil, fmt.Errorf("ConfigMap retrieval not yet implemented")
 }
 
 // List lists attestations from ConfigMaps
-func (s *ConfigMapStorage) List(ctx context.Context, opts ListOptions) ([]*AttestationBundle, error) {
+func (s *ConfigMapStorage) List(_ context.Context, _ ListOptions) ([]*AttestationBundle, error) {
 	// TODO: Implement ConfigMap list
 	return nil, fmt.Errorf("ConfigMap list not yet implemented")
 }

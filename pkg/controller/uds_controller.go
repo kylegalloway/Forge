@@ -226,6 +226,8 @@ func (ctrl *UDSController) reconcile(ctx context.Context, bundle *udsv1alpha1.UD
 }
 
 // validatePolicy validates the bundle against ServiceAccount policies
+//
+//nolint:unparam // error return reserved for future policy validation implementation
 func (ctrl *UDSController) validatePolicy(_ context.Context, bundle *udsv1alpha1.UDSBundleJob) error {
 	// TODO: Implement UDS-specific policy validation
 	// This will be similar to Zarf validation but for bundle-specific annotations

@@ -20,7 +20,7 @@ type Metrics struct {
 	reconcileErrors        metric.Int64Counter
 	webhookValidations     metric.Int64Counter
 
-	// Action-specific metrics
+	// Action-specific metrics (Zarf packages)
 	buildsStarted      metric.Int64Counter
 	buildsCompleted    metric.Int64Counter
 	buildsFailed       metric.Int64Counter
@@ -31,8 +31,21 @@ type Metrics struct {
 	deploysCompleted   metric.Int64Counter
 	deploysFailed      metric.Int64Counter
 
+	// UDS Bundle-specific metrics
+	bundleCreatesStarted     metric.Int64Counter
+	bundleCreatesCompleted   metric.Int64Counter
+	bundleCreatesFailed      metric.Int64Counter
+	bundlePublishesStarted   metric.Int64Counter
+	bundlePublishesCompleted metric.Int64Counter
+	bundlePublishesFailed    metric.Int64Counter
+	bundleDeploysStarted     metric.Int64Counter
+	bundleDeploysCompleted   metric.Int64Counter
+	bundleDeploysFailed      metric.Int64Counter
+	bundleJobsCreated        metric.Int64Counter
+
 	// Gauge metrics (using UpDownCounter for current state)
 	zarfPackageJobsActive metric.Int64UpDownCounter
+	udsBundleJobsActive   metric.Int64UpDownCounter
 
 	// Histogram metrics
 	actionDuration    metric.Float64Histogram
@@ -215,25 +228,136 @@ func NewMetrics() (*Metrics, error) {
 		return nil, err
 	}
 
+	// UDS Bundle metrics
+	bundleCreatesStarted, err := meter.Int64Counter(
+		"forge.bundle_creates.started",
+		metric.WithDescription("Total number of UDS bundle create actions started"),
+		metric.WithUnit("{action}"),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	bundleCreatesCompleted, err := meter.Int64Counter(
+		"forge.bundle_creates.completed",
+		metric.WithDescription("Total number of UDS bundle create actions completed"),
+		metric.WithUnit("{action}"),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	bundleCreatesFailed, err := meter.Int64Counter(
+		"forge.bundle_creates.failed",
+		metric.WithDescription("Total number of UDS bundle create actions failed"),
+		metric.WithUnit("{action}"),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	bundlePublishesStarted, err := meter.Int64Counter(
+		"forge.bundle_publishes.started",
+		metric.WithDescription("Total number of UDS bundle publish actions started"),
+		metric.WithUnit("{action}"),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	bundlePublishesCompleted, err := meter.Int64Counter(
+		"forge.bundle_publishes.completed",
+		metric.WithDescription("Total number of UDS bundle publish actions completed"),
+		metric.WithUnit("{action}"),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	bundlePublishesFailed, err := meter.Int64Counter(
+		"forge.bundle_publishes.failed",
+		metric.WithDescription("Total number of UDS bundle publish actions failed"),
+		metric.WithUnit("{action}"),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	bundleDeploysStarted, err := meter.Int64Counter(
+		"forge.bundle_deploys.started",
+		metric.WithDescription("Total number of UDS bundle deploy actions started"),
+		metric.WithUnit("{action}"),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	bundleDeploysCompleted, err := meter.Int64Counter(
+		"forge.bundle_deploys.completed",
+		metric.WithDescription("Total number of UDS bundle deploy actions completed"),
+		metric.WithUnit("{action}"),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	bundleDeploysFailed, err := meter.Int64Counter(
+		"forge.bundle_deploys.failed",
+		metric.WithDescription("Total number of UDS bundle deploy actions failed"),
+		metric.WithUnit("{action}"),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	bundleJobsCreated, err := meter.Int64Counter(
+		"forge.bundle_jobs.created",
+		metric.WithDescription("Total number of Jobs created for UDS bundles"),
+		metric.WithUnit("{job}"),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	udsBundleJobsActive, err := meter.Int64UpDownCounter(
+		"forge.uds_bundle_jobs.active",
+		metric.WithDescription("Current number of active UDSBundleJob resources"),
+		metric.WithUnit("{resource}"),
+	)
+	if err != nil {
+		return nil, err
+	}
+
 	return &Metrics{
-		zarfPackageJobsCreated: zarfPackageJobsCreated,
-		zarfPackageJobsActive:  zarfPackageJobsActive,
-		jobsCreated:            jobsCreated,
-		jobsCompleted:          jobsCompleted,
-		jobsFailed:             jobsFailed,
-		buildsStarted:          buildsStarted,
-		buildsCompleted:        buildsCompleted,
-		buildsFailed:           buildsFailed,
-		publishesStarted:       publishesStarted,
-		publishesCompleted:     publishesCompleted,
-		publishesFailed:        publishesFailed,
-		deploysStarted:         deploysStarted,
-		deploysCompleted:       deploysCompleted,
-		deploysFailed:          deploysFailed,
-		reconcileErrors:        reconcileErrors,
-		webhookValidations:     webhookValidations,
-		actionDuration:         actionDuration,
-		reconcileDuration:      reconcileDuration,
+		zarfPackageJobsCreated:   zarfPackageJobsCreated,
+		zarfPackageJobsActive:    zarfPackageJobsActive,
+		jobsCreated:              jobsCreated,
+		jobsCompleted:            jobsCompleted,
+		jobsFailed:               jobsFailed,
+		buildsStarted:            buildsStarted,
+		buildsCompleted:          buildsCompleted,
+		buildsFailed:             buildsFailed,
+		publishesStarted:         publishesStarted,
+		publishesCompleted:       publishesCompleted,
+		publishesFailed:          publishesFailed,
+		deploysStarted:           deploysStarted,
+		deploysCompleted:         deploysCompleted,
+		deploysFailed:            deploysFailed,
+		bundleCreatesStarted:     bundleCreatesStarted,
+		bundleCreatesCompleted:   bundleCreatesCompleted,
+		bundleCreatesFailed:      bundleCreatesFailed,
+		bundlePublishesStarted:   bundlePublishesStarted,
+		bundlePublishesCompleted: bundlePublishesCompleted,
+		bundlePublishesFailed:    bundlePublishesFailed,
+		bundleDeploysStarted:     bundleDeploysStarted,
+		bundleDeploysCompleted:   bundleDeploysCompleted,
+		bundleDeploysFailed:      bundleDeploysFailed,
+		bundleJobsCreated:        bundleJobsCreated,
+		udsBundleJobsActive:      udsBundleJobsActive,
+		reconcileErrors:          reconcileErrors,
+		webhookValidations:       webhookValidations,
+		actionDuration:           actionDuration,
+		reconcileDuration:        reconcileDuration,
 	}, nil
 }
 
@@ -395,4 +519,109 @@ func (metrics *Metrics) RecordWebhookValidation(ctx context.Context, allowed boo
 			attribute.String("status", status),
 			attribute.String("reason", reason),
 		))
+}
+
+// UDS Bundle metric recording methods
+
+// RecordBundleCreateStarted increments the bundle create started counter
+func (metrics *Metrics) RecordBundleCreateStarted(ctx context.Context, namespace, bundleName string) {
+	metrics.bundleCreatesStarted.Add(ctx, 1,
+		metric.WithAttributes(
+			attribute.String("namespace", namespace),
+			attribute.String("bundle", bundleName),
+		))
+}
+
+// RecordBundleCreateCompleted increments the bundle create completed counter
+func (metrics *Metrics) RecordBundleCreateCompleted(ctx context.Context, namespace, bundleName string) {
+	metrics.bundleCreatesCompleted.Add(ctx, 1,
+		metric.WithAttributes(
+			attribute.String("namespace", namespace),
+			attribute.String("bundle", bundleName),
+		))
+}
+
+// RecordBundleCreateFailed increments the bundle create failed counter
+func (metrics *Metrics) RecordBundleCreateFailed(ctx context.Context, namespace, bundleName string) {
+	metrics.bundleCreatesFailed.Add(ctx, 1,
+		metric.WithAttributes(
+			attribute.String("namespace", namespace),
+			attribute.String("bundle", bundleName),
+		))
+}
+
+// RecordBundlePublishStarted increments the bundle publish started counter
+func (metrics *Metrics) RecordBundlePublishStarted(ctx context.Context, namespace, bundleName string) {
+	metrics.bundlePublishesStarted.Add(ctx, 1,
+		metric.WithAttributes(
+			attribute.String("namespace", namespace),
+			attribute.String("bundle", bundleName),
+		))
+}
+
+// RecordBundlePublishCompleted increments the bundle publish completed counter
+func (metrics *Metrics) RecordBundlePublishCompleted(ctx context.Context, namespace, bundleName string) {
+	metrics.bundlePublishesCompleted.Add(ctx, 1,
+		metric.WithAttributes(
+			attribute.String("namespace", namespace),
+			attribute.String("bundle", bundleName),
+		))
+}
+
+// RecordBundlePublishFailed increments the bundle publish failed counter
+func (metrics *Metrics) RecordBundlePublishFailed(ctx context.Context, namespace, bundleName string) {
+	metrics.bundlePublishesFailed.Add(ctx, 1,
+		metric.WithAttributes(
+			attribute.String("namespace", namespace),
+			attribute.String("bundle", bundleName),
+		))
+}
+
+// RecordBundleDeployStarted increments the bundle deploy started counter
+func (metrics *Metrics) RecordBundleDeployStarted(ctx context.Context, namespace, bundleName string) {
+	metrics.bundleDeploysStarted.Add(ctx, 1,
+		metric.WithAttributes(
+			attribute.String("namespace", namespace),
+			attribute.String("bundle", bundleName),
+		))
+}
+
+// RecordBundleDeployCompleted increments the bundle deploy completed counter
+func (metrics *Metrics) RecordBundleDeployCompleted(ctx context.Context, namespace, bundleName string) {
+	metrics.bundleDeploysCompleted.Add(ctx, 1,
+		metric.WithAttributes(
+			attribute.String("namespace", namespace),
+			attribute.String("bundle", bundleName),
+		))
+}
+
+// RecordBundleDeployFailed increments the bundle deploy failed counter
+func (metrics *Metrics) RecordBundleDeployFailed(ctx context.Context, namespace, bundleName string) {
+	metrics.bundleDeploysFailed.Add(ctx, 1,
+		metric.WithAttributes(
+			attribute.String("namespace", namespace),
+			attribute.String("bundle", bundleName),
+		))
+}
+
+// RecordBundleJobCreated increments the bundle job created counter
+func (metrics *Metrics) RecordBundleJobCreated(ctx context.Context, namespace, bundleName, action string) {
+	metrics.bundleJobsCreated.Add(ctx, 1,
+		metric.WithAttributes(
+			attribute.String("namespace", namespace),
+			attribute.String("bundle", bundleName),
+			attribute.String("action", action),
+		))
+}
+
+// RecordUDSBundleJobCreated increments the UDSBundleJob created and active counters
+func (metrics *Metrics) RecordUDSBundleJobCreated(ctx context.Context, namespace string) {
+	metrics.udsBundleJobsActive.Add(ctx, 1,
+		metric.WithAttributes(attribute.String("namespace", namespace)))
+}
+
+// RecordUDSBundleJobDeleted decrements the active UDSBundleJob counter
+func (metrics *Metrics) RecordUDSBundleJobDeleted(ctx context.Context, namespace string) {
+	metrics.udsBundleJobsActive.Add(ctx, -1,
+		metric.WithAttributes(attribute.String("namespace", namespace)))
 }

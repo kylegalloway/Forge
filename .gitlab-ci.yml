@@ -51,7 +51,7 @@ golangci-lint:
   stage: lint
   image: golangci/golangci-lint:latest
   script:
-    - golangci-lint run --timeout=10m --out-format=colored-line-number
+    - golangci-lint run --config=.config/golangci.yaml --timeout=10m --out-format=colored-line-number
 
 go-mod-tidy:
   extends: .go-cache
@@ -168,7 +168,7 @@ docker-build-webhook:
   before_script:
     - docker info
   script:
-    - docker build -t forge-webhook:${CI_COMMIT_SHA} -f webhook/Dockerfile ./webhook
+    - docker build -t forge-webhook:${CI_COMMIT_SHA} -f Dockerfile.webhook .
     - docker images
   only:
     - main
@@ -224,7 +224,7 @@ release:
     - docker push $CI_REGISTRY_IMAGE/forge-controller:latest
 
     # Build and push webhook
-    - docker build -t $CI_REGISTRY_IMAGE/forge-webhook:${CI_COMMIT_TAG} -f webhook/Dockerfile ./webhook
+    - docker build -t $CI_REGISTRY_IMAGE/forge-webhook:${CI_COMMIT_TAG} -f Dockerfile.webhook .
     - docker push $CI_REGISTRY_IMAGE/forge-webhook:${CI_COMMIT_TAG}
     - docker tag $CI_REGISTRY_IMAGE/forge-webhook:${CI_COMMIT_TAG} $CI_REGISTRY_IMAGE/forge-webhook:latest
     - docker push $CI_REGISTRY_IMAGE/forge-webhook:latest

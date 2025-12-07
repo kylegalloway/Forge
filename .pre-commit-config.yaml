@@ -41,7 +41,7 @@ repos:
     rev: v1.64.8
     hooks:
       - id: golangci-lint
-        args: ['--timeout=10m']
+        args: ['--config=.config/golangci.yaml', '--timeout=10m']
 
   # Security scanning
   - repo: https://github.com/Yelp/detect-secrets
@@ -56,14 +56,14 @@ repos:
     rev: v0.19.0 # Use the latest stable version
     hooks:
       - id: markdownlint-cli2
-        args: ["--config", ".markdownlint.yaml"]
+        args: ["--config", ".config/markdownlint.yaml"]
 
   # YAML linting
   - repo: https://github.com/adrienverge/yamllint
     rev: v1.35.1
     hooks:
       - id: yamllint
-        args: ['-c', '.yamllint.yaml']
+        args: ['-c', '.config/yamllint.yaml']
         exclude: '^(config/samples/|webhook/deploy/|config/namespace-templates/)'
 
   # Dockerfile linting

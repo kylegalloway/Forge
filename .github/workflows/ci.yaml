@@ -28,7 +28,7 @@ jobs:
         uses: golangci/golangci-lint-action@v6
         with:
           version: v1.64.8
-          args: --timeout=10m
+          args: --config=.config/golangci.yaml --timeout=10m
 
       - name: Run go fmt
         run: |
@@ -130,7 +130,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: ./webhook/Dockerfile
+          file: ./Dockerfile.webhook
           push: false
           tags: forge-webhook:${{ github.sha }}
           cache-from: type=gha

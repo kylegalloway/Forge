@@ -1,0 +1,13 @@
+kind: ZarfPackageConfig
+metadata:
+  name: hello-local-to-s3
+  description: Example package built from local source and published to S3
+  version: 1.0.0
+
+components:
+  - name: nginx-example
+    required: true
+    manifests:
+      - name: nginx-deployment
+        files:
+          - deployment.yaml

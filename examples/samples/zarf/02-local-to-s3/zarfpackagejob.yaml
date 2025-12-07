@@ -1,0 +1,73 @@
+# Example: Build from Local source and publish to S3
+#
+# This example demonstrates:
+# - Building a Zarf package from local filesystem
+# - Publishing to an S3 bucket
+#
+# The package content is located in this directory (02-local-to-s3/)
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: local-to-s3-builder
+  namespace: default
+  annotations:
+    # Allow Build and Publish actions
+    forge.forge.dev/allowed-actions: "Build,Publish,BuildPublish"
+
+    # Allow local sources
+    forge.forge.dev/allowed-source-types: "Local"
+
+    # Allow publishing to S3 buckets
+    forge.forge.dev/allowed-publish-s3-buckets: "my-zarf-packages/*"
+
+---
+# Secret containing AWS credentials for S3
+apiVersion: v1
+kind: Secret
+metadata:
+  name: s3-credentials
+  namespace: default
+type: Opaque
+stringData:
+  AWS_ACCESS_KEY_ID: "AKIAIOSFODNN7EXAMPLE"
+  AWS_SECRET_ACCESS_KEY: "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
+  AWS_DEFAULT_REGION: "us-west-2"
+
+---
+apiVersion: forge.dev/v1alpha1
+kind: ZarfPackageJob
+metadata:
+  name: local-to-s3-example
+  namespace: default
+spec:
+  serviceAccountName: local-to-s3-builder
+
+  # Build and Publish pipeline
+  action: BuildPublish
+
+  # Source: Local filesystem (for testing, you'd mount this via PVC or ConfigMap)
+  source:
+    type: Local
+    local:
+      path: /workspace/package  # In practice, this would be mounted from a PVC
+
+  # Publish to S3 bucket
+  publish:
+    destination:
+      type: S3
+      s3:
+        bucket: my-zarf-packages
+        key: hello-local-to-s3/zarf-package-hello-local-to-s3-amd64-1.0.0.tar.zst
+        region: us-west-2
+        credentialsSecretRef:
+          name: s3-credentials
+
+  resources:
+    requests:
+      cpu: 500m
+      memory: 1Gi
+    limits:
+      cpu: 2
+      memory: 4Gi

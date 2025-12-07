@@ -1,0 +1,74 @@
+# Example: Build from Git source and publish to OCI registry
+#
+# This example demonstrates:
+# - Fetching Zarf package definition from Git repository
+# - Building the package
+# - Publishing to an OCI registry
+#
+# The package content is located in this directory (01-git-to-oci/)
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: git-to-oci-builder
+  namespace: default
+  annotations:
+    # Allow Build and Publish actions
+    forge.forge.dev/allowed-actions: "Build,Publish,BuildPublish"
+
+    # Allow fetching from this repository
+    forge.forge.dev/allowed-source-repos: "https://github.com/kylegalloway/forge/*"
+
+    # Allow publishing to target OCI registry
+    forge.forge.dev/allowed-publish-registries: "ghcr.io/myorg/packages/*"
+
+---
+# Secret containing OCI registry credentials
+apiVersion: v1
+kind: Secret
+metadata:
+  name: oci-registry-credentials
+  namespace: default
+type: kubernetes.io/dockerconfigjson
+data:
+  .dockerconfigjson: eyJhdXRocyI6e319  # Replace with actual base64-encoded docker config
+
+---
+apiVersion: forge.dev/v1alpha1
+kind: ZarfPackageJob
+metadata:
+  name: git-to-oci-example
+  namespace: default
+spec:
+  serviceAccountName: git-to-oci-builder
+
+  # Build and Publish pipeline
+  action: BuildPublish
+
+  # Source: Git repository (in real usage, this would be a remote repo)
+  source:
+    type: Git
+    git:
+      url: https://github.com/kylegalloway/forge
+      ref: main
+      path: examples/samples/zarf/01-git-to-oci
+
+  # Publish to OCI registry
+  publish:
+    destination:
+      type: OCI
+      oci:
+        registry: ghcr.io
+        repository: myorg/packages/hello-git-to-oci
+        tag: 1.0.0
+        credentialsSecretRef:
+          name: oci-registry-credentials
+
+  resources:
+    requests:
+      cpu: 500m
+      memory: 1Gi
+    limits:
+      cpu: 2
+      memory: 4Gi

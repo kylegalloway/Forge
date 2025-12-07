@@ -1,0 +1,14 @@
+kind: ZarfPackageConfig
+metadata:
+  name: hello-git-to-oci
+  description: Example package built from Git source and published to OCI registry
+  version: 1.0.0
+
+components:
+  - name: hello-world
+    required: true
+    charts:
+      - name: hello
+        version: 0.1.0
+        namespace: hello-world
+        localPath: chart

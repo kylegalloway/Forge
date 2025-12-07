@@ -1,0 +1,25 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api
+  namespace: default
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: api
+  template:
+    metadata:
+      labels:
+        app: api
+    spec:
+      containers:
+      - name: api
+        image: nginx:alpine
+        ports:
+        - containerPort: 8080
+        env:
+        - name: DATABASE_URL
+          value: "postgres://postgres:5432/appdb"
+        - name: API_VERSION
+          value: "1.0.0"

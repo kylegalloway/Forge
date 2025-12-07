@@ -1,0 +1,13 @@
+kind: ZarfPackageConfig
+metadata:
+  name: database
+  description: Database component for bundle
+  version: 1.0.0
+
+components:
+  - name: postgres
+    required: true
+    manifests:
+      - name: postgres-manifests
+        files:
+          - statefulset.yaml

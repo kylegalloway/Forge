@@ -1,0 +1,13 @@
+kind: ZarfPackageConfig
+metadata:
+  name: api
+  description: API component for bundle
+  version: 1.0.0
+
+components:
+  - name: rest-api
+    required: true
+    manifests:
+      - name: api-manifests
+        files:
+          - deployment.yaml

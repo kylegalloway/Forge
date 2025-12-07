@@ -1,0 +1,14 @@
+kind: UDSBundle
+metadata:
+  name: hello-local-to-s3-bundle
+  description: Example bundle created from local source and published to S3
+  version: 1.0.0
+
+packages:
+  - name: database
+    path: ./packages/database
+    ref: 1.0.0
+
+  - name: api
+    path: ./packages/api
+    ref: 1.0.0

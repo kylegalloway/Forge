@@ -1,0 +1,73 @@
+# Example: Create UDS bundle from Local source and publish to S3
+#
+# This example demonstrates:
+# - Creating a UDS bundle from local filesystem
+# - Publishing the bundle to an S3 bucket
+#
+# The bundle definition and packages are in this directory (02-local-to-s3/)
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: bundle-local-to-s3-builder
+  namespace: default
+  annotations:
+    # Allow Create and Publish actions
+    forge.forge.dev/allowed-bundle-actions: "Create,Publish,CreatePublish"
+
+    # Allow local sources
+    forge.forge.dev/allowed-bundle-source-types: "Local"
+
+    # Allow publishing to S3 buckets
+    forge.forge.dev/allowed-bundle-publish-s3-buckets: "my-uds-bundles/*"
+
+---
+# Secret for AWS S3 credentials
+apiVersion: v1
+kind: Secret
+metadata:
+  name: bundle-s3-credentials
+  namespace: default
+type: Opaque
+stringData:
+  AWS_ACCESS_KEY_ID: "AKIAIOSFODNN7EXAMPLE"
+  AWS_SECRET_ACCESS_KEY: "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
+  AWS_DEFAULT_REGION: "us-west-2"
+
+---
+apiVersion: forge.dev/v1alpha1
+kind: UDSBundleJob
+metadata:
+  name: local-to-s3-bundle-example
+  namespace: default
+spec:
+  serviceAccountName: bundle-local-to-s3-builder
+
+  # Create and Publish pipeline
+  action: CreatePublish
+
+  # Source: Local filesystem (in practice, mounted via PVC)
+  source:
+    type: Local
+    local:
+      path: /workspace/bundle  # Would be mounted from a PVC
+
+  # Publish to S3 bucket
+  publish:
+    destination:
+      type: S3
+      s3:
+        bucket: my-uds-bundles
+        key: hello-local-to-s3-bundle/uds-bundle-hello-local-to-s3-bundle-amd64-1.0.0.tar.zst
+        region: us-west-2
+        credentialsSecretRef:
+          name: bundle-s3-credentials
+
+  resources:
+    requests:
+      cpu: 1
+      memory: 2Gi
+    limits:
+      cpu: 4
+      memory: 8Gi

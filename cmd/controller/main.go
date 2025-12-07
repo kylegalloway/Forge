@@ -4,6 +4,7 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
@@ -43,13 +44,16 @@ func main() {
 	watchNamespace := determineWatchNamespace()
 
 	metrics, tracer := initializeTelemetry()
-	ctrl := controller.NewController(kubeClient, dynamicClient, watchNamespace, metrics, tracer)
 
-	healthServer := startHealthServer(ctrl)
+	// Create both Zarf and UDS controllers
+	zarfCtrl := controller.NewController(kubeClient, dynamicClient, watchNamespace, metrics, tracer)
+	udsCtrl := controller.NewUDSController(kubeClient, dynamicClient, watchNamespace, metrics, tracer)
+
+	healthServer := startHealthServer(zarfCtrl, udsCtrl)
 	meterProvider, metricsServer := startMetricsServer(ctx)
 	defer shutdownMeterProvider(ctx, meterProvider)
 
-	runController(ctx, ctrl, kubeClient)
+	runControllers(ctx, zarfCtrl, udsCtrl, kubeClient)
 	shutdownServers(healthServer, metricsServer)
 }
 
@@ -119,10 +123,36 @@ func initializeTelemetry() (*telemetry.Metrics, *telemetry.Tracer) {
 	return metrics, tracer
 }
 
-func startHealthServer(ctrl *controller.Controller) *http.Server {
+func startHealthServer(zarfCtrl *controller.Controller, udsCtrl *controller.UDSController) *http.Server {
 	healthMux := http.NewServeMux()
-	healthMux.HandleFunc("/healthz", ctrl.HealthzHandler())
-	healthMux.HandleFunc("/readyz", ctrl.ReadyzHandler())
+	healthMux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) {
+		// Both controllers must be healthy
+		if zarfCtrl.Healthy() && udsCtrl.Healthy() {
+			w.WriteHeader(http.StatusOK)
+			if _, err := w.Write([]byte("OK")); err != nil {
+				klog.V(5).ErrorS(err, "Failed to write health check response")
+			}
+		} else {
+			w.WriteHeader(http.StatusServiceUnavailable)
+			if _, err := w.Write([]byte("Not healthy")); err != nil {
+				klog.V(5).ErrorS(err, "Failed to write health check response")
+			}
+		}
+	})
+	healthMux.HandleFunc("/readyz", func(w http.ResponseWriter, _ *http.Request) {
+		// Both controllers must be ready
+		if zarfCtrl.Ready() && udsCtrl.Ready() {
+			w.WriteHeader(http.StatusOK)
+			if _, err := w.Write([]byte("Ready")); err != nil {
+				klog.V(5).ErrorS(err, "Failed to write ready check response")
+			}
+		} else {
+			w.WriteHeader(http.StatusServiceUnavailable)
+			if _, err := w.Write([]byte("Not ready")); err != nil {
+				klog.V(5).ErrorS(err, "Failed to write ready check response")
+			}
+		}
+	})
 
 	healthServer := &http.Server{
 		Addr:              healthAddr,
@@ -178,24 +208,60 @@ func shutdownMeterProvider(ctx context.Context, meterProvider *sdkmetric.MeterPr
 	}
 }
 
-func runController(ctx context.Context, ctrl *controller.Controller, kubeClient *kubernetes.Clientset) {
-	klog.Info("Starting Forge controller")
+func runControllers(ctx context.Context, zarfCtrl *controller.Controller, udsCtrl *controller.UDSController, kubeClient *kubernetes.Clientset) {
+	klog.Info("Starting Forge controllers (Zarf + UDS)")
+
 	if enableLeaderElection {
 		klog.Info("Leader election enabled")
 		leConfig := leaderelection.DefaultConfig()
 		err := leaderelection.RunWithLeaderElection(ctx, kubeClient, leConfig, func(ctx context.Context) {
-			if runErr := ctrl.Run(ctx); runErr != nil {
-				klog.ErrorS(runErr, "Error running controller")
-			}
+			// Run both controllers concurrently
+			errChan := make(chan error, 2)
+
+			go func() {
+				klog.Info("Starting Zarf controller with leader election")
+				if runErr := zarfCtrl.Run(ctx); runErr != nil {
+					errChan <- fmt.Errorf("zarf controller error: %w", runErr)
+				}
+			}()
+
+			go func() {
+				klog.Info("Starting UDS controller with leader election")
+				if runErr := udsCtrl.Run(ctx); runErr != nil {
+					errChan <- fmt.Errorf("uds controller error: %w", runErr)
+				}
+			}()
+
+			// Wait for first controller to fail
+			err := <-errChan
+			klog.ErrorS(err, "Controller failed")
 		})
 		if err != nil {
 			klog.Fatalf("Error in leader election: %v", err)
 		}
 	} else {
-		klog.Info("Leader election disabled - running as single instance")
-		if err := ctrl.Run(ctx); err != nil {
-			klog.Fatalf("Error running controller: %v", err)
-		}
+		klog.Info("Leader election disabled - running both controllers as single instance")
+
+		// Run both controllers concurrently
+		errChan := make(chan error, 2)
+
+		go func() {
+			klog.Info("Starting Zarf controller")
+			if runErr := zarfCtrl.Run(ctx); runErr != nil {
+				errChan <- fmt.Errorf("zarf controller error: %w", runErr)
+			}
+		}()
+
+		go func() {
+			klog.Info("Starting UDS controller")
+			if runErr := udsCtrl.Run(ctx); runErr != nil {
+				errChan <- fmt.Errorf("uds controller error: %w", runErr)
+			}
+		}()
+
+		// Wait for first controller to fail
+		err := <-errChan
+		klog.Fatalf("Controller failed: %v", err)
 	}
 }
 

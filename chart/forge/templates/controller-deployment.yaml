@@ -36,14 +36,6 @@ spec:
         args:
           {{- toYaml . | nindent 10 }}
         {{- end }}
-        env:
-        {{- if and .Values.observability.otelCollector.enabled .Values.observability.deployStack }}
-        - name: OTEL_EXPORTER_OTLP_ENDPOINT
-          value: "http://{{ include "forge.fullname" . }}-otel-collector:4317"
-        {{- else if .Values.observability.otelCollector.external.endpoint }}
-        - name: OTEL_EXPORTER_OTLP_ENDPOINT
-          value: "{{ .Values.observability.otelCollector.external.endpoint }}"
-        {{- end }}
         ports:
         - name: metrics
           containerPort: 8080

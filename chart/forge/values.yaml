@@ -1,40 +1,7 @@
 # Forge Helm Chart - Default Values
 #
-# Complete configuration reference with detailed comments.
-# All configuration options are documented inline with scenario-specific guidance.
-#
-# Common Deployment Scenarios:
-#
-#   Local Development (Kind):
-#     Install kube-prometheus-stack separately, then:
-#       helm upgrade --install forge ./chart/forge \
-#         --set observability.deployStack=false \
-#         --set controller.image.repository=localhost/forge-controller \
-#         --set controller.image.tag=demo \
-#         --set metrics.serviceMonitor.enabled=false \
-#         --set otelCollector.serviceMonitor.enabled=true
-#     See: examples/values-kind.yaml
-#
-#   New Cluster (Full Stack):
-#     Deploy everything (OTEL, Prometheus, Grafana):
-#       helm upgrade --install forge ./chart/forge \
-#         --set observability.deployStack=true \
-#         --set grafana.config.adminPassword=YOUR-STRONG-PASSWORD
-#     See: examples/values-new-cluster.yaml
-#
-#   Mature Cluster (External Monitoring):
-#     Use existing monitoring infrastructure:
-#       helm upgrade --install forge ./chart/forge \
-#         --set observability.deployStack=false \
-#         --set otelCollector.enabled=false \
-#         --set otelCollector.external.endpoint=otel.monitoring:4317 \
-#         --set prometheus.external.url=http://prometheus.monitoring:9090
-#     See: examples/values-mature-cluster.yaml
-#
-# Documentation:
-#   - Chart README: chart/forge/README.md
-#   - User Guide: docs/getting-started/USER_GUIDE.md
-#   - Production Checklist: docs/operations/PRODUCTION_CHECKLIST.md
+# Simple, minimal configuration for deploying Forge controller and webhook.
+# External monitoring infrastructure can scrape metrics endpoints directly.
 
 # Global settings
 global:
@@ -46,37 +13,33 @@ global:
 
 # Controller configuration
 controller:
+  # Enable controller deployment
+  enabled: true
+
   # Number of controller replicas
-  # Kind/Dev: 1 | Production: 2+
   replicaCount: 1
 
   # Controller image configuration
   image:
-    # For Kind, override with: localhost/forge-controller
-    repository: forge-controller
-    # For Kind, use: IfNotPresent (local images)
+    repository: ghcr.io/kylegalloway/forge-controller
     pullPolicy: IfNotPresent
-    # For Kind, override with: demo (or your local tag)
     tag: "latest"
 
   # Image pull secrets (add if using private registry)
   imagePullSecrets: []
 
   # Controller command arguments
-  # Increase verbosity for debugging: -v=4
   args:
     - "-v=2"
 
   # Resource limits and requests
-  # Kind: cpu: 100m/1, memory: 128Mi/512Mi
-  # Production: cpu: 500m/2, memory: 512Mi/1Gi
   resources:
     limits:
-      cpu: "1"
+      cpu: 500m
       memory: 512Mi
     requests:
-      cpu: 250m
-      memory: 256Mi
+      cpu: 100m
+      memory: 128Mi
 
   # Security context for the controller pod
   podSecurityContext:
@@ -123,11 +86,67 @@ controller:
   # Affinity
   affinity: {}
 
-  # Pod annotations
+  # Pod annotations (Prometheus scraping annotations)
   podAnnotations:
     prometheus.io/scrape: "true"
     prometheus.io/port: "8080"
     prometheus.io/path: "/metrics"
+
+  # Metrics endpoint configuration
+  metrics:
+    enabled: true
+    port: 8080
+    path: /metrics
+
+  # Health check endpoints
+  healthCheck:
+    port: 8081
+    livenessPath: /healthz
+    readinessPath: /readyz
+
+# Webhook Configuration
+webhook:
+  # Enable webhook deployment
+  enabled: true
+
+  # Number of webhook replicas (recommend 2+ for HA)
+  replicaCount: 2
+
+  # Webhook image configuration
+  image:
+    repository: ghcr.io/kylegalloway/forge-webhook
+    pullPolicy: IfNotPresent
+    tag: "latest"
+
+  # Resource limits and requests
+  resources:
+    limits:
+      cpu: 200m
+      memory: 128Mi
+    requests:
+      cpu: 50m
+      memory: 64Mi
+
+  # TLS configuration for admission webhook
+  tls:
+    # Auto-generate self-signed certs (dev only) or provide via secret
+    autoGenerate: true
+    secretName: forge-webhook-tls  # pragma: allowlist secret
+    # CA bundle (base64 encoded) - leave empty for auto-generated certs
+    caBundle: ""
+
+  # Webhook metrics endpoint
+  metrics:
+    enabled: true
+    port: 8080
+    path: /metrics
+
+# Zarf CLI image for Jobs
+zarfCLI:
+  image:
+    repository: localhost/zarf
+    tag: v0.66.0
+    pullPolicy: IfNotPresent
 
 # Service Account configuration
 serviceAccount:
@@ -144,354 +163,20 @@ rbac:
   # Specifies whether RBAC resources should be created
   create: true
 
-# Metrics configuration
-metrics:
-  # Enable metrics service
+# Leader Election (for HA controller)
+leaderElection:
   enabled: true
-
-  # Service configuration
-  service:
-    type: ClusterIP
-    port: 8080
-
-  # ServiceMonitor for Prometheus Operator
-  # NOTE: For Kind, disable this and use OTEL collector's ServiceMonitor instead
-  # The controller sends metrics to OTEL → OTEL exports to Prometheus
-  serviceMonitor:
-    # Enable ServiceMonitor creation
-    # Kind: false (use otelCollector.serviceMonitor instead)
-    # Production: true (if scraping controller directly)
-    enabled: true
-    # Additional labels for ServiceMonitor (e.g., for Prometheus to discover)
-    # Adjust to match your Prometheus instance labels
-    additionalLabels:
-      prometheus: kube-prometheus
-    # Scrape interval
-    interval: 30s
-    # Scrape timeout
-    scrapeTimeout: 10s
-
-# Observability stack configuration
-# Set observability.deployStack to false if you have existing monitoring infrastructure
-observability:
-  # Deploy full observability stack (OTEL, Prometheus, Grafana)
-  # Kind: false (install kube-prometheus-stack separately)
-  # New cluster: true (deploys full stack)
-  # Mature cluster: false (use external endpoints)
-  deployStack: true
-
-  # OpenTelemetry Collector configuration
-  otelCollector:
-    # Enable OTEL Collector deployment
-    # Kind: true (lightweight OTEL only)
-    # Mature cluster: false (use external.endpoint)
-    enabled: true
-
-    image:
-      repository: otel/opentelemetry-collector-contrib
-      tag: "0.110.0"
-      pullPolicy: IfNotPresent
-
-    replicaCount: 1
-
-    # Resource limits and requests
-    # Kind: cpu: 100m/500m, memory: 128Mi/256Mi
-    # Production: cpu: 500m/2000m, memory: 512Mi/1Gi
-    resources:
-      requests:
-        cpu: 200m
-        memory: 256Mi
-      limits:
-        cpu: 1000m
-        memory: 512Mi
-
-    # OTEL Collector configuration
-    # This will be used as ConfigMap data
-    config:
-      receivers:
-        otlp:
-          protocols:
-            grpc:
-              endpoint: "0.0.0.0:4317"
-            http:
-              endpoint: "0.0.0.0:4318"
-        prometheus:
-          config:
-            scrape_configs:
-              - job_name: 'forge-controller'
-                scrape_interval: 15s
-                static_configs:
-                  - targets: ['forge-controller-metrics:8080']
-                    labels:
-                      service: 'forge-controller'
-
-      processors:
-        batch:
-          timeout: 10s
-          send_batch_size: 1024
-        memory_limiter:
-          check_interval: 1s
-          limit_mib: 512
-          spike_limit_mib: 128
-        resource:
-          attributes:
-            - key: service.name
-              value: forge-controller
-              action: upsert
-            - key: service.namespace
-              value: forge-system
-              action: upsert
-        attributes:
-          actions:
-            - key: k8s.namespace.name
-              from_attribute: namespace
-              action: upsert
-            - key: k8s.pod.name
-              from_attribute: pod
-              action: upsert
-
-      exporters:
-        prometheus:
-          endpoint: "0.0.0.0:8889"
-          namespace: forge
-        logging:
-          loglevel: info
-          sampling_initial: 5
-          sampling_thereafter: 200
-        # These exporters are configured for the deployed Prometheus
-        prometheusremotewrite:
-          endpoint: "http://prometheus-server:9090/api/v1/write"
-          tls:
-            insecure: true
-
-      extensions:
-        health_check:
-          endpoint: "0.0.0.0:13133"
-        pprof:
-          endpoint: "0.0.0.0:1777"
-        zpages:
-          endpoint: "0.0.0.0:55679"
-
-      service:
-        extensions: [health_check, pprof, zpages]
-        pipelines:
-          traces:
-            receivers: [otlp]
-            processors: [memory_limiter, resource, attributes, batch]
-            exporters: [logging]
-          metrics:
-            receivers: [otlp, prometheus]
-            processors: [memory_limiter, resource, batch]
-            exporters: [logging, prometheus, prometheusremotewrite]
-
-    # External OTEL endpoint (for mature clusters)
-    # Used when otelCollector.enabled is false
-    external:
-      # Endpoint of existing OTEL collector
-      # Example: "otel-collector.monitoring.svc.cluster.local:4317"
-      endpoint: ""
-      # Whether to use TLS
-      tls:
-        enabled: true
-        insecure: false
-
-    # Service configuration
-    service:
-      type: ClusterIP
-      ports:
-        otlpGrpc: 4317
-        otlpHttp: 4318
-        prometheus: 8889
-        health: 13133
-
-    # ServiceMonitor for OTEL Collector metrics
-    # Kind: enabled: true (with additionalLabels.prometheus: kube-prometheus)
-    serviceMonitor:
-      enabled: true
-      interval: 30s
-      # Additional labels to match your Prometheus instance
-      additionalLabels:
-        prometheus: kube-prometheus
-
-  # Prometheus configuration
-  prometheus:
-    # Enable Prometheus deployment
-    # Kind: false (install kube-prometheus-stack separately via helm)
-    # New cluster: true (deploy via subchart)
-    # Mature cluster: false (use external.url)
-    enabled: true
-
-    # Use kube-prometheus-stack Helm chart as subchart
-    # Set to true to deploy Prometheus via subchart dependency
-    useSubchart: true
-
-    # Prometheus configuration (passed to kube-prometheus-stack)
-    config:
-      # Storage configuration
-      persistence:
-        enabled: true
-        # Kind: 10Gi | New cluster: 100Gi
-        size: 50Gi
-        # Specify storage class if needed (e.g., "fast-ssd")
-        storageClass: ""
-
-      # Retention settings
-      # Kind: 7d | Production: 30d
-      retention: 15d
-
-      # Resource limits
-      # Kind: Not applicable (installed separately)
-      # Production: cpu: 1000m/4000m, memory: 4Gi/8Gi
-      resources:
-        requests:
-          cpu: 500m
-          memory: 2Gi
-        limits:
-          cpu: 2000m
-          memory: 4Gi
-
-      # Service configuration
-      service:
-        type: ClusterIP
-        port: 9090
-
-      # Additional scrape configs (advanced use cases)
-      additionalScrapeConfigs: []
-
-    # External Prometheus (for mature clusters)
-    # Used when prometheus.enabled is false
-    external:
-      # URL of existing Prometheus instance
-      # Example: "http://prometheus.monitoring.svc.cluster.local:9090"
-      url: ""
-
-  # Grafana configuration
-  grafana:
-    # Enable Grafana deployment
-    # Kind: false (installed via kube-prometheus-stack separately)
-    # New cluster: true (deploy via subchart)
-    # Mature cluster: false (use external.url)
-    enabled: true
-
-    # Use grafana Helm chart as subchart
-    useSubchart: true
-
-    # Grafana configuration
-    config:
-      # Admin credentials
-      adminUser: admin
-      # IMPORTANT: Change this in production!
-      # New cluster example: "CHANGE-ME-STRONG-PASSWORD"
-      adminPassword: "forge-admin-changeme"  # pragma: allowlist secret
-
-      # Resource limits
-      # Kind: Not applicable (installed separately)
-      # Production: cpu: 500m/1000m, memory: 512Mi/1Gi
-      resources:
-        requests:
-          cpu: 250m
-          memory: 256Mi
-        limits:
-          cpu: 500m
-          memory: 512Mi
-
-      # Service configuration
-      service:
-        type: ClusterIP
-        port: 80
-
-      # Persistence
-      persistence:
-        enabled: true
-        # Kind: 5Gi | Production: 20Gi
-        size: 10Gi
-        # Specify storage class if needed (e.g., "standard")
-        storageClass: ""
-
-      # Datasources (will be configured to point to Prometheus)
-      datasources:
-        datasources.yaml:
-          apiVersion: 1
-          datasources:
-            - name: Prometheus
-              type: prometheus
-              url: http://prometheus-server:9090
-              access: proxy
-              isDefault: true
-
-      # Dashboard providers
-      dashboardProviders:
-        dashboardproviders.yaml:
-          apiVersion: 1
-          providers:
-            - name: 'default'
-              orgId: 1
-              folder: ''
-              type: file
-              disableDeletion: false
-              editable: true
-              options:
-                path: /var/lib/grafana/dashboards/default
-
-      # Import existing Forge dashboard
-      dashboards:
-        default:
-          forge-dashboard:
-            json: |
-              # Dashboard JSON will be loaded from configmap
-
-      # Ingress configuration
-      # Enable for production to access Grafana externally
-      ingress:
-        enabled: false
-        ingressClassName: nginx
-        # Add cert-manager annotation for TLS
-        # annotations:
-        #   cert-manager.io/cluster-issuer: "letsencrypt-prod"
-        annotations: {}
-        hosts:
-          - grafana.example.com
-        # Configure TLS with cert-manager
-        # tls:
-        #   - secretName: grafana-tls
-        #     hosts:
-        #       - grafana.example.com
-        tls: []
-
-    # External Grafana (for mature clusters)
-    # Used when grafana.enabled is false
-    external:
-      # URL of existing Grafana instance
-      # Example: "http://grafana.monitoring.svc.cluster.local"
-      url: ""
-
-# Prometheus alerts configuration
-alerts:
-  # Enable PrometheusRule creation
-  # Requires Prometheus Operator to be installed
-  enabled: true
-
-  # Additional labels for PrometheusRule
-  # Adjust to match your Prometheus instance
-  # Mature cluster may need additional labels like "release: prometheus-operator"
-  additionalLabels:
-    prometheus: kube-prometheus
-    role: alert-rules
 
 # Network policies
 networkPolicies:
-  # Enable network policies
-  # Kind: false (simplicity)
-  # Production: true (security)
+  # Enable network policies (recommended for production)
   enabled: false
 
   # Controller network policy
-  # Only applied if networkPolicies.enabled is true
   controller:
     # Ingress rules - what can connect TO the controller
     ingress:
       # Allow metrics scraping from monitoring namespace
-      # Adjust namespaceSelector to match your monitoring namespace labels
       - from:
         - namespaceSelector:
             matchLabels:
@@ -516,7 +201,7 @@ networkPolicies:
         ports:
         - protocol: UDP
           port: 53
-      # Allow Kubernetes API access (controller needs to manage resources)
+      # Allow Kubernetes API access
       - to:
         - namespaceSelector: {}
         ports:
@@ -529,10 +214,8 @@ networkPolicies:
           port: 443
 
 # Pod Security Standards
-# Enforces security best practices for pod configurations
 podSecurityStandards:
-  # Enforce restricted pod security standard (most secure)
-  # Options: privileged, baseline, restricted
+  # Enforce restricted pod security standard
   enforce: restricted
   audit: restricted
   warn: restricted
@@ -540,9 +223,7 @@ podSecurityStandards:
 # CRD configuration
 crds:
   # Install CRDs (ZarfPackageJob, etc.)
-  # Set to false if CRDs are managed separately
   install: true
 
-  # Keep CRDs on helm uninstall
-  # Recommended: true (prevents accidental data loss)
+  # Keep CRDs on helm uninstall (prevents accidental data loss)
   keep: true

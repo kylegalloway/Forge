@@ -1,4 +1,4 @@
-{{- if .Values.metrics.enabled -}}
+{{- if .Values.controller.metrics.enabled -}}
 apiVersion: v1
 kind: Service
 metadata:
@@ -8,12 +8,12 @@ metadata:
     {{- include "forge.controller.labels" . | nindent 4 }}
     component: metrics
 spec:
-  type: {{ .Values.metrics.service.type }}
+  type: ClusterIP
   ports:
   - name: metrics
-    port: {{ .Values.metrics.service.port }}
+    port: {{ .Values.controller.metrics.port }}
     protocol: TCP
-    targetPort: 8080
+    targetPort: {{ .Values.controller.metrics.port }}
   selector:
     {{- include "forge.controller.selectorLabels" . | nindent 4 }}
 {{- end }}

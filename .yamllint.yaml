@@ -22,6 +22,7 @@ ignore: |
   .git/
   config/samples/
   webhook/deploy/
+  chart/forge/templates/
   .pre-commit-config.yaml
   .markdownlint.yaml
   .golangci.yaml

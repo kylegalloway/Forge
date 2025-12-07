@@ -12,7 +12,7 @@ repos:
         exclude: '^go\.(mod|sum)$'
       - id: check-yaml
         args: ['--unsafe']  # Allow custom YAML tags for Kubernetes
-        exclude: '^(config/samples/|webhook/deploy/|config/namespace-templates/)'
+        exclude: '^(config/samples/|webhook/deploy/|config/namespace-templates/|chart/forge/templates/)'
       - id: check-added-large-files
         args: ['--maxkb=1000']
       - id: check-merge-conflict

@@ -3,6 +3,7 @@ package leaderelection
 import (
 	"context"
 	"os"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -160,9 +161,9 @@ func TestRunWithLeaderElection_RunFunctionCalled(t *testing.T) {
 		RetryPeriod:   10 * time.Millisecond,
 	}
 
-	runCalled := false
+	var runCalled atomic.Bool
 	err := RunWithLeaderElection(ctx, client, config, func(ctx context.Context) {
-		runCalled = true
+		runCalled.Store(true)
 		// Wait for context cancellation
 		<-ctx.Done()
 	})
@@ -174,7 +175,7 @@ func TestRunWithLeaderElection_RunFunctionCalled(t *testing.T) {
 	// Note: The run function may or may not be called depending on timing
 	// Leader election might not complete before context timeout
 	// This is expected behavior - we're just testing the function doesn't panic
-	_ = runCalled
+	_ = runCalled.Load()
 }
 
 func TestConstants(t *testing.T) {

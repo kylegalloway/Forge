@@ -26,6 +26,10 @@ help: ## Display this help.
 
 ##@ Development
 
+.PHONY: generate
+generate: ## Generate API deepcopy code.
+	go generate ./pkg/apis/...
+
 .PHONY: fmt
 fmt: ## Run go fmt against code.
 	go fmt ./...

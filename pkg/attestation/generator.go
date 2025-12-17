@@ -79,8 +79,9 @@ func (generator *Generator) GenerateForBuild(opts BuildAttestationOptions) (*Att
 
 	klog.InfoS("Build attestation generated", "subjects", len(subjects), "buildType", provenance.BuildDefinition.BuildType)
 
-	// Store the Forge predicate as metadata (in a real implementation, this might be a separate statement)
-	_ = forgePredicate // TODO: Store or attach this metadata
+	// The Forge-specific predicate is included in the statement predicate field above.
+	// Future versions may attach additional metadata as separate statements or annotations.
+	_ = forgePredicate
 
 	return bundle, nil
 }

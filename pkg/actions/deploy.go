@@ -314,7 +314,13 @@ func (handler *DeployHandler) addServiceAccount(pkg *zarfv1alpha1.ZarfPackageJob
 
 // addKubeconfigVolume adds kubeconfig Secret volume for external cluster deployments
 func (handler *DeployHandler) addKubeconfigVolume(pkg *zarfv1alpha1.ZarfPackageJob, job *batchv1.Job) {
-	if pkg.Spec.Deploy.ExternalCluster == nil {
+	if pkg.Spec.Deploy.ExternalCluster == nil || pkg.Spec.Deploy.ExternalCluster.KubeconfigSecretRef.Name == "" {
+		return
+	}
+
+	// Ensure the job has at least one container before accessing Containers[0]
+	if len(job.Spec.Template.Spec.Containers) == 0 {
+		klog.ErrorS(nil, "Job has no containers, cannot add kubeconfig volume", "job", job.Name)
 		return
 	}
 

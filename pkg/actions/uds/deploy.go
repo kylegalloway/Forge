@@ -236,7 +236,13 @@ func (handler *DeployHandler) buildEnvVars(bundle *udsv1alpha1.UDSBundleJob) []c
 
 // addKubeconfigVolume adds kubeconfig volume and mount for external cluster deployment
 func (handler *DeployHandler) addKubeconfigVolume(bundle *udsv1alpha1.UDSBundleJob, job *batchv1.Job) {
-	if bundle.Spec.Deploy.Kubeconfig == nil {
+	if bundle.Spec.Deploy.Kubeconfig == nil || bundle.Spec.Deploy.Kubeconfig.SecretRef.Name == "" { // pragma: allowlist secret
+		return
+	}
+
+	// Ensure the job has at least one container before accessing Containers[0]
+	if len(job.Spec.Template.Spec.Containers) == 0 {
+		klog.ErrorS(nil, "Job has no containers, cannot add kubeconfig volume", "job", job.Name)
 		return
 	}
 

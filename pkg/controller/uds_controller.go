@@ -9,7 +9,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
@@ -17,26 +16,9 @@ import (
 
 	udsactions "github.com/kylegalloway/forge/pkg/actions/uds"
 	udsv1alpha1 "github.com/kylegalloway/forge/pkg/apis/uds/v1alpha1"
+	"github.com/kylegalloway/forge/pkg/constants"
 	"github.com/kylegalloway/forge/pkg/policy"
 	"github.com/kylegalloway/forge/pkg/telemetry"
-)
-
-const (
-	// UDSBundleJobGroup is the API group for UDSBundleJob resources
-	UDSBundleJobGroup = "forge.dev"
-	// UDSBundleJobVersion is the API version
-	UDSBundleJobVersion = "v1alpha1"
-	// UDSBundleJobResource is the resource name
-	UDSBundleJobResource = "udsbundlejobs"
-)
-
-var (
-	// UDSBundleJobGVR is the GroupVersionResource for UDSBundleJob
-	UDSBundleJobGVR = schema.GroupVersionResource{
-		Group:    UDSBundleJobGroup,
-		Version:  UDSBundleJobVersion,
-		Resource: UDSBundleJobResource,
-	}
 )
 
 // UDSController watches UDSBundleJob resources and executes actions
@@ -114,9 +96,9 @@ func (ctrl *UDSController) watchUDSBundleJobs(ctx context.Context) error {
 	// Set up resource interface
 	var resourceInterface dynamic.ResourceInterface
 	if ctrl.namespace == "" {
-		resourceInterface = ctrl.dynamicClient.Resource(UDSBundleJobGVR)
+		resourceInterface = ctrl.dynamicClient.Resource(constants.UDSBundleJobGVR)
 	} else {
-		resourceInterface = ctrl.dynamicClient.Resource(UDSBundleJobGVR).Namespace(ctrl.namespace)
+		resourceInterface = ctrl.dynamicClient.Resource(constants.UDSBundleJobGVR).Namespace(ctrl.namespace)
 	}
 
 	// Start watch
@@ -229,9 +211,9 @@ func (ctrl *UDSController) reconcile(ctx context.Context, bundle *udsv1alpha1.UD
 //
 //nolint:unparam // error return reserved for future policy validation implementation
 func (ctrl *UDSController) validatePolicy(_ context.Context, bundle *udsv1alpha1.UDSBundleJob) error {
-	// TODO: Implement UDS-specific policy validation
-	// This will be similar to Zarf validation but for bundle-specific annotations
-	// For now, just log and return success
+	// Policy validation is currently a placeholder. Full UDS bundle policy validation
+	// will use the same annotation-based approach as Zarf packages, checking allowed
+	// bundle sources, registries, and deployment targets against ServiceAccount annotations.
 	klog.V(2).InfoS("Policy validation placeholder", "name", bundle.Name, "serviceAccount", bundle.Spec.ServiceAccountName)
 	return nil
 }
@@ -373,7 +355,7 @@ func (ctrl *UDSController) updateStatus(ctx context.Context, bundle *udsv1alpha1
 	unstructuredBundle := &unstructured.Unstructured{Object: unstructuredObj}
 
 	// Update status subresource
-	_, err = ctrl.dynamicClient.Resource(UDSBundleJobGVR).
+	_, err = ctrl.dynamicClient.Resource(constants.UDSBundleJobGVR).
 		Namespace(bundle.Namespace).
 		UpdateStatus(ctx, unstructuredBundle, metav1.UpdateOptions{})
 

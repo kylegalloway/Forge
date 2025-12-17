@@ -178,6 +178,10 @@ func (handler *PublishHandler) createPublishJob(ctx context.Context, pkg *zarfv1
 	}
 
 	if jobConfig != nil {
+		// Ensure the job has at least one container before accessing Containers[0]
+		if len(job.Spec.Template.Spec.Containers) == 0 {
+			return nil, fmt.Errorf("job has no containers, cannot apply job configuration")
+		}
 		job.Spec.Template.Spec.Volumes = append(job.Spec.Template.Spec.Volumes, jobConfig.Volumes...)
 		job.Spec.Template.Spec.Containers[0].VolumeMounts = append(job.Spec.Template.Spec.Containers[0].VolumeMounts, jobConfig.VolumeMounts...)
 		job.Spec.Template.Spec.Containers[0].Env = append(job.Spec.Template.Spec.Containers[0].Env, jobConfig.Env...)

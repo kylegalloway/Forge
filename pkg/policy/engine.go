@@ -8,28 +8,10 @@ import (
 	"strings"
 
 	zarfv1alpha1 "github.com/kylegalloway/forge/pkg/apis/zarf/v1alpha1"
+	"github.com/kylegalloway/forge/pkg/constants"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog/v2"
-)
-
-const (
-	// AnnotationAllowedActions is the annotation for allowed actions
-	AnnotationAllowedActions = "forge.forge.dev/allowed-actions"
-	// AnnotationAllowedSourceRepos is the annotation for allowed source repositories
-	AnnotationAllowedSourceRepos = "forge.forge.dev/allowed-source-repos"
-	// AnnotationAllowedSourceBuckets is the annotation for allowed source buckets
-	AnnotationAllowedSourceBuckets = "forge.forge.dev/allowed-source-buckets"
-	// AnnotationAllowedSourceRegistries is the annotation for allowed source registries
-	AnnotationAllowedSourceRegistries = "forge.forge.dev/allowed-source-registries"
-	// AnnotationAllowedPublishBuckets is the annotation for allowed publish buckets
-	AnnotationAllowedPublishBuckets = "forge.forge.dev/allowed-publish-buckets"
-	// AnnotationAllowedPublishRegistries is the annotation for allowed publish registries
-	AnnotationAllowedPublishRegistries = "forge.forge.dev/allowed-publish-registries"
-	// AnnotationAllowedDeployTargets is the annotation for allowed deploy targets
-	AnnotationAllowedDeployTargets = "forge.forge.dev/allowed-deploy-targets"
-	// AnnotationAllowLocalSources is the annotation to allow local sources (dev mode)
-	AnnotationAllowLocalSources = "forge.forge.dev/allow-local-sources"
 )
 
 // Engine handles policy validation
@@ -63,18 +45,11 @@ func (engine *Engine) Validate(ctx context.Context, pkg *zarfv1alpha1.ZarfPackag
 	}
 
 	// 2. Check Allowed Actions
-	allowedActions := parseList(annotations[AnnotationAllowedActions])
+	allowedActions := parseList(annotations[constants.AnnotationAllowedActions])
 	if !isActionAllowed(pkg.Spec.Action, allowedActions) {
 		return fmt.Errorf("action %s is not allowed (allowed actions: %v) for ServiceAccount %s",
 			pkg.Spec.Action, allowedActions, saName)
 	}
-
-	// Log successful policy validation
-	klog.InfoS("Policy validation passed",
-		"package", pkg.Name,
-		"namespace", pkg.Namespace,
-		"action", pkg.Spec.Action,
-		"serviceAccount", saName)
 
 	// 3. Check Allowed Sources
 	if err := engine.validateSource(pkg.Spec.Source, annotations, saName); err != nil {
@@ -90,28 +65,33 @@ func (engine *Engine) Validate(ctx context.Context, pkg *zarfv1alpha1.ZarfPackag
 
 	// 5. Check Allowed Deploy Targets
 	if pkg.Spec.Deploy != nil {
-		allowedTargets := parseList(annotations[AnnotationAllowedDeployTargets])
+		allowedTargets := parseList(annotations[constants.AnnotationAllowedDeployTargets])
 		if !isDeployTargetAllowed(pkg.Spec.Deploy.Target, allowedTargets) {
 			return fmt.Errorf("deploy target %s is not allowed (allowed targets: %v) for ServiceAccount %s",
 				pkg.Spec.Deploy.Target, allowedTargets, saName)
 		}
 	}
 
+	// All validations passed
+	klog.InfoS("Policy validation passed",
+		"package", pkg.Name,
+		"namespace", pkg.Namespace,
+		"action", pkg.Spec.Action,
+		"serviceAccount", saName)
+
 	return nil
 }
 
 // validateSource checks if the source is allowed
 func (engine *Engine) validateSource(source zarfv1alpha1.PackageSource, annotations map[string]string, saName string) error {
-	// If no restrictions are defined, is it allowed?
-	// "Security by default" implies denied. But let's assume if annotation is missing, it's denied?
-	// Or maybe if annotation is missing, it's allowed?
-	// The commit message said "Denies by default".
+	// Security by default: if the required annotation is missing, access is denied.
+	// Each source type requires its corresponding annotation to be present with allowed values.
 
 	switch source.Type {
 	case zarfv1alpha1.SourceTypeGit:
-		allowedRepos := parseList(annotations[AnnotationAllowedSourceRepos])
+		allowedRepos := parseList(annotations[constants.AnnotationAllowedSourceRepos])
 		if len(allowedRepos) == 0 {
-			return fmt.Errorf("no allowed source repos defined (annotation %s is required)", AnnotationAllowedSourceRepos)
+			return fmt.Errorf("no allowed source repos defined (annotation %s is required)", constants.AnnotationAllowedSourceRepos)
 		}
 		if source.Git == nil {
 			return fmt.Errorf("source type is Git but Git config is nil")
@@ -121,9 +101,9 @@ func (engine *Engine) validateSource(source zarfv1alpha1.PackageSource, annotati
 				source.Git.URL, allowedRepos, saName)
 		}
 	case zarfv1alpha1.SourceTypeS3:
-		allowedBuckets := parseList(annotations[AnnotationAllowedSourceBuckets])
+		allowedBuckets := parseList(annotations[constants.AnnotationAllowedSourceBuckets])
 		if len(allowedBuckets) == 0 {
-			return fmt.Errorf("no allowed source buckets defined (annotation %s is required)", AnnotationAllowedSourceBuckets)
+			return fmt.Errorf("no allowed source buckets defined (annotation %s is required)", constants.AnnotationAllowedSourceBuckets)
 		}
 		if source.S3 == nil {
 			return fmt.Errorf("source type is S3 but S3 config is nil")
@@ -133,9 +113,9 @@ func (engine *Engine) validateSource(source zarfv1alpha1.PackageSource, annotati
 				source.S3.Bucket, allowedBuckets, saName)
 		}
 	case zarfv1alpha1.SourceTypeOCI:
-		allowedRegistries := parseList(annotations[AnnotationAllowedSourceRegistries])
+		allowedRegistries := parseList(annotations[constants.AnnotationAllowedSourceRegistries])
 		if len(allowedRegistries) == 0 {
-			return fmt.Errorf("no allowed source registries defined (annotation %s is required)", AnnotationAllowedSourceRegistries)
+			return fmt.Errorf("no allowed source registries defined (annotation %s is required)", constants.AnnotationAllowedSourceRegistries)
 		}
 		if source.OCI == nil {
 			return fmt.Errorf("source type is OCI but OCI config is nil")
@@ -146,8 +126,8 @@ func (engine *Engine) validateSource(source zarfv1alpha1.PackageSource, annotati
 		}
 	case zarfv1alpha1.SourceTypeLocal:
 		// Local sources require explicit permission (dev mode only)
-		if annotations[AnnotationAllowLocalSources] != "true" {
-			return fmt.Errorf("local sources are not allowed (set annotation %s: true for dev mode)", AnnotationAllowLocalSources)
+		if annotations[constants.AnnotationAllowLocalSources] != "true" {
+			return fmt.Errorf("local sources are not allowed (set annotation %s: true for dev mode)", constants.AnnotationAllowLocalSources)
 		}
 	default:
 		return fmt.Errorf("unknown source type: %s", source.Type)
@@ -159,9 +139,9 @@ func (engine *Engine) validateSource(source zarfv1alpha1.PackageSource, annotati
 func (engine *Engine) validateDestination(dest zarfv1alpha1.PublishDestination, annotations map[string]string, saName string) error {
 	switch dest.Type {
 	case zarfv1alpha1.DestinationTypeS3:
-		allowedBuckets := parseList(annotations[AnnotationAllowedPublishBuckets])
+		allowedBuckets := parseList(annotations[constants.AnnotationAllowedPublishBuckets])
 		if len(allowedBuckets) == 0 {
-			return fmt.Errorf("no allowed publish buckets defined (annotation %s is required)", AnnotationAllowedPublishBuckets)
+			return fmt.Errorf("no allowed publish buckets defined (annotation %s is required)", constants.AnnotationAllowedPublishBuckets)
 		}
 		if dest.S3 == nil {
 			return fmt.Errorf("destination type is S3 but S3 config is nil")
@@ -171,9 +151,9 @@ func (engine *Engine) validateDestination(dest zarfv1alpha1.PublishDestination, 
 				dest.S3.Bucket, allowedBuckets, saName)
 		}
 	case zarfv1alpha1.DestinationTypeOCI:
-		allowedRegistries := parseList(annotations[AnnotationAllowedPublishRegistries])
+		allowedRegistries := parseList(annotations[constants.AnnotationAllowedPublishRegistries])
 		if len(allowedRegistries) == 0 {
-			return fmt.Errorf("no allowed publish registries defined (annotation %s is required)", AnnotationAllowedPublishRegistries)
+			return fmt.Errorf("no allowed publish registries defined (annotation %s is required)", constants.AnnotationAllowedPublishRegistries)
 		}
 		if dest.OCI == nil {
 			return fmt.Errorf("destination type is OCI but OCI config is nil")
@@ -184,8 +164,8 @@ func (engine *Engine) validateDestination(dest zarfv1alpha1.PublishDestination, 
 		}
 	case zarfv1alpha1.DestinationTypeLocal:
 		// Local destinations require explicit permission (dev mode only)
-		if annotations[AnnotationAllowLocalSources] != "true" {
-			return fmt.Errorf("local destinations are not allowed (set annotation %s: true for dev mode)", AnnotationAllowLocalSources)
+		if annotations[constants.AnnotationAllowLocalSources] != "true" {
+			return fmt.Errorf("local destinations are not allowed (set annotation %s: true for dev mode)", constants.AnnotationAllowLocalSources)
 		}
 	default:
 		return fmt.Errorf("unknown destination type: %s", dest.Type)

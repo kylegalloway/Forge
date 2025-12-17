@@ -45,7 +45,6 @@ func (source *GitSource) GetInitContainer(pkg *zarfv1alpha1.ZarfPackageJob) (*co
 	}
 
 	// Handle credentials if provided
-	// Handle credentials if provided
 	if gitSource.CredentialsSecretRef != nil {
 		// Mount secret to /etc/git-secret
 		container.VolumeMounts = append(container.VolumeMounts, corev1.VolumeMount{

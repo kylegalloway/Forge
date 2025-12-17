@@ -14,7 +14,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
@@ -22,26 +21,9 @@ import (
 
 	"github.com/kylegalloway/forge/pkg/actions"
 	zarfv1alpha1 "github.com/kylegalloway/forge/pkg/apis/zarf/v1alpha1"
+	"github.com/kylegalloway/forge/pkg/constants"
 	"github.com/kylegalloway/forge/pkg/policy"
 	"github.com/kylegalloway/forge/pkg/telemetry"
-)
-
-const (
-	// ZarfPackageJobGroup is the API group for ZarfPackageJob resources
-	ZarfPackageJobGroup = "forge.dev"
-	// ZarfPackageJobVersion is the API version
-	ZarfPackageJobVersion = "v1alpha1"
-	// ZarfPackageJobResource is the resource name
-	ZarfPackageJobResource = "zarfpackagejobs"
-)
-
-var (
-	// ZarfPackageJobGVR is the GroupVersionResource for ZarfPackageJob
-	ZarfPackageJobGVR = schema.GroupVersionResource{
-		Group:    ZarfPackageJobGroup,
-		Version:  ZarfPackageJobVersion,
-		Resource: ZarfPackageJobResource,
-	}
 )
 
 // Controller watches ZarfPackageJob resources and executes actions
@@ -98,7 +80,7 @@ func (controller *Controller) Run(ctx context.Context) error {
 	go controller.startJobMonitoring(ctx)
 
 	// Watch ZarfPackageJob resources
-	watcher, err := controller.dynamicClient.Resource(ZarfPackageJobGVR).Namespace(controller.namespace).Watch(ctx, metav1.ListOptions{})
+	watcher, err := controller.dynamicClient.Resource(constants.ZarfPackageJobGVR).Namespace(controller.namespace).Watch(ctx, metav1.ListOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to create watcher: %w", err)
 	}
@@ -119,7 +101,7 @@ func (controller *Controller) Run(ctx context.Context) error {
 				klog.Warning("Watch channel closed, restarting watcher")
 				// Recreate watcher
 				var watchErr error
-				watcher, watchErr = controller.dynamicClient.Resource(ZarfPackageJobGVR).Namespace(controller.namespace).Watch(ctx, metav1.ListOptions{})
+				watcher, watchErr = controller.dynamicClient.Resource(constants.ZarfPackageJobGVR).Namespace(controller.namespace).Watch(ctx, metav1.ListOptions{})
 				if watchErr != nil {
 					return fmt.Errorf("failed to recreate watcher: %w", watchErr)
 				}
@@ -167,7 +149,7 @@ func (controller *Controller) handleObject(ctx context.Context, obj interface{})
 	}
 
 	gvk := unstrObj.GroupVersionKind()
-	if gvk.Group == ZarfPackageJobGroup && gvk.Kind == "ZarfPackageJob" {
+	if gvk.Group == constants.APIGroup && gvk.Kind == "ZarfPackageJob" {
 		return controller.handleZarfPackageJob(ctx, unstrObj)
 	}
 
@@ -221,13 +203,11 @@ func (controller *Controller) reconcilePackage(ctx context.Context, unstrObj *un
 		result, err = controller.buildHandler.Execute(ctx, pkg)
 
 	case zarfv1alpha1.ActionPublish:
-		// For standalone publish, assume artifact is already available
-		// TODO: Implement artifact fetching from source
+		// Standalone publish: artifact must be pre-staged at /workspace/package.tar.zst
 		result, err = controller.publishHandler.Execute(ctx, pkg, "/workspace/package.tar.zst")
 
 	case zarfv1alpha1.ActionDeploy:
-		// For standalone deploy, assume artifact is already available
-		// TODO: Implement artifact fetching from source
+		// Standalone deploy: artifact must be pre-staged at /workspace/package.tar.zst
 		result, err = controller.deployHandler.Execute(ctx, pkg, "/workspace/package.tar.zst")
 
 	case zarfv1alpha1.ActionBuildPublish:
@@ -302,7 +282,7 @@ func (controller *Controller) updateStatus(ctx context.Context, obj *unstructure
 	// Update status subresource
 	obj.Object["status"] = status
 
-	_, err := controller.dynamicClient.Resource(ZarfPackageJobGVR).Namespace(namespace).UpdateStatus(ctx, obj, metav1.UpdateOptions{})
+	_, err := controller.dynamicClient.Resource(constants.ZarfPackageJobGVR).Namespace(namespace).UpdateStatus(ctx, obj, metav1.UpdateOptions{})
 	if err != nil {
 		if errors.IsNotFound(err) {
 			klog.V(4).InfoS("ZarfPackageJob not found during status update", "name", name, "namespace", namespace)

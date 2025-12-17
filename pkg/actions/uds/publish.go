@@ -266,6 +266,12 @@ func (handler *PublishHandler) addCredentialVolumes(bundle *udsv1alpha1.UDSBundl
 
 	// Add docker-config volume for OCI registries
 	if dest.Type == udsv1alpha1.BundleDestinationTypeOCI && dest.OCI != nil && dest.OCI.CredentialsSecretRef != nil { // pragma: allowlist secret
+		// Ensure the job has at least one container before accessing Containers[0]
+		if len(job.Spec.Template.Spec.Containers) == 0 {
+			klog.ErrorS(nil, "Job has no containers, cannot add credential volumes", "job", job.Name)
+			return
+		}
+
 		job.Spec.Template.Spec.Volumes = append(job.Spec.Template.Spec.Volumes, corev1.Volume{
 			Name: "docker-config",
 			VolumeSource: corev1.VolumeSource{

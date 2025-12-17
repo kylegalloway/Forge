@@ -202,14 +202,10 @@ func (handler *CreateHandler) buildUDSCommand(_ *udsv1alpha1.UDSBundleJob) (stri
 
 // buildInitContainers creates init containers for source retrieval
 func (handler *CreateHandler) buildInitContainers(bundle *udsv1alpha1.UDSBundleJob) []corev1.Container {
-	// Convert UDSBundleJob source to a format compatible with existing source handlers
-	// For now, we'll need to adapt the sources package to handle UDS bundles
-	// This is a placeholder that will need source package updates
+	// UDS bundles currently use a simplified inline Git source handler.
+	// Full integration with pkg/sources handlers is planned for future versions.
 
-	// TODO: Implement source handler conversion from UDS types to Zarf types
-	// or create UDS-specific source handlers
-
-	// For Git sources, we can use the existing Git source handler
+	// For Git sources, clone the repository directly
 	if bundle.Spec.Source.Type == udsv1alpha1.BundleSourceTypeGit && bundle.Spec.Source.Git != nil {
 		container := &corev1.Container{
 			Name:    "fetch-source",

@@ -1,0 +1,21 @@
+// Package constants defines shared constants used across Forge components.
+package constants
+
+const (
+	// AnnotationAllowedActions is the annotation for allowed actions
+	AnnotationAllowedActions = "forge.forge.dev/allowed-actions"
+	// AnnotationAllowedSourceRepos is the annotation for allowed source repositories
+	AnnotationAllowedSourceRepos = "forge.forge.dev/allowed-source-repos"
+	// AnnotationAllowedSourceBuckets is the annotation for allowed source buckets
+	AnnotationAllowedSourceBuckets = "forge.forge.dev/allowed-source-buckets"
+	// AnnotationAllowedSourceRegistries is the annotation for allowed source registries
+	AnnotationAllowedSourceRegistries = "forge.forge.dev/allowed-source-registries"
+	// AnnotationAllowedPublishBuckets is the annotation for allowed publish buckets
+	AnnotationAllowedPublishBuckets = "forge.forge.dev/allowed-publish-buckets"
+	// AnnotationAllowedPublishRegistries is the annotation for allowed publish registries
+	AnnotationAllowedPublishRegistries = "forge.forge.dev/allowed-publish-registries"
+	// AnnotationAllowedDeployTargets is the annotation for allowed deploy targets
+	AnnotationAllowedDeployTargets = "forge.forge.dev/allowed-deploy-targets"
+	// AnnotationAllowLocalSources is the annotation to allow local sources (dev mode)
+	AnnotationAllowLocalSources = "forge.forge.dev/allow-local-sources"
+)

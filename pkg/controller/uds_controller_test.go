@@ -2,7 +2,6 @@ package controller
 
 import (
 	"context"
-	"net/http"
 	"testing"
 
 	batchv1 "k8s.io/api/batch/v1"
@@ -15,21 +14,21 @@ import (
 	dynamicfake "k8s.io/client-go/dynamic/fake"
 	"k8s.io/client-go/kubernetes/fake"
 
-	zarfv1alpha1 "github.com/kylegalloway/forge/pkg/apis/zarf/v1alpha1"
+	udsv1alpha1 "github.com/kylegalloway/forge/pkg/apis/uds/v1alpha1"
 	"github.com/kylegalloway/forge/pkg/constants"
 	"github.com/kylegalloway/forge/pkg/telemetry"
 )
 
-func TestNewController(t *testing.T) {
+func TestNewUDSController(t *testing.T) {
 	kubeClient := fake.NewSimpleClientset()
 	dynamicClient := dynamicfake.NewSimpleDynamicClient(runtime.NewScheme())
 	metrics := mustNewMetrics()
 	tracer := telemetry.NewTracer()
 
-	ctrl := NewController(kubeClient, dynamicClient, "forge-system", metrics, tracer)
+	ctrl := NewUDSController(kubeClient, dynamicClient, "forge-system", metrics, tracer)
 
 	if ctrl == nil {
-		t.Fatal("NewController returned nil")
+		t.Fatal("NewUDSController returned nil")
 	}
 	if ctrl.kubeClient == nil {
 		t.Error("kubeClient not set")
@@ -49,8 +48,8 @@ func TestNewController(t *testing.T) {
 	if ctrl.policyEngine == nil {
 		t.Error("policyEngine not initialized")
 	}
-	if ctrl.buildHandler == nil {
-		t.Error("buildHandler not initialized")
+	if ctrl.createHandler == nil {
+		t.Error("createHandler not initialized")
 	}
 	if ctrl.publishHandler == nil {
 		t.Error("publishHandler not initialized")
@@ -58,110 +57,30 @@ func TestNewController(t *testing.T) {
 	if ctrl.deployHandler == nil {
 		t.Error("deployHandler not initialized")
 	}
-	if !ctrl.healthy {
-		t.Error("Controller should start healthy")
-	}
-	if ctrl.ready {
-		t.Error("Controller should not be ready before Run()")
-	}
 }
 
-func TestHealthzHandler(t *testing.T) {
-	kubeClient := fake.NewSimpleClientset()
-	dynamicClient := dynamicfake.NewSimpleDynamicClient(runtime.NewScheme())
-	ctrl := NewController(kubeClient, dynamicClient, "forge-system", mustNewMetrics(), telemetry.NewTracer())
-
-	tests := []struct {
-		name           string
-		healthy        bool
-		expectedStatus int
-		expectedBody   string
-	}{
-		{
-			name:           "healthy controller",
-			healthy:        true,
-			expectedStatus: 200,
-			expectedBody:   "ok",
-		},
-		{
-			name:           "unhealthy controller",
-			healthy:        false,
-			expectedStatus: 503,
-			expectedBody:   "unhealthy",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			ctrl.healthy = tt.healthy
-			// Health check testing would require HTTP testing infrastructure
-			// This validates the handler creation doesn't panic
-			handler := ctrl.HealthzHandler()
-			if handler == nil {
-				t.Error("HealthzHandler returned nil")
-			}
-		})
-	}
-}
-
-func TestReadyzHandler(t *testing.T) {
-	kubeClient := fake.NewSimpleClientset()
-	dynamicClient := dynamicfake.NewSimpleDynamicClient(runtime.NewScheme())
-	ctrl := NewController(kubeClient, dynamicClient, "forge-system", mustNewMetrics(), telemetry.NewTracer())
-
-	tests := []struct {
-		name           string
-		ready          bool
-		expectedStatus int
-		expectedBody   string
-	}{
-		{
-			name:           "ready controller",
-			ready:          true,
-			expectedStatus: 200,
-			expectedBody:   "ready",
-		},
-		{
-			name:           "not ready controller",
-			ready:          false,
-			expectedStatus: 503,
-			expectedBody:   "not ready",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			ctrl.ready = tt.ready
-			handler := ctrl.ReadyzHandler()
-			if handler == nil {
-				t.Error("ReadyzHandler returned nil")
-			}
-		})
-	}
-}
-
-func TestHandleEvent(t *testing.T) {
+func TestUDSHandleEvent(t *testing.T) {
 	kubeClient := fake.NewSimpleClientset()
 	scheme := runtime.NewScheme()
-	_ = zarfv1alpha1.AddToScheme(scheme)
+	_ = udsv1alpha1.AddToScheme(scheme)
 	dynamicClient := dynamicfake.NewSimpleDynamicClient(scheme)
-	ctrl := NewController(kubeClient, dynamicClient, "forge-system", mustNewMetrics(), telemetry.NewTracer())
+	ctrl := NewUDSController(kubeClient, dynamicClient, "forge-system", mustNewMetrics(), telemetry.NewTracer())
 
-	pkg := &zarfv1alpha1.ZarfPackageJob{
+	bundle := &udsv1alpha1.UDSBundleJob{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "forge.dev/v1alpha1",
-			Kind:       "ZarfPackageJob",
+			Kind:       "UDSBundleJob",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-package",
+			Name:      "test-bundle",
 			Namespace: "forge-system",
 		},
-		Spec: zarfv1alpha1.ZarfPackageJobSpec{
+		Spec: udsv1alpha1.UDSBundleJobSpec{
 			ServiceAccountName: "test-sa",
-			Action:             zarfv1alpha1.ActionBuild,
-			Source: zarfv1alpha1.PackageSource{
-				Type: zarfv1alpha1.SourceTypeGit,
-				Git: &zarfv1alpha1.GitSource{
+			Action:             udsv1alpha1.BundleActionCreate,
+			Source: udsv1alpha1.BundleSource{
+				Type: udsv1alpha1.BundleSourceTypeGit,
+				Git: &udsv1alpha1.GitSource{
 					URL: "https://github.com/test/repo",
 					Ref: "main",
 				},
@@ -170,7 +89,7 @@ func TestHandleEvent(t *testing.T) {
 	}
 
 	// Convert to unstructured
-	unstrObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(pkg)
+	unstrObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(bundle)
 	if err != nil {
 		t.Fatalf("Failed to convert to unstructured: %v", err)
 	}
@@ -178,7 +97,7 @@ func TestHandleEvent(t *testing.T) {
 	unstructuredObj.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "forge.dev",
 		Version: "v1alpha1",
-		Kind:    "ZarfPackageJob",
+		Kind:    "UDSBundleJob",
 	})
 
 	tests := []struct {
@@ -189,12 +108,12 @@ func TestHandleEvent(t *testing.T) {
 		{
 			name:      "handle added event",
 			eventType: watch.Added,
-			wantErr:   false, // handleEvent doesn't return errors, logs them
+			wantErr:   false,
 		},
 		{
 			name:      "handle modified event",
 			eventType: watch.Modified,
-			wantErr:   false, // handleEvent doesn't return errors, logs them
+			wantErr:   false,
 		},
 		{
 			name:      "handle deleted event",
@@ -209,44 +128,43 @@ func TestHandleEvent(t *testing.T) {
 		{
 			name:      "handle bookmark event",
 			eventType: watch.Bookmark,
-			wantErr:   false, // Ignored
+			wantErr:   false,
 		},
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		t.Run(tt.name, func(_ *testing.T) {
 			event := watch.Event{
 				Type:   tt.eventType,
 				Object: unstructuredObj,
 			}
-			err := ctrl.handleEvent(context.Background(), event)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("handleEvent() error = %v, wantErr %v", err, tt.wantErr)
-			}
+			// UDSController uses handleWatchEvent instead of handleEvent
+			ctrl.handleWatchEvent(context.Background(), event)
+			// handleWatchEvent doesn't return errors, so we can't check for them
 		})
 	}
 }
 
-func TestUpdateStatus(t *testing.T) {
+func TestUDSUpdateStatus(t *testing.T) {
 	scheme := runtime.NewScheme()
-	_ = zarfv1alpha1.AddToScheme(scheme)
+	_ = udsv1alpha1.AddToScheme(scheme)
 	dynamicClient := dynamicfake.NewSimpleDynamicClient(scheme)
 	kubeClient := fake.NewSimpleClientset()
-	ctrl := NewController(kubeClient, dynamicClient, "forge-system", mustNewMetrics(), telemetry.NewTracer())
+	ctrl := NewUDSController(kubeClient, dynamicClient, "forge-system", mustNewMetrics(), telemetry.NewTracer())
 
-	pkg := &zarfv1alpha1.ZarfPackageJob{
+	bundle := &udsv1alpha1.UDSBundleJob{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "forge.dev/v1alpha1",
-			Kind:       "ZarfPackageJob",
+			Kind:       "UDSBundleJob",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:       "test-package",
+			Name:       "test-bundle",
 			Namespace:  "forge-system",
 			Generation: 1,
 		},
 	}
 
-	unstrObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(pkg)
+	unstrObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(bundle)
 	if err != nil {
 		t.Fatalf("Failed to convert to unstructured: %v", err)
 	}
@@ -254,24 +172,30 @@ func TestUpdateStatus(t *testing.T) {
 	unstructuredObj.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "forge.dev",
 		Version: "v1alpha1",
-		Kind:    "ZarfPackageJob",
+		Kind:    "UDSBundleJob",
 	})
 
 	// Create the resource first
-	_, err = dynamicClient.Resource(constants.ZarfPackageJobGVR).Namespace("forge-system").Create(
+	_, err = dynamicClient.Resource(constants.UDSBundleJobGVR).Namespace("forge-system").Create(
 		context.Background(), unstructuredObj, metav1.CreateOptions{})
 	if err != nil {
 		t.Fatalf("Failed to create test resource: %v", err)
 	}
 
-	err = ctrl.updateStatus(context.Background(), unstructuredObj, "Running", "Test message", nil)
+	// Convert back to typed object for updateStatus
+	typedBundle := &udsv1alpha1.UDSBundleJob{}
+	if convErr := runtime.DefaultUnstructuredConverter.FromUnstructured(unstructuredObj.Object, typedBundle); convErr != nil {
+		t.Fatalf("Failed to convert to typed bundle: %v", convErr)
+	}
+
+	err = ctrl.updateStatus(context.Background(), typedBundle, "Running", "Test message")
 	if err != nil {
 		t.Errorf("updateStatus() error = %v", err)
 	}
 
 	// Verify status was updated
-	updated, err := dynamicClient.Resource(constants.ZarfPackageJobGVR).Namespace("forge-system").Get(
-		context.Background(), "test-package", metav1.GetOptions{})
+	updated, err := dynamicClient.Resource(constants.UDSBundleJobGVR).Namespace("forge-system").Get(
+		context.Background(), "test-bundle", metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("Failed to get updated resource: %v", err)
 	}
@@ -301,50 +225,50 @@ func TestUpdateStatus(t *testing.T) {
 	}
 }
 
-func TestReconcilePackage(t *testing.T) {
+func TestUDSReconcileBundle(t *testing.T) {
 	scheme := runtime.NewScheme()
-	_ = zarfv1alpha1.AddToScheme(scheme)
+	_ = udsv1alpha1.AddToScheme(scheme)
 	dynamicClient := dynamicfake.NewSimpleDynamicClient(scheme)
 	kubeClient := fake.NewSimpleClientset()
-	ctrl := NewController(kubeClient, dynamicClient, "forge-system", mustNewMetrics(), telemetry.NewTracer())
+	ctrl := NewUDSController(kubeClient, dynamicClient, "forge-system", mustNewMetrics(), telemetry.NewTracer())
 
 	tests := []struct {
 		name              string
-		pkg               *zarfv1alpha1.ZarfPackageJob
+		bundle            *udsv1alpha1.UDSBundleJob
 		expectedPhase     string
 		expectStatusError bool
 	}{
 		{
-			name: "build action without service account",
-			pkg: &zarfv1alpha1.ZarfPackageJob{
+			name: "create action without service account",
+			bundle: &udsv1alpha1.UDSBundleJob{
 				TypeMeta: metav1.TypeMeta{
 					APIVersion: "forge.dev/v1alpha1",
-					Kind:       "ZarfPackageJob",
+					Kind:       "UDSBundleJob",
 				},
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-build",
+					Name:      "test-create",
 					Namespace: "forge-system",
 				},
-				Spec: zarfv1alpha1.ZarfPackageJobSpec{
+				Spec: udsv1alpha1.UDSBundleJobSpec{
 					ServiceAccountName: "test-sa",
-					Action:             zarfv1alpha1.ActionBuild,
+					Action:             udsv1alpha1.BundleActionCreate,
 				},
 			},
 			expectedPhase:     "Failed",
-			expectStatusError: false, // Status update succeeds, but phase is Failed
+			expectStatusError: false,
 		},
 		{
 			name: "unknown action",
-			pkg: &zarfv1alpha1.ZarfPackageJob{
+			bundle: &udsv1alpha1.UDSBundleJob{
 				TypeMeta: metav1.TypeMeta{
 					APIVersion: "forge.dev/v1alpha1",
-					Kind:       "ZarfPackageJob",
+					Kind:       "UDSBundleJob",
 				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-unknown",
 					Namespace: "forge-system",
 				},
-				Spec: zarfv1alpha1.ZarfPackageJobSpec{
+				Spec: udsv1alpha1.UDSBundleJobSpec{
 					ServiceAccountName: "test-sa",
 					Action:             "UnknownAction",
 				},
@@ -356,7 +280,7 @@ func TestReconcilePackage(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			unstrObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(tt.pkg)
+			unstrObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(tt.bundle)
 			if err != nil {
 				t.Fatalf("Failed to convert to unstructured: %v", err)
 			}
@@ -364,27 +288,28 @@ func TestReconcilePackage(t *testing.T) {
 			unstructuredObj.SetGroupVersionKind(schema.GroupVersionKind{
 				Group:   "forge.dev",
 				Version: "v1alpha1",
-				Kind:    "ZarfPackageJob",
+				Kind:    "UDSBundleJob",
 			})
 
 			// Create the resource
-			_, err = dynamicClient.Resource(constants.ZarfPackageJobGVR).Namespace(tt.pkg.Namespace).Create(
+			_, err = dynamicClient.Resource(constants.UDSBundleJobGVR).Namespace(tt.bundle.Namespace).Create(
 				context.Background(), unstructuredObj, metav1.CreateOptions{})
 			if err != nil {
 				t.Fatalf("Failed to create test resource: %v", err)
 			}
 
-			err = ctrl.reconcilePackage(context.Background(), unstructuredObj, tt.pkg)
+			// UDSController uses reconcile instead of reconcileBundle
+			err = ctrl.reconcile(context.Background(), tt.bundle)
 			if tt.expectStatusError && err == nil {
-				t.Error("Expected error from reconcilePackage, got nil")
+				t.Error("Expected error from reconcile, got nil")
 			}
 			if !tt.expectStatusError && err != nil {
-				t.Errorf("Unexpected error from reconcilePackage: %v", err)
+				t.Errorf("Unexpected error from reconcile: %v", err)
 			}
 
 			// Verify status was updated
-			updated, getErr := dynamicClient.Resource(constants.ZarfPackageJobGVR).Namespace(tt.pkg.Namespace).Get(
-				context.Background(), tt.pkg.Name, metav1.GetOptions{})
+			updated, getErr := dynamicClient.Resource(constants.UDSBundleJobGVR).Namespace(tt.bundle.Namespace).Get(
+				context.Background(), tt.bundle.Name, metav1.GetOptions{})
 			if getErr != nil {
 				t.Fatalf("Failed to get updated resource: %v", getErr)
 			}
@@ -400,136 +325,29 @@ func TestReconcilePackage(t *testing.T) {
 	}
 }
 
-func TestHealthzHandlerResponse(t *testing.T) {
-	kubeClient := fake.NewSimpleClientset()
-	dynamicClient := dynamicfake.NewSimpleDynamicClient(runtime.NewScheme())
-	ctrl := NewController(kubeClient, dynamicClient, "forge-system", mustNewMetrics(), telemetry.NewTracer())
-
-	tests := []struct {
-		name           string
-		healthy        bool
-		expectedStatus int
-		expectedBody   string
-	}{
-		{
-			name:           "healthy",
-			healthy:        true,
-			expectedStatus: 200,
-			expectedBody:   "ok",
-		},
-		{
-			name:           "unhealthy",
-			healthy:        false,
-			expectedStatus: 503,
-			expectedBody:   "unhealthy",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			ctrl.healthy = tt.healthy
-			handler := ctrl.HealthzHandler()
-
-			req := &http.Request{}
-			writer := &fakeResponseWriter{status: 200, body: []byte{}}
-			handler(writer, req)
-
-			if writer.status != tt.expectedStatus {
-				t.Errorf("Expected status %d, got %d", tt.expectedStatus, writer.status)
-			}
-			if string(writer.body) != tt.expectedBody {
-				t.Errorf("Expected body %q, got %q", tt.expectedBody, string(writer.body))
-			}
-		})
-	}
-}
-
-func TestReadyzHandlerResponse(t *testing.T) {
-	kubeClient := fake.NewSimpleClientset()
-	dynamicClient := dynamicfake.NewSimpleDynamicClient(runtime.NewScheme())
-	ctrl := NewController(kubeClient, dynamicClient, "forge-system", mustNewMetrics(), telemetry.NewTracer())
-
-	tests := []struct {
-		name           string
-		ready          bool
-		expectedStatus int
-		expectedBody   string
-	}{
-		{
-			name:           "ready",
-			ready:          true,
-			expectedStatus: 200,
-			expectedBody:   "ready",
-		},
-		{
-			name:           "not ready",
-			ready:          false,
-			expectedStatus: 503,
-			expectedBody:   "not ready",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			ctrl.ready = tt.ready
-			handler := ctrl.ReadyzHandler()
-
-			req := &http.Request{}
-			writer := &fakeResponseWriter{status: 200, body: []byte{}}
-			handler(writer, req)
-
-			if writer.status != tt.expectedStatus {
-				t.Errorf("Expected status %d, got %d", tt.expectedStatus, writer.status)
-			}
-			if string(writer.body) != tt.expectedBody {
-				t.Errorf("Expected body %q, got %q", tt.expectedBody, string(writer.body))
-			}
-		})
-	}
-}
-
-// fakeResponseWriter implements http.ResponseWriter for testing
-type fakeResponseWriter struct {
-	status int
-	body   []byte
-}
-
-func (f *fakeResponseWriter) Header() http.Header {
-	return http.Header{}
-}
-
-func (f *fakeResponseWriter) Write(data []byte) (int, error) {
-	f.body = append(f.body, data...)
-	return len(data), nil
-}
-
-func (f *fakeResponseWriter) WriteHeader(statusCode int) {
-	f.status = statusCode
-}
-
-func TestProcessJobStatus(t *testing.T) {
+func TestUDSProcessJobStatus(t *testing.T) {
 	scheme := runtime.NewScheme()
-	_ = zarfv1alpha1.AddToScheme(scheme)
+	_ = udsv1alpha1.AddToScheme(scheme)
 	dynamicClient := dynamicfake.NewSimpleDynamicClient(scheme)
 	kubeClient := fake.NewSimpleClientset()
-	ctrl := NewController(kubeClient, dynamicClient, "forge-system", mustNewMetrics(), telemetry.NewTracer())
+	ctrl := NewUDSController(kubeClient, dynamicClient, "forge-system", mustNewMetrics(), telemetry.NewTracer())
 
-	// Create a ZarfPackageJob first
-	pkg := &zarfv1alpha1.ZarfPackageJob{
+	// Create a UDSBundleJob first
+	bundle := &udsv1alpha1.UDSBundleJob{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "forge.dev/v1alpha1",
-			Kind:       "ZarfPackageJob",
+			Kind:       "UDSBundleJob",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-package",
+			Name:      "test-bundle",
 			Namespace: "forge-system",
 		},
-		Spec: zarfv1alpha1.ZarfPackageJobSpec{
-			Action: zarfv1alpha1.ActionBuild,
+		Spec: udsv1alpha1.UDSBundleJobSpec{
+			Action: udsv1alpha1.BundleActionCreate,
 		},
 	}
 
-	unstrObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(pkg)
+	unstrObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(bundle)
 	if err != nil {
 		t.Fatalf("Failed to convert to unstructured: %v", err)
 	}
@@ -537,13 +355,13 @@ func TestProcessJobStatus(t *testing.T) {
 	unstructuredObj.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "forge.dev",
 		Version: "v1alpha1",
-		Kind:    "ZarfPackageJob",
+		Kind:    "UDSBundleJob",
 	})
 
-	_, err = dynamicClient.Resource(constants.ZarfPackageJobGVR).Namespace("forge-system").Create(
+	_, err = dynamicClient.Resource(constants.UDSBundleJobGVR).Namespace("forge-system").Create(
 		context.Background(), unstructuredObj, metav1.CreateOptions{})
 	if err != nil {
-		t.Fatalf("Failed to create ZarfPackageJob: %v", err)
+		t.Fatalf("Failed to create UDSBundleJob: %v", err)
 	}
 
 	tests := []struct {
@@ -553,13 +371,13 @@ func TestProcessJobStatus(t *testing.T) {
 		expectedPhase string
 	}{
 		{
-			name: "job missing package label",
+			name: "job missing bundle label",
 			job: &batchv1.Job{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-job-1",
 					Namespace: "forge-system",
 					Labels: map[string]string{
-						"app": "forge",
+						"app": "forge-uds",
 					},
 				},
 			},
@@ -572,8 +390,8 @@ func TestProcessJobStatus(t *testing.T) {
 					Name:      "test-job-2",
 					Namespace: "forge-system",
 					Labels: map[string]string{
-						"app":                     "forge",
-						"forge.forge.dev/package": "test-package",
+						"app":                    "forge-uds",
+						"forge.forge.dev/bundle": "test-bundle",
 					},
 				},
 			},
@@ -586,9 +404,9 @@ func TestProcessJobStatus(t *testing.T) {
 					Name:      "test-job-3",
 					Namespace: "forge-system",
 					Labels: map[string]string{
-						"app":                     "forge",
-						"forge.forge.dev/package": "test-package",
-						"forge.forge.dev/action":  "build",
+						"app":                    "forge-uds",
+						"forge.forge.dev/bundle": "test-bundle",
+						"forge.forge.dev/action": "create",
 					},
 				},
 				Status: batchv1.JobStatus{
@@ -604,9 +422,9 @@ func TestProcessJobStatus(t *testing.T) {
 					Name:      "test-job-4",
 					Namespace: "forge-system",
 					Labels: map[string]string{
-						"app":                     "forge",
-						"forge.forge.dev/package": "test-package",
-						"forge.forge.dev/action":  "build",
+						"app":                    "forge-uds",
+						"forge.forge.dev/bundle": "test-bundle",
+						"forge.forge.dev/action": "create",
 					},
 				},
 				Status: batchv1.JobStatus{
@@ -630,9 +448,9 @@ func TestProcessJobStatus(t *testing.T) {
 					Name:      "test-job-5",
 					Namespace: "forge-system",
 					Labels: map[string]string{
-						"app":                     "forge",
-						"forge.forge.dev/package": "test-package",
-						"forge.forge.dev/action":  "build",
+						"app":                    "forge-uds",
+						"forge.forge.dev/bundle": "test-bundle",
+						"forge.forge.dev/action": "create",
 					},
 				},
 				Status: batchv1.JobStatus{
@@ -660,11 +478,11 @@ func TestProcessJobStatus(t *testing.T) {
 			}
 
 			if tt.expectUpdate {
-				// Verify the ZarfPackageJob status was updated
-				updated, getErr := dynamicClient.Resource(constants.ZarfPackageJobGVR).Namespace("forge-system").Get(
-					context.Background(), "test-package", metav1.GetOptions{})
+				// Verify the UDSBundleJob status was updated
+				updated, getErr := dynamicClient.Resource(constants.UDSBundleJobGVR).Namespace("forge-system").Get(
+					context.Background(), "test-bundle", metav1.GetOptions{})
 				if getErr != nil {
-					t.Fatalf("Failed to get updated ZarfPackageJob: %v", getErr)
+					t.Fatalf("Failed to get updated UDSBundleJob: %v", getErr)
 				}
 
 				status, found, _ := unstructured.NestedMap(updated.Object, "status")
@@ -681,12 +499,12 @@ func TestProcessJobStatus(t *testing.T) {
 	}
 }
 
-func TestCheckJobStatuses(t *testing.T) {
+func TestUDSCheckJobStatuses(t *testing.T) {
 	scheme := runtime.NewScheme()
-	_ = zarfv1alpha1.AddToScheme(scheme)
+	_ = udsv1alpha1.AddToScheme(scheme)
 	dynamicClient := dynamicfake.NewSimpleDynamicClient(scheme)
 	kubeClient := fake.NewSimpleClientset()
-	ctrl := NewController(kubeClient, dynamicClient, "forge-system", mustNewMetrics(), telemetry.NewTracer())
+	ctrl := NewUDSController(kubeClient, dynamicClient, "forge-system", mustNewMetrics(), telemetry.NewTracer())
 
 	// Create some test Jobs in the fake client
 	job1 := &batchv1.Job{
@@ -694,7 +512,7 @@ func TestCheckJobStatuses(t *testing.T) {
 			Name:      "test-job-1",
 			Namespace: "forge-system",
 			Labels: map[string]string{
-				"app": "forge",
+				"app": "forge-uds",
 			},
 		},
 	}
@@ -710,83 +528,83 @@ func TestCheckJobStatuses(t *testing.T) {
 	}
 }
 
-func TestHandleActionChaining(t *testing.T) {
+func TestUDSHandleActionChaining(t *testing.T) {
 	scheme := runtime.NewScheme()
-	_ = zarfv1alpha1.AddToScheme(scheme)
+	_ = udsv1alpha1.AddToScheme(scheme)
 	dynamicClient := dynamicfake.NewSimpleDynamicClient(scheme)
 	kubeClient := fake.NewSimpleClientset()
-	ctrl := NewController(kubeClient, dynamicClient, "forge-system", mustNewMetrics(), telemetry.NewTracer())
+	ctrl := NewUDSController(kubeClient, dynamicClient, "forge-system", mustNewMetrics(), telemetry.NewTracer())
 
 	tests := []struct {
 		name            string
-		pkg             *zarfv1alpha1.ZarfPackageJob
+		bundle          *udsv1alpha1.UDSBundleJob
 		completedAction string
 		expectChain     bool
 	}{
 		{
-			name: "BuildPublish chain - build completed",
-			pkg: &zarfv1alpha1.ZarfPackageJob{
+			name: "CreatePublish chain - create completed",
+			bundle: &udsv1alpha1.UDSBundleJob{
 				TypeMeta: metav1.TypeMeta{
 					APIVersion: "forge.dev/v1alpha1",
-					Kind:       "ZarfPackageJob",
+					Kind:       "UDSBundleJob",
 				},
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-buildpublish",
+					Name:      "test-createpublish",
 					Namespace: "forge-system",
 				},
-				Spec: zarfv1alpha1.ZarfPackageJobSpec{
-					Action: "BuildPublish",
-					Publish: &zarfv1alpha1.PublishConfig{
-						Destination: zarfv1alpha1.PublishDestination{
-							Type: zarfv1alpha1.DestinationTypeOCI,
-							OCI: &zarfv1alpha1.OCIDestination{
+				Spec: udsv1alpha1.UDSBundleJobSpec{
+					Action: "CreatePublish",
+					Publish: &udsv1alpha1.BundlePublishConfig{
+						Destination: udsv1alpha1.BundleDestination{
+							Type: udsv1alpha1.BundleDestinationTypeOCI,
+							OCI: &udsv1alpha1.OCIDestination{
 								Registry:   "ghcr.io",
-								Repository: "test/package",
+								Repository: "test/bundle",
 								Tag:        "v1.0.0",
 							},
 						},
 					},
 				},
 			},
-			completedAction: "build",
+			completedAction: "create",
 			expectChain:     true,
 		},
 		{
-			name: "BuildDeploy chain - build completed",
-			pkg: &zarfv1alpha1.ZarfPackageJob{
+			name: "CreateDeploy chain - create completed",
+			bundle: &udsv1alpha1.UDSBundleJob{
 				TypeMeta: metav1.TypeMeta{
 					APIVersion: "forge.dev/v1alpha1",
-					Kind:       "ZarfPackageJob",
+					Kind:       "UDSBundleJob",
 				},
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-builddeploy",
+					Name:      "test-createdeploy",
 					Namespace: "forge-system",
 				},
-				Spec: zarfv1alpha1.ZarfPackageJobSpec{
-					Action: "BuildDeploy",
-					Deploy: &zarfv1alpha1.DeployConfig{
-						Target: zarfv1alpha1.DeployTargetInCluster,
+				Spec: udsv1alpha1.UDSBundleJobSpec{
+					Action: "CreateDeploy",
+					Deploy: &udsv1alpha1.BundleDeployConfig{
+						Target: udsv1alpha1.BundleDeployTargetInCluster,
 					},
 				},
 			},
-			completedAction: "build",
+			completedAction: "create",
 			expectChain:     true,
 		},
 		{
 			name: "PublishDeploy chain - publish completed",
-			pkg: &zarfv1alpha1.ZarfPackageJob{
+			bundle: &udsv1alpha1.UDSBundleJob{
 				TypeMeta: metav1.TypeMeta{
 					APIVersion: "forge.dev/v1alpha1",
-					Kind:       "ZarfPackageJob",
+					Kind:       "UDSBundleJob",
 				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-publishdeploy",
 					Namespace: "forge-system",
 				},
-				Spec: zarfv1alpha1.ZarfPackageJobSpec{
+				Spec: udsv1alpha1.UDSBundleJobSpec{
 					Action: "PublishDeploy",
-					Deploy: &zarfv1alpha1.DeployConfig{
-						Target: zarfv1alpha1.DeployTargetInCluster,
+					Deploy: &udsv1alpha1.BundleDeployConfig{
+						Target: udsv1alpha1.BundleDeployTargetInCluster,
 					},
 				},
 			},
@@ -794,48 +612,48 @@ func TestHandleActionChaining(t *testing.T) {
 			expectChain:     true,
 		},
 		{
-			name: "BuildPublishDeploy chain - build completed",
-			pkg: &zarfv1alpha1.ZarfPackageJob{
+			name: "CreatePublishDeploy chain - create completed",
+			bundle: &udsv1alpha1.UDSBundleJob{
 				TypeMeta: metav1.TypeMeta{
 					APIVersion: "forge.dev/v1alpha1",
-					Kind:       "ZarfPackageJob",
+					Kind:       "UDSBundleJob",
 				},
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-buildpublishdeploy",
+					Name:      "test-createpublishdeploy",
 					Namespace: "forge-system",
 				},
-				Spec: zarfv1alpha1.ZarfPackageJobSpec{
-					Action: "BuildPublishDeploy",
-					Publish: &zarfv1alpha1.PublishConfig{
-						Destination: zarfv1alpha1.PublishDestination{
-							Type: zarfv1alpha1.DestinationTypeOCI,
-							OCI: &zarfv1alpha1.OCIDestination{
+				Spec: udsv1alpha1.UDSBundleJobSpec{
+					Action: "CreatePublishDeploy",
+					Publish: &udsv1alpha1.BundlePublishConfig{
+						Destination: udsv1alpha1.BundleDestination{
+							Type: udsv1alpha1.BundleDestinationTypeOCI,
+							OCI: &udsv1alpha1.OCIDestination{
 								Registry:   "ghcr.io",
-								Repository: "test/package",
+								Repository: "test/bundle",
 								Tag:        "v1.0.0",
 							},
 						},
 					},
 				},
 			},
-			completedAction: "build",
+			completedAction: "create",
 			expectChain:     true,
 		},
 		{
-			name: "BuildPublishDeploy chain - publish completed",
-			pkg: &zarfv1alpha1.ZarfPackageJob{
+			name: "CreatePublishDeploy chain - publish completed",
+			bundle: &udsv1alpha1.UDSBundleJob{
 				TypeMeta: metav1.TypeMeta{
 					APIVersion: "forge.dev/v1alpha1",
-					Kind:       "ZarfPackageJob",
+					Kind:       "UDSBundleJob",
 				},
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-bpd-publish",
+					Name:      "test-cpd-publish",
 					Namespace: "forge-system",
 				},
-				Spec: zarfv1alpha1.ZarfPackageJobSpec{
-					Action: "BuildPublishDeploy",
-					Deploy: &zarfv1alpha1.DeployConfig{
-						Target: zarfv1alpha1.DeployTargetInCluster,
+				Spec: udsv1alpha1.UDSBundleJobSpec{
+					Action: "CreatePublishDeploy",
+					Deploy: &udsv1alpha1.BundleDeployConfig{
+						Target: udsv1alpha1.BundleDeployTargetInCluster,
 					},
 				},
 			},
@@ -843,28 +661,28 @@ func TestHandleActionChaining(t *testing.T) {
 			expectChain:     true,
 		},
 		{
-			name: "single Build action - no chaining",
-			pkg: &zarfv1alpha1.ZarfPackageJob{
+			name: "single Create action - no chaining",
+			bundle: &udsv1alpha1.UDSBundleJob{
 				TypeMeta: metav1.TypeMeta{
 					APIVersion: "forge.dev/v1alpha1",
-					Kind:       "ZarfPackageJob",
+					Kind:       "UDSBundleJob",
 				},
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-build-only",
+					Name:      "test-create-only",
 					Namespace: "forge-system",
 				},
-				Spec: zarfv1alpha1.ZarfPackageJobSpec{
-					Action: zarfv1alpha1.ActionBuild,
+				Spec: udsv1alpha1.UDSBundleJobSpec{
+					Action: udsv1alpha1.BundleActionCreate,
 				},
 			},
-			completedAction: "build",
+			completedAction: "create",
 			expectChain:     false,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			unstrObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(tt.pkg)
+			unstrObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(tt.bundle)
 			if err != nil {
 				t.Fatalf("Failed to convert to unstructured: %v", err)
 			}
@@ -872,17 +690,17 @@ func TestHandleActionChaining(t *testing.T) {
 			unstructuredObj.SetGroupVersionKind(schema.GroupVersionKind{
 				Group:   "forge.dev",
 				Version: "v1alpha1",
-				Kind:    "ZarfPackageJob",
+				Kind:    "UDSBundleJob",
 			})
 
 			// Create the resource
-			_, err = dynamicClient.Resource(constants.ZarfPackageJobGVR).Namespace(tt.pkg.Namespace).Create(
+			_, err = dynamicClient.Resource(constants.UDSBundleJobGVR).Namespace(tt.bundle.Namespace).Create(
 				context.Background(), unstructuredObj, metav1.CreateOptions{})
 			if err != nil {
 				t.Fatalf("Failed to create test resource: %v", err)
 			}
 
-			err = ctrl.handleActionChaining(context.Background(), unstructuredObj, tt.completedAction, "/workspace/package.tar.zst")
+			err = ctrl.handleActionChaining(context.Background(), tt.bundle, tt.completedAction)
 			// We expect errors for chained actions since handlers will fail without real infrastructure
 			// But we verify the function executed without panic
 			if err != nil && !tt.expectChain {
@@ -891,12 +709,4 @@ func TestHandleActionChaining(t *testing.T) {
 			// For chained actions, errors are expected (missing infra), just verify no panic
 		})
 	}
-}
-
-func mustNewMetrics() *telemetry.Metrics {
-	metrics, err := telemetry.NewMetrics()
-	if err != nil {
-		panic(err)
-	}
-	return metrics
 }

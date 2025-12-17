@@ -15,17 +15,12 @@ import (
 
 	"github.com/kylegalloway/forge/pkg/actions"
 	zarfv1alpha1 "github.com/kylegalloway/forge/pkg/apis/zarf/v1alpha1"
-)
-
-const (
-	actionBuild   = "build"
-	actionPublish = "publish"
-	actionDeploy  = "deploy"
+	"github.com/kylegalloway/forge/pkg/constants"
 )
 
 // startJobMonitoring starts a goroutine to monitor Job completion
 func (controller *Controller) startJobMonitoring(ctx context.Context) {
-	ticker := time.NewTicker(10 * time.Second)
+	ticker := time.NewTicker(constants.JobMonitorInterval)
 	defer ticker.Stop()
 
 	klog.Info("Starting Job monitoring loop")
@@ -95,11 +90,11 @@ func (controller *Controller) processJobStatus(ctx context.Context, job *batchv1
 
 			// Record action-specific completion metrics
 			switch action {
-			case actionBuild:
+			case constants.ActionBuild:
 				controller.metrics.RecordBuildCompleted(ctx, job.Namespace, packageName)
-			case actionPublish:
+			case constants.ActionPublish:
 				controller.metrics.RecordPublishCompleted(ctx, job.Namespace, packageName)
-			case actionDeploy:
+			case constants.ActionDeploy:
 				controller.metrics.RecordDeployCompleted(ctx, job.Namespace, packageName)
 			}
 
@@ -122,11 +117,11 @@ func (controller *Controller) processJobStatus(ctx context.Context, job *batchv1
 
 			// Record action-specific failure metrics
 			switch action {
-			case actionBuild:
+			case constants.ActionBuild:
 				controller.metrics.RecordBuildFailed(ctx, job.Namespace, packageName)
-			case actionPublish:
+			case constants.ActionPublish:
 				controller.metrics.RecordPublishFailed(ctx, job.Namespace, packageName)
-			case actionDeploy:
+			case constants.ActionDeploy:
 				controller.metrics.RecordDeployFailed(ctx, job.Namespace, packageName)
 			}
 
@@ -148,7 +143,7 @@ func (controller *Controller) processJobStatus(ctx context.Context, job *batchv1
 	klog.InfoS("Job status changed", "job", job.Name, "package", packageName, "phase", phase)
 
 	// Get the ZarfPackageJob resource
-	unstrObj, err := controller.dynamicClient.Resource(ZarfPackageJobGVR).Namespace(job.Namespace).Get(ctx, packageName, metav1.GetOptions{})
+	unstrObj, err := controller.dynamicClient.Resource(constants.ZarfPackageJobGVR).Namespace(job.Namespace).Get(ctx, packageName, metav1.GetOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to get ZarfPackageJob: %w", err)
 	}
@@ -161,11 +156,11 @@ func (controller *Controller) processJobStatus(ctx context.Context, job *batchv1
 	artifactLocation := "/workspace/package.tar.zst" // Default artifact location
 
 	switch action {
-	case actionBuild:
+	case constants.ActionBuild:
 		statusField = "buildStatus"
-	case actionPublish:
+	case constants.ActionPublish:
 		statusField = "publishStatus"
-	case actionDeploy:
+	case constants.ActionDeploy:
 		statusField = "deployStatus"
 	default:
 		klog.V(4).InfoS("Unknown action type", "action", action, "job", job.Name)
@@ -219,23 +214,23 @@ func (controller *Controller) handleActionChaining(ctx context.Context, unstrObj
 
 	switch action {
 	case "BuildPublish":
-		if completedAction == actionBuild {
-			nextAction = actionPublish
+		if completedAction == constants.ActionBuild {
+			nextAction = constants.ActionPublish
 		}
 	case "BuildDeploy":
-		if completedAction == actionBuild {
-			nextAction = actionDeploy
+		if completedAction == constants.ActionBuild {
+			nextAction = constants.ActionDeploy
 		}
 	case "PublishDeploy":
-		if completedAction == actionPublish {
-			nextAction = actionDeploy
+		if completedAction == constants.ActionPublish {
+			nextAction = constants.ActionDeploy
 		}
 	case "BuildPublishDeploy":
 		switch completedAction {
-		case actionBuild:
-			nextAction = actionPublish
-		case actionPublish:
-			nextAction = actionDeploy
+		case constants.ActionBuild:
+			nextAction = constants.ActionPublish
+		case constants.ActionPublish:
+			nextAction = constants.ActionDeploy
 		}
 	default:
 		// Not a chained action, nothing to do

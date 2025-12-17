@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	zarfv1alpha1 "github.com/kylegalloway/forge/pkg/apis/zarf/v1alpha1"
+	"github.com/kylegalloway/forge/pkg/constants"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/fake"
@@ -61,7 +62,7 @@ func TestValidate_ActionNotAllowed(t *testing.T) {
 			Name:      "test-sa",
 			Namespace: "default",
 			Annotations: map[string]string{
-				AnnotationAllowedActions: "Build,Publish",
+				constants.AnnotationAllowedActions: "Build,Publish",
 			},
 		},
 	}
@@ -102,8 +103,8 @@ func TestValidate_GitSourceAllowed(t *testing.T) {
 			Name:      "test-sa",
 			Namespace: "default",
 			Annotations: map[string]string{
-				AnnotationAllowedActions:     "Build",
-				AnnotationAllowedSourceRepos: "https://github.com/myorg/*",
+				constants.AnnotationAllowedActions:     "Build",
+				constants.AnnotationAllowedSourceRepos: "https://github.com/myorg/*",
 			},
 		},
 	}
@@ -141,8 +142,8 @@ func TestValidate_GitSourceNotAllowed(t *testing.T) {
 			Name:      "test-sa",
 			Namespace: "default",
 			Annotations: map[string]string{
-				AnnotationAllowedActions:     "Build",
-				AnnotationAllowedSourceRepos: "https://github.com/myorg/*",
+				constants.AnnotationAllowedActions:     "Build",
+				constants.AnnotationAllowedSourceRepos: "https://github.com/myorg/*",
 			},
 		},
 	}
@@ -180,8 +181,8 @@ func TestValidate_WildcardAllowsAll(t *testing.T) {
 			Name:      "test-sa",
 			Namespace: "default",
 			Annotations: map[string]string{
-				AnnotationAllowedActions:     "*",
-				AnnotationAllowedSourceRepos: "*",
+				constants.AnnotationAllowedActions:     "*",
+				constants.AnnotationAllowedSourceRepos: "*",
 			},
 		},
 	}
@@ -219,8 +220,8 @@ func TestValidate_S3Source(t *testing.T) {
 			Name:      "test-sa",
 			Namespace: "default",
 			Annotations: map[string]string{
-				AnnotationAllowedActions:       "Build",
-				AnnotationAllowedSourceBuckets: "my-bucket-*",
+				constants.AnnotationAllowedActions:       "Build",
+				constants.AnnotationAllowedSourceBuckets: "my-bucket-*",
 			},
 		},
 	}
@@ -259,7 +260,7 @@ func TestValidate_LocalSourceDeniedByDefault(t *testing.T) {
 			Name:      "test-sa",
 			Namespace: "default",
 			Annotations: map[string]string{
-				AnnotationAllowedActions: "Build",
+				constants.AnnotationAllowedActions: "Build",
 			},
 		},
 	}
@@ -297,8 +298,8 @@ func TestValidate_LocalSourceAllowed(t *testing.T) {
 			Name:      "test-sa",
 			Namespace: "default",
 			Annotations: map[string]string{
-				AnnotationAllowedActions:    "Build",
-				AnnotationAllowLocalSources: "true",
+				constants.AnnotationAllowedActions:    "Build",
+				constants.AnnotationAllowLocalSources: "true",
 			},
 		},
 	}
@@ -423,9 +424,9 @@ func TestValidate_PublishDestinationS3(t *testing.T) {
 			Name:      "test-sa",
 			Namespace: "default",
 			Annotations: map[string]string{
-				AnnotationAllowedActions:        "Publish",
-				AnnotationAllowedSourceRepos:    "*",
-				AnnotationAllowedPublishBuckets: "my-bucket-*",
+				constants.AnnotationAllowedActions:        "Publish",
+				constants.AnnotationAllowedSourceRepos:    "*",
+				constants.AnnotationAllowedPublishBuckets: "my-bucket-*",
 			},
 		},
 	}
@@ -473,9 +474,9 @@ func TestValidate_PublishDestinationS3NotAllowed(t *testing.T) {
 			Name:      "test-sa",
 			Namespace: "default",
 			Annotations: map[string]string{
-				AnnotationAllowedActions:        "Publish",
-				AnnotationAllowedSourceRepos:    "*",
-				AnnotationAllowedPublishBuckets: "my-bucket-*",
+				constants.AnnotationAllowedActions:        "Publish",
+				constants.AnnotationAllowedSourceRepos:    "*",
+				constants.AnnotationAllowedPublishBuckets: "my-bucket-*",
 			},
 		},
 	}
@@ -525,9 +526,9 @@ func TestValidate_PublishDestinationOCI(t *testing.T) {
 			Name:      "test-sa",
 			Namespace: "default",
 			Annotations: map[string]string{
-				AnnotationAllowedActions:           "Publish",
-				AnnotationAllowedSourceRepos:       "*",
-				AnnotationAllowedPublishRegistries: "ghcr.io",
+				constants.AnnotationAllowedActions:           "Publish",
+				constants.AnnotationAllowedSourceRepos:       "*",
+				constants.AnnotationAllowedPublishRegistries: "ghcr.io",
 			},
 		},
 	}
@@ -575,9 +576,9 @@ func TestValidate_PublishDestinationOCINotAllowed(t *testing.T) {
 			Name:      "test-sa",
 			Namespace: "default",
 			Annotations: map[string]string{
-				AnnotationAllowedActions:           "Publish",
-				AnnotationAllowedSourceRepos:       "*",
-				AnnotationAllowedPublishRegistries: "ghcr.io",
+				constants.AnnotationAllowedActions:           "Publish",
+				constants.AnnotationAllowedSourceRepos:       "*",
+				constants.AnnotationAllowedPublishRegistries: "ghcr.io",
 			},
 		},
 	}
@@ -628,9 +629,9 @@ func TestValidate_PublishDestinationLocal(t *testing.T) {
 			Name:      "test-sa",
 			Namespace: "default",
 			Annotations: map[string]string{
-				AnnotationAllowedActions:     "Publish",
-				AnnotationAllowedSourceRepos: "*",
-				AnnotationAllowLocalSources:  "true",
+				constants.AnnotationAllowedActions:     "Publish",
+				constants.AnnotationAllowedSourceRepos: "*",
+				constants.AnnotationAllowLocalSources:  "true",
 			},
 		},
 	}
@@ -677,8 +678,8 @@ func TestValidate_PublishDestinationLocalNotAllowed(t *testing.T) {
 			Name:      "test-sa",
 			Namespace: "default",
 			Annotations: map[string]string{
-				AnnotationAllowedActions:     "Publish",
-				AnnotationAllowedSourceRepos: "*",
+				constants.AnnotationAllowedActions:     "Publish",
+				constants.AnnotationAllowedSourceRepos: "*",
 			},
 		},
 	}
@@ -727,9 +728,9 @@ func TestValidate_OCISource(t *testing.T) {
 			Name:      "test-sa",
 			Namespace: "default",
 			Annotations: map[string]string{
-				AnnotationAllowedActions:          "Deploy",
-				AnnotationAllowedSourceRegistries: "ghcr.io/*",
-				AnnotationAllowedDeployTargets:    "InCluster",
+				constants.AnnotationAllowedActions:          "Deploy",
+				constants.AnnotationAllowedSourceRegistries: "ghcr.io/*",
+				constants.AnnotationAllowedDeployTargets:    "InCluster",
 			},
 		},
 	}
@@ -770,9 +771,9 @@ func TestValidate_OCISourceNotAllowed(t *testing.T) {
 			Name:      "test-sa",
 			Namespace: "default",
 			Annotations: map[string]string{
-				AnnotationAllowedActions:          "Deploy",
-				AnnotationAllowedSourceRegistries: "ghcr.io/*",
-				AnnotationAllowedDeployTargets:    "InCluster",
+				constants.AnnotationAllowedActions:          "Deploy",
+				constants.AnnotationAllowedSourceRegistries: "ghcr.io/*",
+				constants.AnnotationAllowedDeployTargets:    "InCluster",
 			},
 		},
 	}
@@ -816,9 +817,9 @@ func TestValidate_DeployTargetAllowed(t *testing.T) {
 			Name:      "test-sa",
 			Namespace: "default",
 			Annotations: map[string]string{
-				AnnotationAllowedActions:       "Deploy",
-				AnnotationAllowedSourceRepos:   "*",
-				AnnotationAllowedDeployTargets: "InCluster",
+				constants.AnnotationAllowedActions:       "Deploy",
+				constants.AnnotationAllowedSourceRepos:   "*",
+				constants.AnnotationAllowedDeployTargets: "InCluster",
 			},
 		},
 	}
@@ -860,9 +861,9 @@ func TestValidate_DeployTargetNotAllowed(t *testing.T) {
 			Name:      "test-sa",
 			Namespace: "default",
 			Annotations: map[string]string{
-				AnnotationAllowedActions:       "Deploy",
-				AnnotationAllowedSourceRepos:   "*",
-				AnnotationAllowedDeployTargets: "InCluster",
+				constants.AnnotationAllowedActions:       "Deploy",
+				constants.AnnotationAllowedSourceRepos:   "*",
+				constants.AnnotationAllowedDeployTargets: "InCluster",
 			},
 		},
 	}

@@ -13,17 +13,12 @@ import (
 	"k8s.io/klog/v2"
 
 	udsv1alpha1 "github.com/kylegalloway/forge/pkg/apis/uds/v1alpha1"
-)
-
-const (
-	bundleActionCreate  = "create"
-	bundleActionPublish = "publish"
-	bundleActionDeploy  = "deploy"
+	"github.com/kylegalloway/forge/pkg/constants"
 )
 
 // startJobMonitoring starts a goroutine to monitor UDS bundle Job completion
 func (ctrl *UDSController) startJobMonitoring(ctx context.Context) {
-	ticker := time.NewTicker(10 * time.Second)
+	ticker := time.NewTicker(constants.JobMonitorInterval)
 	defer ticker.Stop()
 
 	klog.Info("Starting UDS bundle Job monitoring loop")
@@ -77,7 +72,7 @@ func (ctrl *UDSController) processJobStatus(ctx context.Context, job *batchv1.Jo
 	}
 
 	// Get the UDSBundleJob resource
-	unstructuredBundle, err := ctrl.dynamicClient.Resource(UDSBundleJobGVR).
+	unstructuredBundle, err := ctrl.dynamicClient.Resource(constants.UDSBundleJobGVR).
 		Namespace(job.Namespace).
 		Get(ctx, bundleName, metav1.GetOptions{})
 	if err != nil {
@@ -118,21 +113,21 @@ func (ctrl *UDSController) processJobStatus(ctx context.Context, job *batchv1.Jo
 
 		// Update operation status
 		switch action {
-		case bundleActionCreate:
+		case constants.BundleActionCreate:
 			if bundle.Status.CreateStatus != nil {
 				bundle.Status.CreateStatus.State = "Completed"
 				bundle.Status.CreateStatus.CompletionTime = &now
 			}
 			ctrl.metrics.RecordBundleCreateCompleted(ctx, bundle.Namespace, bundle.Name)
 
-		case bundleActionPublish:
+		case constants.BundleActionPublish:
 			if bundle.Status.PublishStatus != nil {
 				bundle.Status.PublishStatus.State = "Completed"
 				bundle.Status.PublishStatus.CompletionTime = &now
 			}
 			ctrl.metrics.RecordBundlePublishCompleted(ctx, bundle.Namespace, bundle.Name)
 
-		case bundleActionDeploy:
+		case constants.BundleActionDeploy:
 			if bundle.Status.DeployStatus != nil {
 				bundle.Status.DeployStatus.State = "Completed"
 				bundle.Status.DeployStatus.CompletionTime = &now
@@ -152,7 +147,7 @@ func (ctrl *UDSController) processJobStatus(ctx context.Context, job *batchv1.Jo
 		// Update operation status
 		failureMsg := "Job failed"
 		switch action {
-		case bundleActionCreate:
+		case constants.BundleActionCreate:
 			if bundle.Status.CreateStatus != nil {
 				bundle.Status.CreateStatus.State = "Failed"
 				bundle.Status.CreateStatus.CompletionTime = &now
@@ -160,7 +155,7 @@ func (ctrl *UDSController) processJobStatus(ctx context.Context, job *batchv1.Jo
 			}
 			ctrl.metrics.RecordBundleCreateFailed(ctx, bundle.Namespace, bundle.Name)
 
-		case bundleActionPublish:
+		case constants.BundleActionPublish:
 			if bundle.Status.PublishStatus != nil {
 				bundle.Status.PublishStatus.State = "Failed"
 				bundle.Status.PublishStatus.CompletionTime = &now
@@ -168,7 +163,7 @@ func (ctrl *UDSController) processJobStatus(ctx context.Context, job *batchv1.Jo
 			}
 			ctrl.metrics.RecordBundlePublishFailed(ctx, bundle.Namespace, bundle.Name)
 
-		case bundleActionDeploy:
+		case constants.BundleActionDeploy:
 			if bundle.Status.DeployStatus != nil {
 				bundle.Status.DeployStatus.State = "Failed"
 				bundle.Status.DeployStatus.CompletionTime = &now
@@ -191,38 +186,38 @@ func (ctrl *UDSController) handleActionChaining(ctx context.Context, bundle *uds
 
 	switch action {
 	case udsv1alpha1.BundleActionCreatePublish:
-		if completedAction == bundleActionCreate {
+		if completedAction == constants.BundleActionCreate {
 			klog.InfoS("Chaining to Publish after Create", "bundle", bundle.Name)
 			return ctrl.executePublish(ctx, bundle)
-		} else if completedAction == bundleActionPublish {
+		} else if completedAction == constants.BundleActionPublish {
 			return ctrl.markBundleCompleted(ctx, bundle)
 		}
 
 	case udsv1alpha1.BundleActionCreateDeploy:
-		if completedAction == bundleActionCreate {
+		if completedAction == constants.BundleActionCreate {
 			klog.InfoS("Chaining to Deploy after Create", "bundle", bundle.Name)
 			return ctrl.executeDeploy(ctx, bundle)
-		} else if completedAction == bundleActionDeploy {
+		} else if completedAction == constants.BundleActionDeploy {
 			return ctrl.markBundleCompleted(ctx, bundle)
 		}
 
 	case udsv1alpha1.BundleActionPublishDeploy:
-		if completedAction == bundleActionPublish {
+		if completedAction == constants.BundleActionPublish {
 			klog.InfoS("Chaining to Deploy after Publish", "bundle", bundle.Name)
 			return ctrl.executeDeploy(ctx, bundle)
-		} else if completedAction == bundleActionDeploy {
+		} else if completedAction == constants.BundleActionDeploy {
 			return ctrl.markBundleCompleted(ctx, bundle)
 		}
 
 	case udsv1alpha1.BundleActionCreatePublishDeploy:
 		switch completedAction {
-		case bundleActionCreate:
+		case constants.BundleActionCreate:
 			klog.InfoS("Chaining to Publish after Create (full pipeline)", "bundle", bundle.Name)
 			return ctrl.executePublish(ctx, bundle)
-		case bundleActionPublish:
+		case constants.BundleActionPublish:
 			klog.InfoS("Chaining to Deploy after Publish (full pipeline)", "bundle", bundle.Name)
 			return ctrl.executeDeploy(ctx, bundle)
-		case bundleActionDeploy:
+		case constants.BundleActionDeploy:
 			return ctrl.markBundleCompleted(ctx, bundle)
 		}
 

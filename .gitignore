@@ -52,3 +52,6 @@ dist/
 # Test coverage
 cover.out
 coverage.out
+
+# GenAI
+CLAUDE.local.md

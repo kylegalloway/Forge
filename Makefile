@@ -168,33 +168,24 @@ clean: ## Clean up built binaries and temporary files.
 
 ##@ Testing Scripts
 
-.PHONY: dev-setup
-dev-setup: ## Run automated development environment setup script.
-	@./scripts/dev-setup.sh
-
-.PHONY: quick-test
-quick-test: ## Run quick smoke test to verify controller works.
-	@./scripts/quick-test.sh
-
 .PHONY: e2e-test
 e2e-test: ## Run comprehensive end-to-end test suite.
 	@./scripts/test-e2e.sh
 
 .PHONY: integration-test
-integration-test: ## Run full integration test with Kind cluster.
-	@./scripts/test-integration-kind.sh
+integration-test: e2e-test ## Alias for e2e-test (full integration test with Kind cluster).
 
 .PHONY: integration-test-keep
-integration-test-keep: ## Run integration test and keep cluster on success.
-	@CLEANUP_ON_SUCCESS=false ./scripts/test-integration-kind.sh
+integration-test-keep: kind-setup e2e-test ## Run integration test with Kind cluster (cluster persists).
+	@echo "Integration test complete - cluster still running"
 
 .PHONY: integration-test-registry
-integration-test-registry: ## Run integration test with Gitea registry for publish workflows.
-	@./scripts/test-integration-registry.sh
+integration-test-registry: ## Run integration test with Gitea registry for publish workflows (not yet implemented).
+	@echo "Registry integration tests not yet implemented. Use 'make e2e-test' for basic tests."
+	@exit 1
 
 .PHONY: integration-test-registry-keep
-integration-test-registry-keep: ## Run registry integration test and keep cluster on success.
-	@CLEANUP_ON_SUCCESS=false ./scripts/test-integration-registry.sh
+integration-test-registry-keep: integration-test-registry ## Alias for integration-test-registry.
 
 ##@ Local Development (Kind)
 

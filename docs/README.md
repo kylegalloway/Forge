@@ -13,6 +13,7 @@ New to Forge? Start here:
 
 Running Forge in production:
 
+- **[Hosting Strategy](operations/HOSTING.md)** - Container registry and Helm chart hosting options
 - **[Production Checklist](operations/PRODUCTION_CHECKLIST.md)** - Pre-deployment validation and best practices
 - **[Runbook](operations/RUNBOOK.md)** - Common operational tasks and procedures
 - **[Troubleshooting](operations/TROUBLESHOOTING.md)** - Debugging guide for common issues

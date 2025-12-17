@@ -253,7 +253,27 @@ err := storage.Store(ctx, bundle, opts)
 - Not suitable for large attestations
 - Limited querying
 
-**TODO:** Implement ConfigMap operations
+**Status:** ✅ Implemented (see `kubeclient.go`)
+
+**Usage:**
+```go
+import (
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
+)
+
+// In-cluster config
+config, err := rest.InClusterConfig()
+clientset, err := kubernetes.NewForConfig(config)
+
+// Create real KubeClient
+kubeClient := attestation.NewRealKubeClient(clientset)
+
+// Create ConfigMap storage
+storage := attestation.NewConfigMapStorage("forge-system", kubeClient)
+
+err := storage.Store(ctx, bundle, opts)
+```
 
 ## Integration with Controller
 
@@ -326,6 +346,7 @@ spec:
 - [x] ✅ OCI registry storage implementation (completed)
 - [x] ✅ Controller integration pattern (completed)
 - [x] ✅ Annotation constants (completed)
+- [x] ✅ ConfigMap storage implementation (completed)
 - [ ] ⏸️ Controller reconciliation loop integration
 - [ ] ⏸️ Attestation signing (Cosign integration)
 - [ ] ⏸️ Signature verification

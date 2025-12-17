@@ -14,6 +14,12 @@ jobs:
     name: Create Release
     runs-on: ubuntu-latest
     steps:
+      - name: Prepare repository names
+        id: repo
+        run: |
+          echo "controller=ghcr.io/${{ github.repository }}/forge-controller" | tr '[:upper:]' '[:lower:]' >> $GITHUB_OUTPUT
+          echo "webhook=ghcr.io/${{ github.repository }}/forge-webhook" | tr '[:upper:]' '[:lower:]' >> $GITHUB_OUTPUT
+
       - name: Checkout code
         uses: actions/checkout@v4
         with:
@@ -48,7 +54,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/${{ github.repository }}/forge-controller
+          images: ${{ steps.repo.outputs.controller }}
           tags: |
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
@@ -60,6 +66,7 @@ jobs:
         with:
           context: .
           file: ./Dockerfile
+          target: controller
           platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ steps.meta.outputs.tags }}
@@ -71,7 +78,7 @@ jobs:
         id: meta-webhook
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/${{ github.repository }}/forge-webhook
+          images: ${{ steps.repo.outputs.webhook }}
           tags: |
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
@@ -81,8 +88,9 @@ jobs:
       - name: Build and push webhook image
         uses: docker/build-push-action@v6
         with:
-          context: ./webhook
-          file: ./webhook/Dockerfile
+          context: .
+          file: ./Dockerfile
+          target: webhook
           platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ steps.meta-webhook.outputs.tags }}

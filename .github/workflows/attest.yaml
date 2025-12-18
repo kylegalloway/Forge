@@ -34,9 +34,8 @@ jobs:
       - name: Prepare repository names
         id: repo
         run: |
-          REPO_LOWER=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
-          echo "controller=ghcr.io/${REPO_LOWER}/forge-controller" >> $GITHUB_OUTPUT
-          echo "webhook=ghcr.io/${REPO_LOWER}/forge-webhook" >> $GITHUB_OUTPUT
+          echo "controller=ghcr.io/${{ github.repository }}/forge-controller" | tr '[:upper:]' '[:lower:]' >> $GITHUB_OUTPUT
+          echo "webhook=ghcr.io/${{ github.repository }}/forge-webhook" | tr '[:upper:]' '[:lower:]' >> $GITHUB_OUTPUT
 
       - name: Checkout code
         uses: actions/checkout@v4

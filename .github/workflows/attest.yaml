@@ -8,10 +8,6 @@ on:
       - completed
     branches:
       - main
-  # Also run on version tags
-  push:
-    tags:
-      - 'v*'
   # Allow manual trigger
   workflow_dispatch:
 

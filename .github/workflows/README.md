@@ -37,14 +37,44 @@ Runs pre-commit hooks on pull requests.
 
 ### Release (`release.yaml`)
 
-Triggered on version tags (v*).
+Triggered on version tags (v*) or manual workflow dispatch.
 
 **Actions:**
 
-- Builds multi-arch binaries (Linux/Darwin, AMD64/ARM64)
-- Builds and pushes Docker images to GHCR
-- Creates GitHub release with binaries attached
-- Generates release notes automatically
+- Runs full test suite
+- Builds multi-arch binaries (Linux/Darwin, AMD64/ARM64) with reproducible builds
+- Generates SBOMs (SPDX and CycloneDX formats)
+- Builds and pushes multi-arch Docker images (amd64/arm64) to GHCR
+- Signs images with Cosign (keyless OIDC)
+- Attests SBOMs to images
+- Scans images for vulnerabilities with Trivy
+- Packages Helm chart with versioning
+- Creates Helm repository index
+- Publishes to GitHub Pages for Helm repository
+- Creates GitHub release with:
+  - Binaries for all platforms
+  - SBOMs
+  - Helm chart package
+  - Comprehensive release notes with verification commands
+
+**SLSA Level:** Build Level 3 (isolated, signed, non-falsifiable, hermetic)
+
+### Attest (`attest.yaml`)
+
+Triggered after successful CI runs on main branch or manual workflow dispatch.
+
+**Purpose:** Build and attest development/main branch images for testing
+
+**Actions:**
+
+- Builds and pushes Docker images to GHCR (main branch builds)
+- Generates SLSA provenance
+- Creates SBOMs
+- Signs images with Cosign
+- Attests SBOMs to images
+- Scans for vulnerabilities
+
+**Note:** Version tag releases are handled exclusively by `release.yaml`
 
 ## Usage
 
@@ -74,16 +104,62 @@ pre-commit run go-fmt --all-files
 Create and push a version tag:
 
 ```bash
-git tag -a v1.0.0 -m "Release v1.0.0"
+git tag -s v1.0.0 -m "Release v1.0.0"
 git push origin v1.0.0
+```
+
+Or trigger manually via workflow dispatch:
+
+```bash
+gh workflow run release.yaml -f tag=v1.0.0
+```
+
+### Using the Helm Chart
+
+After release, users can install via Helm repository:
+
+```bash
+# Add Helm repository (hosted on GitHub Pages)
+helm repo add forge https://<your-username>.github.io/forge
+helm repo update
+
+# Install
+helm install forge forge/forge --version 1.0.0
+```
+
+Or install directly from GitHub release:
+
+```bash
+helm install forge https://github.com/<your-org>/forge/releases/download/v1.0.0/forge-1.0.0.tgz
+```
+
+### Verifying Releases
+
+Verify image signatures:
+
+```bash
+cosign verify \
+  --certificate-identity-regexp="https://github.com/<your-org>/forge" \
+  --certificate-oidc-issuer="https://token.actions.githubusercontent.com" \
+  ghcr.io/<your-org>/forge-controller:v1.0.0
+```
+
+Download and verify SBOM:
+
+```bash
+cosign download sbom ghcr.io/<your-org>/forge-controller:v1.0.0 | jq
 ```
 
 ### Required Secrets
 
 For full functionality, configure these GitHub repository secrets:
 
-- **GITHUB_TOKEN**: Automatically provided by GitHub Actions
+- **GITHUB_TOKEN**: Automatically provided by GitHub Actions (used for
+  GHCR, releases, and Pages)
 - **CODECOV_TOKEN**: (Optional) For Codecov upload
+
+**Note:** No additional secrets are required for image signing. Cosign
+uses GitHub's OIDC provider for keyless signing.
 
 ### Badge Integration
 

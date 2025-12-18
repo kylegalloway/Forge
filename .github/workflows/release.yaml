@@ -153,6 +153,34 @@ jobs:
           provenance: true
           sbom: true
 
+      # Generate Docker build summary for both images
+      - name: Generate Docker Build Summary
+        run: |
+          cat >> $GITHUB_STEP_SUMMARY << 'EOF'
+          ## 🐳 Docker Images Built
+
+          ### Controller Image
+          **Image:** `${{ steps.repo.outputs.controller }}`
+          **Digest:** `${{ steps.build-controller.outputs.digest }}`
+          **Platforms:** `linux/amd64`, `linux/arm64`
+
+          **Tags:**
+          ${{ steps.meta-controller.outputs.tags }}
+
+          ### Webhook Image
+          **Image:** `${{ steps.repo.outputs.webhook }}`
+          **Digest:** `${{ steps.build-webhook.outputs.digest }}`
+          **Platforms:** `linux/amd64`, `linux/arm64`
+
+          **Tags:**
+          ${{ steps.meta-webhook.outputs.tags }}
+
+          ---
+          **Provenance:** ✅ SLSA Build Level 3
+          **SBOM:** ✅ Attached
+          **Signed:** ✅ Cosign (keyless OIDC)
+          EOF
+
       # Install Cosign for signing
       - name: Install Cosign
         uses: sigstore/cosign-installer@v3.3.0

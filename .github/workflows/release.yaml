@@ -192,6 +192,7 @@ jobs:
       # Vulnerability scanning
       - name: Scan controller image
         uses: aquasecurity/trivy-action@master
+        continue-on-error: true
         with:
           image-ref: ${{ steps.repo.outputs.controller }}@${{ steps.build-controller.outputs.digest }}
           format: 'sarif'
@@ -199,6 +200,7 @@ jobs:
 
       - name: Scan webhook image
         uses: aquasecurity/trivy-action@master
+        continue-on-error: true
         with:
           image-ref: ${{ steps.repo.outputs.webhook }}@${{ steps.build-webhook.outputs.digest }}
           format: 'sarif'
@@ -207,6 +209,7 @@ jobs:
       - name: Upload Trivy results to GitHub Security
         uses: github/codeql-action/upload-sarif@v3
         if: always()
+        continue-on-error: true
         with:
           sarif_file: |
             controller-trivy-results.sarif

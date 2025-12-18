@@ -120,7 +120,7 @@ After release, users can install via Helm repository:
 
 ```bash
 # Add Helm repository (hosted on GitHub Pages)
-helm repo add forge https://<your-username>.github.io/forge
+helm repo add forge https://kylegalloway.github.io/Forge
 helm repo update
 
 # Install

@@ -201,6 +201,9 @@ jobs:
       - name: Scan controller image
         uses: aquasecurity/trivy-action@master
         continue-on-error: true
+        env:
+          TRIVY_USERNAME: ${{ github.actor }}
+          TRIVY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
         with:
           image-ref: ${{ steps.repo.outputs.controller }}@${{ steps.build-controller.outputs.digest }}
           format: 'sarif'
@@ -209,6 +212,9 @@ jobs:
       - name: Scan webhook image
         uses: aquasecurity/trivy-action@master
         continue-on-error: true
+        env:
+          TRIVY_USERNAME: ${{ github.actor }}
+          TRIVY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
         with:
           image-ref: ${{ steps.repo.outputs.webhook }}@${{ steps.build-webhook.outputs.digest }}
           format: 'sarif'

@@ -1,14 +1,18 @@
 name: Attest Forge Build
 
 on:
-  push:
+  # Run after CI completes successfully on main branch
+  workflow_run:
+    workflows: ["CI"]
+    types:
+      - completed
     branches:
       - main
+  # Also run on version tags
+  push:
     tags:
       - 'v*'
-  pull_request:
-    branches:
-      - main
+  # Allow manual trigger
   workflow_dispatch:
 
 permissions:
@@ -24,6 +28,8 @@ jobs:
   build-and-attest:
     name: Build and Attest Forge Artifacts
     runs-on: ubuntu-latest
+    # Only run if CI succeeded (skip if CI failed)
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name != 'workflow_run' }}
     steps:
       - name: Prepare repository names
         id: repo
@@ -60,7 +66,6 @@ jobs:
           images: ${{ steps.repo.outputs.controller }}
           tags: |
             type=ref,event=branch
-            type=ref,event=pr
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
             type=sha,prefix={{branch}}-
@@ -73,7 +78,6 @@ jobs:
           images: ${{ steps.repo.outputs.webhook }}
           tags: |
             type=ref,event=branch
-            type=ref,event=pr
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
             type=sha,prefix={{branch}}-
@@ -113,6 +117,7 @@ jobs:
             --output cyclonedx-json=webhook-sbom.cdx.json
 
       # Build and push controller image
+      # Uses cache from CI workflow for fast rebuilds
       - name: Build and push controller image
         id: build-controller
         uses: docker/build-push-action@v5
@@ -121,7 +126,7 @@ jobs:
           file: Dockerfile
           target: controller
           platforms: linux/amd64,linux/arm64
-          push: ${{ github.event_name != 'pull_request' }}
+          push: true
           tags: ${{ steps.meta-controller.outputs.tags }}
           labels: ${{ steps.meta-controller.outputs.labels }}
           cache-from: type=gha
@@ -138,7 +143,7 @@ jobs:
           file: Dockerfile
           target: webhook
           platforms: linux/amd64,linux/arm64
-          push: ${{ github.event_name != 'pull_request' }}
+          push: true
           tags: ${{ steps.meta-webhook.outputs.tags }}
           labels: ${{ steps.meta-webhook.outputs.labels }}
           cache-from: type=gha
@@ -148,12 +153,10 @@ jobs:
 
       # Install Cosign for signing
       - name: Install Cosign
-        if: github.event_name != 'pull_request'
         uses: sigstore/cosign-installer@v3.3.0
 
       # Sign controller image (keyless with OIDC)
       - name: Sign controller image with Cosign
-        if: github.event_name != 'pull_request'
         env:
           DIGEST: ${{ steps.build-controller.outputs.digest }}
         run: |
@@ -162,7 +165,6 @@ jobs:
 
       # Sign webhook image
       - name: Sign webhook image with Cosign
-        if: github.event_name != 'pull_request'
         env:
           DIGEST: ${{ steps.build-webhook.outputs.digest }}
         run: |
@@ -171,7 +173,6 @@ jobs:
 
       # Attest SBOMs to images
       - name: Attest SBOM for controller
-        if: github.event_name != 'pull_request'
         env:
           DIGEST: ${{ steps.build-controller.outputs.digest }}
         run: |
@@ -181,7 +182,6 @@ jobs:
             "${{ steps.repo.outputs.controller }}@${DIGEST}"
 
       - name: Attest SBOM for webhook
-        if: github.event_name != 'pull_request'
         env:
           DIGEST: ${{ steps.build-webhook.outputs.digest }}
         run: |
@@ -204,7 +204,6 @@ jobs:
 
       # Scan images for vulnerabilities
       - name: Scan controller image
-        if: github.event_name != 'pull_request'
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: ${{ steps.repo.outputs.controller }}@${{ steps.build-controller.outputs.digest }}
@@ -212,7 +211,6 @@ jobs:
           output: 'controller-trivy-results.sarif'
 
       - name: Scan webhook image
-        if: github.event_name != 'pull_request'
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: ${{ steps.repo.outputs.webhook }}@${{ steps.build-webhook.outputs.digest }}
@@ -220,7 +218,6 @@ jobs:
           output: 'webhook-trivy-results.sarif'
 
       - name: Upload Trivy results to GitHub Security
-        if: github.event_name != 'pull_request'
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: |
@@ -229,7 +226,6 @@ jobs:
 
       # Generate attestation summary
       - name: Generate attestation summary
-        if: github.event_name != 'pull_request'
         run: |
           cat << EOF > attestation-summary.md
           # 🔐 Forge Build Attestation Summary
@@ -296,29 +292,8 @@ jobs:
           EOF
 
       - name: Upload attestation summary
-        if: github.event_name != 'pull_request'
         uses: actions/upload-artifact@v4
         with:
           name: attestation-summary
           path: attestation-summary.md
           retention-days: 90
-
-      - name: Comment PR with attestation info
-        if: github.event_name == 'pull_request'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: `## 🔐 Build Attestation Preview
-
-              This PR will generate the following attestations when merged:
-              - SLSA Provenance (Build Level 3)
-              - SBOM (SPDX + CycloneDX)
-              - Cosign signatures (keyless OIDC)
-              - Vulnerability scan results
-
-              Images will be signed with GitHub OIDC identity.`
-            })

@@ -120,7 +120,8 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: ./Dockerfile
+          file: Dockerfile
+          target: controller
           push: false
           tags: forge-controller:${{ github.sha }}
           cache-from: type=gha
@@ -130,7 +131,8 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: ./Dockerfile.webhook
+          file: Dockerfile
+          target: webhook
           push: false
           tags: forge-webhook:${{ github.sha }}
           cache-from: type=gha

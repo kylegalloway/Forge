@@ -4,17 +4,81 @@
 
 Forge allows you to manage Zarf packages using Kubernetes Custom Resources. This guide provides detailed instructions on how to use Forge to build, publish, and deploy your artifacts.
 
+> **For Developers**: If you're contributing to Forge and need to test local changes, see [KIND_SETUP.md](KIND_SETUP.md) for the developer workflow
+
 ## Installation
 
-Forge is deployed using Helm charts. See the [README](../README.md#installation) for full installation options.
+### Prerequisites
 
-### Quick Install
+- Kubernetes cluster (1.24+)
+- Helm 3.8+
+- kubectl configured for your cluster
+
+### Install from Helm Repository
+
+Add the Forge Helm repository and install:
 
 ```bash
-helm upgrade --install forge ./chart/forge \
+# Add Helm repository
+helm repo add forge https://kylegalloway.github.io/Forge
+helm repo update
+
+# Install Forge
+helm install forge forge/forge \
+  --namespace forge-system \
+  --create-namespace \
+  --version 0.1.0
+```
+
+**Container Images Used**:
+
+- Controller: `ghcr.io/kylegalloway/forge/forge-controller:v0.1.0`
+- Webhook: `ghcr.io/kylegalloway/forge/forge-webhook:v0.1.0`
+
+### Installation Options
+
+**Default Installation** (minimal, production-ready):
+
+```bash
+helm install forge forge/forge \
+  --version 0.1.0 \
   --namespace forge-system \
   --create-namespace
 ```
+
+**Mature Cluster** (existing Prometheus/Grafana):
+
+```bash
+helm install forge forge/forge \
+  --version 0.1.0 \
+  --values https://raw.githubusercontent.com/kylegalloway/Forge/main/chart/forge/values-mature-cluster.yaml \
+  --namespace forge-system \
+  --create-namespace
+```
+
+**New Cluster** (includes full observability stack):
+
+```bash
+helm install forge forge/forge \
+  --version 0.1.0 \
+  --values https://raw.githubusercontent.com/kylegalloway/Forge/main/chart/forge/values-new-cluster.yaml \
+  --namespace forge-system \
+  --create-namespace
+```
+
+### Verify Installation
+
+```bash
+# Check that Forge is running
+kubectl get pods -n forge-system
+
+# Expected output:
+# NAME                                 READY   STATUS    RESTARTS   AGE
+# forge-controller-<hash>              1/1     Running   0          1m
+# forge-webhook-<hash>                 1/1     Running   0          1m
+```
+
+For additional deployment options and configurations, see [DEPLOYMENT.md](../../DEPLOYMENT.md).
 
 ### Deployment Modes
 

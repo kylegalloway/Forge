@@ -1,10 +1,24 @@
-# Forge Kind Setup Guide
+# Forge Kind Setup Guide (Developer Workflow)
 
-Complete guide for running Forge in a local Kind cluster with full observability.
+> **Audience**: Developers contributing to Forge who need to build and test local changes
+>
+> **For End Users**: If you just want to install Forge, see [USER_GUIDE.md](USER_GUIDE.md) for installation from the Helm repository
+
+Complete guide for running Forge in a local Kind cluster with custom-built images and full observability.
+
+## Overview
+
+This guide covers local development using:
+
+- **Custom-built images** from your local source code
+- **Kind (Kubernetes in Docker)** for a disposable test cluster
+- **Makefile targets** for rapid iteration
+
+For production deployment with published images, see [USER_GUIDE.md](USER_GUIDE.md).
 
 ## Prerequisites
 
-- **kind** - `brew install kind` (or from https://kind.sigs.k8s.io/)
+- **kind** - `brew install kind` (or from <https://kind.sigs.k8s.io/>)
 - **kubectl** - `brew install kubectl`
 - **helm** - `brew install helm`
 - **docker** or **podman** - For building images
@@ -103,6 +117,7 @@ EOF
 ```
 
 Verify cluster is running:
+
 ```bash
 kubectl cluster-info
 kubectl get nodes
@@ -140,6 +155,7 @@ helm upgrade --install kube-prometheus-stack prometheus-community/kube-prometheu
 - `--timeout 10m` - kube-prometheus-stack deploys many resources and needs more than the default 5m timeout
 
 Verify monitoring stack is running:
+
 ```bash
 kubectl get pods -n monitoring
 ```
@@ -160,11 +176,13 @@ This builds the image and tags it as `forge-controller:demo`.
 Kind clusters can't pull from your local Docker/Podman registry, so you need to load images explicitly:
 
 **For Docker users:**
+
 ```bash
 kind load docker-image forge-controller:demo --name forge-demo
 ```
 
 **For Podman users:**
+
 ```bash
 # Export to tar, load into Kind, cleanup
 podman save localhost/forge-controller:demo -o /tmp/forge-controller.tar
@@ -173,6 +191,7 @@ rm /tmp/forge-controller.tar
 ```
 
 Verify the images are loaded:
+
 ```bash
 # Check images in Kind cluster (works with both Docker and Podman)
 docker exec -it forge-demo-control-plane crictl images | grep -E 'forge|zarf'
@@ -191,6 +210,7 @@ kind load docker-image localhost/zarf:v0.66.0 --name forge-demo
 ```
 
 **For Podman users:**
+
 ```bash
 podman build -t localhost/zarf:v0.66.0 images/zarf-cli/
 podman save localhost/zarf:v0.66.0 -o /tmp/zarf-cli.tar
@@ -227,6 +247,7 @@ helm upgrade --install forge ./chart/forge \
 ### 6. Verify Installation
 
 Check all pods are running:
+
 ```bash
 kubectl get pods -n forge-system
 kubectl get pods -n monitoring
@@ -241,6 +262,7 @@ forge-otel-collector-xxxxx              1/1     Running   0          1m
 ```
 
 Check ServiceMonitor and PrometheusRule are created:
+
 ```bash
 kubectl get servicemonitor -n forge-system
 kubectl get prometheusrule -n forge-system
@@ -274,6 +296,7 @@ kubectl port-forward -n monitoring svc/kube-prometheus-stack-grafana 3000:80
 - Password: Randomly generated on install
 
 Get the password:
+
 ```bash
 kubectl get secret -n monitoring kube-prometheus-stack-grafana -o jsonpath="{.data.admin-password}" | base64 -d
 ```
@@ -308,16 +331,19 @@ kubectl apply -f examples/zarfpackagejobs/hello-forge-test.yaml
 **Note:** This uses a minimal test package specifically designed for resource-constrained environments. The build should complete successfully in 15-30 seconds.
 
 Watch the job:
+
 ```bash
 kubectl get zarfpackagejobs -A -w
 ```
 
 View controller logs:
+
 ```bash
 kubectl logs -n forge-system -l app=forge-controller -f
 ```
 
 Verify the controller processed the job:
+
 ```bash
 # Check the ZarfPackageJob resource
 kubectl describe zarfpackagejob hello-forge-test -n default
@@ -338,6 +364,7 @@ kubectl get pods -n default -w
 - You should see phase change from Pending → Running → Succeeded
 
 Check the job logs to see the successful build:
+
 ```bash
 # Find the pod name
 kubectl get pods -n default
@@ -351,6 +378,7 @@ kubectl logs -n default <pod-name> -c zarf-build
 **Current Status:** The Forge controller currently exposes standard Go runtime metrics (goroutines, memory, GC stats) through the OTEL collector. Custom Forge-specific metrics (like `forge_jobs_created_total`, `forge_resources_active`) are planned but not yet implemented.
 
 Check available metrics:
+
 ```bash
 # View metrics in Prometheus
 kubectl port-forward -n monitoring svc/kube-prometheus-stack-prometheus 9090:9090
@@ -360,6 +388,7 @@ kubectl port-forward -n monitoring svc/kube-prometheus-stack-prometheus 9090:909
 ```
 
 Access Grafana:
+
 ```bash
 # Already accessible at http://localhost:3000 via NodePort
 # Or use port-forward:
@@ -399,6 +428,7 @@ This happens when the chart takes longer than the timeout to deploy all resource
 ### Grafana Not Accessible
 
 Check if the service is exposed:
+
 ```bash
 kubectl get svc -n monitoring kube-prometheus-stack-grafana
 ```
@@ -406,6 +436,7 @@ kubectl get svc -n monitoring kube-prometheus-stack-grafana
 Should show `NodePort` with port `30000`.
 
 If not, patch it:
+
 ```bash
 kubectl patch svc -n monitoring kube-prometheus-stack-grafana -p '{"spec":{"type":"NodePort","ports":[{"port":80,"nodePort":30000}]}}'
 ```
@@ -413,11 +444,13 @@ kubectl patch svc -n monitoring kube-prometheus-stack-grafana -p '{"spec":{"type
 ### Metrics Not Showing in Prometheus
 
 Verify ServiceMonitor exists:
+
 ```bash
 kubectl get servicemonitor -n forge-system -o yaml
 ```
 
 Check Prometheus targets:
+
 ```bash
 kubectl port-forward -n monitoring svc/kube-prometheus-stack-prometheus 9090:9090
 # Visit http://localhost:9090/targets
@@ -425,6 +458,7 @@ kubectl port-forward -n monitoring svc/kube-prometheus-stack-prometheus 9090:909
 ```
 
 If not found, check Prometheus configuration:
+
 ```bash
 kubectl get prometheus -n monitoring -o yaml | grep serviceMonitorSelector -A 10
 ```
@@ -432,16 +466,19 @@ kubectl get prometheus -n monitoring -o yaml | grep serviceMonitorSelector -A 10
 ### OTEL Collector Issues
 
 Check OTEL Collector logs:
+
 ```bash
 kubectl logs -n forge-system -l app=otel-collector
 ```
 
 Verify service exists:
+
 ```bash
 kubectl get svc -n forge-system forge-otel-collector
 ```
 
 Test connectivity from controller:
+
 ```bash
 kubectl run -it --rm debug --image=busybox -n forge-system -- \
   nc -zv forge-otel-collector 4317
@@ -483,6 +520,7 @@ lsof -i :3000
 ### Using Docker (Default)
 
 Works out of the box with Kind:
+
 ```bash
 # Build Forge controller
 make container-build IMG=forge-controller:demo
@@ -496,6 +534,7 @@ kind load docker-image localhost/zarf:v0.66.0 --name forge-demo
 ### Using Podman
 
 Requires extra steps (save/load via tar):
+
 ```bash
 # Build Forge controller
 make container-build IMG=forge-controller:demo DOCKER=podman
@@ -513,6 +552,7 @@ rm /tmp/zarf-cli.tar
 ```
 
 **Tip:** You can alias podman to docker if you prefer:
+
 ```bash
 alias docker=podman
 ```
@@ -559,5 +599,5 @@ helm upgrade forge ./chart/forge \
 - **User Guide**: [USER_GUIDE.md](USER_GUIDE.md)
 - **Main README**: [../README.md](../README.md)
 - **Helm Chart Docs**: [../chart/README.md](../chart/README.md)
-- **Kind Documentation**: https://kind.sigs.k8s.io/
-- **kube-prometheus-stack**: https://github.com/prometheus-community/helm-charts/tree/main/charts/kube-prometheus-stack
+- **Kind Documentation**: <https://kind.sigs.k8s.io/>
+- **kube-prometheus-stack**: <https://github.com/prometheus-community/helm-charts/tree/main/charts/kube-prometheus-stack>

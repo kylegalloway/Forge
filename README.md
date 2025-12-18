@@ -117,78 +117,92 @@ The admission webhook validates all operations against these policies before cre
 
 ## Installation
 
-Forge is deployed using Helm charts that support two deployment scenarios:
+### For Users (Recommended)
 
-### Quick Start (Recommended)
-
-```bash
-# Install with default configuration
-helm upgrade --install forge ./chart/forge \
-  --namespace forge-system \
-  --create-namespace
-```
-
-### Mature Cluster (Existing Monitoring Infrastructure)
-
-For clusters with existing Grafana, Prometheus, and OTEL Collector:
+Install Forge from the published Helm repository and container images:
 
 ```bash
-# Install without observability stack
-helm upgrade --install forge ./chart/forge \
-  -f chart/forge/values-mature-cluster.yaml \
-  --namespace forge-system \
-  --create-namespace
-```
-
-**Includes**: Forge controller, ServiceMonitor, PrometheusRule
-**Excludes**: OTEL Collector, Prometheus, Grafana (uses existing)
-
-### New Cluster (Full Observability Stack)
-
-For new clusters that need complete monitoring setup:
-
-```bash
-# Install with full observability stack
-helm upgrade --install forge ./chart/forge \
-  -f chart/forge/values-new-cluster.yaml \
-  --namespace forge-system \
-  --create-namespace
-```
-
-**Includes**: Forge controller, OTEL Collector, Prometheus, Grafana, dashboards, alerts
-
-### Local Development (Kind)
-
-For local development and testing with Kind:
-
-```bash
-# Install kube-prometheus-stack first (provides Grafana + Prometheus)
-helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+# Add the Forge Helm repository
+helm repo add forge https://kylegalloway.github.io/Forge
 helm repo update
-helm upgrade --install kube-prometheus-stack prometheus-community/kube-prometheus-stack \
-  --namespace monitoring \
-  --create-namespace \
-  --set prometheus.prometheusSpec.serviceMonitorSelectorNilUsesHelmValues=false \
-  --set grafana.service.type=NodePort \
-  --set grafana.service.nodePort=30000 \
-  --timeout 10m \
-  --wait
 
-# Then install Forge
-helm upgrade --install forge ./chart/forge \
-  -f chart/forge/values-kind.yaml \
+# Install Forge (uses published images from ghcr.io)
+helm install forge forge/forge \
   --namespace forge-system \
-  --create-namespace
+  --create-namespace \
+  --version 0.1.0
 ```
 
-**Includes**: Forge controller, OTEL Collector, ServiceMonitor
-**Requires**: kube-prometheus-stack for Grafana and Prometheus
-**Access Grafana**: http://localhost:3000 (admin/<get-password-from-secret>)
+**Container Images**: `ghcr.io/kylegalloway/forge/forge-controller:v0.1.0` and `forge-webhook:v0.1.0`
 
-📖 **Kind Setup Guide**: See [docs/getting-started/KIND_SETUP.md](docs/getting-started/KIND_SETUP.md) for complete local development setup
-📖 **Deployment Guide**: See [DEPLOYMENT.md](DEPLOYMENT.md) for complete deployment options and configurations
-📖 **Quick Start**: See [chart/QUICKSTART.md](chart/QUICKSTART.md) for step-by-step installation
+**Deployment Scenarios**:
+
+- **Default**: Minimal installation for production
+- **Mature Cluster**: For clusters with existing Prometheus/Grafana
+
+  ```bash
+  helm install forge forge/forge \
+    --version 0.1.0 \
+    --values https://raw.githubusercontent.com/kylegalloway/Forge/main/chart/forge/values-mature-cluster.yaml \
+    --namespace forge-system \
+    --create-namespace
+  ```
+
+- **New Cluster**: Full observability stack included
+
+  ```bash
+  helm install forge forge/forge \
+    --version 0.1.0 \
+    --values https://raw.githubusercontent.com/kylegalloway/Forge/main/chart/forge/values-new-cluster.yaml \
+    --namespace forge-system \
+    --create-namespace
+  ```
+
+📖 **User Guide**: See [docs/getting-started/USER_GUIDE.md](docs/getting-started/USER_GUIDE.md) for complete usage examples
+📖 **Deployment Guide**: See [DEPLOYMENT.md](DEPLOYMENT.md) for deployment scenarios and configurations
 📖 **Helm Chart Docs**: See [chart/README.md](chart/README.md) for all configuration options
+
+### For Developers
+
+For local development with custom builds and iteration:
+
+**Prerequisites**:
+
+- Docker or Podman
+- Kind (Kubernetes in Docker)
+- Helm
+- kubectl
+
+**Quick Start**:
+
+```bash
+# Complete setup: create Kind cluster, build image, deploy
+make kind-setup
+
+# Apply sample resources
+make apply-sample
+
+# View logs from controller and jobs
+make dev-logs
+```
+
+**Development Cycle**:
+
+```bash
+# Make code changes...
+
+# Rebuild, reload, and restart (preserves cluster)
+make kind-redeploy
+
+# Run tests
+make test
+
+# Cleanup
+make kind-delete
+```
+
+📖 **Developer Guide**: See [docs/getting-started/KIND_SETUP.md](docs/getting-started/KIND_SETUP.md) for complete local development setup
+📖 **Contributing**: See [CONTRIBUTING.md](CONTRIBUTING.md) for development workflow and testing
 
 ## Observability
 

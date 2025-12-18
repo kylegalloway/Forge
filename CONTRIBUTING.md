@@ -2,6 +2,8 @@
 
 Thank you for your interest in contributing to Forge! This guide will help you set up a local development environment and understand the development workflow.
 
+> **Note**: This guide is for contributors developing Forge itself. If you want to **use** Forge, see [docs/getting-started/USER_GUIDE.md](docs/getting-started/USER_GUIDE.md) for installation from the published Helm repository.
+
 ## Development Environment Setup
 
 ### Prerequisites

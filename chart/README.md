@@ -15,6 +15,58 @@ The Forge Helm chart supports two primary deployment scenarios:
 - Helm 3.8+
 - (Optional) Prometheus Operator CRDs if using ServiceMonitors
 
+## Installation
+
+### For Users (Published Chart)
+
+Install from the public Helm repository:
+
+```bash
+# Add the Forge Helm repository
+helm repo add forge https://kylegalloway.github.io/Forge
+helm repo update
+
+# Install latest version
+helm install forge forge/forge \
+  --namespace forge-system \
+  --create-namespace
+
+# Or install specific version
+helm install forge forge/forge \
+  --version 0.1.0 \
+  --namespace forge-system \
+  --create-namespace
+```
+
+**Available Images**:
+
+- Controller: `ghcr.io/kylegalloway/forge/forge-controller:v0.1.0`
+- Webhook: `ghcr.io/kylegalloway/forge/forge-webhook:v0.1.0`
+
+**Deployment Scenarios with Published Chart**:
+
+```bash
+# Mature cluster (existing Prometheus/Grafana)
+helm install forge forge/forge \
+  --version 0.1.0 \
+  --values https://raw.githubusercontent.com/kylegalloway/Forge/main/chart/forge/values-mature-cluster.yaml \
+  --namespace forge-system \
+  --create-namespace
+
+# New cluster (full observability stack)
+helm install forge forge/forge \
+  --version 0.1.0 \
+  --values https://raw.githubusercontent.com/kylegalloway/Forge/main/chart/forge/values-new-cluster.yaml \
+  --namespace forge-system \
+  --create-namespace
+```
+
+### For Developers (Local Chart)
+
+Install from local source code for development:
+
+See "Quick Start" section below for deploying from local chart files.
+
 ## Chart Structure
 
 ```text
@@ -88,7 +140,7 @@ helm upgrade --install forge ./chart/forge \
 observability:
   grafana:
     config:
-      adminPassword: "YOUR-STRONG-PASSWORD-HERE"
+      adminPassword: "YOUR-STRONG-PASSWORD-HERE"  # pragma: allowlist secret
 ```
 
 ## Configuration
@@ -134,7 +186,7 @@ observability:
   grafana:
     enabled: true              # Deploy Grafana
     config:
-      adminPassword: "changeme"
+      adminPassword: "changeme"  # pragma: allowlist secret
       ingress:
         enabled: false
         hosts:

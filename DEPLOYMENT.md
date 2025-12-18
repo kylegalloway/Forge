@@ -16,37 +16,99 @@ Forge can be deployed in two primary scenarios:
 - kubectl configured and connected to your cluster
 - (Optional) Prometheus Operator CRDs for ServiceMonitor support
 
-## Quick Start
+## Installation Methods
 
-### For Mature Clusters (Existing Monitoring)
+### For Users (Recommended)
+
+Install from the published Helm repository with pre-built container images.
+
+### For Developers
+
+Install from local source code for testing changes. See [CONTRIBUTING.md](CONTRIBUTING.md).
+
+---
+
+## Quick Start (Users)
+
+### 1. Add Helm Repository
+
+```bash
+helm repo add forge https://kylegalloway.github.io/Forge
+helm repo update
+```
+
+### 2. Choose Your Deployment Scenario
+
+#### Default Installation (Minimal, Production-Ready)
+
+```bash
+helm install forge forge/forge \
+  --version 0.1.0 \
+  --namespace forge-system \
+  --create-namespace
+```
+
+**Container Images Used**:
+
+- `ghcr.io/kylegalloway/forge/forge-controller:v0.1.0`
+- `ghcr.io/kylegalloway/forge/forge-webhook:v0.1.0`
+
+#### Mature Cluster (Existing Prometheus/Grafana)
 
 If you already have Prometheus, Grafana, and OTEL Collector:
 
 ```bash
-# Edit the values file with your endpoints
-vi chart/forge/values-mature-cluster.yaml
+# Download and customize the values file
+curl -O https://raw.githubusercontent.com/kylegalloway/Forge/main/chart/forge/values-mature-cluster.yaml
 
-# Install Forge
-helm upgrade --install forge ./chart/forge \
-  -f chart/forge/values-mature-cluster.yaml \
+# Edit to configure your existing observability endpoints
+vi values-mature-cluster.yaml
+
+# Install with custom values
+helm install forge forge/forge \
+  --version 0.1.0 \
+  --values values-mature-cluster.yaml \
   --namespace forge-system \
   --create-namespace
 ```
 
-### For New Clusters (Full Stack)
+#### New Cluster (Full Observability Stack)
 
 If you need monitoring tools deployed:
 
 ```bash
-# Set a strong Grafana password
-vi chart/forge/values-new-cluster.yaml
+# Download and customize the values file
+curl -O https://raw.githubusercontent.com/kylegalloway/Forge/main/chart/forge/values-new-cluster.yaml
 
-# Install Forge with full observability stack
-helm upgrade --install forge ./chart/forge \
-  -f chart/forge/values-new-cluster.yaml \
+# Set a strong Grafana admin password
+vi values-new-cluster.yaml
+
+# Install with full observability stack
+helm install forge forge/forge \
+  --version 0.1.0 \
+  --values values-new-cluster.yaml \
   --namespace forge-system \
   --create-namespace
 ```
+
+---
+
+## Quick Start (Developers)
+
+For local development with custom-built images:
+
+```bash
+# Complete setup: create Kind cluster, build, deploy
+make kind-setup
+
+# Iterative development
+make kind-redeploy
+
+# Cleanup
+make kind-delete
+```
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed developer workflow.
 
 ## Deployment Architectures
 
@@ -430,5 +492,5 @@ kubectl run -it --rm debug --image=busybox -n forge-system -- \
 
 ## Support
 
-- **Issues**: https://github.com/kylegalloway/forge/issues
-- **Discussions**: https://github.com/kylegalloway/forge/discussions
+- **Issues**: <https://github.com/kylegalloway/forge/issues>
+- **Discussions**: <https://github.com/kylegalloway/forge/discussions>

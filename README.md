@@ -135,28 +135,17 @@ helm install forge forge/forge \
 
 **Container Images**: `ghcr.io/kylegalloway/forge/forge-controller:v0.1.0` and `forge-webhook:v0.1.0`
 
-**Deployment Scenarios**:
+**Custom Configuration**:
 
-- **Default**: Minimal installation for production
-- **Mature Cluster**: For clusters with existing Prometheus/Grafana
-
-  ```bash
-  helm install forge forge/forge \
-    --version 0.1.0 \
-    --values https://raw.githubusercontent.com/kylegalloway/Forge/main/chart/forge/values-mature-cluster.yaml \
-    --namespace forge-system \
-    --create-namespace
-  ```
-
-- **New Cluster**: Full observability stack included
-
-  ```bash
-  helm install forge forge/forge \
-    --version 0.1.0 \
-    --values https://raw.githubusercontent.com/kylegalloway/Forge/main/chart/forge/values-new-cluster.yaml \
-    --namespace forge-system \
-    --create-namespace
-  ```
+```bash
+helm install forge forge/forge \
+  --version 0.1.0 \
+  --namespace forge-system \
+  --create-namespace \
+  --set controller.replicaCount=2 \
+  --set webhook.replicaCount=3 \
+  --set networkPolicies.enabled=true
+```
 
 📖 **User Guide**: See [docs/getting-started/USER_GUIDE.md](docs/getting-started/USER_GUIDE.md) for complete usage examples
 📖 **Deployment Guide**: See [DEPLOYMENT.md](DEPLOYMENT.md) for deployment scenarios and configurations

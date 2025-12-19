@@ -4,17 +4,15 @@ This guide covers deploying Forge to Kubernetes clusters using Helm.
 
 ## Overview
 
-Forge can be deployed in two primary scenarios:
-
-1. **Mature Cluster** - Into a cluster with existing observability infrastructure
-2. **New Cluster** - With a complete observability stack included
+Forge is deployed as a Kubernetes controller with an admission webhook. It exposes metrics endpoints for integration with your existing monitoring infrastructure.
 
 ## Prerequisites
 
 - Kubernetes 1.24 or later
 - Helm 3.8 or later
 - kubectl configured and connected to your cluster
-- (Optional) Prometheus Operator CRDs for ServiceMonitor support
+- (Optional) Prometheus for metrics collection
+- (Optional) Grafana for visualization
 
 ## Installation Methods
 
@@ -37,9 +35,7 @@ helm repo add forge https://kylegalloway.github.io/Forge
 helm repo update
 ```
 
-### 2. Choose Your Deployment Scenario
-
-#### Default Installation (Minimal, Production-Ready)
+### 2. Install Forge
 
 ```bash
 helm install forge forge/forge \
@@ -52,44 +48,6 @@ helm install forge forge/forge \
 
 - `ghcr.io/kylegalloway/forge/forge-controller:v0.1.0`
 - `ghcr.io/kylegalloway/forge/forge-webhook:v0.1.0`
-
-#### Mature Cluster (Existing Prometheus/Grafana)
-
-If you already have Prometheus, Grafana, and OTEL Collector:
-
-```bash
-# Download and customize the values file
-curl -O https://raw.githubusercontent.com/kylegalloway/Forge/main/chart/forge/values-mature-cluster.yaml
-
-# Edit to configure your existing observability endpoints
-vi values-mature-cluster.yaml
-
-# Install with custom values
-helm install forge forge/forge \
-  --version 0.1.0 \
-  --values values-mature-cluster.yaml \
-  --namespace forge-system \
-  --create-namespace
-```
-
-#### New Cluster (Full Observability Stack)
-
-If you need monitoring tools deployed:
-
-```bash
-# Download and customize the values file
-curl -O https://raw.githubusercontent.com/kylegalloway/Forge/main/chart/forge/values-new-cluster.yaml
-
-# Set a strong Grafana admin password
-vi values-new-cluster.yaml
-
-# Install with full observability stack
-helm install forge forge/forge \
-  --version 0.1.0 \
-  --values values-new-cluster.yaml \
-  --namespace forge-system \
-  --create-namespace
-```
 
 ---
 
@@ -108,195 +66,72 @@ make kind-redeploy
 make kind-delete
 ```
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed developer workflow.
+See [docs/getting-started/KIND_SETUP.md](docs/getting-started/KIND_SETUP.md) for detailed developer workflow.
 
-## Deployment Architectures
+## What Gets Deployed
 
-### Architecture 1: Mature Cluster Integration
+When you install Forge, you get:
 
-```text
-┌─────────────────────────────────────────┐
-│         Existing Infrastructure         │
-│  ┌─────────┐  ┌──────────┐  ┌────────┐ │
-│  │Prometheus│  │ Grafana  │  │  OTEL  │ │
-│  └────▲────┘  └────▲─────┘  └───▲────┘ │
-│       │            │              │      │
-└───────┼────────────┼──────────────┼──────┘
-        │            │              │
-        │         Metrics        Telemetry
-        │            │              │
-  ┌─────┴────────────┴──────────────┴─────┐
-  │      Forge Controller (New)            │
-  │  ┌──────────────────────────────┐     │
-  │  │ - ServiceMonitor             │     │
-  │  │ - PrometheusRule (Alerts)    │     │
-  │  │ - Metrics Endpoint           │     │
-  │  └──────────────────────────────┘     │
-  └────────────────────────────────────────┘
-```
+- ✅ Forge Controller (manages ZarfPackageJob and UDSPackageJob resources)
+- ✅ Forge Webhook (validates resources at admission time)
+- ✅ Metrics Service (exposes metrics for external Prometheus to scrape)
+- ✅ CRDs (ZarfPackageJob, UDSPackageJob)
+- ✅ RBAC (ServiceAccount, ClusterRole, ClusterRoleBinding)
 
-**What gets deployed:**
+Forge **does not** deploy:
 
-- ✅ Forge Controller
-- ✅ ServiceMonitor (connects to existing Prometheus)
-- ✅ PrometheusRule (alerts)
-- ✅ Metrics Service
+- ❌ Grafana (install separately if needed)
+- ❌ Prometheus (install separately if needed)
+- ❌ OTEL Collector (install separately if needed)
 
-**What you configure:**
-
-- OTEL Collector endpoint
-- Prometheus URL
-- Grafana URL
-- ServiceMonitor labels (to match your Prometheus)
-
-### Architecture 2: New Cluster Full Stack
-
-```text
-┌────────────────────────────────────────────┐
-│           New Full Stack                   │
-│                                            │
-│  ┌──────────────────────────────────────┐ │
-│  │         Grafana                      │ │
-│  │  - Dashboards                        │ │
-│  │  - Data Source: Prometheus           │ │
-│  └──────────────▲───────────────────────┘ │
-│                 │                          │
-│  ┌──────────────┴───────────────────────┐ │
-│  │         Prometheus                   │ │
-│  │  - ServiceMonitor Discovery          │ │
-│  │  - PrometheusRule (Alerts)           │ │
-│  │  - Persistent Storage                │ │
-│  └──────────────▲───────────────────────┘ │
-│                 │                          │
-│                 │ Scrape                   │
-│                 │                          │
-│  ┌──────────────┴───────────────────────┐ │
-│  │      OTEL Collector                  │ │
-│  │  - OTLP Receiver                     │ │
-│  │  - Prometheus Exporter               │ │
-│  │  - Batch Processing                  │ │
-│  └──────────────▲───────────────────────┘ │
-│                 │                          │
-│                 │ Telemetry                │
-│                 │                          │
-│  ┌──────────────┴───────────────────────┐ │
-│  │      Forge Controller                │ │
-│  │  - Metrics Endpoint                  │ │
-│  │  - OTLP Export                       │ │
-│  │  - Health Checks                     │ │
-│  └──────────────────────────────────────┘ │
-└────────────────────────────────────────────┘
-```
-
-**What gets deployed:**
-
-- ✅ Forge Controller
-- ✅ OpenTelemetry Collector
-- ✅ Prometheus (with persistent storage)
-- ✅ Grafana (with pre-loaded dashboards)
-- ✅ ServiceMonitors
-- ✅ PrometheusRules
-
-## Configuration Guide
-
-### Mature Cluster Configuration
-
-Edit `chart/forge/values-mature-cluster.yaml`:
-
-```yaml
-observability:
-  deployStack: false
-
-  otelCollector:
-    enabled: false
-    external:
-      endpoint: "otel-collector.monitoring.svc.cluster.local:4317"
-      tls:
-        enabled: true
-        insecure: false
-
-  prometheus:
-    enabled: false
-    external:
-      url: "http://prometheus.monitoring.svc.cluster.local:9090"
-
-  grafana:
-    enabled: false
-    external:
-      url: "http://grafana.monitoring.svc.cluster.local"
-
-metrics:
-  serviceMonitor:
-    enabled: true
-    additionalLabels:
-      # Match these to your Prometheus selector
-      prometheus: kube-prometheus
-      release: prometheus-operator
-```
-
-### New Cluster Configuration
-
-Edit `chart/forge/values-new-cluster.yaml`:
-
-```yaml
-observability:
-  deployStack: true
-
-  grafana:
-    config:
-      # IMPORTANT: Set a strong password!
-      adminPassword: "YOUR-STRONG-PASSWORD-HERE" # pragma: allowlist secret
-
-      # Enable ingress for external access
-      ingress:
-        enabled: true
-        ingressClassName: nginx
-        hosts:
-          - grafana.yourdomain.com
-        tls:
-          - secretName: grafana-tls
-            hosts:
-              - grafana.yourdomain.com
-
-  prometheus:
-    config:
-      persistence:
-        enabled: true
-        size: 100Gi
-        storageClass: "fast-ssd"  # Your storage class
-      retention: 30d
-
-controller:
-  replicaCount: 2  # Scale for HA
-```
-
-## Installation Commands
+## Configuration
 
 ### Basic Installation
 
 ```bash
-helm upgrade --install forge ./chart/forge \
+helm install forge forge/forge \
   --namespace forge-system \
   --create-namespace
 ```
 
-### With Custom Values
+### Custom Configuration
+
+Override values using `--set`:
 
 ```bash
-helm upgrade --install forge ./chart/forge \
-  -f chart/forge/values-mature-cluster.yaml \
+helm install forge forge/forge \
+  --version 0.1.0 \
+  --namespace forge-system \
+  --create-namespace \
+  --set controller.replicaCount=2 \
+  --set webhook.replicaCount=3 \
+  --set controller.resources.limits.memory=1Gi
+```
+
+### High Availability
+
+For production environments:
+
+```bash
+helm install forge forge/forge \
+  --version 0.1.0 \
+  --namespace forge-system \
+  --create-namespace \
   --set controller.replicaCount=3 \
-  --namespace forge-system \
-  --create-namespace
+  --set webhook.replicaCount=3 \
+  --set leaderElection.enabled=true
 ```
 
-### Dry Run (Preview)
+### Enable Network Policies
+
+For enhanced security:
 
 ```bash
-helm upgrade --install forge ./chart/forge \
-  -f chart/forge/values-new-cluster.yaml \
+helm install forge forge/forge \
+  --version 0.1.0 \
   --namespace forge-system \
-  --dry-run --debug
+  --create-namespace \
+  --set networkPolicies.enabled=true
 ```
 
 ## Verification
@@ -311,46 +146,90 @@ kubectl get all -n forge-system
 kubectl get deployment -n forge-system forge-controller
 
 # View controller logs
-kubectl logs -n forge-system -l app=forge-controller -f
+kubectl logs -n forge-system -l app.kubernetes.io/component=controller -f
 
 # Check CRD installation
-kubectl get crd zarfpackagejobs.forge.dev
+kubectl get crd | grep forge.dev
 ```
 
 ### Test the Controller
 
 ```bash
 # Create a test job
-kubectl apply -f examples/zarfpackagejobs/build-only-git.yaml
+kubectl apply -f examples/samples/zarf/build-only-git.yaml
 
 # Watch the job
-kubectl get zarfpackagejobs -A
+kubectl get zarfpackagejobs -A -w
 
 # Describe the job
 kubectl describe zarfpackagejob <name> -n <namespace>
 ```
 
-### Verify Observability
+### Verify Metrics
 
 ```bash
 # Check metrics endpoint
 kubectl port-forward -n forge-system svc/forge-controller-metrics 8080:8080
 curl http://localhost:8080/metrics
-
-# Access Prometheus (if deployed)
-kubectl port-forward -n forge-system svc/prometheus-server 9090:9090
-
-# Access Grafana (if deployed)
-kubectl port-forward -n forge-system svc/grafana 3000:80
 ```
+
+## Integrating with Monitoring
+
+### Prometheus Integration
+
+Forge exposes metrics on port 8080 with Prometheus annotations. There are several ways to integrate:
+
+**Option 1: Automatic Discovery via Pod Annotations**
+
+If your Prometheus is configured to discover pods with `prometheus.io/scrape` annotations, metrics will be scraped automatically. This is the default configuration.
+
+**Option 2: ServiceMonitor (Prometheus Operator)**
+
+Create a ServiceMonitor resource:
+
+```yaml
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: forge-controller
+  namespace: forge-system
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: forge
+      app.kubernetes.io/component: controller
+  endpoints:
+  - port: metrics
+    path: /metrics
+```
+
+**Option 3: Manual Scrape Configuration**
+
+Add to your Prometheus configuration:
+
+```yaml
+scrape_configs:
+  - job_name: 'forge'
+    static_configs:
+      - targets: ['forge-controller-metrics.forge-system.svc:8080']
+```
+
+### Grafana Dashboards
+
+Create dashboards in your existing Grafana instance to visualize Forge metrics:
+
+- `forge_jobs_total` - Total jobs created
+- `forge_jobs_active` - Currently active jobs
+- `go_goroutines` - Controller goroutines
+- `go_memstats_alloc_bytes` - Memory usage
 
 ## Upgrading
 
 ### Upgrade Release
 
 ```bash
-helm upgrade forge ./chart/forge \
-  -f chart/forge/values-mature-cluster.yaml \
+helm upgrade forge forge/forge \
+  --version 0.2.0 \
   --namespace forge-system
 ```
 
@@ -359,6 +238,7 @@ helm upgrade forge ./chart/forge \
 ```bash
 helm list -n forge-system
 kubectl rollout status deployment/forge-controller -n forge-system
+kubectl rollout status deployment/forge-webhook -n forge-system
 ```
 
 ## Uninstalling
@@ -376,15 +256,17 @@ helm uninstall forge --namespace forge-system
 kubectl delete namespace forge-system
 
 # Remove CRDs (will delete all ZarfPackageJob resources!)
-kubectl delete crd zarfpackagejobs.forge.dev
+kubectl delete crd zarfpackagejobs.forge.dev udsbundlejobs.forge.dev
 ```
 
 ## Security Hardening
 
-### Enable Network Policies
+### Network Policies
+
+Enable network policies for enhanced security:
 
 ```bash
-helm upgrade forge ./chart/forge \
+helm upgrade forge forge/forge \
   --set networkPolicies.enabled=true \
   --namespace forge-system
 ```
@@ -403,7 +285,7 @@ pod-security.kubernetes.io/warn: restricted
 
 The controller uses a dedicated ServiceAccount with minimal permissions:
 
-- Read/write ZarfPackageJob resources
+- Read/write ZarfPackageJob and UDSPackageJob resources
 - Create Jobs
 - Read ServiceAccounts and Secrets (for validation)
 - Create Events
@@ -411,9 +293,36 @@ The controller uses a dedicated ServiceAccount with minimal permissions:
 
 ## Advanced Configuration
 
-### High Availability
+### Custom Resource Limits
+
+```bash
+helm install forge forge/forge \
+  --namespace forge-system \
+  --create-namespace \
+  --set controller.resources.limits.cpu=2 \
+  --set controller.resources.limits.memory=2Gi \
+  --set controller.resources.requests.cpu=1 \
+  --set controller.resources.requests.memory=1Gi
+```
+
+### Pod Anti-Affinity (HA)
+
+For high availability, spread controller replicas across nodes:
+
+```bash
+helm install forge forge/forge \
+  --namespace forge-system \
+  --create-namespace \
+  --set controller.replicaCount=3 \
+  --set controller.affinity.podAntiAffinity.preferredDuringSchedulingIgnoredDuringExecution[0].weight=100 \
+  --set controller.affinity.podAntiAffinity.preferredDuringSchedulingIgnoredDuringExecution[0].podAffinityTerm.labelSelector.matchLabels.app=forge-controller \
+  --set controller.affinity.podAntiAffinity.preferredDuringSchedulingIgnoredDuringExecution[0].podAffinityTerm.topologyKey=kubernetes.io/hostname
+```
+
+Or use a custom values file:
 
 ```yaml
+# custom-values.yaml
 controller:
   replicaCount: 3
   affinity:
@@ -423,35 +332,15 @@ controller:
         podAffinityTerm:
           labelSelector:
             matchLabels:
-              app: forge-controller
+              app.kubernetes.io/component: controller
           topologyKey: kubernetes.io/hostname
 ```
 
-### Resource Limits
-
-```yaml
-controller:
-  resources:
-    limits:
-      cpu: "4"
-      memory: 2Gi
-    requests:
-      cpu: 1000m
-      memory: 1Gi
-```
-
-### Custom OTEL Configuration
-
-```yaml
-observability:
-  otelCollector:
-    config:
-      exporters:
-        # Add custom exporters
-        otlp/datadog:
-          endpoint: https://api.datadoghq.com
-          headers:
-            DD-API-KEY: ${DD_API_KEY}
+```bash
+helm install forge forge/forge \
+  --namespace forge-system \
+  --create-namespace \
+  -f custom-values.yaml
 ```
 
 ## Troubleshooting
@@ -461,34 +350,38 @@ observability:
 #### Controller Not Starting
 
 ```bash
-kubectl describe pod -n forge-system -l app=forge-controller
+kubectl describe pod -n forge-system -l app.kubernetes.io/component=controller
 kubectl get events -n forge-system --sort-by='.lastTimestamp'
+```
+
+#### Webhook Validation Failures
+
+```bash
+# Check webhook status
+kubectl get validatingwebhookconfiguration forge-webhook -o yaml
+
+# Check webhook logs
+kubectl logs -n forge-system -l app.kubernetes.io/component=webhook
 ```
 
 #### Metrics Not Scraped
 
 ```bash
-# Check ServiceMonitor
-kubectl get servicemonitor -n forge-system forge-controller -o yaml
+# Check metrics endpoint
+kubectl port-forward -n forge-system svc/forge-controller-metrics 8080:8080
+curl http://localhost:8080/metrics
 
-# Verify labels match Prometheus selector
-kubectl get prometheus -A -o yaml | grep serviceMonitorSelector -A 10
-```
-
-#### OTEL Connection Issues
-
-```bash
-# Test OTEL endpoint from controller
-kubectl run -it --rm debug --image=busybox -n forge-system -- \
-  nc -zv forge-otel-collector 4317
+# If using ServiceMonitor, check Prometheus targets
+kubectl port-forward -n monitoring svc/prometheus-operated 9090:9090
+# Visit http://localhost:9090/targets
 ```
 
 ## Additional Resources
 
-- **Quick Start Guide**: [chart/QUICKSTART.md](chart/QUICKSTART.md)
-- **Full Chart Documentation**: [chart/README.md](chart/README.md)
-- **Helm Chart Values**: [chart/forge/values.yaml](chart/forge/values.yaml)
-- **Grafana Dashboard**: [chart/forge/dashboards/forge-dashboard.json](chart/forge/dashboards/forge-dashboard.json)
+- **User Guide**: [docs/getting-started/USER_GUIDE.md](docs/getting-started/USER_GUIDE.md) - Complete usage examples
+- **Developer Guide**: [docs/getting-started/KIND_SETUP.md](docs/getting-started/KIND_SETUP.md) - Local development setup
+- **Helm Chart Documentation**: [chart/README.md](chart/README.md) - Complete chart documentation
+- **Helm Chart Values**: [chart/forge/values.yaml](chart/forge/values.yaml) - All configuration options
 
 ## Support
 

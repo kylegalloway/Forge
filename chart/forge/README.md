@@ -4,22 +4,23 @@ Helm chart for deploying Forge - a Kubernetes controller for managing Zarf packa
 
 ## Installation
 
-### Mature Cluster (with existing monitoring)
-
-```bash
-helm upgrade --install forge . -f values-mature-cluster.yaml --namespace forge-system --create-namespace
-```
-
-### New Cluster (deploy full observability stack)
-
-```bash
-helm upgrade --install forge . -f values-new-cluster.yaml --namespace forge-system --create-namespace
-```
-
 ### Default Installation
 
 ```bash
 helm upgrade --install forge . --namespace forge-system --create-namespace
+```
+
+### From Local Source (Developers)
+
+```bash
+# From the project root
+helm upgrade --install forge ./chart/forge \
+  --namespace forge-system \
+  --create-namespace \
+  --set controller.image.repository=forge-controller \
+  --set controller.image.tag=demo \
+  --set webhook.image.repository=forge-webhook \
+  --set webhook.image.tag=demo
 ```
 
 ## Configuration
@@ -29,43 +30,50 @@ See [values.yaml](values.yaml) for all configuration options.
 ### Key Configuration Areas
 
 - **Controller**: Deployment, resources, security settings
-- **Observability**: OTEL Collector, Prometheus, Grafana deployment options
-- **Metrics**: ServiceMonitor and metrics service configuration
+- **Webhook**: Admission webhook configuration
+- **Metrics**: Metrics endpoint configuration (for external Prometheus)
 - **RBAC**: Service account and permissions
 - **Network Policies**: Pod communication restrictions
-- **Alerts**: PrometheusRule configuration
+
+## What Gets Deployed
+
+- Forge Controller (manages ZarfPackageJob/UDSPackageJob resources)
+- Forge Webhook (validates resources at admission time)
+- Metrics Service (exposes metrics for external Prometheus)
+- CRDs (ZarfPackageJob, UDSPackageJob)
+- RBAC resources (ServiceAccount, ClusterRole, ClusterRoleBinding)
+
+**What does NOT get deployed:**
+
+- Grafana (install separately if needed)
+- Prometheus (install separately if needed)
+- OTEL Collector (install separately if needed)
+
+## Monitoring Integration
+
+Forge exposes Prometheus metrics on port 8080. The controller pods include annotations for automatic Prometheus discovery:
+
+```yaml
+prometheus.io/scrape: "true"
+prometheus.io/port: "8080"
+prometheus.io/path: "/metrics"
+```
+
+Configure your external Prometheus to scrape these endpoints.
 
 ## Documentation
 
-For complete documentation, see the [Chart README](../README.md).
+For complete documentation, see:
 
-## Deployment Scenarios
-
-### 1. Mature Cluster
-
-Use `values-mature-cluster.yaml` when you have:
-
-- Existing Prometheus setup
-- Existing Grafana instance
-- Existing OTEL Collector
-
-This deploys only the Forge controller and connects to your existing infrastructure.
-
-### 2. New Cluster
-
-Use `values-new-cluster.yaml` when you need:
-
-- Full observability stack
-- Prometheus for metrics
-- Grafana for visualization
-- OTEL Collector for telemetry
-
-This deploys everything needed for complete observability.
+- [Project README](../../README.md) - Project overview
+- [Chart Documentation](../README.md) - Complete chart documentation
+- [User Guide](../../docs/getting-started/USER_GUIDE.md) - Usage examples
+- [Developer Guide](../../docs/getting-started/KIND_SETUP.md) - Local development setup
 
 ## Upgrading
 
 ```bash
-helm upgrade forge . -f values-mature-cluster.yaml --namespace forge-system
+helm upgrade forge . --namespace forge-system
 ```
 
 ## Uninstalling

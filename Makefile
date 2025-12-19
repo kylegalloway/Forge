@@ -103,21 +103,9 @@ install: ## Install Forge using Helm with default values.
 		--create-namespace \
 		--wait
 
-.PHONY: install-mature
-install-mature: ## Install Forge for mature cluster (existing monitoring).
-	helm upgrade --install forge chart/forge \
-		-f chart/forge/values-mature-cluster.yaml \
-		--namespace $(NAMESPACE) \
-		--create-namespace \
-		--wait
-
-.PHONY: install-new
-install-new: ## Install Forge with full observability stack for new cluster.
-	helm upgrade --install forge chart/forge \
-		-f chart/forge/values-new-cluster.yaml \
-		--namespace $(NAMESPACE) \
-		--create-namespace \
-		--wait
+# Note: install-mature and install-new targets removed.
+# Forge no longer bundles monitoring infrastructure (Grafana/Prometheus/OTEL).
+# Use 'make install' for standard deployment and configure external monitoring separately.
 
 .PHONY: upgrade
 upgrade: ## Upgrade Forge installation using Helm.

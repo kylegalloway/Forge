@@ -37,7 +37,7 @@ helm install forge forge/forge \
 
 ### Installation Options
 
-**Default Installation** (minimal, production-ready):
+**Default Installation** (production-ready):
 
 ```bash
 helm install forge forge/forge \
@@ -46,24 +46,15 @@ helm install forge forge/forge \
   --create-namespace
 ```
 
-**Mature Cluster** (existing Prometheus/Grafana):
+**With Custom Configuration**:
 
 ```bash
 helm install forge forge/forge \
   --version 0.1.0 \
-  --values https://raw.githubusercontent.com/kylegalloway/Forge/main/chart/forge/values-mature-cluster.yaml \
   --namespace forge-system \
-  --create-namespace
-```
-
-**New Cluster** (includes full observability stack):
-
-```bash
-helm install forge forge/forge \
-  --version 0.1.0 \
-  --values https://raw.githubusercontent.com/kylegalloway/Forge/main/chart/forge/values-new-cluster.yaml \
-  --namespace forge-system \
-  --create-namespace
+  --create-namespace \
+  --set controller.replicaCount=2 \
+  --set webhook.replicaCount=3
 ```
 
 ### Verify Installation

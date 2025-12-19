@@ -1,0 +1,143 @@
+{{- if and .Values.webhook.enabled .Values.webhook.tls.autoGenerate -}}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "forge.fullname" . }}-cabundle-patcher
+  namespace: {{ include "forge.namespace" . }}
+  labels:
+    {{- include "forge.labels" . | nindent 4 }}
+    app.kubernetes.io/component: cabundle-patcher
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "5"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "forge.fullname" . }}-cabundle-patcher
+  labels:
+    {{- include "forge.labels" . | nindent 4 }}
+    app.kubernetes.io/component: cabundle-patcher
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "5"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+rules:
+- apiGroups: ["admissionregistration.k8s.io"]
+  resources: ["validatingwebhookconfigurations"]
+  verbs: ["get", "patch"]
+- apiGroups: [""]
+  resources: ["secrets"]
+  verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "forge.fullname" . }}-cabundle-patcher
+  labels:
+    {{- include "forge.labels" . | nindent 4 }}
+    app.kubernetes.io/component: cabundle-patcher
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "5"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ include "forge.fullname" . }}-cabundle-patcher
+subjects:
+- kind: ServiceAccount
+  name: {{ include "forge.fullname" . }}-cabundle-patcher
+  namespace: {{ include "forge.namespace" . }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "forge.fullname" . }}-cabundle-patcher
+  namespace: {{ include "forge.namespace" . }}
+  labels:
+    {{- include "forge.labels" . | nindent 4 }}
+    app.kubernetes.io/component: cabundle-patcher
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "10"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  ttlSecondsAfterFinished: 300
+  backoffLimit: 5
+  template:
+    metadata:
+      labels:
+        {{- include "forge.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: cabundle-patcher
+    spec:
+      serviceAccountName: {{ include "forge.fullname" . }}-cabundle-patcher
+      restartPolicy: OnFailure
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        fsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+      - name: cabundle-patcher
+        image: alpine:latest
+        imagePullPolicy: IfNotPresent
+        command:
+        - sh
+        - -c
+        - |
+          set -e
+
+          # Install kubectl
+          apk add --no-cache curl
+          curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+          chmod +x kubectl
+
+          # Wait for secret to be available
+          echo "Waiting for TLS secret to be available..."
+          for i in $(seq 1 30); do
+            if ./kubectl get secret {{ .Values.webhook.tls.secretName }} -n {{ include "forge.namespace" . }} >/dev/null 2>&1; then
+              echo "Secret found"
+              break
+            fi
+            echo "Waiting for secret... ($i/30)"
+            sleep 2
+          done
+
+          # Get CA bundle from secret
+          echo "Extracting CA bundle from secret..."
+          CA_BUNDLE=$(./kubectl get secret {{ .Values.webhook.tls.secretName }} \
+            -n {{ include "forge.namespace" . }} \
+            -o jsonpath='{.data.tls\.crt}')
+
+          if [ -z "$CA_BUNDLE" ]; then
+            echo "Error: CA bundle is empty"
+            exit 1
+          fi
+
+          # Patch webhook configuration
+          echo "Patching ValidatingWebhookConfiguration with CA bundle..."
+          ./kubectl patch validatingwebhookconfiguration {{ include "forge.fullname" . }}-webhook \
+            --type='json' \
+            -p="[{'op': 'replace', 'path': '/webhooks/0/clientConfig/caBundle', 'value':'${CA_BUNDLE}'}]"
+
+          echo "Successfully patched webhook configuration with CA bundle"
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 65532
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          seccompProfile:
+            type: RuntimeDefault
+        resources:
+          limits:
+            cpu: 100m
+            memory: 128Mi
+          requests:
+            cpu: 50m
+            memory: 64Mi
+{{- end }}

@@ -82,48 +82,14 @@ spec:
           type: RuntimeDefault
       containers:
       - name: cabundle-patcher
-        image: alpine:latest
+        image: registry.k8s.io/ingress-nginx/kube-webhook-certgen:v1.4.4
         imagePullPolicy: IfNotPresent
-        command:
-        - sh
-        - -c
-        - |
-          set -e
-
-          # Install kubectl
-          apk add --no-cache curl
-          curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
-          chmod +x kubectl
-
-          # Wait for secret to be available
-          echo "Waiting for TLS secret to be available..."
-          for i in $(seq 1 30); do
-            if ./kubectl get secret {{ .Values.webhook.tls.secretName }} -n {{ include "forge.namespace" . }} >/dev/null 2>&1; then
-              echo "Secret found"
-              break
-            fi
-            echo "Waiting for secret... ($i/30)"
-            sleep 2
-          done
-
-          # Get CA bundle from secret
-          echo "Extracting CA bundle from secret..."
-          CA_BUNDLE=$(./kubectl get secret {{ .Values.webhook.tls.secretName }} \
-            -n {{ include "forge.namespace" . }} \
-            -o jsonpath='{.data.tls\.crt}')
-
-          if [ -z "$CA_BUNDLE" ]; then
-            echo "Error: CA bundle is empty"
-            exit 1
-          fi
-
-          # Patch webhook configuration
-          echo "Patching ValidatingWebhookConfiguration with CA bundle..."
-          ./kubectl patch validatingwebhookconfiguration {{ include "forge.fullname" . }}-webhook \
-            --type='json' \
-            -p="[{'op': 'replace', 'path': '/webhooks/0/clientConfig/caBundle', 'value':'${CA_BUNDLE}'}]"
-
-          echo "Successfully patched webhook configuration with CA bundle"
+        args:
+        - patch
+        - --webhook-name={{ include "forge.fullname" . }}-webhook
+        - --namespace={{ include "forge.namespace" . }}
+        - --secret-name={{ .Values.webhook.tls.secretName }}
+        - --patch-validating=true
         securityContext:
           runAsNonRoot: true
           runAsUser: 65532

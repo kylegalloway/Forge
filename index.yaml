@@ -2,8 +2,13 @@ apiVersion: v1
 entries:
   forge:
   - apiVersion: v2
+<<<<<<< HEAD
     appVersion: 0.1.1
     created: "2025-12-19T04:51:46.913205424Z"
+=======
+    appVersion: v0.1.1
+    created: "2025-12-18T22:24:52.209484-06:00"
+>>>>>>> e4eb11a (📦 Version bump - gh-pages joins the 0.1.1 party)
     description: A Helm chart for deploying Forge - a Kubernetes controller for managing
       Zarf package build and deployment jobs
     digest: c7020a33e3ca3bde828b6eed3c3fea709fa15fe00f332600fa27bae6d22e8c05

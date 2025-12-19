@@ -26,7 +26,7 @@ helm install forge forge/forge
 Install a specific version:
 
 ```bash
-helm install forge forge/forge --version 1.0.0
+helm install forge forge/forge --version 0.1.1
 ```
 
 ## Available Charts

@@ -354,7 +354,7 @@ func createTestAttestationBundleWithDigest(digest string) *AttestationBundle {
 				Controller: ControllerInfo{
 					Name:      "forge-controller",
 					Namespace: "forge-system",
-					Version:   "v0.1.0",
+					Version:   "v0.1.1",
 				},
 			},
 		},

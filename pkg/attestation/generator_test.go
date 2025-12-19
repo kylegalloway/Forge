@@ -6,7 +6,7 @@ import (
 )
 
 func TestNewGenerator(t *testing.T) {
-	gen := NewGenerator("forge-controller", "forge-system", "v0.1.0")
+	gen := NewGenerator("forge-controller", "forge-system", "v0.1.1")
 
 	if gen.ControllerName != "forge-controller" {
 		t.Errorf("expected controller name 'forge-controller', got '%s'", gen.ControllerName)
@@ -16,13 +16,13 @@ func TestNewGenerator(t *testing.T) {
 		t.Errorf("expected controller namespace 'forge-system', got '%s'", gen.ControllerNamespace)
 	}
 
-	if gen.ControllerVersion != "v0.1.0" {
-		t.Errorf("expected controller version 'v0.1.0', got '%s'", gen.ControllerVersion)
+	if gen.ControllerVersion != "v0.1.1" {
+		t.Errorf("expected controller version 'v0.1.1', got '%s'", gen.ControllerVersion)
 	}
 }
 
 func TestGenerateForBuild(t *testing.T) {
-	gen := NewGenerator("forge-controller", "forge-system", "v0.1.0")
+	gen := NewGenerator("forge-controller", "forge-system", "v0.1.1")
 
 	startTime := time.Now().Add(-5 * time.Minute)
 	endTime := time.Now()
@@ -37,7 +37,7 @@ func TestGenerateForBuild(t *testing.T) {
 				Git: &GitSourceInfo{
 					URL:       "https://github.com/defenseunicorns/zarf",
 					Ref:       "main",
-					CommitSHA: "abc123def456",
+					CommitSHA: "abc123def456", // pragma: allowlist secret
 					Path:      "examples/dos-games",
 				},
 			},
@@ -124,7 +124,7 @@ func TestGenerateForBuild(t *testing.T) {
 }
 
 func TestGenerateForPublish(t *testing.T) {
-	gen := NewGenerator("forge-controller", "forge-system", "v0.1.0")
+	gen := NewGenerator("forge-controller", "forge-system", "v0.1.1")
 
 	startTime := time.Now().Add(-3 * time.Minute)
 	endTime := time.Now()
@@ -198,7 +198,7 @@ func TestGenerateForPublish(t *testing.T) {
 }
 
 func TestGenerateForDeploy(t *testing.T) {
-	gen := NewGenerator("forge-controller", "forge-system", "v0.1.0")
+	gen := NewGenerator("forge-controller", "forge-system", "v0.1.1")
 
 	startTime := time.Now().Add(-10 * time.Minute)
 	endTime := time.Now()
@@ -271,7 +271,7 @@ func TestGenerateForDeploy(t *testing.T) {
 }
 
 func TestGenerateSLSAProvenance(t *testing.T) {
-	gen := NewGenerator("forge-controller", "forge-system", "v0.1.0")
+	gen := NewGenerator("forge-controller", "forge-system", "v0.1.1")
 
 	startTime := time.Now().Add(-5 * time.Minute)
 	endTime := time.Now()

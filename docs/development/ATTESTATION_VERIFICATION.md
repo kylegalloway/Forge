@@ -127,7 +127,7 @@ cosign verify-attestation \
 cosign verify \
   --certificate-identity-regexp="https://github.com/kylegalloway/forge" \
   --certificate-oidc-issuer="https://token.actions.githubusercontent.com" \
-  ghcr.io/kylegalloway/forge/forge-controller:v0.1.0
+  ghcr.io/kylegalloway/forge/forge-controller:v0.1.1
 ```
 
 ### By Digest (Most Secure)
@@ -385,4 +385,4 @@ All steps are auditable and verifiable by anyone!
 ---
 
 *Last Updated: 2025-11-25*
-*Forge Version: v0.1.0*
+*Forge Version: v0.1.1*

@@ -39,15 +39,15 @@ helm repo update
 
 ```bash
 helm install forge forge/forge \
-  --version 0.1.0 \
+  --version 0.1.1 \
   --namespace forge-system \
   --create-namespace
 ```
 
 **Container Images Used**:
 
-- `ghcr.io/kylegalloway/forge/forge-controller:v0.1.0`
-- `ghcr.io/kylegalloway/forge/forge-webhook:v0.1.0`
+- `ghcr.io/kylegalloway/forge/forge-controller:v0.1.1`
+- `ghcr.io/kylegalloway/forge/forge-webhook:v0.1.1`
 
 ---
 
@@ -100,7 +100,7 @@ Override values using `--set`:
 
 ```bash
 helm install forge forge/forge \
-  --version 0.1.0 \
+  --version 0.1.1 \
   --namespace forge-system \
   --create-namespace \
   --set controller.replicaCount=2 \
@@ -114,7 +114,7 @@ For production environments:
 
 ```bash
 helm install forge forge/forge \
-  --version 0.1.0 \
+  --version 0.1.1 \
   --namespace forge-system \
   --create-namespace \
   --set controller.replicaCount=3 \
@@ -128,7 +128,7 @@ For enhanced security:
 
 ```bash
 helm install forge forge/forge \
-  --version 0.1.0 \
+  --version 0.1.1 \
   --namespace forge-system \
   --create-namespace \
   --set networkPolicies.enabled=true

@@ -37,15 +37,15 @@ helm install forge forge/forge \
 
 # Or install specific version
 helm install forge forge/forge \
-  --version 0.1.0 \
+  --version 0.1.1 \
   --namespace forge-system \
   --create-namespace
 ```
 
 **Available Images**:
 
-- Controller: `ghcr.io/kylegalloway/forge/forge-controller:v0.1.0`
-- Webhook: `ghcr.io/kylegalloway/forge/forge-webhook:v0.1.0`
+- Controller: `ghcr.io/kylegalloway/forge/forge-controller:v0.1.1`
+- Webhook: `ghcr.io/kylegalloway/forge/forge-webhook:v0.1.1`
 
 ### For Developers (Local Chart)
 
@@ -104,7 +104,7 @@ controller:
   replicaCount: 1              # Number of controller replicas
   image:
     repository: ghcr.io/kylegalloway/forge/forge-controller
-    tag: "v0.1.0"
+    tag: "v0.1.1"
   resources:
     limits:
       cpu: 500m
@@ -122,7 +122,7 @@ webhook:
   replicaCount: 2              # Number of webhook replicas (recommend 2+ for HA)
   image:
     repository: ghcr.io/kylegalloway/forge/forge-webhook
-    tag: "v0.1.0"
+    tag: "v0.1.1"
   tls:
     autoGenerate: true         # Auto-generate self-signed certs
 ```

@@ -27,13 +27,13 @@ helm repo update
 helm install forge forge/forge \
   --namespace forge-system \
   --create-namespace \
-  --version 0.1.0
+  --version 0.1.1
 ```
 
 **Container Images Used**:
 
-- Controller: `ghcr.io/kylegalloway/forge/forge-controller:v0.1.0`
-- Webhook: `ghcr.io/kylegalloway/forge/forge-webhook:v0.1.0`
+- Controller: `ghcr.io/kylegalloway/forge/forge-controller:v0.1.1`
+- Webhook: `ghcr.io/kylegalloway/forge/forge-webhook:v0.1.1`
 
 ### Installation Options
 
@@ -41,7 +41,7 @@ helm install forge forge/forge \
 
 ```bash
 helm install forge forge/forge \
-  --version 0.1.0 \
+  --version 0.1.1 \
   --namespace forge-system \
   --create-namespace
 ```
@@ -50,7 +50,7 @@ helm install forge forge/forge \
 
 ```bash
 helm install forge forge/forge \
-  --version 0.1.0 \
+  --version 0.1.1 \
   --namespace forge-system \
   --create-namespace \
   --set controller.replicaCount=2 \

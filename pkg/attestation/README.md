@@ -42,7 +42,7 @@ import "github.com/kylegalloway/forge/pkg/attestation"
 gen := attestation.NewGenerator(
     "forge-controller",  // controller name
     "forge-system",      // controller namespace
-    "v0.1.0",           // controller version
+    "v0.1.1",           // controller version
 )
 ```
 
@@ -258,8 +258,8 @@ err := storage.Store(ctx, bundle, opts)
 **Usage:**
 ```go
 import (
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
+    "k8s.io/client-go/kubernetes"
+    "k8s.io/client-go/rest"
 )
 
 // In-cluster config
@@ -283,7 +283,7 @@ The attestation generator should be integrated into the controller's reconciliat
 
 ```go
 // In controller initialization
-gen := attestation.NewGenerator("forge-controller", "forge-system", "v0.1.0")
+gen := attestation.NewGenerator("forge-controller", "forge-system", "v0.1.1")
 storage := attestation.NewOCIStorageImpl("ghcr.io", "myorg/attestations", auth)
 integration := attestation.NewControllerIntegration(gen, storage)
 

@@ -21,7 +21,7 @@ controller:
 
   # Controller image configuration
   image:
-    repository: ghcr.io/kylegalloway/forge-controller
+    repository: ghcr.io/kylegalloway/forge/forge-controller
     pullPolicy: IfNotPresent
     tag: "latest"
 
@@ -114,7 +114,7 @@ webhook:
 
   # Webhook image configuration
   image:
-    repository: ghcr.io/kylegalloway/forge-webhook
+    repository: ghcr.io/kylegalloway/forge/forge-webhook
     pullPolicy: IfNotPresent
     tag: "latest"
 

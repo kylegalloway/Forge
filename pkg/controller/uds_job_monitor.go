@@ -59,13 +59,13 @@ func (ctrl *UDSController) checkJobStatuses(ctx context.Context) error {
 // processJobStatus checks a single Job and updates the corresponding UDSBundleJob status
 func (ctrl *UDSController) processJobStatus(ctx context.Context, job *batchv1.Job) error {
 	// Get the UDSBundleJob name from job labels
-	bundleName, ok := job.Labels["forge.forge.dev/bundle"]
+	bundleName, ok := job.Labels[constants.LabelPackage]
 	if !ok {
 		klog.V(4).InfoS("Job missing bundle label, skipping", "job", job.Name)
 		return nil
 	}
 
-	action, ok := job.Labels["forge.forge.dev/action"]
+	action, ok := job.Labels[constants.LabelAction]
 	if !ok {
 		klog.V(4).InfoS("Job missing action label, skipping", "job", job.Name)
 		return nil

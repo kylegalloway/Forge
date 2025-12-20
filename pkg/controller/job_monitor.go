@@ -61,13 +61,13 @@ func (controller *Controller) checkJobStatuses(ctx context.Context) error {
 // processJobStatus checks a single Job and updates the corresponding ZarfPackageJob status
 func (controller *Controller) processJobStatus(ctx context.Context, job *batchv1.Job) error {
 	// Get the ZarfPackageJob name from job labels
-	packageName, ok := job.Labels["forge.forge.dev/package"]
+	packageName, ok := job.Labels[constants.LabelPackage]
 	if !ok {
 		klog.V(4).InfoS("Job missing package label, skipping", "job", job.Name)
 		return nil
 	}
 
-	action, ok := job.Labels["forge.forge.dev/action"]
+	action, ok := job.Labels[constants.LabelAction]
 	if !ok {
 		klog.V(4).InfoS("Job missing action label, skipping", "job", job.Name)
 		return nil

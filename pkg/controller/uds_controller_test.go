@@ -390,8 +390,8 @@ func TestUDSProcessJobStatus(t *testing.T) {
 					Name:      "test-job-2",
 					Namespace: "forge-system",
 					Labels: map[string]string{
-						"app":                    "forge-uds",
-						"forge.forge.dev/bundle": "test-bundle",
+						"app":                  "forge-uds",
+						constants.LabelPackage: "test-bundle",
 					},
 				},
 			},
@@ -404,9 +404,9 @@ func TestUDSProcessJobStatus(t *testing.T) {
 					Name:      "test-job-3",
 					Namespace: "forge-system",
 					Labels: map[string]string{
-						"app":                    "forge-uds",
-						"forge.forge.dev/bundle": "test-bundle",
-						"forge.forge.dev/action": "create",
+						"app":                  "forge-uds",
+						constants.LabelPackage: "test-bundle",
+						constants.LabelAction:  "create",
 					},
 				},
 				Status: batchv1.JobStatus{
@@ -422,9 +422,9 @@ func TestUDSProcessJobStatus(t *testing.T) {
 					Name:      "test-job-4",
 					Namespace: "forge-system",
 					Labels: map[string]string{
-						"app":                    "forge-uds",
-						"forge.forge.dev/bundle": "test-bundle",
-						"forge.forge.dev/action": "create",
+						"app":                  "forge-uds",
+						constants.LabelPackage: "test-bundle",
+						constants.LabelAction:  "create",
 					},
 				},
 				Status: batchv1.JobStatus{
@@ -448,9 +448,9 @@ func TestUDSProcessJobStatus(t *testing.T) {
 					Name:      "test-job-5",
 					Namespace: "forge-system",
 					Labels: map[string]string{
-						"app":                    "forge-uds",
-						"forge.forge.dev/bundle": "test-bundle",
-						"forge.forge.dev/action": "create",
+						"app":                  "forge-uds",
+						constants.LabelPackage: "test-bundle",
+						constants.LabelAction:  "create",
 					},
 				},
 				Status: batchv1.JobStatus{

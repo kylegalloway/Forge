@@ -572,8 +572,8 @@ func TestProcessJobStatus(t *testing.T) {
 					Name:      "test-job-2",
 					Namespace: "forge-system",
 					Labels: map[string]string{
-						"app":                     "forge",
-						"forge.forge.dev/package": "test-package",
+						"app":               "forge",
+						"forge.dev/package": "test-package",
 					},
 				},
 			},
@@ -586,9 +586,9 @@ func TestProcessJobStatus(t *testing.T) {
 					Name:      "test-job-3",
 					Namespace: "forge-system",
 					Labels: map[string]string{
-						"app":                     "forge",
-						"forge.forge.dev/package": "test-package",
-						"forge.forge.dev/action":  "build",
+						"app":               "forge",
+						"forge.dev/package": "test-package",
+						"forge.dev/action":  "build",
 					},
 				},
 				Status: batchv1.JobStatus{
@@ -604,9 +604,9 @@ func TestProcessJobStatus(t *testing.T) {
 					Name:      "test-job-4",
 					Namespace: "forge-system",
 					Labels: map[string]string{
-						"app":                     "forge",
-						"forge.forge.dev/package": "test-package",
-						"forge.forge.dev/action":  "build",
+						"app":               "forge",
+						"forge.dev/package": "test-package",
+						"forge.dev/action":  "build",
 					},
 				},
 				Status: batchv1.JobStatus{
@@ -630,9 +630,9 @@ func TestProcessJobStatus(t *testing.T) {
 					Name:      "test-job-5",
 					Namespace: "forge-system",
 					Labels: map[string]string{
-						"app":                     "forge",
-						"forge.forge.dev/package": "test-package",
-						"forge.forge.dev/action":  "build",
+						"app":               "forge",
+						"forge.dev/package": "test-package",
+						"forge.dev/action":  "build",
 					},
 				},
 				Status: batchv1.JobStatus{

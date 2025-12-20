@@ -9,9 +9,9 @@ const (
 	LabelAppValueUDS = "forge-uds"
 
 	// LabelPackage is the label key for the package name
-	LabelPackage = "forge.forge.dev/package"
+	LabelPackage = "forge.dev/package"
 	// LabelAction is the label key for the action type
-	LabelAction = "forge.forge.dev/action"
+	LabelAction = "forge.dev/action"
 	// LabelJobType is the label key for the job type
-	LabelJobType = "forge.forge.dev/job-type"
+	LabelJobType = "forge.dev/job-type"
 )

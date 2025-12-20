@@ -8,7 +8,7 @@ import (
 	"go.opentelemetry.io/otel/metric"
 )
 
-const meterName = "forge.forge.dev/controller"
+const meterName = "forge.dev/controller"
 
 // Metrics holds all OpenTelemetry metrics for the Forge controller
 type Metrics struct {

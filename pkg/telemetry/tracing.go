@@ -9,7 +9,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-const tracerName = "forge.forge.dev/controller"
+const tracerName = "forge.dev/controller"
 
 // Tracer wraps OpenTelemetry tracer with convenience methods
 type Tracer struct {

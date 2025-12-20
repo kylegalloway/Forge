@@ -59,6 +59,36 @@ kubectl logs -n forge-system -l app=forge-controller --since=1h | grep -i error
 kubectl get lease -n forge-system forge-controller-lock -o yaml
 ```
 
+Expected output (healthy system):
+
+```text
+# Controller pods - should show Running
+NAME                                READY   STATUS    RESTARTS   AGE
+forge-controller-6d4f8c7b9-xxxxx    1/1     Running   0          5d
+
+# Deployment - should show READY 1/1
+NAME               READY   UP-TO-DATE   AVAILABLE   AGE
+forge-controller   1/1     1            1           5d
+
+# Webhook pods - should show all Running
+NAME                            READY   STATUS    RESTARTS   AGE
+forge-webhook-5b7c9d8f-xxxxx    1/1     Running   0          5d
+forge-webhook-5b7c9d8f-yyyyy    1/1     Running   0          5d
+
+# CRD - should exist
+NAME                          CREATED AT
+zarfpackagejobs.forge.dev     2025-12-14T10:00:00Z
+
+# Errors - should be empty or only non-critical
+(no output is ideal)
+
+# Leader election - shows current leader
+spec:
+  holderIdentity: forge-controller-6d4f8c7b9-xxxxx
+  leaseDurationSeconds: 15
+  renewTime: "2025-12-19T10:15:30.123456Z"
+```
+
 **Namespace-Scoped Deployment:**
 
 ```bash

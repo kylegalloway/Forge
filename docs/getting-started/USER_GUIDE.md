@@ -30,10 +30,25 @@ helm install forge forge/forge \
   --version 0.1.1
 ```
 
+Expected output:
+
+```text
+"forge" has been added to your repositories
+Hang tight while we grab the latest from your chart repositories...
+...Successfully got an update from the "forge" chart repository
+Update Complete. ⎈Happy Helming!⎈
+
+NAME: forge
+LAST DEPLOYED: Thu Dec 19 10:00:00 2025
+NAMESPACE: forge-system
+STATUS: deployed
+REVISION: 1
+```
+
 **Container Images Used**:
 
-- Controller: `ghcr.io/kylegalloway/forge/forge-controller:v0.1.1`
-- Webhook: `ghcr.io/kylegalloway/forge/forge-webhook:v0.1.1`
+- Controller: `ghcr.io/kylegalloway/forge/forge-controller:latest` (or `:v0.1.1` for specific version)
+- Webhook: `ghcr.io/kylegalloway/forge/forge-webhook:latest` (or `:v0.1.1` for specific version)
 
 ### Installation Options
 
@@ -127,6 +142,33 @@ spec:
       path: packages/dos-games
 ```
 
+Apply with:
+
+```bash
+kubectl apply -f build-example.yaml
+```
+
+Expected output:
+
+```text
+zarfpackagejob.forge.dev/build-example created
+```
+
+Watch progress:
+
+```bash
+kubectl get zarfpackagejob build-example -w
+```
+
+Expected output:
+
+```text
+NAME            PHASE      AGE
+build-example   Pending    2s
+build-example   Running    5s
+build-example   Succeeded  45s
+```
+
 ### 2. Build and Publish to OCI
 
 Builds a package and immediately publishes it to an OCI registry.
@@ -157,6 +199,31 @@ spec:
           name: oci-creds # Secret containing .dockerconfigjson
 ```
 
+Apply with:
+
+```bash
+kubectl apply -f build-publish-oci.yaml
+```
+
+Expected output:
+
+```text
+zarfpackagejob.forge.dev/build-publish-oci created
+```
+
+Watch progress:
+
+```bash
+kubectl get zarfpackagejob build-publish-oci -n default
+```
+
+Expected output:
+
+```text
+NAME                 PHASE      AGE
+build-publish-oci    Succeeded  2m15s
+```
+
 ### 3. Deploy from S3
 
 Deploys a package stored in an S3 bucket.
@@ -183,6 +250,35 @@ spec:
     namespace: games
 ```
 
+Apply with:
+
+```bash
+kubectl apply -f deploy-s3.yaml
+```
+
+Expected output:
+
+```text
+zarfpackagejob.forge.dev/deploy-s3 created
+```
+
+Check deployment status:
+
+```bash
+kubectl describe zarfpackagejob deploy-s3 -n default
+```
+
+Expected output (relevant sections):
+
+```text
+Name:         deploy-s3
+Namespace:    default
+Status:
+  Phase:             Succeeded
+  Completion Time:   2025-12-19T10:05:30Z
+  Message:          Package deployed successfully to namespace games
+```
+
 ## Policy Enforcement
 
 Forge uses `ServiceAccount` annotations to enforce policies.
@@ -203,6 +299,18 @@ metadata:
     forge.forge.dev/allowed-actions: "Build,Publish"
     forge.forge.dev/allowed-source-repos: "https://github.com/myorg/*"
     forge.forge.dev/allowed-publish-registries: "ghcr.io/myorg/*"
+```
+
+Apply with:
+
+```bash
+kubectl apply -f restricted-builder-sa.yaml
+```
+
+Expected output:
+
+```text
+serviceaccount/restricted-builder created
 ```
 
 **Note**: In namespace-scoped deployments, all ServiceAccounts must be created in the `forge-system` namespace.
@@ -231,10 +339,27 @@ Forge creates Kubernetes Jobs for each operation. If an operation fails:
     kubectl get ZarfPackageJob my-package -o yaml
     ```
 
+    Expected output (showing failed status):
+
+    ```text
+    status:
+      phase: Failed
+      message: "Build failed: package validation error"
+      startTime: "2025-12-19T10:00:00Z"
+      completionTime: "2025-12-19T10:02:30Z"
+    ```
+
 2. Find the failed Job (named `<package-name>-<action>`):
 
     ```bash
     kubectl get jobs -l forge.forge.dev/package=my-package
+    ```
+
+    Expected output:
+
+    ```text
+    NAME                  COMPLETIONS   DURATION   AGE
+    my-package-build      0/1           2m30s      3m
     ```
 
 3. Check the Job logs:

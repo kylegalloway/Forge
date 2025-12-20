@@ -109,6 +109,25 @@ Build the controller and webhook images locally:
 make container-build IMG=forge-controller:demo WEBHOOK_IMG=forge-webhook:demo
 ```
 
+Expected output:
+
+```text
+Building controller image: forge-controller:demo
+[+] Building 45.2s (18/18) FINISHED
+ => [internal] load build definition from Dockerfile
+ => => transferring dockerfile: 1.23kB
+ => [internal] load .dockerignore
+ => [builder 6/6] RUN CGO_ENABLED=0 GOOS=linux go build -a -o controller cmd/controller/main.go
+ => [builder 7/7] RUN CGO_ENABLED=0 GOOS=linux go build -a -o webhook cmd/webhook/main.go
+ => exporting to image
+ => => exporting layers
+ => => writing image sha256:abc123...
+ => => naming to docker.io/library/forge-controller:demo
+ => => naming to docker.io/library/forge-webhook:demo
+
+Successfully built forge-controller:demo and forge-webhook:demo
+```
+
 This builds the images and tags them as `forge-controller:demo` and `forge-webhook:demo`.
 
 ### 3. Load Images into Kind
@@ -120,6 +139,13 @@ Kind clusters can't pull from your local Docker/Podman registry, so you need to 
 ```bash
 kind load docker-image forge-controller:demo --name forge-demo
 kind load docker-image forge-webhook:demo --name forge-demo
+```
+
+Expected output:
+
+```text
+Image: "forge-controller:demo" with ID "sha256:abc123..." not yet present on node "forge-demo-control-plane", loading...
+Image: "forge-webhook:demo" with ID "sha256:def456..." not yet present on node "forge-demo-control-plane", loading...
 ```
 
 **For Podman users:**
@@ -140,6 +166,14 @@ Verify the images are loaded:
 ```bash
 # Check images in Kind cluster (works with both Docker and Podman)
 docker exec -it forge-demo-control-plane crictl images | grep -E 'forge|zarf'
+```
+
+Expected output:
+
+```text
+forge-controller            demo        abc123def456   100MB
+forge-webhook               demo        def456abc123   95MB
+localhost/zarf              v0.66.0     789abc012def   45MB
 ```
 
 **Build and load Zarf CLI image:**
@@ -233,6 +267,13 @@ kubectl apply -f examples/service-accounts/simple-test-sa.yaml
 kubectl apply -f examples/zarfpackagejobs/hello-forge-test.yaml
 ```
 
+Expected output:
+
+```text
+serviceaccount/simple-test-sa created
+zarfpackagejob.forge.forge.dev/hello-forge-test created
+```
+
 **Note:** This uses a minimal test package specifically designed for resource-constrained environments. The build should complete successfully in 15-30 seconds.
 
 Watch the job:
@@ -241,10 +282,27 @@ Watch the job:
 kubectl get zarfpackagejobs -A -w
 ```
 
+Expected output:
+
+```text
+NAMESPACE   NAME               PHASE      AGE
+default     hello-forge-test   Pending    2s
+default     hello-forge-test   Running    5s
+default     hello-forge-test   Succeeded  35s
+```
+
 View controller logs:
 
 ```bash
 kubectl logs -n forge-system -l app=forge-controller -f
+```
+
+Expected output:
+
+```text
+{"level":"info","ts":1703001234.567,"msg":"Reconciling ZarfPackageJob","name":"hello-forge-test","namespace":"default"}
+{"level":"info","ts":1703001235.123,"msg":"Creating build job","name":"hello-forge-test","namespace":"default"}
+{"level":"info","ts":1703001265.890,"msg":"Job completed successfully","name":"hello-forge-test","namespace":"default"}
 ```
 
 Verify the controller processed the job:

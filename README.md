@@ -133,7 +133,7 @@ helm install forge forge/forge \
   --version 0.1.1
 ```
 
-**Container Images**: `ghcr.io/kylegalloway/forge/forge-controller:v0.1.1` and `forge-webhook:v0.1.1`
+**Container Images**: `ghcr.io/kylegalloway/forge/forge-controller:v0.1.1` and `ghcr.io/kylegalloway/forge/forge-webhook:v0.1.1`
 
 **Custom Configuration**:
 
@@ -150,6 +150,28 @@ helm install forge forge/forge \
 📖 **User Guide**: See [docs/getting-started/USER_GUIDE.md](docs/getting-started/USER_GUIDE.md) for complete usage examples
 📖 **Deployment Guide**: See [DEPLOYMENT.md](DEPLOYMENT.md) for deployment scenarios and configurations
 📖 **Helm Chart Docs**: See [chart/README.md](chart/README.md) for all configuration options
+
+### For Testing
+
+Want to try Forge locally without building from source? Use Kind with published images:
+
+```bash
+# Create Kind cluster
+kind create cluster --name forge-test
+
+# Add Helm repo and install Forge
+helm repo add forge https://kylegalloway.github.io/forge
+helm install forge forge/forge --namespace forge-system --create-namespace --wait
+
+# Pull and load Zarf CLI image
+podman pull ghcr.io/kylegalloway/forge/zarf-cli:v0.66.0
+podman tag ghcr.io/kylegalloway/forge/zarf-cli:v0.66.0 localhost/zarf:v0.66.0
+podman save localhost/zarf:v0.66.0 -o /tmp/zarf-cli.tar
+kind load image-archive /tmp/zarf-cli.tar --name forge-test
+rm /tmp/zarf-cli.tar
+```
+
+📖 **Testing Guide**: See [docs/getting-started/KIND_TESTING_PUBLIC_IMAGES.md](docs/getting-started/KIND_TESTING_PUBLIC_IMAGES.md) for complete testing setup
 
 ### For Developers
 

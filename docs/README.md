@@ -7,6 +7,7 @@ Documentation for the Forge Zarf Package Job controller.
 New to Forge? Start here:
 
 - **[User Guide](getting-started/USER_GUIDE.md)** - Overview of Forge concepts and basic usage
+- **[Kind Testing with Public Images](getting-started/KIND_TESTING_PUBLIC_IMAGES.md)** - Quick testing guide using pre-built images
 - **[Kind Setup](getting-started/KIND_SETUP.md)** - Complete guide for local development with Kind
 
 ## Operations

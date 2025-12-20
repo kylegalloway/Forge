@@ -212,42 +212,46 @@ udspackagejobs.forge.dev      2025-12-19T10:00:00Z
 zarfpackagejobs.forge.dev     2025-12-19T10:00:00Z
 ```
 
-### 5. Pull and Load Zarf CLI Image
+### 5. Build and Load Zarf CLI Image
 
-Forge requires a containerized Zarf CLI for build and deploy operations. Pull the published image and load it into Kind:
+Forge requires a containerized Zarf CLI for build and deploy operations. Unlike the Forge controller and webhook, the Zarf CLI image must be built locally because the Zarf project doesn't publish container images.
+
+**Why build is needed**: Zarf only publishes binaries, not container images. Forge includes a Dockerfile that downloads the official Zarf binary and packages it into a container.
+
+**Clone the Forge repo (if you haven't already):**
 
 ```bash
-# Pull from GHCR
-podman pull ghcr.io/kylegalloway/forge/zarf-cli:v0.66.0
+git clone https://github.com/kylegalloway/forge.git
+cd forge
+```
 
-# Tag for Kind
-podman tag ghcr.io/kylegalloway/forge/zarf-cli:v0.66.0 localhost/zarf:v0.66.0
+**Build and load the image:**
 
-# Save and load into Kind
+```bash
+# Using Docker
+docker build -t localhost/zarf:v0.66.0 images/zarf-cli/
+kind load docker-image localhost/zarf:v0.66.0 --name forge-test
+
+# OR using Podman
+podman build -t localhost/zarf:v0.66.0 images/zarf-cli/
 podman save localhost/zarf:v0.66.0 -o /tmp/zarf-cli.tar
 kind load image-archive /tmp/zarf-cli.tar --name forge-test
 rm /tmp/zarf-cli.tar
 ```
 
-Expected output:
+Expected output during build:
 
 ```text
-Trying to pull ghcr.io/kylegalloway/forge/zarf-cli:v0.66.0...
-Getting image source signatures
-Copying blob 5d3b2c2d21bb done
-Copying config e8c96af1c3 done
-Writing manifest to image destination
-e8c96af1c3cbd...
+[+] Building 45.2s (10/10) FINISHED
+ => [1/5] FROM docker.io/library/alpine:3.20
+ => [2/5] RUN apk add --no-cache ca-certificates git curl bash
+ => [3/5] RUN ARCH=$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/')...
+ => [4/5] RUN adduser -D -u 1000 zarf...
+ => [5/5] RUN zarf version
+ => exporting to image
+ => => naming to localhost/zarf:v0.66.0
 
-Image loaded: forge-test
-```
-
-**Using Docker:**
-
-```bash
-docker pull ghcr.io/kylegalloway/forge/zarf-cli:v0.66.0
-docker tag ghcr.io/kylegalloway/forge/zarf-cli:v0.66.0 localhost/zarf:v0.66.0
-kind load docker-image localhost/zarf:v0.66.0 --name forge-test
+Image: "localhost/zarf:v0.66.0" with ID "sha256:..." not yet present on node "forge-test-control-plane", loading...
 ```
 
 Verify the image is loaded:
@@ -274,26 +278,25 @@ metadata:
   name: test-builder
   namespace: default
   annotations:
-    forge.forge.dev/allowed-actions: "build,publish,deploy"
-    forge.forge.dev/allowed-repos: "https://github.com/*"
-    forge.forge.dev/allowed-registries: "ghcr.io/*,registry1.dso.mil/*"
-    forge.forge.dev/allowed-namespaces: "default,zarf"
+    forge.dev/allowed-actions: "Build,Publish,Deploy"
+    forge.dev/allowed-source-repos: "https://github.com/*"
+    forge.dev/allowed-registries: "ghcr.io/*,registry1.dso.mil/*"
+    forge.dev/allowed-namespaces: "default,zarf"
 ---
-apiVersion: forge.forge.dev/v1alpha1
+apiVersion: forge.dev/v1alpha1
 kind: ZarfPackageJob
 metadata:
   name: hello-forge
   namespace: default
 spec:
   serviceAccountName: test-builder
-  action: build
+  action: Build
   source:
+    type: Git
     git:
       url: https://github.com/defenseunicorns/zarf
       ref: v0.32.0
       path: examples/dos-games
-  buildOptions:
-    output: /workspace/output
 EOF
 ```
 
@@ -301,7 +304,7 @@ Expected output:
 
 ```text
 serviceaccount/test-builder created
-zarfpackagejob.forge.forge.dev/hello-forge created
+zarfpackagejob.forge.dev/hello-forge created
 ```
 
 Watch the job progress:
@@ -353,7 +356,7 @@ Expected output (showing relevant sections):
 ```text
 Name:         hello-forge
 Namespace:    default
-API Version:  forge.forge.dev/v1alpha1
+API Version:  forge.dev/v1alpha1
 Kind:         ZarfPackageJob
 Spec:
   Action:  build
@@ -386,7 +389,7 @@ Deleted nodes: ["forge-test-control-plane"]
 Test building a Zarf package from Git:
 
 ```yaml
-apiVersion: forge.forge.dev/v1alpha1
+apiVersion: forge.dev/v1alpha1
 kind: ZarfPackageJob
 metadata:
   name: build-test
@@ -408,7 +411,7 @@ spec:
 Test building and publishing to an OCI registry:
 
 ```yaml
-apiVersion: forge.forge.dev/v1alpha1
+apiVersion: forge.dev/v1alpha1
 kind: ZarfPackageJob
 metadata:
   name: build-publish-test
@@ -442,7 +445,7 @@ kubectl create secret generic registry-creds \
 Test deploying a package from an OCI registry:
 
 ```yaml
-apiVersion: forge.forge.dev/v1alpha1
+apiVersion: forge.dev/v1alpha1
 kind: ZarfPackageJob
 metadata:
   name: deploy-test
@@ -464,7 +467,7 @@ spec:
 Test UDS bundle operations:
 
 ```yaml
-apiVersion: forge.forge.dev/v1alpha1
+apiVersion: forge.dev/v1alpha1
 kind: UDSPackageJob
 metadata:
   name: uds-test
@@ -625,9 +628,15 @@ If job pods show `ImagePullBackOff` for `localhost/zarf:v0.66.0`:
 # Verify image is in Kind cluster
 docker exec -it forge-test-control-plane crictl images | grep zarf
 
-# If missing, reload it
-podman pull ghcr.io/kylegalloway/forge/zarf-cli:v0.66.0
-podman tag ghcr.io/kylegalloway/forge/zarf-cli:v0.66.0 localhost/zarf:v0.66.0
+# If missing, build and load it
+cd /path/to/forge  # Your Forge repo clone
+
+# Using Docker
+docker build -t localhost/zarf:v0.66.0 images/zarf-cli/
+kind load docker-image localhost/zarf:v0.66.0 --name forge-test
+
+# OR using Podman
+podman build -t localhost/zarf:v0.66.0 images/zarf-cli/
 podman save localhost/zarf:v0.66.0 -o /tmp/zarf-cli.tar
 kind load image-archive /tmp/zarf-cli.tar --name forge-test
 rm /tmp/zarf-cli.tar
@@ -701,9 +710,9 @@ kubectl logs -n forge-system -l app=forge-webhook --tail=50
 kubectl get sa <service-account> -n <namespace> -o yaml
 
 # Verify annotations match job requirements:
-# - forge.forge.dev/allowed-actions: must include the action (build/publish/deploy)
-# - forge.forge.dev/allowed-repos: must match source Git URL
-# - forge.forge.dev/allowed-registries: must match destination registry
+# - forge.dev/allowed-actions: must include the action (build/publish/deploy)
+# - forge.dev/allowed-repos: must match source Git URL
+# - forge.dev/allowed-registries: must match destination registry
 ```
 
 ### Kind Cluster Issues

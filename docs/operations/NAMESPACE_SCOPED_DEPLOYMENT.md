@@ -158,8 +158,8 @@ metadata:
   name: my-sa
   namespace: forge-system  # REQUIRED
   annotations:
-    forge.forge.dev/allowed-actions: "Build,Publish"
-    forge.forge.dev/allowed-source-repos: "https://github.com/myorg/*"
+    forge.dev/allowed-actions: "Build,Publish"
+    forge.dev/allowed-source-repos: "https://github.com/myorg/*"
 ```
 
 ### Creating Secrets
@@ -319,7 +319,7 @@ kubectl get zarfpackagejobs -A -o yaml > all-packages.yaml
 kubectl apply -f all-packages.yaml
 
 # 3. Migrate ServiceAccounts to forge-system
-kubectl get sa -A -o yaml | grep "forge.forge.dev/" > all-sa.yaml
+kubectl get sa -A -o yaml | grep "forge.dev/" > all-sa.yaml
 # Edit to change namespaces to forge-system
 kubectl apply -f all-sa.yaml
 

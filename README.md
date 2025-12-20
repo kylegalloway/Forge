@@ -104,13 +104,13 @@ metadata:
   # namespace: forge-system  # namespace-scoped mode (all SAs must be here)
   annotations:
     # What actions are allowed
-    forge.forge.dev/allowed-actions: "Build,Publish"
+    forge.dev/allowed-actions: "Build,Publish"
 
     # Which Git repos can be used
-    forge.forge.dev/allowed-source-repos: "https://github.com/myorg/*"
+    forge.dev/allowed-source-repos: "https://github.com/myorg/*"
 
     # Where packages can be published
-    forge.forge.dev/allowed-publish-registries: "ghcr.io/myorg/dev/*"
+    forge.dev/allowed-publish-registries: "ghcr.io/myorg/dev/*"
 ```
 
 The admission webhook validates all operations against these policies before creation.

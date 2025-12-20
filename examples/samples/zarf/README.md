@@ -52,18 +52,21 @@ kubectl get zarfpackagejobs local-to-s3-example -w
 ## Monitoring
 
 ### Check Status
+
 ```bash
 kubectl get zarfpackagejobs
 kubectl describe zarfpackagejob <name>
 ```
 
 ### View Job Logs
+
 ```bash
-kubectl get jobs -l forge.forge.dev/package=<package-name>
+kubectl get jobs -l forge.dev/package=<package-name>
 kubectl logs job/<job-name>
 ```
 
 ### Check Metrics
+
 ```bash
 kubectl port-forward -n forge-system svc/forge-controller 8080:8080
 curl http://localhost:8080/metrics | grep zarf

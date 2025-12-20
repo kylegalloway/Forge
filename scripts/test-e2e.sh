@@ -36,8 +36,8 @@ metadata:
   labels:
     test: e2e
   annotations:
-    forge.forge.dev/allowed-actions: "Build"
-    forge.forge.dev/allowed-source-repos: "github.com/defenseunicorns/*"
+    forge.dev/allowed-actions: "Build"
+    forge.dev/allowed-source-repos: "github.com/defenseunicorns/*"
 EOF
 
 echo "✓ ServiceAccount created"
@@ -135,13 +135,13 @@ metadata:
   labels:
     test: e2e
   annotations:
-    forge.forge.dev/allowed-actions: "*"
-    forge.forge.dev/allowed-source-repos: "*"
-    forge.forge.dev/allowed-source-buckets: "*"
-    forge.forge.dev/allowed-source-registries: "*"
-    forge.forge.dev/allowed-publish-buckets: "*"
-    forge.forge.dev/allowed-publish-registries: "*"
-    forge.forge.dev/allowed-deploy-targets: "*"
+    forge.dev/allowed-actions: "*"
+    forge.dev/allowed-source-repos: "*"
+    forge.dev/allowed-source-buckets: "*"
+    forge.dev/allowed-source-registries: "*"
+    forge.dev/allowed-publish-buckets: "*"
+    forge.dev/allowed-publish-registries: "*"
+    forge.dev/allowed-deploy-targets: "*"
 EOF
 
 echo "✓ Platform ServiceAccount created"

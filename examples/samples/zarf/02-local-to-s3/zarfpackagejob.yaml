@@ -14,13 +14,13 @@ metadata:
   namespace: default
   annotations:
     # Allow Build and Publish actions
-    forge.forge.dev/allowed-actions: "Build,Publish,BuildPublish"
+    forge.dev/allowed-actions: "Build,Publish,BuildPublish"
 
     # Allow local sources
-    forge.forge.dev/allowed-source-types: "Local"
+    forge.dev/allowed-source-types: "Local"
 
     # Allow publishing to S3 buckets
-    forge.forge.dev/allowed-publish-s3-buckets: "my-zarf-packages/*"
+    forge.dev/allowed-publish-s3-buckets: "my-zarf-packages/*"
 
 ---
 # Secret containing AWS credentials for S3

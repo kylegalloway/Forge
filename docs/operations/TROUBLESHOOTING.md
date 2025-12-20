@@ -87,7 +87,7 @@ kind: ServiceAccount
 metadata:
   name: dev-sa
   annotations:
-    forge.forge.dev/allowed-actions: "Build,Publish,Deploy"  # Add Deploy
+    forge.dev/allowed-actions: "Build,Publish,Deploy"  # Add Deploy
 ```text
 
 ### Git repository not allowed
@@ -103,7 +103,7 @@ Update ServiceAccount to allow the repository pattern:
 
 ```yaml
 annotations:
-  forge.forge.dev/allowed-source-repos: "https://github.com/myorg/*,https://github.com/other/*"
+  forge.dev/allowed-source-repos: "https://github.com/myorg/*,https://github.com/other/*"
 ```text
 
 **Note:** Patterns use glob matching. Use `*` for wildcard, e.g., `https://github.com/myorg/*` matches all repos under myorg.
@@ -120,9 +120,9 @@ S3 bucket my-prod-bucket is not allowed (allowed buckets: [my-dev-*])
 
 ```yaml
 annotations:
-  forge.forge.dev/allowed-source-buckets: "my-dev-*,my-prod-*"
+  forge.dev/allowed-source-buckets: "my-dev-*,my-prod-*"
   # or for publish:
-  forge.forge.dev/allowed-publish-buckets: "my-artifacts-*"
+  forge.dev/allowed-publish-buckets: "my-artifacts-*"
 ```text
 
 ### Local sources denied
@@ -130,14 +130,14 @@ annotations:
 **Symptoms:**
 
 ```text
-local sources are not allowed (set annotation forge.forge.dev/allow-local-sources: true for dev mode)
+local sources are not allowed (set annotation forge.dev/allow-local-sources: true for dev mode)
 ```text
 
 **Solution (DEV/TEST ONLY):**
 
 ```yaml
 annotations:
-  forge.forge.dev/allow-local-sources: "true"
+  forge.dev/allow-local-sources: "true"
 ```text
 
 **Warning:** Only enable for development/testing. Never in production.
@@ -152,7 +152,7 @@ annotations:
 
 ```bash
 # Find the job
-kubectl get jobs -l forge.forge.dev/package=my-package
+kubectl get jobs -l forge.dev/package=my-package
 
 # Get logs
 kubectl logs job/my-package-build-xxxxx

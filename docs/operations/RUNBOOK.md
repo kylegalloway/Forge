@@ -139,9 +139,9 @@ metadata:
   name: team-dev-sa
   namespace: team-dev
   annotations:
-    forge.forge.dev/allowed-actions: "Build,Publish"
-    forge.forge.dev/allowed-source-repos: "https://github.com/myorg/*"
-    forge.forge.dev/allowed-publish-registries: "ghcr.io/myorg/*"
+    forge.dev/allowed-actions: "Build,Publish"
+    forge.dev/allowed-source-repos: "https://github.com/myorg/*"
+    forge.dev/allowed-publish-registries: "ghcr.io/myorg/*"
 ```
 
 1. Create namespace ResourceQuota (if needed):
@@ -171,9 +171,9 @@ metadata:
   name: team-dev-sa
   namespace: forge-system  # Must be in forge-system
   annotations:
-    forge.forge.dev/allowed-actions: "Build,Publish"
-    forge.forge.dev/allowed-source-repos: "https://github.com/myorg/*"
-    forge.forge.dev/allowed-publish-registries: "ghcr.io/myorg/*"
+    forge.dev/allowed-actions: "Build,Publish"
+    forge.dev/allowed-source-repos: "https://github.com/myorg/*"
+    forge.dev/allowed-publish-registries: "ghcr.io/myorg/*"
 ```
 
 1. Apply ResourceQuota to forge-system namespace:
@@ -554,7 +554,7 @@ kubectl create secret docker-registry oci-creds \
 2. **ServiceAccounts with policies** (critical)
 
    ```bash
-   kubectl get sa -A -o yaml | grep -A 50 "forge.forge.dev/" > serviceaccounts-backup.yaml
+   kubectl get sa -A -o yaml | grep -A 50 "forge.dev/" > serviceaccounts-backup.yaml
    ```
 
 3. **Active ZarfPackageJobs** (important)

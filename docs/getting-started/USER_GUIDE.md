@@ -296,9 +296,9 @@ metadata:
   namespace: default  # cluster-wide mode
   # namespace: forge-system  # namespace-scoped mode (all SAs must be here)
   annotations:
-    forge.forge.dev/allowed-actions: "Build,Publish"
-    forge.forge.dev/allowed-source-repos: "https://github.com/myorg/*"
-    forge.forge.dev/allowed-publish-registries: "ghcr.io/myorg/*"
+    forge.dev/allowed-actions: "Build,Publish"
+    forge.dev/allowed-source-repos: "https://github.com/myorg/*"
+    forge.dev/allowed-publish-registries: "ghcr.io/myorg/*"
 ```
 
 Apply with:
@@ -352,7 +352,7 @@ Forge creates Kubernetes Jobs for each operation. If an operation fails:
 2. Find the failed Job (named `<package-name>-<action>`):
 
     ```bash
-    kubectl get jobs -l forge.forge.dev/package=my-package
+    kubectl get jobs -l forge.dev/package=my-package
     ```
 
     Expected output:

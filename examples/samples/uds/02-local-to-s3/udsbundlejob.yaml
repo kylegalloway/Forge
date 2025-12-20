@@ -14,13 +14,13 @@ metadata:
   namespace: default
   annotations:
     # Allow Create and Publish actions
-    forge.forge.dev/allowed-bundle-actions: "Create,Publish,CreatePublish"
+    forge.dev/allowed-bundle-actions: "Create,Publish,CreatePublish"
 
     # Allow local sources
-    forge.forge.dev/allowed-bundle-source-types: "Local"
+    forge.dev/allowed-bundle-source-types: "Local"
 
     # Allow publishing to S3 buckets
-    forge.forge.dev/allowed-bundle-publish-s3-buckets: "my-uds-bundles/*"
+    forge.dev/allowed-bundle-publish-s3-buckets: "my-uds-bundles/*"
 
 ---
 # Secret for AWS S3 credentials

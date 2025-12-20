@@ -8,16 +8,16 @@ metadata:
   namespace: default
   annotations:
     # Allow Build and Publish actions
-    forge.forge.dev/allowed-actions: "Build,Publish"
+    forge.dev/allowed-actions: "Build,Publish"
 
     # Allow test repositories (hello-forge test + zarf-public-test for dos-games)
-    forge.forge.dev/allowed-source-repos: "https://github.com/defenseunicorns/zarf-public-test,https://github.com/kylegalloway/forge"
+    forge.dev/allowed-source-repos: "https://github.com/defenseunicorns/zarf-public-test,https://github.com/kylegalloway/forge"
 
     # Allow publishing to test registries
-    forge.forge.dev/allowed-publish-registries: "ghcr.io/*"
+    forge.dev/allowed-publish-registries: "ghcr.io/*"
 
     # Allow in-cluster deployments
-    forge.forge.dev/allowed-deploy-targets: "InCluster"
+    forge.dev/allowed-deploy-targets: "InCluster"
 
     # Allow local sources for testing
-    forge.forge.dev/allow-local-sources: "true"
+    forge.dev/allow-local-sources: "true"

@@ -35,7 +35,8 @@ For production deployment with published images, see [USER_GUIDE.md](USER_GUIDE.
 kind create cluster --name forge-demo
 
 # 2. Build Forge controller and webhook images
-make container-build IMG=forge-controller:demo WEBHOOK_IMG=forge-webhook:demo
+make podman-build IMG=forge-controller:demo TARGET=controller
+make podman-build IMG=forge-webhook:demo TARGET=webhook
 
 # 3. Load images into Kind
 # For Docker:
@@ -67,9 +68,9 @@ rm /tmp/zarf-cli.tar
 helm upgrade --install forge ./chart/forge \
   --namespace forge-system \
   --create-namespace \
-  --set controller.image.repository=forge-controller \
+  --set controller.image.repository=localhost/forge-controller \
   --set controller.image.tag=demo \
-  --set webhook.image.repository=forge-webhook \
+  --set webhook.image.repository=localhost/forge-webhook \
   --set webhook.image.tag=demo
 
 # 6. Wait for Forge to be ready
@@ -106,7 +107,8 @@ Build the controller and webhook images locally:
 
 ```bash
 # From the forge project root
-make container-build IMG=forge-controller:demo WEBHOOK_IMG=forge-webhook:demo
+make podman-build IMG=forge-controller:demo TARGET=controller
+make podman-build IMG=forge-webhook:demo TARGET=webhook
 ```
 
 Expected output:
@@ -271,7 +273,7 @@ Expected output:
 
 ```text
 serviceaccount/simple-test-sa created
-zarfpackagejob.forge.forge.dev/hello-forge-test created
+zarfpackagejob.forge.dev/hello-forge-test created
 ```
 
 **Note:** This uses a minimal test package specifically designed for resource-constrained environments. The build should complete successfully in 15-30 seconds.

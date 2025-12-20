@@ -15,13 +15,13 @@ metadata:
   namespace: default
   annotations:
     # Allow Build and Publish actions
-    forge.forge.dev/allowed-actions: "Build,Publish,BuildPublish"
+    forge.dev/allowed-actions: "Build,Publish,BuildPublish"
 
     # Allow fetching from this repository
-    forge.forge.dev/allowed-source-repos: "https://github.com/kylegalloway/forge/*"
+    forge.dev/allowed-source-repos: "https://github.com/kylegalloway/forge/*"
 
     # Allow publishing to target OCI registry
-    forge.forge.dev/allowed-publish-registries: "ghcr.io/myorg/packages/*"
+    forge.dev/allowed-publish-registries: "ghcr.io/myorg/packages/*"
 
 ---
 # Secret containing OCI registry credentials

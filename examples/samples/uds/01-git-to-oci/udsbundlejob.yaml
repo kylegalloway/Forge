@@ -14,13 +14,13 @@ metadata:
   namespace: default
   annotations:
     # Allow Create and Publish actions
-    forge.forge.dev/allowed-bundle-actions: "Create,Publish,CreatePublish"
+    forge.dev/allowed-bundle-actions: "Create,Publish,CreatePublish"
 
     # Allow fetching from this repository
-    forge.forge.dev/allowed-bundle-source-repos: "https://github.com/kylegalloway/forge/*"
+    forge.dev/allowed-bundle-source-repos: "https://github.com/kylegalloway/forge/*"
 
     # Allow publishing to target OCI registry
-    forge.forge.dev/allowed-bundle-publish-registries: "ghcr.io/myorg/bundles/*"
+    forge.dev/allowed-bundle-publish-registries: "ghcr.io/myorg/bundles/*"
 
 ---
 # Secret for OCI registry credentials

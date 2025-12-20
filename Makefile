@@ -248,3 +248,16 @@ dev-logs: ## Tail logs from controller and latest job.
 	else \
 		echo "No jobs found"; \
 	fi
+##@ Release
+
+.PHONY: release-patch
+release-patch: ## Release a new patch version (0.0.X).
+	@./scripts/release.sh patch
+
+.PHONY: release-minor
+release-minor: ## Release a new minor version (0.X.0).
+	@./scripts/release.sh minor
+
+.PHONY: release-major
+release-major: ## Release a new major version (X.0.0).
+	@./scripts/release.sh major

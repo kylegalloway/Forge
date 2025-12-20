@@ -25,6 +25,7 @@ Running Forge in production:
 Contributing to Forge:
 
 - **[Testing Guide](development/TESTING.md)** - Running tests and writing new ones
+- **[Releasing Guide](development/RELEASING.md)** - Automated version releases
 - **[Attestation Verification](development/ATTESTATION_VERIFICATION.md)** - SLSA provenance and verification
 - **[ServiceAccount Reference](development/SERVICEACCOUNT_REFERENCE.md)** - Policy annotations and RBAC
 

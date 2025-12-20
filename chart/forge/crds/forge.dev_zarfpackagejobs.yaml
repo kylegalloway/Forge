@@ -320,7 +320,7 @@ spec:
               serviceAccountName:
                 description: |-
                   ServiceAccountName references the ServiceAccount that defines permissions for this job
-                  The ServiceAccount must have forge.forge.dev/* annotations defining allowed actions
+                  The ServiceAccount must have forge.dev/* annotations defining allowed actions
                   Cluster admins control what users can do by creating ServiceAccounts with appropriate annotations
                 type: string
               source:

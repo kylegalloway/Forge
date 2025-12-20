@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	zarfv1alpha1 "github.com/kylegalloway/forge/pkg/apis/zarf/v1alpha1"
+	"github.com/kylegalloway/forge/pkg/constants"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/fake"
@@ -31,8 +32,8 @@ func TestValidateZarfPackageJob_ValidBuild(t *testing.T) {
 			Name:      "test-sa",
 			Namespace: "default",
 			Annotations: map[string]string{
-				annotationAllowedActions:     "Build,Publish",
-				annotationAllowedSourceRepos: "https://github.com/test/*",
+				constants.AnnotationAllowedActions:     "Build,Publish",
+				constants.AnnotationAllowedSourceRepos: "https://github.com/test/*",
 			},
 		},
 	}
@@ -105,7 +106,7 @@ func TestValidateAction(t *testing.T) {
 		{
 			name: "action allowed",
 			annotations: map[string]string{
-				annotationAllowedActions: "Build,Publish",
+				constants.AnnotationAllowedActions: "Build,Publish",
 			},
 			action:  zarfv1alpha1.ActionBuild,
 			wantErr: false,
@@ -113,7 +114,7 @@ func TestValidateAction(t *testing.T) {
 		{
 			name: "action not allowed",
 			annotations: map[string]string{
-				annotationAllowedActions: "Build",
+				constants.AnnotationAllowedActions: "Build",
 			},
 			action:        zarfv1alpha1.ActionPublish,
 			wantErr:       true,
@@ -129,7 +130,7 @@ func TestValidateAction(t *testing.T) {
 		{
 			name: "compound action allowed",
 			annotations: map[string]string{
-				annotationAllowedActions: "Build,Publish,Deploy,BuildPublish",
+				constants.AnnotationAllowedActions: "Build,Publish,Deploy,BuildPublish",
 			},
 			action:  zarfv1alpha1.ActionBuildPublish,
 			wantErr: false,
@@ -172,7 +173,7 @@ func TestValidateSource(t *testing.T) {
 		{
 			name: "git source allowed",
 			annotations: map[string]string{
-				annotationAllowedSourceRepos: "https://github.com/myorg/*",
+				constants.AnnotationAllowedSourceRepos: "https://github.com/myorg/*",
 			},
 			source: &zarfv1alpha1.PackageSource{
 				Type: zarfv1alpha1.SourceTypeGit,
@@ -185,7 +186,7 @@ func TestValidateSource(t *testing.T) {
 		{
 			name: "git source not allowed",
 			annotations: map[string]string{
-				annotationAllowedSourceRepos: "https://github.com/myorg/*",
+				constants.AnnotationAllowedSourceRepos: "https://github.com/myorg/*",
 			},
 			source: &zarfv1alpha1.PackageSource{
 				Type: zarfv1alpha1.SourceTypeGit,
@@ -199,7 +200,7 @@ func TestValidateSource(t *testing.T) {
 		{
 			name: "OCI source allowed",
 			annotations: map[string]string{
-				annotationAllowedSourceRegistries: "ghcr.io/myorg/*",
+				constants.AnnotationAllowedSourceRegistries: "ghcr.io/myorg/*",
 			},
 			source: &zarfv1alpha1.PackageSource{
 				Type: zarfv1alpha1.SourceTypeOCI,
@@ -212,7 +213,7 @@ func TestValidateSource(t *testing.T) {
 		{
 			name: "S3 source allowed",
 			annotations: map[string]string{
-				annotationAllowedSourceBuckets: "my-bucket,other-bucket",
+				constants.AnnotationAllowedSourceBuckets: "my-bucket,other-bucket",
 			},
 			source: &zarfv1alpha1.PackageSource{
 				Type: zarfv1alpha1.SourceTypeS3,
@@ -262,7 +263,7 @@ func TestValidatePublish(t *testing.T) {
 		{
 			name: "OCI publish allowed",
 			annotations: map[string]string{
-				annotationAllowedPublishRegistries: "ghcr.io/myorg/*",
+				constants.AnnotationAllowedPublishRegistries: "ghcr.io/myorg/*",
 			},
 			publish: &zarfv1alpha1.PublishConfig{
 				Destination: zarfv1alpha1.PublishDestination{
@@ -279,7 +280,7 @@ func TestValidatePublish(t *testing.T) {
 		{
 			name: "OCI publish not allowed",
 			annotations: map[string]string{
-				annotationAllowedPublishRegistries: "ghcr.io/myorg/*",
+				constants.AnnotationAllowedPublishRegistries: "ghcr.io/myorg/*",
 			},
 			publish: &zarfv1alpha1.PublishConfig{
 				Destination: zarfv1alpha1.PublishDestination{
@@ -296,7 +297,7 @@ func TestValidatePublish(t *testing.T) {
 		{
 			name: "S3 publish allowed",
 			annotations: map[string]string{
-				annotationAllowedPublishBuckets: "publish-bucket,backup-bucket",
+				constants.AnnotationAllowedPublishBuckets: "publish-bucket,backup-bucket",
 			},
 			publish: &zarfv1alpha1.PublishConfig{
 				Destination: zarfv1alpha1.PublishDestination{
@@ -348,7 +349,7 @@ func TestValidateDeploy(t *testing.T) {
 		{
 			name: "in-cluster deploy allowed",
 			annotations: map[string]string{
-				annotationAllowedDeployTargets: "InCluster",
+				constants.AnnotationAllowedDeployTargets: "InCluster",
 			},
 			deploy: &zarfv1alpha1.DeployConfig{
 				Target:    zarfv1alpha1.DeployTargetInCluster,
@@ -359,7 +360,7 @@ func TestValidateDeploy(t *testing.T) {
 		{
 			name: "deploy target not allowed",
 			annotations: map[string]string{
-				annotationAllowedDeployTargets: "InCluster",
+				constants.AnnotationAllowedDeployTargets: "InCluster",
 			},
 			deploy: &zarfv1alpha1.DeployConfig{
 				Target: zarfv1alpha1.DeployTargetExternalCluster,
@@ -458,6 +459,9 @@ func TestMatchesGlob(t *testing.T) {
 		{"empty pattern", "anything", "", false},
 		{"complex wildcard", "ghcr.io/myorg/prod/package", "ghcr.io/myorg/*/package", true},
 		{"asterisk matches all", "anything", "*", true},
+		{"multi-segment URL match", "https://github.com/defenseunicorns/zarf", "https://github.com/*", true},
+		{"multi-segment URL with path", "https://github.com/defenseunicorns/zarf/examples/dos-games", "https://github.com/*", true},
+		{"multi-segment registry match", "ghcr.io/myorg/team/package", "ghcr.io/*", true},
 	}
 
 	for _, tt := range tests {

@@ -85,7 +85,7 @@ const (
 // It is NOT a UDS bundle definition (which uses uds-bundle.yaml format).
 type UDSBundleJobSpec struct {
 	// ServiceAccountName references the ServiceAccount that defines permissions for this job
-	// The ServiceAccount must have forge.forge.dev/* annotations defining allowed actions
+	// The ServiceAccount must have forge.dev/* annotations defining allowed actions
 	// Cluster admins control what users can do by creating ServiceAccounts with appropriate annotations
 	// +kubebuilder:validation:Required
 	ServiceAccountName string `json:"serviceAccountName"`

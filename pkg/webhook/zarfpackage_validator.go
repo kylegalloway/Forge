@@ -7,13 +7,13 @@
 //   - Deploy targets are permitted
 //
 // ServiceAccount annotations define permissions using glob patterns:
-//   - forge.forge.dev/allowed-actions: Comma-separated list of allowed actions
-//   - forge.forge.dev/allowed-source-repos: Glob patterns for Git sources
-//   - forge.forge.dev/allowed-source-registries: Glob patterns for OCI sources
-//   - forge.forge.dev/allowed-source-buckets: Glob patterns for S3 sources
-//   - forge.forge.dev/allowed-publish-registries: Glob patterns for OCI publish
-//   - forge.forge.dev/allowed-publish-buckets: Glob patterns for S3 publish
-//   - forge.forge.dev/allowed-deploy-targets: Comma-separated list (InCluster, ExternalCluster)
+//   - forge.dev/allowed-actions: Comma-separated list of allowed actions
+//   - forge.dev/allowed-source-repos: Glob patterns for Git sources
+//   - forge.dev/allowed-source-registries: Glob patterns for OCI sources
+//   - forge.dev/allowed-source-buckets: Glob patterns for S3 sources
+//   - forge.dev/allowed-publish-registries: Glob patterns for OCI publish
+//   - forge.dev/allowed-publish-buckets: Glob patterns for S3 publish
+//   - forge.dev/allowed-deploy-targets: Comma-separated list (InCluster, ExternalCluster)
 package webhook
 
 import (
@@ -23,21 +23,11 @@ import (
 	"strings"
 
 	zarfv1alpha1 "github.com/kylegalloway/forge/pkg/apis/zarf/v1alpha1"
+	"github.com/kylegalloway/forge/pkg/constants"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog/v2"
-)
-
-const (
-	// ServiceAccount annotation keys
-	annotationAllowedActions           = "forge.forge.dev/allowed-actions"
-	annotationAllowedSourceRepos       = "forge.forge.dev/allowed-source-repos"
-	annotationAllowedSourceRegistries  = "forge.forge.dev/allowed-source-registries"
-	annotationAllowedSourceBuckets     = "forge.forge.dev/allowed-source-buckets"
-	annotationAllowedPublishRegistries = "forge.forge.dev/allowed-publish-registries"
-	annotationAllowedPublishBuckets    = "forge.forge.dev/allowed-publish-buckets"
-	annotationAllowedDeployTargets     = "forge.forge.dev/allowed-deploy-targets"
 )
 
 // ZarfPackageJobValidator validates ZarfPackageJob resources against ServiceAccount permissions
@@ -92,7 +82,7 @@ func (validator *ZarfPackageJobValidator) ValidateZarfPackageJob(ctx context.Con
 
 // validateAction checks if the action is allowed by the ServiceAccount
 func (validator *ZarfPackageJobValidator) validateAction(sa *corev1.ServiceAccount, action zarfv1alpha1.Action) error {
-	allowedActions := getAnnotation(sa, annotationAllowedActions)
+	allowedActions := getAnnotation(sa, constants.AnnotationAllowedActions)
 	if allowedActions == "" {
 		return fmt.Errorf("ServiceAccount %s has no allowed-actions annotation", sa.Name)
 	}
@@ -141,7 +131,7 @@ func (validator *ZarfPackageJobValidator) validateSource(sa *corev1.ServiceAccou
 
 // validateGitSource validates Git source permissions
 func (validator *ZarfPackageJobValidator) validateGitSource(sa *corev1.ServiceAccount, git *zarfv1alpha1.GitSource) error {
-	allowedRepos := getAnnotation(sa, annotationAllowedSourceRepos)
+	allowedRepos := getAnnotation(sa, constants.AnnotationAllowedSourceRepos)
 	if allowedRepos == "" {
 		return fmt.Errorf("ServiceAccount %s has no allowed-source-repos annotation", sa.Name)
 	}
@@ -160,7 +150,7 @@ func (validator *ZarfPackageJobValidator) validateGitSource(sa *corev1.ServiceAc
 
 // validateS3Source validates S3 source permissions
 func (validator *ZarfPackageJobValidator) validateS3Source(sa *corev1.ServiceAccount, s3 *zarfv1alpha1.S3Source) error {
-	allowedBuckets := getAnnotation(sa, annotationAllowedSourceBuckets)
+	allowedBuckets := getAnnotation(sa, constants.AnnotationAllowedSourceBuckets)
 	if allowedBuckets == "" {
 		return fmt.Errorf("ServiceAccount %s has no allowed-source-buckets annotation", sa.Name)
 	}
@@ -179,7 +169,7 @@ func (validator *ZarfPackageJobValidator) validateS3Source(sa *corev1.ServiceAcc
 
 // validateOCISource validates OCI source permissions
 func (validator *ZarfPackageJobValidator) validateOCISource(sa *corev1.ServiceAccount, oci *zarfv1alpha1.OCISource) error {
-	allowedRegistries := getAnnotation(sa, annotationAllowedSourceRegistries)
+	allowedRegistries := getAnnotation(sa, constants.AnnotationAllowedSourceRegistries)
 	if allowedRegistries == "" {
 		return fmt.Errorf("ServiceAccount %s has no allowed-source-registries annotation", sa.Name)
 	}
@@ -223,7 +213,7 @@ func (validator *ZarfPackageJobValidator) validatePublish(sa *corev1.ServiceAcco
 
 // validateS3Publish validates S3 publish permissions
 func (validator *ZarfPackageJobValidator) validateS3Publish(sa *corev1.ServiceAccount, s3 *zarfv1alpha1.S3Destination) error {
-	allowedBuckets := getAnnotation(sa, annotationAllowedPublishBuckets)
+	allowedBuckets := getAnnotation(sa, constants.AnnotationAllowedPublishBuckets)
 	if allowedBuckets == "" {
 		return fmt.Errorf("ServiceAccount %s has no allowed-publish-buckets annotation", sa.Name)
 	}
@@ -242,7 +232,7 @@ func (validator *ZarfPackageJobValidator) validateS3Publish(sa *corev1.ServiceAc
 
 // validateOCIPublish validates OCI publish permissions
 func (validator *ZarfPackageJobValidator) validateOCIPublish(sa *corev1.ServiceAccount, oci *zarfv1alpha1.OCIDestination) error {
-	allowedRegistries := getAnnotation(sa, annotationAllowedPublishRegistries)
+	allowedRegistries := getAnnotation(sa, constants.AnnotationAllowedPublishRegistries)
 	if allowedRegistries == "" {
 		return fmt.Errorf("ServiceAccount %s has no allowed-publish-registries annotation", sa.Name)
 	}
@@ -264,7 +254,7 @@ func (validator *ZarfPackageJobValidator) validateOCIPublish(sa *corev1.ServiceA
 
 // validateDeploy validates deploy target permissions
 func (validator *ZarfPackageJobValidator) validateDeploy(sa *corev1.ServiceAccount, deploy *zarfv1alpha1.DeployConfig) error {
-	allowedTargets := getAnnotation(sa, annotationAllowedDeployTargets)
+	allowedTargets := getAnnotation(sa, constants.AnnotationAllowedDeployTargets)
 	if allowedTargets == "" {
 		return fmt.Errorf("ServiceAccount %s has no allowed-deploy-targets annotation", sa.Name)
 	}
@@ -290,10 +280,25 @@ func getAnnotation(sa *corev1.ServiceAccount, key string) string {
 
 // matchesGlob checks if a string matches a glob pattern
 func matchesGlob(s, pattern string) bool {
+	// Try filepath.Match first for standard glob patterns
 	matched, err := filepath.Match(pattern, s)
 	if err != nil {
 		klog.V(4).InfoS("Invalid glob pattern", "pattern", pattern, "error", err)
-		return false
+		// Continue to prefix matching even if pattern is invalid
 	}
-	return matched
+	if matched {
+		return true
+	}
+
+	// Fallback: if pattern ends with *, do simple prefix matching
+	// This handles cases like "https://github.com/*" matching "https://github.com/org/repo"
+	// where filepath.Match would fail because * doesn't cross path separators
+	if strings.HasSuffix(pattern, "*") {
+		prefix := strings.TrimSuffix(pattern, "*")
+		if strings.HasPrefix(s, prefix) {
+			return true
+		}
+	}
+
+	return false
 }

@@ -13,16 +13,16 @@ import (
 // Constants for attestation annotations
 const (
 	// AnnotationGenerateAttestation enables attestation generation
-	AnnotationGenerateAttestation = "forge.forge.dev/generate-attestation"
+	AnnotationGenerateAttestation = "forge.dev/generate-attestation"
 
 	// AnnotationTrackProvenance enables provenance tracking
-	AnnotationTrackProvenance = "forge.forge.dev/track-provenance"
+	AnnotationTrackProvenance = "forge.dev/track-provenance"
 
 	// AnnotationAttestationReference stores the OCI reference to the attestation
-	AnnotationAttestationReference = "forge.forge.dev/attestation-reference"
+	AnnotationAttestationReference = "forge.dev/attestation-reference"
 
 	// AnnotationAttestationDigest stores the digest of the attestation
-	AnnotationAttestationDigest = "forge.forge.dev/attestation-digest"
+	AnnotationAttestationDigest = "forge.dev/attestation-digest"
 )
 
 // Status field keys for attestation

@@ -314,8 +314,8 @@ kind: ZarfPackageJob
 metadata:
   name: my-package
   annotations:
-    forge.forge.dev/generate-attestation: "true"
-    forge.forge.dev/track-provenance: "true"
+    forge.dev/generate-attestation: "true"
+    forge.dev/track-provenance: "true"
 spec:
   # ... rest of spec
 ```

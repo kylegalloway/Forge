@@ -1,9 +1,9 @@
 # Image URL to use all building/pushing image targets
 IMG ?= forge-controller:latest
+# Build target (can be overridden)
+TARGET ?= controller
 # Kubernetes namespace for deployment
 NAMESPACE ?= forge-system
-# Container runtime (docker or podman)
-CONTAINER_RUNTIME ?= $(shell command -v podman 2>/dev/null || command -v docker 2>/dev/null || echo docker)
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
@@ -68,20 +68,19 @@ build: fmt vet ## Build controller binary.
 run: fmt vet ## Run controller from your host.
 	go run cmd/controller/main.go -kubeconfig=${HOME}/.kube/config -v=2
 
-.PHONY: container-build
-container-build: ## Build container image with the controller.
-	$(CONTAINER_RUNTIME) build -t ${IMG} .
+.PHONY: docker-build
+docker-build: ## Build container image with docker.
+	docker build --target ${TARGET} -t ${IMG} .
+
+.PHONY: podman-build
+podman-build: ## Build container image with podman.
+	podman build --target ${TARGET} --iidfile ${TARGET}.iid .
+	podman tag "$$(cat ${TARGET}.iid)" ${IMG}
+	rm -f ${TARGET}.iid
 
 .PHONY: container-push
 container-push: ## Push container image with the controller.
 	$(CONTAINER_RUNTIME) push ${IMG}
-
-# Legacy aliases for backwards compatibility
-.PHONY: docker-build
-docker-build: container-build ## Alias for container-build (legacy).
-
-.PHONY: docker-push
-docker-push: container-push ## Alias for container-push (legacy).
 
 ##@ Deployment
 

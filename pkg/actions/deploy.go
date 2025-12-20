@@ -12,6 +12,7 @@ import (
 	"k8s.io/klog/v2"
 
 	zarfv1alpha1 "github.com/kylegalloway/forge/pkg/apis/zarf/v1alpha1"
+	"github.com/kylegalloway/forge/pkg/constants"
 	"github.com/kylegalloway/forge/pkg/sources"
 	"github.com/kylegalloway/forge/pkg/telemetry"
 )
@@ -101,9 +102,9 @@ func (handler *DeployHandler) createDeployJob(ctx context.Context, pkg *zarfv1al
 			Name:      jobName,
 			Namespace: namespace,
 			Labels: map[string]string{
-				"app":                     "forge",
-				"forge.forge.dev/package": pkg.Name,
-				"forge.forge.dev/action":  "deploy",
+				"app":                  "forge",
+				constants.LabelPackage: pkg.Name,
+				constants.LabelAction:  "deploy",
 			},
 			OwnerReferences: []metav1.OwnerReference{
 				*metav1.NewControllerRef(pkg, zarfv1alpha1.SchemeGroupVersion.WithKind("ZarfPackageJob")),
@@ -116,9 +117,9 @@ func (handler *DeployHandler) createDeployJob(ctx context.Context, pkg *zarfv1al
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{
-						"app":                     "forge",
-						"forge.forge.dev/package": pkg.Name,
-						"forge.forge.dev/action":  "deploy",
+						"app":                  "forge",
+						constants.LabelPackage: pkg.Name,
+						constants.LabelAction:  "deploy",
 					},
 				},
 				Spec: corev1.PodSpec{

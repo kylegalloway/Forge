@@ -12,6 +12,7 @@ import (
 	"k8s.io/klog/v2"
 
 	udsv1alpha1 "github.com/kylegalloway/forge/pkg/apis/uds/v1alpha1"
+	"github.com/kylegalloway/forge/pkg/constants"
 	"github.com/kylegalloway/forge/pkg/telemetry"
 )
 
@@ -96,9 +97,9 @@ func (handler *DeployHandler) createDeployJob(ctx context.Context, bundle *udsv1
 			Name:      jobName,
 			Namespace: namespace,
 			Labels: map[string]string{
-				"app":                    "forge-uds",
-				"forge.forge.dev/bundle": bundle.Name,
-				"forge.forge.dev/action": "deploy",
+				"app":                  "forge-uds",
+				constants.LabelPackage: bundle.Name,
+				constants.LabelAction:  "deploy",
 			},
 			OwnerReferences: []metav1.OwnerReference{
 				*metav1.NewControllerRef(bundle, udsv1alpha1.SchemeGroupVersion.WithKind("UDSBundleJob")),
@@ -111,9 +112,9 @@ func (handler *DeployHandler) createDeployJob(ctx context.Context, bundle *udsv1
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{
-						"app":                    "forge-uds",
-						"forge.forge.dev/bundle": bundle.Name,
-						"forge.forge.dev/action": "deploy",
+						"app":                  "forge-uds",
+						constants.LabelPackage: bundle.Name,
+						constants.LabelAction:  "deploy",
 					},
 				},
 				Spec: corev1.PodSpec{

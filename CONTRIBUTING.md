@@ -361,6 +361,6 @@ kubectl get crd zarfpackagejobs.forge.dev -o yaml | grep -A 5 versions
 
 - Open an issue for bugs or feature requests
 - Check existing issues and PRs
-- Review [docs/REFACTOR_PLAN.md](docs/REFACTOR_PLAN.md) for architecture details
+- Review the `docs/` directory for detailed guides
 
 Happy forging!

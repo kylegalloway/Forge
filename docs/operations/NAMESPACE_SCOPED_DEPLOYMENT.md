@@ -439,7 +439,7 @@ kubectl get all,zarfpackagejobs,sa,secrets -n forge-system -o yaml > forge-backu
 
 ## Examples
 
-See [examples/zarfpackagejobs/](../../examples/zarfpackagejobs/) for examples. All examples work in namespace-scoped mode when applied to forge-system namespace.
+See [examples/samples/](../../examples/samples/) for workflow examples. All examples work in namespace-scoped mode when applied to forge-system namespace.
 
 ---
 

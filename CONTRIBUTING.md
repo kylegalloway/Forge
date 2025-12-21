@@ -89,7 +89,7 @@ kubectl get pods -n forge-system
 
 ```bash
 # Apply a sample ZarfPackageJob
-kubectl apply -f examples/zarfpackagejobs/build-only-git.yaml
+kubectl apply -f examples/samples/zarf/01-git-to-oci/zarfpackagejob.yaml
 
 # Check status
 kubectl get zarfpackagejobs
@@ -115,7 +115,7 @@ make vet
 make kind-redeploy
 
 # 4. Test with samples
-kubectl apply -f examples/zarfpackagejobs/build-publish-deploy-git.yaml
+kubectl apply -f examples/samples/zarf/01-git-to-oci/zarfpackagejob.yaml
 
 # 5. Check logs and status
 kubectl logs -n forge-system -l app=forge-controller -f
@@ -216,16 +216,16 @@ go tool cover -html=coverage.out
 
 ```bash
 # Apply test resource
-kubectl apply -f examples/zarfpackagejobs/build-only-git.yaml
+kubectl apply -f examples/samples/zarf/01-git-to-oci/zarfpackagejob.yaml
 
 # Wait for completion
-kubectl wait --for=condition=BuildComplete --timeout=300s ZarfPackageJob/test-build
+kubectl wait --for=condition=BuildComplete --timeout=300s ZarfPackageJob/git-to-oci-example
 
 # Check status
-kubectl get zp test-build -o yaml
+kubectl get zp git-to-oci-example -o yaml
 
 # Cleanup
-kubectl delete zp test-build
+kubectl delete zp git-to-oci-example
 ```
 
 ## Code Style and Standards

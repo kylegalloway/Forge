@@ -28,7 +28,7 @@ Configure your external Prometheus to scrape these endpoints, or use port-forwar
    kubectl logs -n {{ include "forge.namespace" . }} -l app.kubernetes.io/component=controller -f
 
 3. Create a ZarfPackageJob:
-   kubectl apply -f examples/samples/build-example.yaml
+   kubectl apply -f examples/samples/zarf/01-git-to-oci/zarfpackagejob.yaml
 
 4. Monitor the job:
    kubectl get zarfpackagejobs -A

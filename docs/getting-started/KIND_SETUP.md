@@ -265,18 +265,18 @@ Create a sample ZarfPackageJob:
 # Create the required ServiceAccount with policy annotations
 kubectl apply -f examples/service-accounts/simple-test-sa.yaml
 
-# Apply the hello-forge test job (lightweight, will succeed)
-kubectl apply -f examples/zarfpackagejobs/hello-forge-test.yaml
+# Apply a sample Zarf package job (update OCI credentials in the YAML first)
+kubectl apply -f examples/samples/zarf/01-git-to-oci/zarfpackagejob.yaml
 ```
 
 Expected output:
 
 ```text
 serviceaccount/simple-test-sa created
-zarfpackagejob.forge.dev/hello-forge-test created
+zarfpackagejob.forge.dev/git-to-oci-example created
 ```
 
-**Note:** This uses a minimal test package specifically designed for resource-constrained environments. The build should complete successfully in 15-30 seconds.
+**Note:** Before applying, edit `examples/samples/zarf/01-git-to-oci/zarfpackagejob.yaml` to update the OCI registry credentials. See the example's README for details.
 
 Watch the job:
 

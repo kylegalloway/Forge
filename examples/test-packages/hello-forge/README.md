@@ -25,13 +25,15 @@ zarf package create . --confirm
 
 ## Using with Forge
 
-This package is used by the test ZarfPackageJob in `examples/zarfpackagejobs/hello-forge-test.yaml`.
+This package can be used to test Forge in resource-constrained environments. You can reference it from a ZarfPackageJob using a local source or by pointing to this directory in the repository.
 
-The job will:
+Example workflow:
 
 1. Clone this repository
-2. Navigate to this directory
+2. Point a ZarfPackageJob source to this directory
 3. Build the package
-4. Complete successfully
+4. Verify successful completion
 
 Expected build time: ~15-30 seconds in Kind
+
+See [examples/samples/](../../samples/) for complete ZarfPackageJob workflow examples.

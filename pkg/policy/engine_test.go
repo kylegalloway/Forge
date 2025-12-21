@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	udsv1alpha1 "github.com/kylegalloway/forge/pkg/apis/uds/v1alpha1"
 	zarfv1alpha1 "github.com/kylegalloway/forge/pkg/apis/zarf/v1alpha1"
 	"github.com/kylegalloway/forge/pkg/constants"
 	corev1 "k8s.io/api/core/v1"
@@ -929,4 +930,584 @@ func containsRec(str, substr string) bool {
 		}
 	}
 	return false
+}
+
+// UDS Bundle Validation Tests
+
+func TestValidateUDSBundle_MissingServiceAccount(t *testing.T) {
+	client := fake.NewSimpleClientset()
+	engine := NewEngine(client)
+
+	bundle := &udsv1alpha1.UDSBundleJob{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-bundle",
+			Namespace: "default",
+		},
+		Spec: udsv1alpha1.UDSBundleJobSpec{
+			ServiceAccountName: "",
+			Action:             udsv1alpha1.BundleActionCreate,
+		},
+	}
+
+	err := engine.ValidateUDSBundle(context.Background(), bundle)
+	if err == nil {
+		t.Fatal("expected error for missing serviceAccountName, got nil")
+	}
+	if err.Error() != "serviceAccountName is required" {
+		t.Errorf("unexpected error message: %v", err)
+	}
+}
+
+func TestValidateUDSBundle_ServiceAccountNotFound(t *testing.T) {
+	client := fake.NewSimpleClientset()
+	engine := NewEngine(client)
+
+	bundle := &udsv1alpha1.UDSBundleJob{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-bundle",
+			Namespace: "default",
+		},
+		Spec: udsv1alpha1.UDSBundleJobSpec{
+			ServiceAccountName: "nonexistent-sa",
+			Action:             udsv1alpha1.BundleActionCreate,
+		},
+	}
+
+	err := engine.ValidateUDSBundle(context.Background(), bundle)
+	if err == nil {
+		t.Fatal("expected error for nonexistent service account, got nil")
+	}
+}
+
+func TestValidateUDSBundle_ActionNotAllowed(t *testing.T) {
+	sa := &corev1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-sa",
+			Namespace: "default",
+			Annotations: map[string]string{
+				constants.AnnotationAllowedActions: "Create,Publish",
+			},
+		},
+	}
+
+	client := fake.NewSimpleClientset(sa)
+	engine := NewEngine(client)
+
+	bundle := &udsv1alpha1.UDSBundleJob{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-bundle",
+			Namespace: "default",
+		},
+		Spec: udsv1alpha1.UDSBundleJobSpec{
+			ServiceAccountName: "test-sa",
+			Action:             udsv1alpha1.BundleActionDeploy,
+			Source: udsv1alpha1.BundleSource{
+				Type: udsv1alpha1.BundleSourceTypeGit,
+				Git: &udsv1alpha1.GitSource{
+					URL: "https://github.com/test/repo",
+					Ref: "main",
+				},
+			},
+		},
+	}
+
+	err := engine.ValidateUDSBundle(context.Background(), bundle)
+	if err == nil {
+		t.Fatal("expected error for disallowed action, got nil")
+	}
+	if !contains(err.Error(), "action Deploy is not allowed") {
+		t.Errorf("unexpected error message: %v", err)
+	}
+}
+
+func TestValidateUDSBundle_GitSourceAllowed(t *testing.T) {
+	sa := &corev1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-sa",
+			Namespace: "default",
+			Annotations: map[string]string{
+				constants.AnnotationAllowedActions:     "Create",
+				constants.AnnotationAllowedSourceRepos: "https://github.com/test/*",
+			},
+		},
+	}
+
+	client := fake.NewSimpleClientset(sa)
+	engine := NewEngine(client)
+
+	bundle := &udsv1alpha1.UDSBundleJob{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-bundle",
+			Namespace: "default",
+		},
+		Spec: udsv1alpha1.UDSBundleJobSpec{
+			ServiceAccountName: "test-sa",
+			Action:             udsv1alpha1.BundleActionCreate,
+			Source: udsv1alpha1.BundleSource{
+				Type: udsv1alpha1.BundleSourceTypeGit,
+				Git: &udsv1alpha1.GitSource{
+					URL: "https://github.com/test/repo",
+					Ref: "main",
+				},
+			},
+		},
+	}
+
+	err := engine.ValidateUDSBundle(context.Background(), bundle)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestValidateUDSBundle_GitSourceNotAllowed(t *testing.T) {
+	sa := &corev1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-sa",
+			Namespace: "default",
+			Annotations: map[string]string{
+				constants.AnnotationAllowedActions:     "Create",
+				constants.AnnotationAllowedSourceRepos: "https://github.com/allowed/*",
+			},
+		},
+	}
+
+	client := fake.NewSimpleClientset(sa)
+	engine := NewEngine(client)
+
+	bundle := &udsv1alpha1.UDSBundleJob{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-bundle",
+			Namespace: "default",
+		},
+		Spec: udsv1alpha1.UDSBundleJobSpec{
+			ServiceAccountName: "test-sa",
+			Action:             udsv1alpha1.BundleActionCreate,
+			Source: udsv1alpha1.BundleSource{
+				Type: udsv1alpha1.BundleSourceTypeGit,
+				Git: &udsv1alpha1.GitSource{
+					URL: "https://github.com/forbidden/repo",
+					Ref: "main",
+				},
+			},
+		},
+	}
+
+	err := engine.ValidateUDSBundle(context.Background(), bundle)
+	if err == nil {
+		t.Fatal("expected error for disallowed git source, got nil")
+	}
+	if !contains(err.Error(), "is not allowed") {
+		t.Errorf("unexpected error message: %v", err)
+	}
+}
+
+func TestValidateUDSBundle_S3SourceAllowed(t *testing.T) {
+	sa := &corev1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-sa",
+			Namespace: "default",
+			Annotations: map[string]string{
+				constants.AnnotationAllowedActions:       "Deploy",
+				constants.AnnotationAllowedSourceBuckets: "allowed-bucket",
+				constants.AnnotationAllowedDeployTargets: "InCluster",
+			},
+		},
+	}
+
+	client := fake.NewSimpleClientset(sa)
+	engine := NewEngine(client)
+
+	bundle := &udsv1alpha1.UDSBundleJob{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-bundle",
+			Namespace: "default",
+		},
+		Spec: udsv1alpha1.UDSBundleJobSpec{
+			ServiceAccountName: "test-sa",
+			Action:             udsv1alpha1.BundleActionDeploy,
+			Source: udsv1alpha1.BundleSource{
+				Type: udsv1alpha1.BundleSourceTypeS3,
+				S3: &udsv1alpha1.S3Source{
+					Bucket: "allowed-bucket",
+					Key:    "bundles/test.tar.zst",
+					Region: "us-east-1",
+				},
+			},
+			Deploy: &udsv1alpha1.BundleDeployConfig{
+				Target:    udsv1alpha1.BundleDeployTargetInCluster,
+				Namespace: "default",
+			},
+		},
+	}
+
+	err := engine.ValidateUDSBundle(context.Background(), bundle)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestValidateUDSBundle_OCISourceAllowed(t *testing.T) {
+	sa := &corev1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-sa",
+			Namespace: "default",
+			Annotations: map[string]string{
+				constants.AnnotationAllowedActions:          "Deploy",
+				constants.AnnotationAllowedSourceRegistries: "ghcr.io/*",
+				constants.AnnotationAllowedDeployTargets:    "InCluster",
+			},
+		},
+	}
+
+	client := fake.NewSimpleClientset(sa)
+	engine := NewEngine(client)
+
+	bundle := &udsv1alpha1.UDSBundleJob{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-bundle",
+			Namespace: "default",
+		},
+		Spec: udsv1alpha1.UDSBundleJobSpec{
+			ServiceAccountName: "test-sa",
+			Action:             udsv1alpha1.BundleActionDeploy,
+			Source: udsv1alpha1.BundleSource{
+				Type: udsv1alpha1.BundleSourceTypeOCI,
+				OCI: &udsv1alpha1.OCISource{
+					Reference: "ghcr.io/test/bundle:v1.0.0",
+				},
+			},
+			Deploy: &udsv1alpha1.BundleDeployConfig{
+				Target:    udsv1alpha1.BundleDeployTargetInCluster,
+				Namespace: "default",
+			},
+		},
+	}
+
+	err := engine.ValidateUDSBundle(context.Background(), bundle)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestValidateUDSBundle_PublishDestinationOCIAllowed(t *testing.T) {
+	sa := &corev1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-sa",
+			Namespace: "default",
+			Annotations: map[string]string{
+				constants.AnnotationAllowedActions:           "Publish",
+				constants.AnnotationAllowedSourceRepos:       "*",
+				constants.AnnotationAllowedPublishRegistries: "ghcr.io/*",
+			},
+		},
+	}
+
+	client := fake.NewSimpleClientset(sa)
+	engine := NewEngine(client)
+
+	bundle := &udsv1alpha1.UDSBundleJob{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-bundle",
+			Namespace: "default",
+		},
+		Spec: udsv1alpha1.UDSBundleJobSpec{
+			ServiceAccountName: "test-sa",
+			Action:             udsv1alpha1.BundleActionPublish,
+			Source: udsv1alpha1.BundleSource{
+				Type: udsv1alpha1.BundleSourceTypeGit,
+				Git: &udsv1alpha1.GitSource{
+					URL: "https://github.com/test/repo",
+					Ref: "main",
+				},
+			},
+			Publish: &udsv1alpha1.BundlePublishConfig{
+				Destination: udsv1alpha1.BundleDestination{
+					Type: udsv1alpha1.BundleDestinationTypeOCI,
+					OCI: &udsv1alpha1.OCIDestination{
+						Registry:   "ghcr.io",
+						Repository: "test/bundles",
+						Tag:        "v1.0.0",
+					},
+				},
+			},
+		},
+	}
+
+	err := engine.ValidateUDSBundle(context.Background(), bundle)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestValidateUDSBundle_PublishDestinationS3Allowed(t *testing.T) {
+	sa := &corev1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-sa",
+			Namespace: "default",
+			Annotations: map[string]string{
+				constants.AnnotationAllowedActions:        "Publish",
+				constants.AnnotationAllowedSourceRepos:    "*",
+				constants.AnnotationAllowedPublishBuckets: "publish-bucket",
+			},
+		},
+	}
+
+	client := fake.NewSimpleClientset(sa)
+	engine := NewEngine(client)
+
+	bundle := &udsv1alpha1.UDSBundleJob{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-bundle",
+			Namespace: "default",
+		},
+		Spec: udsv1alpha1.UDSBundleJobSpec{
+			ServiceAccountName: "test-sa",
+			Action:             udsv1alpha1.BundleActionPublish,
+			Source: udsv1alpha1.BundleSource{
+				Type: udsv1alpha1.BundleSourceTypeGit,
+				Git: &udsv1alpha1.GitSource{
+					URL: "https://github.com/test/repo",
+					Ref: "main",
+				},
+			},
+			Publish: &udsv1alpha1.BundlePublishConfig{
+				Destination: udsv1alpha1.BundleDestination{
+					Type: udsv1alpha1.BundleDestinationTypeS3,
+					S3: &udsv1alpha1.S3Destination{
+						Bucket: "publish-bucket",
+						Key:    "bundles/",
+						Region: "us-east-1",
+					},
+				},
+			},
+		},
+	}
+
+	err := engine.ValidateUDSBundle(context.Background(), bundle)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestValidateUDSBundle_DeployTargetAllowed(t *testing.T) {
+	sa := &corev1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-sa",
+			Namespace: "default",
+			Annotations: map[string]string{
+				constants.AnnotationAllowedActions:       "Deploy",
+				constants.AnnotationAllowedSourceRepos:   "*",
+				constants.AnnotationAllowedDeployTargets: "InCluster",
+			},
+		},
+	}
+
+	client := fake.NewSimpleClientset(sa)
+	engine := NewEngine(client)
+
+	bundle := &udsv1alpha1.UDSBundleJob{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-bundle",
+			Namespace: "default",
+		},
+		Spec: udsv1alpha1.UDSBundleJobSpec{
+			ServiceAccountName: "test-sa",
+			Action:             udsv1alpha1.BundleActionDeploy,
+			Source: udsv1alpha1.BundleSource{
+				Type: udsv1alpha1.BundleSourceTypeGit,
+				Git: &udsv1alpha1.GitSource{
+					URL: "https://github.com/test/repo",
+					Ref: "main",
+				},
+			},
+			Deploy: &udsv1alpha1.BundleDeployConfig{
+				Target:    udsv1alpha1.BundleDeployTargetInCluster,
+				Namespace: "default",
+			},
+		},
+	}
+
+	err := engine.ValidateUDSBundle(context.Background(), bundle)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestValidateUDSBundle_DeployTargetNotAllowed(t *testing.T) {
+	sa := &corev1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-sa",
+			Namespace: "default",
+			Annotations: map[string]string{
+				constants.AnnotationAllowedActions:       "Deploy",
+				constants.AnnotationAllowedSourceRepos:   "*",
+				constants.AnnotationAllowedDeployTargets: "InCluster",
+			},
+		},
+	}
+
+	client := fake.NewSimpleClientset(sa)
+	engine := NewEngine(client)
+
+	bundle := &udsv1alpha1.UDSBundleJob{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-bundle",
+			Namespace: "default",
+		},
+		Spec: udsv1alpha1.UDSBundleJobSpec{
+			ServiceAccountName: "test-sa",
+			Action:             udsv1alpha1.BundleActionDeploy,
+			Source: udsv1alpha1.BundleSource{
+				Type: udsv1alpha1.BundleSourceTypeGit,
+				Git: &udsv1alpha1.GitSource{
+					URL: "https://github.com/test/repo",
+					Ref: "main",
+				},
+			},
+			Deploy: &udsv1alpha1.BundleDeployConfig{
+				Target: udsv1alpha1.BundleDeployTargetExternalCluster,
+			},
+		},
+	}
+
+	err := engine.ValidateUDSBundle(context.Background(), bundle)
+	if err == nil {
+		t.Fatal("expected error for disallowed deploy target, got nil")
+	}
+	if !contains(err.Error(), "not allowed") {
+		t.Errorf("unexpected error message: %v", err)
+	}
+}
+
+func TestValidateUDSBundle_CompleteWorkflow(t *testing.T) {
+	sa := &corev1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-sa",
+			Namespace: "default",
+			Annotations: map[string]string{
+				constants.AnnotationAllowedActions:           "CreatePublishDeploy",
+				constants.AnnotationAllowedSourceRepos:       "https://github.com/test/*",
+				constants.AnnotationAllowedPublishRegistries: "ghcr.io/test/*",
+				constants.AnnotationAllowedDeployTargets:     "InCluster",
+			},
+		},
+	}
+
+	client := fake.NewSimpleClientset(sa)
+	engine := NewEngine(client)
+
+	bundle := &udsv1alpha1.UDSBundleJob{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-bundle",
+			Namespace: "default",
+		},
+		Spec: udsv1alpha1.UDSBundleJobSpec{
+			ServiceAccountName: "test-sa",
+			Action:             udsv1alpha1.BundleActionCreatePublishDeploy,
+			Source: udsv1alpha1.BundleSource{
+				Type: udsv1alpha1.BundleSourceTypeGit,
+				Git: &udsv1alpha1.GitSource{
+					URL: "https://github.com/test/repo",
+					Ref: "main",
+				},
+			},
+			Publish: &udsv1alpha1.BundlePublishConfig{
+				Destination: udsv1alpha1.BundleDestination{
+					Type: udsv1alpha1.BundleDestinationTypeOCI,
+					OCI: &udsv1alpha1.OCIDestination{
+						Registry:   "ghcr.io",
+						Repository: "test/bundles",
+						Tag:        "v1.0.0",
+					},
+				},
+			},
+			Deploy: &udsv1alpha1.BundleDeployConfig{
+				Target:    udsv1alpha1.BundleDeployTargetInCluster,
+				Namespace: "default",
+			},
+		},
+	}
+
+	err := engine.ValidateUDSBundle(context.Background(), bundle)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestValidateUDSBundle_LocalSourceAllowed(t *testing.T) {
+	sa := &corev1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-sa",
+			Namespace: "default",
+			Annotations: map[string]string{
+				constants.AnnotationAllowedActions:    "Create",
+				constants.AnnotationAllowLocalSources: "true",
+			},
+		},
+	}
+
+	client := fake.NewSimpleClientset(sa)
+	engine := NewEngine(client)
+
+	bundle := &udsv1alpha1.UDSBundleJob{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-bundle",
+			Namespace: "default",
+		},
+		Spec: udsv1alpha1.UDSBundleJobSpec{
+			ServiceAccountName: "test-sa",
+			Action:             udsv1alpha1.BundleActionCreate,
+			Source: udsv1alpha1.BundleSource{
+				Type: udsv1alpha1.BundleSourceTypeLocal,
+				Local: &udsv1alpha1.LocalSource{
+					Path: "/tmp/bundle",
+				},
+			},
+		},
+	}
+
+	err := engine.ValidateUDSBundle(context.Background(), bundle)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestValidateUDSBundle_LocalSourceNotAllowed(t *testing.T) {
+	sa := &corev1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-sa",
+			Namespace: "default",
+			Annotations: map[string]string{
+				constants.AnnotationAllowedActions: "Create",
+			},
+		},
+	}
+
+	client := fake.NewSimpleClientset(sa)
+	engine := NewEngine(client)
+
+	bundle := &udsv1alpha1.UDSBundleJob{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-bundle",
+			Namespace: "default",
+		},
+		Spec: udsv1alpha1.UDSBundleJobSpec{
+			ServiceAccountName: "test-sa",
+			Action:             udsv1alpha1.BundleActionCreate,
+			Source: udsv1alpha1.BundleSource{
+				Type: udsv1alpha1.BundleSourceTypeLocal,
+				Local: &udsv1alpha1.LocalSource{
+					Path: "/tmp/bundle",
+				},
+			},
+		},
+	}
+
+	err := engine.ValidateUDSBundle(context.Background(), bundle)
+	if err == nil {
+		t.Fatal("expected error for disallowed local source, got nil")
+	}
+	if !contains(err.Error(), "not allowed") {
+		t.Errorf("unexpected error message: %v", err)
+	}
 }

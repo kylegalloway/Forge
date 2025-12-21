@@ -21,6 +21,7 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/klog/v2"
 
+	udsv1alpha1 "github.com/kylegalloway/forge/pkg/apis/uds/v1alpha1"
 	zarfv1alpha1 "github.com/kylegalloway/forge/pkg/apis/zarf/v1alpha1"
 	"github.com/kylegalloway/forge/pkg/webhook"
 )
@@ -39,6 +40,9 @@ func init() {
 	}
 	if err := zarfv1alpha1.AddToScheme(scheme); err != nil {
 		panic(fmt.Sprintf("failed to add zarfv1alpha1 to scheme: %v", err))
+	}
+	if err := udsv1alpha1.AddToScheme(scheme); err != nil {
+		panic(fmt.Sprintf("failed to add udsv1alpha1 to scheme: %v", err))
 	}
 }
 
@@ -60,12 +64,14 @@ func main() {
 		klog.Fatalf("Failed to create Kubernetes client: %v", err)
 	}
 
-	// Create ZarfPackageJob validator
-	validator := webhook.NewZarfPackageJobValidator(kubeClient)
+	// Create validators
+	zarfValidator := webhook.NewZarfPackageJobValidator(kubeClient)
+	udsValidator := webhook.NewUDSBundleJobValidator(kubeClient)
 
 	// Create webhook server
 	server := &WebhookServer{
-		validator: validator,
+		zarfValidator: zarfValidator,
+		udsValidator:  udsValidator,
 	}
 
 	// Set up HTTP handlers
@@ -105,9 +111,10 @@ func main() {
 	klog.Info("Webhook server stopped")
 }
 
-// WebhookServer handles admission webhook requests for ZarfPackageJob resources
+// WebhookServer handles admission webhook requests for ZarfPackageJob and UDSBundleJob resources
 type WebhookServer struct {
-	validator *webhook.ZarfPackageJobValidator
+	zarfValidator *webhook.ZarfPackageJobValidator
+	udsValidator  *webhook.UDSBundleJobValidator
 }
 
 // serveValidate handles validation webhook requests
@@ -161,6 +168,24 @@ func (ws *WebhookServer) serveValidate(w http.ResponseWriter, r *http.Request) {
 
 // validate performs the actual validation
 func (ws *WebhookServer) validate(ctx context.Context, request *admissionv1.AdmissionRequest) *admissionv1.AdmissionResponse {
+	// Determine resource type and route to appropriate validator
+	switch request.Kind.Kind {
+	case "ZarfPackageJob":
+		return ws.validateZarfPackageJob(ctx, request)
+	case "UDSBundleJob":
+		return ws.validateUDSBundleJob(ctx, request)
+	default:
+		return &admissionv1.AdmissionResponse{
+			Allowed: false,
+			Result: &metav1.Status{
+				Message: fmt.Sprintf("unknown resource kind: %s", request.Kind.Kind),
+			},
+		}
+	}
+}
+
+// validateZarfPackageJob validates a ZarfPackageJob resource
+func (ws *WebhookServer) validateZarfPackageJob(ctx context.Context, request *admissionv1.AdmissionRequest) *admissionv1.AdmissionResponse {
 	klog.InfoS("Validating ZarfPackageJob",
 		"name", request.Name,
 		"namespace", request.Namespace,
@@ -181,7 +206,7 @@ func (ws *WebhookServer) validate(ctx context.Context, request *admissionv1.Admi
 	}
 
 	// Validate the ZarfPackageJob against ServiceAccount permissions
-	if err := ws.validator.ValidateZarfPackageJob(ctx, &pkg); err != nil {
+	if err := ws.zarfValidator.ValidateZarfPackageJob(ctx, &pkg); err != nil {
 		klog.InfoS("Validation failed",
 			"name", pkg.Name,
 			"namespace", pkg.Namespace,
@@ -198,6 +223,51 @@ func (ws *WebhookServer) validate(ctx context.Context, request *admissionv1.Admi
 	klog.InfoS("Validation succeeded",
 		"name", pkg.Name,
 		"namespace", pkg.Namespace)
+
+	return &admissionv1.AdmissionResponse{
+		Allowed: true,
+	}
+}
+
+// validateUDSBundleJob validates a UDSBundleJob resource
+func (ws *WebhookServer) validateUDSBundleJob(ctx context.Context, request *admissionv1.AdmissionRequest) *admissionv1.AdmissionResponse {
+	klog.InfoS("Validating UDSBundleJob",
+		"name", request.Name,
+		"namespace", request.Namespace,
+		"operation", request.Operation,
+		"user", request.UserInfo.Username)
+
+	// Decode UDSBundleJob object
+	var bundle udsv1alpha1.UDSBundleJob
+	deserializer := codecs.UniversalDeserializer()
+	if _, _, err := deserializer.Decode(request.Object.Raw, nil, &bundle); err != nil {
+		klog.ErrorS(err, "Failed to decode UDSBundleJob")
+		return &admissionv1.AdmissionResponse{
+			Allowed: false,
+			Result: &metav1.Status{
+				Message: fmt.Sprintf("failed to decode UDSBundleJob: %v", err),
+			},
+		}
+	}
+
+	// Validate the UDSBundleJob against ServiceAccount permissions
+	if err := ws.udsValidator.ValidateUDSBundleJob(ctx, &bundle); err != nil {
+		klog.InfoS("Validation failed",
+			"name", bundle.Name,
+			"namespace", bundle.Namespace,
+			"error", err.Error())
+
+		return &admissionv1.AdmissionResponse{
+			Allowed: false,
+			Result: &metav1.Status{
+				Message: fmt.Sprintf("UDSBundleJob validation failed: %v", err),
+			},
+		}
+	}
+
+	klog.InfoS("Validation succeeded",
+		"name", bundle.Name,
+		"namespace", bundle.Namespace)
 
 	return &admissionv1.AdmissionResponse{
 		Allowed: true,

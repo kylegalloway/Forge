@@ -159,9 +159,11 @@ func (engine *Engine) validateDestination(dest zarfv1alpha1.PublishDestination, 
 		if dest.OCI == nil {
 			return fmt.Errorf("destination type is OCI but OCI config is nil")
 		}
-		if !matchAny(allowedRegistries, dest.OCI.Registry) {
+		// Construct full OCI reference for matching
+		ociRef := fmt.Sprintf("%s/%s", dest.OCI.Registry, dest.OCI.Repository)
+		if !matchAny(allowedRegistries, ociRef) {
 			return fmt.Errorf("OCI registry %s is not allowed (allowed registries: %v) for ServiceAccount %s",
-				dest.OCI.Registry, allowedRegistries, saName)
+				ociRef, allowedRegistries, saName)
 		}
 	case zarfv1alpha1.DestinationTypeLocal:
 		// Local destinations require explicit permission (dev mode only)

@@ -529,7 +529,7 @@ func TestValidate_PublishDestinationOCI(t *testing.T) {
 			Annotations: map[string]string{
 				constants.AnnotationAllowedActions:           "Publish",
 				constants.AnnotationAllowedSourceRepos:       "*",
-				constants.AnnotationAllowedPublishRegistries: "ghcr.io",
+				constants.AnnotationAllowedPublishRegistries: "ghcr.io/*",
 			},
 		},
 	}
@@ -579,7 +579,7 @@ func TestValidate_PublishDestinationOCINotAllowed(t *testing.T) {
 			Annotations: map[string]string{
 				constants.AnnotationAllowedActions:           "Publish",
 				constants.AnnotationAllowedSourceRepos:       "*",
-				constants.AnnotationAllowedPublishRegistries: "ghcr.io",
+				constants.AnnotationAllowedPublishRegistries: "ghcr.io/*",
 			},
 		},
 	}
@@ -618,6 +618,94 @@ func TestValidate_PublishDestinationOCINotAllowed(t *testing.T) {
 	err := engine.Validate(context.Background(), pkg)
 	if err == nil {
 		t.Fatal("expected error for disallowed OCI registry, got nil")
+	}
+	if !contains(err.Error(), "is not allowed") {
+		t.Errorf("unexpected error message: %v", err)
+	}
+}
+
+func TestValidate_PublishDestinationOCIWithRepositoryPattern(t *testing.T) {
+	sa := &corev1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-sa",
+			Namespace: "default",
+			Annotations: map[string]string{
+				constants.AnnotationAllowedActions:           "Publish",
+				constants.AnnotationAllowedSourceRepos:       "*",
+				constants.AnnotationAllowedPublishRegistries: "ghcr.io/myorg/*",
+			},
+		},
+	}
+
+	client := fake.NewSimpleClientset(sa)
+	engine := NewEngine(client)
+
+	// Test allowed repository
+	pkg := &zarfv1alpha1.ZarfPackageJob{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-pkg",
+			Namespace: "default",
+		},
+		Spec: zarfv1alpha1.ZarfPackageJobSpec{
+			ServiceAccountName: "test-sa",
+			Action:             zarfv1alpha1.ActionPublish,
+			Source: zarfv1alpha1.PackageSource{
+				Type: zarfv1alpha1.SourceTypeGit,
+				Git: &zarfv1alpha1.GitSource{
+					URL: "https://github.com/test/repo",
+					Ref: "main",
+				},
+			},
+			Publish: &zarfv1alpha1.PublishConfig{
+				Destination: zarfv1alpha1.PublishDestination{
+					Type: zarfv1alpha1.DestinationTypeOCI,
+					OCI: &zarfv1alpha1.OCIDestination{
+						Registry:   "ghcr.io",
+						Repository: "myorg/packages",
+						Tag:        "v1.0.0",
+					},
+				},
+			},
+		},
+	}
+
+	err := engine.Validate(context.Background(), pkg)
+	if err != nil {
+		t.Fatalf("unexpected error for allowed repository: %v", err)
+	}
+
+	// Test disallowed repository (different org)
+	pkg2 := &zarfv1alpha1.ZarfPackageJob{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-pkg-2",
+			Namespace: "default",
+		},
+		Spec: zarfv1alpha1.ZarfPackageJobSpec{
+			ServiceAccountName: "test-sa",
+			Action:             zarfv1alpha1.ActionPublish,
+			Source: zarfv1alpha1.PackageSource{
+				Type: zarfv1alpha1.SourceTypeGit,
+				Git: &zarfv1alpha1.GitSource{
+					URL: "https://github.com/test/repo",
+					Ref: "main",
+				},
+			},
+			Publish: &zarfv1alpha1.PublishConfig{
+				Destination: zarfv1alpha1.PublishDestination{
+					Type: zarfv1alpha1.DestinationTypeOCI,
+					OCI: &zarfv1alpha1.OCIDestination{
+						Registry:   "ghcr.io",
+						Repository: "otherorg/packages",
+						Tag:        "v1.0.0",
+					},
+				},
+			},
+		},
+	}
+
+	err = engine.Validate(context.Background(), pkg2)
+	if err == nil {
+		t.Fatal("expected error for disallowed repository, got nil")
 	}
 	if !contains(err.Error(), "is not allowed") {
 		t.Errorf("unexpected error message: %v", err)

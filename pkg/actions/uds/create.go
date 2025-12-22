@@ -146,20 +146,7 @@ func (handler *CreateHandler) createBundleJob(ctx context.Context, bundle *udsv1
 							Resources: handler.getResources(bundle),
 						},
 					},
-					Volumes: []corev1.Volume{
-						{
-							Name: "workspace",
-							VolumeSource: corev1.VolumeSource{
-								EmptyDir: &corev1.EmptyDirVolumeSource{},
-							},
-						},
-						{
-							Name: "output",
-							VolumeSource: corev1.VolumeSource{
-								EmptyDir: &corev1.EmptyDirVolumeSource{},
-							},
-						},
-					},
+					Volumes: handler.buildVolumes(bundle),
 					SecurityContext: &corev1.PodSecurityContext{
 						RunAsNonRoot: ptr(true),
 						RunAsUser:    ptr(int64(65532)),
@@ -208,15 +195,27 @@ func (handler *CreateHandler) buildInitContainers(bundle *udsv1alpha1.UDSBundleJ
 
 	// For Git sources, clone the repository directly
 	if bundle.Spec.Source.Type == udsv1alpha1.BundleSourceTypeGit && bundle.Spec.Source.Git != nil {
+		gitSource := bundle.Spec.Source.Git
+
+		// Construct git clone command (with or without credentials)
+		var cloneCmd string
+		if gitSource.DisableCloneCredentials {
+			cloneCmd = fmt.Sprintf("GIT_ASKPASS='' git clone --depth 1 --branch %s %s /workspace", gitSource.Ref, gitSource.URL)
+		} else {
+			cloneCmd = fmt.Sprintf("git clone --depth 1 --branch %s %s /workspace", gitSource.Ref, gitSource.URL)
+		}
+
+		if gitSource.Path != "" && gitSource.Path != "." {
+			cloneCmd = fmt.Sprintf("%s && cd /workspace && mv %s/* . && rm -rf %s", cloneCmd, gitSource.Path, gitSource.Path)
+		}
+
+		cloneCmd = fmt.Sprintf("%s && cd /workspace && ls -la", cloneCmd)
+
 		container := &corev1.Container{
 			Name:    "fetch-source",
 			Image:   "alpine/git:latest",
 			Command: []string{"/bin/sh", "-c"},
-			Args: []string{
-				fmt.Sprintf("git clone --depth 1 --branch %s %s /workspace && cd /workspace && ls -la",
-					bundle.Spec.Source.Git.Ref,
-					bundle.Spec.Source.Git.URL),
-			},
+			Args:    []string{cloneCmd},
 			VolumeMounts: []corev1.VolumeMount{
 				{
 					Name:      "workspace",
@@ -232,12 +231,79 @@ func (handler *CreateHandler) buildInitContainers(bundle *udsv1alpha1.UDSBundleJ
 				},
 			},
 		}
+
+		// Handle credentials if provided and not disabled  # pragma: allowlist secret
+		if gitSource.CredentialsSecretRef != nil && !gitSource.DisableCloneCredentials { // pragma: allowlist secret
+			// Mount secret to /etc/git-secret  # pragma: allowlist secret
+			container.VolumeMounts = append(container.VolumeMounts, corev1.VolumeMount{
+				Name:      "git-creds",
+				MountPath: "/etc/git-secret",
+				ReadOnly:  true,
+			})
+
+			// Setup command to configure credentials
+			// #nosec G101 - This is a shell script template, not a hardcoded credential  # pragma: allowlist secret
+			setupCmd := `
+if [ -f /etc/git-secret/ssh-key ]; then  # pragma: allowlist secret
+  mkdir -p ~/.ssh
+  cp /etc/git-secret/ssh-key ~/.ssh/id_rsa  # pragma: allowlist secret
+  chmod 600 ~/.ssh/id_rsa
+  echo "StrictHostKeyChecking no" >> ~/.ssh/config
+elif [ -f /etc/git-secret/token ]; then  # pragma: allowlist secret
+  git config --global credential.helper store
+  token=$(cat /etc/git-secret/token)  # pragma: allowlist secret
+  echo "https://oauth2:${token}@github.com" > ~/.git-credentials
+  echo "https://oauth2:${token}@gitlab.com" >> ~/.git-credentials
+fi
+`
+			// Prepend setup to clone command
+			cloneCmd = fmt.Sprintf("%s && %s", setupCmd, cloneCmd)
+			container.Args = []string{cloneCmd}
+		}
+
 		return []corev1.Container{*container}
 	}
 
 	// For other source types (S3, OCI), return empty for now
 	// These will be implemented as part of full source handler integration
 	return nil
+}
+
+// buildVolumes creates volumes for the create job
+func (handler *CreateHandler) buildVolumes(bundle *udsv1alpha1.UDSBundleJob) []corev1.Volume {
+	volumes := []corev1.Volume{
+		{
+			Name: "workspace",
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			},
+		},
+		{
+			Name: "output",
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			},
+		},
+	}
+
+	// Add git credentials volume if needed  # pragma: allowlist secret
+	if bundle.Spec.Source.Type == udsv1alpha1.BundleSourceTypeGit &&
+		bundle.Spec.Source.Git != nil &&
+		bundle.Spec.Source.Git.CredentialsSecretRef != nil && // pragma: allowlist secret
+		!bundle.Spec.Source.Git.DisableCloneCredentials {
+
+		secretName := bundle.Spec.Source.Git.CredentialsSecretRef.Name // pragma: allowlist secret
+		volumes = append(volumes, corev1.Volume{
+			Name: "git-creds",
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: secretName,
+				},
+			},
+		})
+	}
+
+	return volumes
 }
 
 // getResources returns resource requirements for the bundle create job

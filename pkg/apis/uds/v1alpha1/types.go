@@ -151,6 +151,11 @@ type GitSource struct {
 	// CredentialsSecretRef references a Secret containing Git credentials
 	// +optional
 	CredentialsSecretRef *corev1.SecretReference `json:"credentialsSecretRef,omitempty"`
+
+	// DisableCloneCredentials prevents using the credentials for clone operations
+	// +optional
+	// +kubebuilder:default=false
+	DisableCloneCredentials bool `json:"disableCloneCredentials,omitempty"`
 }
 
 // S3Source defines an S3 bucket source

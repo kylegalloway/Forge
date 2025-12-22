@@ -157,6 +157,29 @@ func TestGitSourceGetInitContainer(t *testing.T) {
 			wantErr: false,
 		},
 		{
+			name: "git clone with credentials disabled",
+			pkg: &zarfv1alpha1.ZarfPackageJob{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-pkg",
+					Namespace: "default",
+				},
+				Spec: zarfv1alpha1.ZarfPackageJobSpec{
+					Source: zarfv1alpha1.PackageSource{
+						Type: zarfv1alpha1.SourceTypeGit,
+						Git: &zarfv1alpha1.GitSource{
+							URL: "https://github.com/test/public-repo",
+							Ref: "main",
+							CredentialsSecretRef: &zarfv1alpha1.SecretReference{
+								Name: "git-creds",
+							},
+							DisableCloneCredentials: true,
+						},
+					},
+				},
+			},
+			wantErr: false,
+		},
+		{
 			name: "missing git config",
 			pkg: &zarfv1alpha1.ZarfPackageJob{
 				ObjectMeta: metav1.ObjectMeta{
@@ -192,9 +215,64 @@ func TestGitSourceGetInitContainer(t *testing.T) {
 				if len(container.Args) == 0 {
 					t.Error("Container has no args")
 				}
+
+				// Verify DisableCloneCredentials behavior
+				if tt.pkg.Spec.Source.Git != nil && tt.pkg.Spec.Source.Git.DisableCloneCredentials {
+					// Should contain GIT_ASKPASS=''
+					found := false
+					for _, arg := range container.Args {
+						if containsString(arg, "GIT_ASKPASS=''") {
+							found = true
+							break
+						}
+					}
+					if !found {
+						t.Error("DisableCloneCredentials is true but GIT_ASKPASS='' not found in command")
+					}
+
+					// Should NOT mount git-creds volume
+					for _, vm := range container.VolumeMounts {
+						if vm.Name == "git-creds" {
+							t.Error("DisableCloneCredentials is true but git-creds volume is mounted")
+						}
+					}
+				}
+
+				// Verify credentials are mounted when enabled  # pragma: allowlist secret
+				if tt.pkg.Spec.Source.Git != nil &&
+					tt.pkg.Spec.Source.Git.CredentialsSecretRef != nil && // pragma: allowlist secret
+					!tt.pkg.Spec.Source.Git.DisableCloneCredentials {
+					// Should mount git-creds volume
+					found := false
+					for _, vm := range container.VolumeMounts {
+						if vm.Name == "git-creds" { // pragma: allowlist secret
+							found = true
+							break
+						}
+					}
+					if !found {
+						t.Error("Credentials provided but git-creds volume not mounted")
+					}
+				}
 			}
 		})
 	}
+}
+
+// Helper function to check if a string contains a substring
+func containsString(s, substr string) bool {
+	return len(s) >= len(substr) && (s == substr || len(s) > len(substr) &&
+		(s[:len(substr)] == substr || s[len(s)-len(substr):] == substr ||
+			findSubstring(s, substr)))
+}
+
+func findSubstring(s, substr string) bool {
+	for i := 0; i <= len(s)-len(substr); i++ {
+		if s[i:i+len(substr)] == substr {
+			return true
+		}
+	}
+	return false
 }
 
 func TestS3SourceGetInitContainer(t *testing.T) {

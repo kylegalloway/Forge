@@ -18,7 +18,14 @@ func (source *GitSource) GetInitContainer(pkg *zarfv1alpha1.ZarfPackageJob) (*co
 		return nil, fmt.Errorf("git source configuration is missing")
 	}
 
-	cloneCmd := fmt.Sprintf("git clone --depth 1 --branch %s %s /workspace", gitSource.Ref, gitSource.URL)
+	// Construct git clone command (with or without credentials)
+	var cloneCmd string
+	if gitSource.DisableCloneCredentials {
+		cloneCmd = fmt.Sprintf("GIT_ASKPASS='' git clone --depth 1 --branch %s %s /workspace", gitSource.Ref, gitSource.URL)
+	} else {
+		cloneCmd = fmt.Sprintf("git clone --depth 1 --branch %s %s /workspace", gitSource.Ref, gitSource.URL)
+	}
+
 	if gitSource.Path != "" && gitSource.Path != "." {
 		cloneCmd = fmt.Sprintf("%s && cd /workspace && mv %s/* . && rm -rf %s", cloneCmd, gitSource.Path, gitSource.Path)
 	}
@@ -44,9 +51,9 @@ func (source *GitSource) GetInitContainer(pkg *zarfv1alpha1.ZarfPackageJob) (*co
 		},
 	}
 
-	// Handle credentials if provided
-	if gitSource.CredentialsSecretRef != nil {
-		// Mount secret to /etc/git-secret
+	// Handle credentials if provided  # pragma: allowlist secret
+	if gitSource.CredentialsSecretRef != nil && !gitSource.DisableCloneCredentials { // pragma: allowlist secret
+		// Mount secret to /etc/git-secret  # pragma: allowlist secret
 		container.VolumeMounts = append(container.VolumeMounts, corev1.VolumeMount{
 			Name:      "git-creds",
 			MountPath: "/etc/git-secret",

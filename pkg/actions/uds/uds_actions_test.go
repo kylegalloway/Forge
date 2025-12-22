@@ -750,3 +750,234 @@ func TestAddCredentialVolumes(t *testing.T) {
 		t.Errorf("addCredentialVolumes() S3 volumes = %v, want 0 (S3 uses env vars, not volumes)", len(job2.Spec.Template.Spec.Volumes))
 	}
 }
+
+// TestBuildInitContainers tests init container generation
+func TestBuildInitContainers(t *testing.T) {
+	handler := &CreateHandler{
+		kubeClient: fake.NewSimpleClientset(),
+		metrics:    mustNewMetrics(),
+		tracer:     telemetry.NewTracer(),
+	}
+
+	tests := []struct {
+		name                    string
+		bundle                  *udsv1alpha1.UDSBundleJob
+		wantContainerCount      int
+		wantGitAskpassInCmd     bool
+		wantGitCredsVolumeMount bool
+	}{
+		{
+			name: "git source without credentials",
+			bundle: &udsv1alpha1.UDSBundleJob{
+				Spec: udsv1alpha1.UDSBundleJobSpec{
+					Source: udsv1alpha1.BundleSource{
+						Type: udsv1alpha1.BundleSourceTypeGit,
+						Git: &udsv1alpha1.GitSource{
+							URL: "https://github.com/test/repo",
+							Ref: "main",
+						},
+					},
+				},
+			},
+			wantContainerCount:      1,
+			wantGitAskpassInCmd:     false,
+			wantGitCredsVolumeMount: false,
+		},
+		{
+			name: "git source with credentials",
+			bundle: &udsv1alpha1.UDSBundleJob{
+				Spec: udsv1alpha1.UDSBundleJobSpec{
+					Source: udsv1alpha1.BundleSource{
+						Type: udsv1alpha1.BundleSourceTypeGit,
+						Git: &udsv1alpha1.GitSource{
+							URL: "https://github.com/test/private-repo",
+							Ref: "main",
+							CredentialsSecretRef: &corev1.SecretReference{
+								Name: "git-creds",
+							},
+						},
+					},
+				},
+			},
+			wantContainerCount:      1,
+			wantGitAskpassInCmd:     false,
+			wantGitCredsVolumeMount: true,
+		},
+		{
+			name: "git source with credentials disabled",
+			bundle: &udsv1alpha1.UDSBundleJob{
+				Spec: udsv1alpha1.UDSBundleJobSpec{
+					Source: udsv1alpha1.BundleSource{
+						Type: udsv1alpha1.BundleSourceTypeGit,
+						Git: &udsv1alpha1.GitSource{
+							URL: "https://github.com/test/public-repo",
+							Ref: "main",
+							CredentialsSecretRef: &corev1.SecretReference{
+								Name: "git-creds",
+							},
+							DisableCloneCredentials: true,
+						},
+					},
+				},
+			},
+			wantContainerCount:      1,
+			wantGitAskpassInCmd:     true,
+			wantGitCredsVolumeMount: false,
+		},
+		{
+			name: "oci source",
+			bundle: &udsv1alpha1.UDSBundleJob{
+				Spec: udsv1alpha1.UDSBundleJobSpec{
+					Source: udsv1alpha1.BundleSource{
+						Type: udsv1alpha1.BundleSourceTypeOCI,
+					},
+				},
+			},
+			wantContainerCount: 0,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			containers := handler.buildInitContainers(tt.bundle)
+
+			if len(containers) != tt.wantContainerCount {
+				t.Errorf("buildInitContainers() container count = %d, want %d", len(containers), tt.wantContainerCount)
+				return
+			}
+
+			if tt.wantContainerCount > 0 {
+				container := containers[0]
+
+				// Check for GIT_ASKPASS in command
+				hasGitAskpass := false
+				for _, arg := range container.Args {
+					if strings.Contains(arg, "GIT_ASKPASS=''") {
+						hasGitAskpass = true
+						break
+					}
+				}
+				if hasGitAskpass != tt.wantGitAskpassInCmd {
+					t.Errorf("GIT_ASKPASS in command = %v, want %v", hasGitAskpass, tt.wantGitAskpassInCmd)
+				}
+
+				// Check for git-creds volume mount
+				hasGitCredsMount := false
+				for _, vm := range container.VolumeMounts {
+					if vm.Name == "git-creds" {
+						hasGitCredsMount = true
+						break
+					}
+				}
+				if hasGitCredsMount != tt.wantGitCredsVolumeMount {
+					t.Errorf("git-creds volume mount = %v, want %v", hasGitCredsMount, tt.wantGitCredsVolumeMount)
+				}
+			}
+		})
+	}
+}
+
+// TestBuildVolumes tests volume generation
+func TestBuildVolumes(t *testing.T) {
+	handler := &CreateHandler{
+		kubeClient: fake.NewSimpleClientset(),
+		metrics:    mustNewMetrics(),
+		tracer:     telemetry.NewTracer(),
+	}
+
+	tests := []struct {
+		name               string
+		bundle             *udsv1alpha1.UDSBundleJob
+		wantVolumeCount    int
+		wantGitCredsVolume bool
+	}{
+		{
+			name: "git source without credentials",
+			bundle: &udsv1alpha1.UDSBundleJob{
+				Spec: udsv1alpha1.UDSBundleJobSpec{
+					Source: udsv1alpha1.BundleSource{
+						Type: udsv1alpha1.BundleSourceTypeGit,
+						Git: &udsv1alpha1.GitSource{
+							URL: "https://github.com/test/repo",
+							Ref: "main",
+						},
+					},
+				},
+			},
+			wantVolumeCount:    2, // workspace + output
+			wantGitCredsVolume: false,
+		},
+		{
+			name: "git source with credentials",
+			bundle: &udsv1alpha1.UDSBundleJob{
+				Spec: udsv1alpha1.UDSBundleJobSpec{
+					Source: udsv1alpha1.BundleSource{
+						Type: udsv1alpha1.BundleSourceTypeGit,
+						Git: &udsv1alpha1.GitSource{
+							URL: "https://github.com/test/private-repo",
+							Ref: "main",
+							CredentialsSecretRef: &corev1.SecretReference{
+								Name: "git-creds",
+							},
+						},
+					},
+				},
+			},
+			wantVolumeCount:    3, // workspace + output + git-creds
+			wantGitCredsVolume: true,
+		},
+		{
+			name: "git source with credentials disabled",
+			bundle: &udsv1alpha1.UDSBundleJob{
+				Spec: udsv1alpha1.UDSBundleJobSpec{
+					Source: udsv1alpha1.BundleSource{
+						Type: udsv1alpha1.BundleSourceTypeGit,
+						Git: &udsv1alpha1.GitSource{
+							URL: "https://github.com/test/public-repo",
+							Ref: "main",
+							CredentialsSecretRef: &corev1.SecretReference{
+								Name: "git-creds",
+							},
+							DisableCloneCredentials: true,
+						},
+					},
+				},
+			},
+			wantVolumeCount:    2, // workspace + output (no git-creds)
+			wantGitCredsVolume: false,
+		},
+		{
+			name: "oci source",
+			bundle: &udsv1alpha1.UDSBundleJob{
+				Spec: udsv1alpha1.UDSBundleJobSpec{
+					Source: udsv1alpha1.BundleSource{
+						Type: udsv1alpha1.BundleSourceTypeOCI,
+					},
+				},
+			},
+			wantVolumeCount:    2, // workspace + output
+			wantGitCredsVolume: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			volumes := handler.buildVolumes(tt.bundle)
+
+			if len(volumes) != tt.wantVolumeCount {
+				t.Errorf("buildVolumes() volume count = %d, want %d", len(volumes), tt.wantVolumeCount)
+			}
+
+			hasGitCredsVolume := false
+			for _, vol := range volumes {
+				if vol.Name == "git-creds" {
+					hasGitCredsVolume = true
+					break
+				}
+			}
+			if hasGitCredsVolume != tt.wantGitCredsVolume {
+				t.Errorf("git-creds volume present = %v, want %v", hasGitCredsVolume, tt.wantGitCredsVolume)
+			}
+		})
+	}
+}

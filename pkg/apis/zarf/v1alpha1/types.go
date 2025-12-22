@@ -216,6 +216,11 @@ type GitSource struct {
 	// Secret should contain 'ssh-key' or 'token' key
 	// +optional
 	CredentialsSecretRef *SecretReference `json:"credentialsSecretRef,omitempty"`
+
+	// DisableCloneCredentials prevents using the credentials for clone operations
+	// +optional
+	// +kubebuilder:default=false
+	DisableCloneCredentials bool `json:"disableCloneCredentials,omitempty"`
 }
 
 // S3Source defines an S3 bucket source

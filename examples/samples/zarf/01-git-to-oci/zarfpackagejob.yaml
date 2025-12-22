@@ -18,7 +18,7 @@ metadata:
     forge.dev/allowed-actions: "Build,Publish,BuildPublish"
 
     # Allow fetching from this repository
-    forge.dev/allowed-source-repos: "https://github.com/kylegalloway/forge/*"
+    forge.dev/allowed-source-repos: "https://github.com/kylegalloway/forge,https://github.com/kylegalloway/forge/*"
 
     # Allow publishing to target OCI registry
     forge.dev/allowed-publish-registries: "ghcr.io/myorg/packages/*"

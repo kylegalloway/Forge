@@ -1,7 +1,9 @@
-# Image URL to use all building/pushing image targets
-IMG ?= forge-controller:latest
-# Build target (can be overridden)
-TARGET ?= controller
+# Build targets
+CTRL_TARGET ?= controller
+WBHK_TARGET ?= webhook
+# Image name to use for building/pushing image targets
+CTRL_IMG ?= forge-controller:latest
+WBHK_IMG ?= forge-webhook:latest
 # Kubernetes namespace for deployment
 NAMESPACE ?= forge-system
 
@@ -11,6 +13,24 @@ GOBIN=$(shell go env GOPATH)/bin
 else
 GOBIN=$(shell go env GOBIN)
 endif
+
+##@ Tooling
+
+##@ go-get-tool will 'go get' any package $2 and install it to $1.
+define go-get-tool
+@[ -f $(1) ] || { \
+set -e ;\
+echo 'Downloading $(2)' ;\
+GOBIN=$(shell go env GOPATH)/bin GOFLAGS=$(GOFLAGS) go install $(2) ;\
+}
+endef
+
+.PHONY: controller-gen
+controller-gen: ## Download controller-gen locally if necessary
+	$(call go-get-tool,$(CONTROLLER_GEN),sigs.k8s.io/controller-tools/cmd/controller-gen@v0.20.0)
+
+# Tooling binaries
+CONTROLLER_GEN = $(shell go env GOPATH)/bin/controller-gen
 
 # Kind cluster name for local development
 KIND_CLUSTER_NAME ?= forge-dev
@@ -25,6 +45,10 @@ help: ## Display this help.
 	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m\n"} /^[a-zA-Z_0-9-]+:.*?##/ { printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } ' $(MAKEFILE_LIST)
 
 ##@ Development
+
+.PHONY: manifests
+manifests: controller-gen ## Generate CRD manifests
+	$(CONTROLLER_GEN) crd:crdVersions=v1 paths=./pkg/apis/... output:crd:artifacts:config=chart/forge/crds
 
 .PHONY: generate
 generate: ## Generate API deepcopy code.
@@ -61,26 +85,33 @@ tidy: ## Run go mod tidy
 ##@ Build
 
 .PHONY: build
-build: fmt vet ## Build controller binary.
-	go build -o bin/controller cmd/controller/main.go
+build: build-controller build-webhook ## Build controller and webhook binaries.
+
+.PHONY: build-controller
+build-controller: fmt vet ## Build controller binary.
+	go build -o bin/$(CTRL_TARGET) cmd/$(CTRL_TARGET)/main.go
+
+.PHONY: build-webhook
+build-webhook: fmt vet ## Build webhook binary.
+	go build -o bin/$(WBHK_TARGET) cmd/$(WBHK_TARGET)/main.go
 
 .PHONY: run
 run: fmt vet ## Run controller from your host.
 	go run cmd/controller/main.go -kubeconfig=${HOME}/.kube/config -v=2
 
 .PHONY: docker-build
-docker-build: ## Build container image with docker.
-	docker build --target ${TARGET} -t ${IMG} .
+docker-build: ## Build container images with docker.
+	docker build --target $(CTRL_TARGET) -t $(CTRL_IMG) .
+	docker build --target $(WBHK_TARGET) -t $(WBHK_IMG) .
 
 .PHONY: podman-build
-podman-build: ## Build container image with podman.
-	podman build --target ${TARGET} --iidfile ${TARGET}.iid .
-	podman tag "$$(cat ${TARGET}.iid)" ${IMG}
-	rm -f ${TARGET}.iid
-
-.PHONY: container-push
-container-push: ## Push container image with the controller.
-	$(CONTAINER_RUNTIME) push ${IMG}
+podman-build: ## Build container images with podman.
+	podman build --target $(CTRL_TARGET) --iidfile $(CTRL_TARGET).iid .
+	podman tag "$$(cat $(CTRL_TARGET).iid)" $(CTRL_IMG)
+	rm -f $(CTRL_TARGET).iid
+	podman build --target $(WBHK_TARGET) --iidfile $(WBHK_TARGET).iid .
+	podman tag "$$(cat $(WBHK_TARGET).iid)" $(WBHK_IMG)
+	rm -f $(WBHK_TARGET).iid
 
 ##@ Deployment
 
@@ -102,10 +133,6 @@ install: ## Install Forge using Helm with default values.
 		--create-namespace \
 		--wait
 
-# Note: install-mature and install-new targets removed.
-# Forge no longer bundles monitoring infrastructure (Grafana/Prometheus/OTEL).
-# Use 'make install' for standard deployment and configure external monitoring separately.
-
 .PHONY: upgrade
 upgrade: ## Upgrade Forge installation using Helm.
 	helm upgrade forge chart/forge \
@@ -116,19 +143,6 @@ upgrade: ## Upgrade Forge installation using Helm.
 uninstall: ## Uninstall Forge using Helm.
 	helm uninstall forge --namespace $(NAMESPACE) || true
 
-# Note: Legacy raw manifest targets removed. Use Helm for all deployments.
-# CRDs are included in the Helm chart's crds/ directory and installed automatically.
-
-##@ Samples
-
-.PHONY: apply-sample
-apply-sample: ## Apply sample ZarfPackageJob resource.
-	kubectl apply -f examples/samples/zarf/01-git-to-oci/zarfpackagejob.yaml
-
-.PHONY: delete-samples
-delete-samples: ## Delete sample resources.
-	kubectl delete -f examples/samples/ --ignore-not-found=true
-
 ##@ Status
 
 .PHONY: status
@@ -136,43 +150,46 @@ status: ## Show status of controller and samples.
 	@echo "=== Controller Status ==="
 	@kubectl get pods -n $(NAMESPACE) -l app=forge-controller 2>/dev/null || echo "Controller not deployed"
 	@echo ""
+	@echo "=== Webhook Status ==="
+	@kubectl get pods -n $(NAMESPACE) -l app=forge-webhook 2>/dev/null || echo "Controller not deployed"
+	@echo ""
 	@echo "=== ZarfPackageJob Resources ==="
 	@kubectl get forges --all-namespaces 2>/dev/null || echo "No ZarfPackageJob resources found"
 	@echo ""
 	@echo "=== Jobs ==="
 	@kubectl get jobs --all-namespaces -l app=forge 2>/dev/null || echo "No jobs found"
 
-.PHONY: logs
-logs: ## Show controller logs.
-	kubectl logs -n $(NAMESPACE) -l app=forge-controller --tail=50 -f
+.PHONY: dev-controller-logs
+dev-controller-logs: ## Tail logs from controller
+	@echo "=== Controller Logs ==="
+	@kubectl logs -n $(NAMESPACE) -l app=forge-controller --tail=30 --prefix=true 2>/dev/null || echo "No controller logs"
+	@echo ""
+
+.PHONY: dev-webhook-logs
+dev-webhook-logs: ## Tail logs from webhook
+	@echo "=== Webhook Logs ==="
+	@kubectl logs -n $(NAMESPACE) -l app=forge-webhook --tail=30 --prefix=true 2>/dev/null || echo "No webhook logs"
+	@echo ""
+
+.PHONY: dev-job-logs
+dev-job-logs: ## Tail logs from the latest job
+	@echo "=== Latest Job Logs ==="
+	@JOB=$$(kubectl get jobs -l app=forge --sort-by=.metadata.creationTimestamp -o jsonpath='{.items[-1].metadata.name}' 2>/dev/null); \
+	if [ -n "$$JOB" ]; then \
+		kubectl logs job/$$JOB 2>/dev/null || echo "Job not yet started"; \
+	else \
+		echo "No jobs found"; \
+	fi
+
+.PHONY: dev-logs
+dev-logs: dev-controller-logs dev-webhook-logs dev-job-logs ## Show all logs
 
 ##@ Cleanup
 
 .PHONY: clean
 clean: ## Clean up built binaries and temporary files.
 	rm -rf bin/
-	rm -f cover.out
-
-##@ Testing Scripts
-
-.PHONY: e2e-test
-e2e-test: ## Run comprehensive end-to-end test suite.
-	@./scripts/test-e2e.sh
-
-.PHONY: integration-test
-integration-test: e2e-test ## Alias for e2e-test (full integration test with Kind cluster).
-
-.PHONY: integration-test-keep
-integration-test-keep: kind-setup e2e-test ## Run integration test with Kind cluster (cluster persists).
-	@echo "Integration test complete - cluster still running"
-
-.PHONY: integration-test-registry
-integration-test-registry: ## Run integration test with Gitea registry for publish workflows (not yet implemented).
-	@echo "Registry integration tests not yet implemented. Use 'make e2e-test' for basic tests."
-	@exit 1
-
-.PHONY: integration-test-registry-keep
-integration-test-registry-keep: integration-test-registry ## Alias for integration-test-registry.
+	rm -f cover*.out
 
 ##@ Local Development (Kind)
 
@@ -190,9 +207,26 @@ kind-delete: ## Delete the kind cluster.
 	kind delete cluster --name $(KIND_CLUSTER_NAME)
 
 .PHONY: kind-load
-kind-load: container-build ## Build and load the controller image into kind.
-	@echo "Loading image $(IMG) into kind cluster $(KIND_CLUSTER_NAME)..."
-	kind load docker-image $(IMG) --name $(KIND_CLUSTER_NAME)
+kind-load: podman-build ## Build and load the controller and webhook images into kind.
+	@echo "Loading image $(CTRL_TARGET) into kind cluster $(KIND_CLUSTER_NAME)..."
+	podman save $(CTRL_IMG) -o /tmp/forge-$(CTRL_TARGET).tar
+	kind load image-archive /tmp/forge-$(CTRL_TARGET).tar --name $(KIND_CLUSTER_NAME)
+	rm /tmp/forge-$(CTRL_TARGET).tar
+	@echo "Loading image $(WBHK_TARGET) into kind cluster $(KIND_CLUSTER_NAME)..."
+	podman save $(WBHK_IMG) -o /tmp/forge-$(WBHK_TARGET).tar
+	kind load image-archive /tmp/forge-$(WBHK_TARGET).tar --name $(KIND_CLUSTER_NAME)
+	rm /tmp/forge-$(WBHK_TARGET).tar
+
+.PHONY: kind-load-docker
+kind-load-docker: docker-build ## Build and load the controller image into kind using Docker.
+	@echo "Loading image $(CTRL_IMG) into kind cluster $(KIND_CLUSTER_NAME) with Docker..."
+	kind load docker-image $(CTRL_IMG) --name $(KIND_CLUSTER_NAME)
+	@echo "Loading image $(WBHK_IMG) into kind cluster $(KIND_CLUSTER_NAME) with Docker..."
+	kind load docker-image $(WBHK_IMG) --name $(KIND_CLUSTER_NAME)
+
+.PHONY: kind-images
+kind-images: ## List images in kind cluster.
+	podman exec -it $(KIND_CLUSTER_NAME)-control-plane crictl images | grep forge
 
 .PHONY: kind-deploy
 kind-deploy: kind-load ## Build, load image to kind, and deploy controller with Helm.
@@ -200,8 +234,10 @@ kind-deploy: kind-load ## Build, load image to kind, and deploy controller with 
 	@helm upgrade --install forge chart/forge \
 		--namespace $(NAMESPACE) \
 		--create-namespace \
-		--set controller.image.repository=forge-controller \
+		--set controller.image.repository=localhost/forge-controller \
 		--set controller.image.tag=latest \
+		--set webhook.image.repository=localhost/forge-webhook \
+		--set webhook.image.tag=latest \
 		--set observability.deployStack=false \
 		--wait
 	@echo "Deployment complete. Checking status..."
@@ -209,44 +245,36 @@ kind-deploy: kind-load ## Build, load image to kind, and deploy controller with 
 	@$(MAKE) status
 
 .PHONY: kind-redeploy
-kind-redeploy: ## Rebuild, reload, and restart controller in kind (for iterative development).
-	@echo "Rebuilding controller..."
-	@$(MAKE) container-build
-	@echo "Loading new image into kind..."
-	@$(MAKE) kind-load
-	@echo "Restarting controller pods..."
-	@kubectl delete pods -n $(NAMESPACE) -l app=forge-controller --ignore-not-found=true
-	@echo "Waiting for new pods to start..."
+kind-redeploy: ## Uninstall old helm chart and deploy a new one.
+	@echo "Uninstalling old Helm chart..."
+	@$(MAKE) uninstall
 	@sleep 5
-	@$(MAKE) status
+	@echo "Deploying with Helm..."
+	@$(MAKE) kind-deploy
 
 .PHONY: kind-setup
-kind-setup: kind-create kind-deploy ## Complete setup: create kind cluster and deploy controller.
+kind-setup: kind-create kind-deploy ## Complete setup: create kind cluster and deploy controller and webhook.
 	@echo ""
 	@echo "==============================================="
 	@echo "Kind cluster setup complete!"
 	@echo "Cluster name: $(KIND_CLUSTER_NAME)"
 	@echo "==============================================="
 	@echo ""
-	@echo "Try creating a sample ZarfPackageJob:"
-	@echo "  make apply-sample"
 	@echo ""
 	@echo "Check status:"
 	@echo "  make status"
 	@echo ""
 
-.PHONY: dev-logs
-dev-logs: ## Tail logs from controller and latest job.
-	@echo "=== Controller Logs ==="
-	@kubectl logs -n $(NAMESPACE) -l app=forge-controller --tail=20 --prefix=true 2>/dev/null || echo "No controller logs"
-	@echo ""
-	@echo "=== Latest Job Logs ==="
-	@JOB=$$(kubectl get jobs -l app=forge --sort-by=.metadata.creationTimestamp -o jsonpath='{.items[-1].metadata.name}' 2>/dev/null); \
-	if [ -n "$$JOB" ]; then \
-		kubectl logs job/$$JOB 2>/dev/null || echo "Job not yet started"; \
-	else \
-		echo "No jobs found"; \
-	fi
+##@ Test/Samples
+
+.PHONY: kind-zarf-cli
+kind-zarf-cli: ## Build and load the Zarf CLI image into kind.
+	@echo "Building and loading Zarf CLI image into kind cluster '$(KIND_CLUSTER_NAME)'..."
+	podman build -t localhost/zarf:v0.66.0 images/zarf-cli/
+	podman save localhost/zarf:v0.66.0 -o /tmp/zarf-cli.tar
+	kind load image-archive /tmp/zarf-cli.tar --name $(KIND_CLUSTER_NAME)
+	rm /tmp/zarf-cli.tar
+
 ##@ Release
 
 .PHONY: release-patch

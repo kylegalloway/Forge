@@ -5,19 +5,20 @@ metadata:
   name: {{ include "forge.fullname" . }}-webhook
   namespace: {{ include "forge.namespace" . }}
   labels:
-    {{- include "forge.labels" . | nindent 4 }}
-    app.kubernetes.io/component: webhook
+    {{- include "forge.webhook.labels" . | nindent 4 }}
 spec:
   replicas: {{ .Values.webhook.replicaCount }}
   selector:
     matchLabels:
-      {{- include "forge.selectorLabels" . | nindent 6 }}
-      app.kubernetes.io/component: webhook
+      {{- include "forge.webhook.selectorLabels" . | nindent 6 }}
   template:
     metadata:
+      annotations:
+        {{- with .Values.webhook.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
       labels:
-        {{- include "forge.selectorLabels" . | nindent 8 }}
-        app.kubernetes.io/component: webhook
+        {{- include "forge.webhook.selectorLabels" . | nindent 8 }}
     spec:
       serviceAccountName: {{ include "forge.serviceAccountName" . }}-webhook
       containers:

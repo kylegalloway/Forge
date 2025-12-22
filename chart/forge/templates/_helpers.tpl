@@ -67,6 +67,24 @@ app: forge-controller
 {{- end }}
 
 {{/*
+Webhook labels
+*/}}
+{{- define "forge.webhook.labels" -}}
+{{ include "forge.labels" . }}
+app: forge-webhook
+app.kubernetes.io/component: webhook
+app.kubernetes.io/part-of: forge
+{{- end }}
+
+{{/*
+Webhook selector labels
+*/}}
+{{- define "forge.webhook.selectorLabels" -}}
+app: forge-webhook
+{{ include "forge.selectorLabels" . }}
+{{- end }}
+
+{{/*
 Create the name of the service account to use
 */}}
 {{- define "forge.serviceAccountName" -}}
@@ -82,20 +100,4 @@ Namespace
 */}}
 {{- define "forge.namespace" -}}
 {{- default "forge-system" .Values.global.namespace }}
-{{- end }}
-
-{{/*
-OTEL Collector labels
-*/}}
-{{- define "forge.otel.labels" -}}
-{{ include "forge.labels" . }}
-app: otel-collector
-component: observability
-{{- end }}
-
-{{/*
-OTEL Collector selector labels
-*/}}
-{{- define "forge.otel.selectorLabels" -}}
-app: otel-collector
 {{- end }}

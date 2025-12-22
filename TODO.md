@@ -19,13 +19,13 @@
   - Location: `pkg/controller/job_monitor.go`, `pkg/controller/uds_job_monitor.go`
   - Action: Investigate and fix job state reconciliation logic
 
-* **Cleanup/Consolidate Examples** - Examples folder is messy
+* **Fix Examples** - Examples folder has examples that don't work
   - Location: `examples`
-  - Action: Investigate, cleanup, order, and consolidate examples
+  - Action: Investigate, fix examples
 
-* **Cleanup/Consolidate Makefile** - Makefile is messy
-  - Location: `Makefile`
-  - Action: Investigate, cleanup, order, and consolidate Makefile
+* **Figure out why git clone forces username** - Git clone within the git-init container of a job pod forces creds usage on clone
+  - Location: ``
+  - Action: Investigate, fix init container
 
 ---
 

@@ -19,6 +19,5 @@ spec:
     protocol: TCP
     name: metrics
   selector:
-    {{- include "forge.selectorLabels" . | nindent 4 }}
-    app.kubernetes.io/component: webhook
+    {{- include "forge.webhook.selectorLabels" . | nindent 4 }}
 {{- end }}

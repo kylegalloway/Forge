@@ -26,72 +26,172 @@ For production deployment with published images, see [USER_GUIDE.md](USER_GUIDE.
 - **docker** or **podman** - For building images
 - **make** - For build commands
 
-## Quick Start (Copy-Paste Ready)
+## Quick Start (Recommended)
 
-> **Note:** These commands use Docker by default. If you're using Podman, see the commented alternatives below.
+**Using the Makefile (easiest):**
+
+```bash
+# Complete setup in one command
+# Creates cluster + builds images + deploys Forge
+make kind-setup
+
+# Verify deployment
+make status
+```
+
+**Important Notes:**
+- Default cluster name: `forge-dev` (customize with `KIND_CLUSTER_NAME=my-cluster make kind-setup`)
+- Uses Podman by default (automatically falls back to Docker if Podman not available)
+- Builds images tagged as `localhost/forge-controller:latest` and `localhost/forge-webhook:latest`
+- Does NOT include Zarf CLI image (see "Adding Zarf CLI" below)
+
+### Adding Zarf CLI Image
+
+Most Forge operations need the Zarf CLI container image. Add it after setup:
+
+```bash
+# Build and load Zarf CLI into the cluster
+make kind-zarf-cli
+```
+
+### Manual Setup (for reference)
+
+If you prefer to run steps individually or need custom configuration:
 
 ```bash
 # 1. Create Kind cluster
-kind create cluster --name forge-demo
+kind create cluster --name forge-dev
 
 # 2. Build Forge controller and webhook images
-make podman-build IMG=forge-controller:demo TARGET=controller
-make podman-build IMG=forge-webhook:demo TARGET=webhook
+make podman-build
 
 # 3. Load images into Kind
-# For Docker:
-kind load docker-image forge-controller:demo --name forge-demo
-kind load docker-image forge-webhook:demo --name forge-demo
+# For Podman (default):
+make kind-load
 
-# For Podman:
-podman save localhost/forge-controller:demo -o /tmp/forge-controller.tar
-kind load image-archive /tmp/forge-controller.tar --name forge-demo
-rm /tmp/forge-controller.tar
-podman save localhost/forge-webhook:demo -o /tmp/forge-webhook.tar
-kind load image-archive /tmp/forge-webhook.tar --name forge-demo
-rm /tmp/forge-webhook.tar
+# For Docker:
+make kind-load-docker
 
 # 4. Build and load Zarf CLI image
-# Zarf doesn't publish container images - build from included Dockerfile
+make kind-zarf-cli
 
-# For Docker:
-docker build -t localhost/zarf:v0.66.0 images/zarf-cli/
-kind load docker-image localhost/zarf:v0.66.0 --name forge-demo
-
-# For Podman:
-podman build -t localhost/zarf:v0.66.0 images/zarf-cli/
-podman save localhost/zarf:v0.66.0 -o /tmp/zarf-cli.tar
-kind load image-archive /tmp/zarf-cli.tar --name forge-demo
-rm /tmp/zarf-cli.tar
-
-# 5. Install Forge
-helm upgrade --install forge ./chart/forge \
-  --namespace forge-system \
-  --create-namespace \
-  --set controller.image.repository=localhost/forge-controller \
-  --set controller.image.tag=demo \
-  --set webhook.image.repository=localhost/forge-webhook \
-  --set webhook.image.tag=demo
+# 5. Deploy with Helm
+make install
 
 # 6. Wait for Forge to be ready
 kubectl wait --for=condition=Ready pods --all -n forge-system --timeout=300s
 ```
 
-**Or use the Makefile shortcut:**
+## Makefile Commands Reference
+
+The Forge Makefile provides convenient targets for Kind development workflows:
+
+### Setup & Deployment
+
+| Command | Description |
+|---------|-------------|
+| `make kind-setup` | **Complete setup**: Creates cluster, builds images, loads into Kind, and deploys with Helm |
+| `make kind-create` | Create Kind cluster (default name: `forge-dev`) |
+| `make kind-deploy` | Build images, load into Kind, and install with Helm |
+| `make kind-redeploy` | Uninstall Forge, rebuild images, reload, and redeploy (useful for testing changes) |
+| `make install` | Install Forge using Helm with default values |
+| `make upgrade` | Upgrade existing Forge installation |
+| `make uninstall` | Uninstall Forge from the cluster |
+
+### Image Management
+
+| Command | Description |
+|---------|-------------|
+| `make podman-build` | Build controller and webhook images using Podman |
+| `make docker-build` | Build controller and webhook images using Docker |
+| `make kind-load` | Build with Podman and load into Kind cluster (via tar archive) |
+| `make kind-load-docker` | Build with Docker and load into Kind cluster (direct) |
+| `make kind-zarf-cli` | Build and load Zarf CLI image into Kind cluster |
+| `make kind-images` | List Forge images in the Kind cluster |
+
+### Observability
+
+| Command | Description |
+|---------|-------------|
+| `make status` | Show controller, webhook, and ZarfPackageJob status |
+| `make dev-controller-logs` | View controller logs (last 30 lines) |
+| `make dev-webhook-logs` | View webhook logs (last 30 lines) |
+| `make dev-job-logs` | View logs from latest Forge job |
+| `make dev-logs` | Show all logs (controller + webhook + latest job) |
+
+### Cleanup Commands
+
+| Command | Description |
+|---------|-------------|
+| `make kind-delete` | Delete the Kind cluster |
+| `make clean` | Remove built binaries and temporary files |
+
+### Customization Examples
 
 ```bash
-# Does everything above in one command
-make kind-setup
+# Use custom cluster name
+KIND_CLUSTER_NAME=my-test-cluster make kind-setup
+
+# Use custom image tags
+CTRL_IMG=forge-controller:v1.2.3 WBHK_IMG=forge-webhook:v1.2.3 make kind-deploy
+
+# Change namespace
+NAMESPACE=my-namespace make install
+
+# Use Docker instead of Podman
+make docker-build
+make kind-load-docker
+```
+
+### Typical Development Workflows
+
+**Initial Setup:**
+```bash
+make kind-setup           # Full setup
+make kind-zarf-cli        # Add Zarf CLI for jobs
+make status               # Verify everything is running
+```
+
+**Iterative Development:**
+```bash
+# Make code changes, then:
+make kind-redeploy        # Rebuild, reload, redeploy
+make dev-logs             # Check logs for errors
+
+# Or individual steps for finer control:
+make podman-build         # Build new images
+make kind-load            # Load into cluster
+kubectl delete pods -n forge-system -l app=forge-controller  # Restart pods
+make dev-controller-logs  # Check controller logs
+```
+
+**Testing Changes:**
+```bash
+kubectl apply -f examples/samples/zarf/build-only-git.yaml
+make dev-job-logs         # Watch job execution
+kubectl get zarfpackagejobs -w  # Watch status changes
+```
+
+**Cleanup:**
+```bash
+make kind-delete          # Remove cluster
+make clean                # Clean build artifacts
 ```
 
 ## Step-by-Step Instructions
 
+> **Note**: These manual instructions explain what happens under the hood. For most cases, use `make kind-setup` instead (see Quick Start above).
+
 ### 1. Create Kind Cluster
 
-Create a simple Kind cluster:
-
+**Using Make:**
 ```bash
-kind create cluster --name forge-demo
+make kind-create
+```
+
+**Manual command:**
+```bash
+kind create cluster --name forge-dev
 ```
 
 Verify cluster is running:
@@ -103,116 +203,133 @@ kubectl get nodes
 
 ### 2. Build Forge Images
 
-Build the controller and webhook images locally:
-
+**Using Make (recommended):**
 ```bash
-# From the forge project root
-make podman-build IMG=forge-controller:demo TARGET=controller
-make podman-build IMG=forge-webhook:demo TARGET=webhook
+# Builds both controller and webhook images
+make podman-build
+```
+
+**Manual commands:**
+```bash
+# Build controller image
+podman build --target controller --iidfile controller.iid .
+podman tag "$(cat controller.iid)" localhost/forge-controller:latest
+rm -f controller.iid
+
+# Build webhook image
+podman build --target webhook --iidfile webhook.iid .
+podman tag "$(cat webhook.iid)" localhost/forge-webhook:latest
+rm -f webhook.iid
 ```
 
 Expected output:
 
 ```text
-Building controller image: forge-controller:demo
 [+] Building 45.2s (18/18) FINISHED
  => [internal] load build definition from Dockerfile
- => => transferring dockerfile: 1.23kB
- => [internal] load .dockerignore
  => [builder 6/6] RUN CGO_ENABLED=0 GOOS=linux go build -a -o controller cmd/controller/main.go
  => [builder 7/7] RUN CGO_ENABLED=0 GOOS=linux go build -a -o webhook cmd/webhook/main.go
  => exporting to image
  => => exporting layers
  => => writing image sha256:abc123...
- => => naming to docker.io/library/forge-controller:demo
- => => naming to docker.io/library/forge-webhook:demo
 
-Successfully built forge-controller:demo and forge-webhook:demo
+Successfully built localhost/forge-controller:latest and localhost/forge-webhook:latest
 ```
-
-This builds the images and tags them as `forge-controller:demo` and `forge-webhook:demo`.
 
 ### 3. Load Images into Kind
 
-Kind clusters can't pull from your local Docker/Podman registry, so you need to load images explicitly:
+Kind clusters can't pull from your local Docker/Podman registry, so you need to load images explicitly.
 
-**For Docker users:**
+**Using Make (recommended):**
 
 ```bash
-kind load docker-image forge-controller:demo --name forge-demo
-kind load docker-image forge-webhook:demo --name forge-demo
+# For Podman (default):
+make kind-load
+
+# For Docker:
+make kind-load-docker
 ```
 
-Expected output:
-
-```text
-Image: "forge-controller:demo" with ID "sha256:abc123..." not yet present on node "forge-demo-control-plane", loading...
-Image: "forge-webhook:demo" with ID "sha256:def456..." not yet present on node "forge-demo-control-plane", loading...
-```
-
-**For Podman users:**
+**Manual commands for Podman:**
 
 ```bash
 # Export to tar, load into Kind, cleanup
-podman save localhost/forge-controller:demo -o /tmp/forge-controller.tar
-kind load image-archive /tmp/forge-controller.tar --name forge-demo
+podman save localhost/forge-controller:latest -o /tmp/forge-controller.tar
+kind load image-archive /tmp/forge-controller.tar --name forge-dev
 rm /tmp/forge-controller.tar
 
-podman save localhost/forge-webhook:demo -o /tmp/forge-webhook.tar
-kind load image-archive /tmp/forge-webhook.tar --name forge-demo
+podman save localhost/forge-webhook:latest -o /tmp/forge-webhook.tar
+kind load image-archive /tmp/forge-webhook.tar --name forge-dev
 rm /tmp/forge-webhook.tar
 ```
 
-Verify the images are loaded:
+**Manual commands for Docker:**
 
 ```bash
-# Check images in Kind cluster (works with both Docker and Podman)
-docker exec -it forge-demo-control-plane crictl images | grep -E 'forge|zarf'
+kind load docker-image localhost/forge-controller:latest --name forge-dev
+kind load docker-image localhost/forge-webhook:latest --name forge-dev
+```
+
+**Verify images are loaded:**
+
+```bash
+# Check images in Kind cluster
+docker exec -it forge-dev-control-plane crictl images | grep -E 'forge|zarf'
 ```
 
 Expected output:
 
 ```text
-forge-controller            demo        abc123def456   100MB
-forge-webhook               demo        def456abc123   95MB
+localhost/forge-controller  latest      abc123def456   100MB
+localhost/forge-webhook     latest      def456abc123   95MB
 localhost/zarf              v0.66.0     789abc012def   45MB
 ```
 
-**Build and load Zarf CLI image:**
+### 3a. Build and Load Zarf CLI Image
 
 Zarf doesn't publish container images - only binaries. Forge includes a Dockerfile that packages the official Zarf CLI binary into a container image for use in Job pods.
 
-```bash
-# Build the image
-docker build -t localhost/zarf:v0.66.0 images/zarf-cli/
+**Using Make (recommended):**
 
-# Load into Kind
-kind load docker-image localhost/zarf:v0.66.0 --name forge-demo
+```bash
+make kind-zarf-cli
 ```
 
-**For Podman users:**
+**Manual commands:**
 
 ```bash
+# For Podman:
 podman build -t localhost/zarf:v0.66.0 images/zarf-cli/
 podman save localhost/zarf:v0.66.0 -o /tmp/zarf-cli.tar
-kind load image-archive /tmp/zarf-cli.tar --name forge-demo
+kind load image-archive /tmp/zarf-cli.tar --name forge-dev
 rm /tmp/zarf-cli.tar
+
+# For Docker:
+docker build -t localhost/zarf:v0.66.0 images/zarf-cli/
+kind load docker-image localhost/zarf:v0.66.0 --name forge-dev
 ```
 
-This packages the Zarf CLI so build/deploy jobs can run. Without this, job pods will fail with ImagePullBackOff.
+Without this image, Zarf build/deploy jobs will fail with `ImagePullBackOff`.
 
 ### 4. Install Forge
 
-Install Forge using your locally-built images:
+**Using Make (recommended):**
+
+```bash
+make install
+```
+
+**Manual command:**
 
 ```bash
 helm upgrade --install forge ./chart/forge \
   --namespace forge-system \
   --create-namespace \
-  --set controller.image.repository=forge-controller \
-  --set controller.image.tag=demo \
-  --set webhook.image.repository=forge-webhook \
-  --set webhook.image.tag=demo
+  --set controller.image.repository=localhost/forge-controller \
+  --set controller.image.tag=latest \
+  --set webhook.image.repository=localhost/forge-webhook \
+  --set webhook.image.tag=latest \
+  --wait
 ```
 
 **What gets deployed:**
@@ -356,74 +473,154 @@ You can install Prometheus and Grafana separately using kube-prometheus-stack. S
 
 ## Cleanup
 
-Delete the Kind cluster (removes everything):
+**Using Make:**
 
 ```bash
-kind delete cluster --name forge-demo
+make kind-delete    # Delete the Kind cluster
+make clean          # Remove build artifacts
+```
+
+**Manual commands:**
+
+```bash
+kind delete cluster --name forge-dev
+rm -rf bin/ cover*.out
 ```
 
 ## Troubleshooting
 
 ### Image Not Found
 
-If pods show `ImagePullBackOff`:
+If pods show `ImagePullBackOff`, the images aren't loaded in the Kind cluster.
+
+**Fix with Make:**
+
+```bash
+# Check what images are loaded
+make kind-images
+
+# Reload Forge images
+make kind-load
+
+# Reload Zarf CLI image
+make kind-zarf-cli
+```
+
+**Manual diagnosis and fix:**
 
 ```bash
 # Check images in Kind cluster
-docker exec -it forge-demo-control-plane crictl images | grep -E 'forge|zarf'
+docker exec -it forge-dev-control-plane crictl images | grep -E 'forge|zarf'
 
-# Reload images (choose based on your container runtime)
-# For Docker:
-kind load docker-image forge-controller:demo --name forge-demo
-kind load docker-image localhost/zarf:v0.66.0 --name forge-demo
+# Reload Forge images - For Podman:
+make kind-load
 
-# For Podman:
-podman save localhost/forge-controller:demo -o /tmp/forge-controller.tar
-kind load image-archive /tmp/forge-controller.tar --name forge-demo
-rm /tmp/forge-controller.tar
+# Reload Forge images - For Docker:
+make kind-load-docker
 
-podman save localhost/forge-webhook:demo -o /tmp/forge-webhook.tar
-kind load image-archive /tmp/forge-webhook.tar --name forge-demo
-rm /tmp/forge-webhook.tar
+# Reload Zarf CLI image
+make kind-zarf-cli
+```
+
+### Pods Not Starting
+
+Check pod status and events:
+
+```bash
+make status                                    # Quick overview
+kubectl get pods -n forge-system               # Detailed pod status
+kubectl describe pod <pod-name> -n forge-system  # Events and errors
+make dev-controller-logs                       # View controller logs
+make dev-webhook-logs                          # View webhook logs
+```
+
+### Jobs Failing
+
+Check job logs and status:
+
+```bash
+kubectl get jobs -A                            # List all jobs
+make dev-job-logs                              # View latest job logs
+kubectl logs job/<job-name> -n <namespace>     # Specific job logs
+kubectl describe job/<job-name> -n <namespace> # Job events
+```
+
+### Complete Reset
+
+If things are completely broken, start fresh:
+
+```bash
+make kind-delete      # Delete cluster
+make clean            # Clean artifacts
+make kind-setup       # Recreate everything
+make kind-zarf-cli    # Add Zarf CLI
+make status           # Verify
 ```
 
 ## Docker vs Podman
 
-### Using Docker (Default)
+The Makefile provides separate targets for Docker and Podman workflows.
 
-Works out of the box with Kind:
+### Using Podman (Default)
+
+Podman requires saving images to tar archives before loading into Kind:
+
+**Using Make (handles tar creation/cleanup automatically):**
 
 ```bash
-# Build Forge controller
-make container-build IMG=forge-controller:demo
-kind load docker-image forge-controller:demo --name forge-demo
-
-# Build Zarf CLI image
-docker build -t localhost/zarf:v0.66.0 images/zarf-cli/
-kind load docker-image localhost/zarf:v0.66.0 --name forge-demo
+make podman-build     # Build with Podman
+make kind-load        # Save to tar, load into Kind, cleanup
+make kind-zarf-cli    # Same for Zarf CLI
 ```
 
-### Using Podman
-
-Requires extra steps (save/load via tar):
+**What it does behind the scenes:**
 
 ```bash
-# Build Forge controller
-make container-build IMG=forge-controller:demo DOCKER=podman
-
-# Load Forge controller into Kind
-podman save localhost/forge-controller:demo -o /tmp/forge-controller.tar
-kind load image-archive /tmp/forge-controller.tar --name forge-demo
+# For each image:
+podman save localhost/forge-controller:latest -o /tmp/forge-controller.tar
+kind load image-archive /tmp/forge-controller.tar --name forge-dev
 rm /tmp/forge-controller.tar
-
-# Build and load Zarf CLI image
-podman build -t localhost/zarf:v0.66.0 images/zarf-cli/
-podman save localhost/zarf:v0.66.0 -o /tmp/zarf-cli.tar
-kind load image-archive /tmp/zarf-cli.tar --name forge-demo
-rm /tmp/zarf-cli.tar
 ```
 
-**Tip:** You can alias podman to docker if you prefer:
+### Using Docker
+
+Docker can load images directly into Kind without tar archives:
+
+**Using Make:**
+
+```bash
+make docker-build        # Build with Docker
+make kind-load-docker    # Load directly into Kind
+```
+
+**Manual commands:**
+
+```bash
+# Docker loads images directly
+kind load docker-image localhost/forge-controller:latest --name forge-dev
+kind load docker-image localhost/forge-webhook:latest --name forge-dev
+
+# Zarf CLI
+docker build -t localhost/zarf:v0.66.0 images/zarf-cli/
+kind load docker-image localhost/zarf:v0.66.0 --name forge-dev
+```
+
+### Switching Between Docker and Podman
+
+```bash
+# Use Docker explicitly
+make docker-build
+make kind-load-docker
+
+# Use Podman explicitly
+make podman-build
+make kind-load
+
+# Override for specific commands
+CONTAINER_RUNTIME=docker make kind-setup
+```
+
+**Tip:** If you prefer Docker syntax, you can alias podman:
 
 ```bash
 alias docker=podman

@@ -1,0 +1,59 @@
+# Example: Create UDS Bundle from Git and Deploy to Cluster
+#
+# This example demonstrates:
+# - Creating a UDS bundle from a public Git repository
+# - Deploying the bundle directly to the cluster
+#
+# This deploys Headlamp, a simple Kubernetes UI, as a UDS bundle
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: bundle-git-build-deploy-sa
+  namespace: default
+  annotations:
+    # Allow Create, Deploy, and CreateDeploy actions for bundles
+    forge.dev/allowed-bundle-actions: "Create,Deploy,CreateDeploy"
+
+    # Allow fetching from forge repository
+    forge.dev/allowed-bundle-source-repos: "https://github.com/kylegalloway/forge/*"
+
+    # Allow deploying to headlamp namespace
+    forge.dev/allowed-bundle-deploy-namespaces: "headlamp"
+
+---
+apiVersion: forge.dev/v1alpha1
+kind: UDSBundleJob
+metadata:
+  name: git-build-deploy-bundle-example
+  namespace: default
+spec:
+  serviceAccountName: bundle-git-build-deploy-sa
+
+  # Create and Deploy pipeline
+  action: CreateDeploy
+
+  # Source: Git repository containing the UDS bundle definition
+  source:
+    type: Git
+    git:
+      url: https://github.com/kylegalloway/forge
+      ref: main
+      path: examples/samples/uds/03-git-build-deploy
+
+  # Deploy configuration
+  deploy:
+    # Automatically confirm deployment
+    confirm: true
+
+    # Deploy all packages
+    packages: []
+
+  resources:
+    requests:
+      cpu: 1
+      memory: 2Gi
+    limits:
+      cpu: 4
+      memory: 8Gi

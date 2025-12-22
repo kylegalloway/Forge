@@ -46,6 +46,27 @@ kubectl apply -f 02-local-to-s3/udsbundlejob.yaml
 kubectl get udsbundlejobs local-to-s3-bundle-example -w
 ```
 
+### 03-git-build-deploy: Create from Git, Deploy to Cluster
+
+Demonstrates creating a UDS bundle from a public Git repository and deploying it directly to the cluster.
+
+**Bundle Content:**
+- Headlamp Kubernetes UI packaged as a UDS bundle
+- Zarf package with Helm chart from official Headlamp repository
+- Located in `03-git-build-deploy/` directory
+
+**Workflow:**
+1. Fetch bundle definition from Git repository
+2. Create UDS bundle (builds Zarf package, downloads Helm chart and images)
+3. Deploy to cluster in `headlamp` namespace
+
+**Usage:**
+```bash
+kubectl apply -f 03-git-build-deploy/udsbundlejob.yaml
+kubectl get udsbundlejobs git-build-deploy-bundle-example -w
+# Access Headlamp: kubectl port-forward -n headlamp svc/headlamp 8080:80
+```
+
 ## Prerequisites
 
 1. **Forge Controller Installed**: Deploy Forge to your Kubernetes cluster with UDS support
@@ -56,18 +77,21 @@ kubectl get udsbundlejobs local-to-s3-bundle-example -w
 ## Monitoring
 
 ### Check Status
+
 ```bash
 kubectl get udsbundlejobs
 kubectl describe udsbundlejob <name>
 ```
 
 ### View Job Logs
+
 ```bash
 kubectl get jobs -l app=forge-uds
 kubectl logs job/<job-name>
 ```
 
 ### Check Metrics
+
 ```bash
 kubectl port-forward -n forge-system svc/forge-controller 8080:8080
 curl http://localhost:8080/metrics | grep bundle

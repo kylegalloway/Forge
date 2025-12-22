@@ -1,0 +1,10 @@
+kind: UDSBundle
+metadata:
+  name: headlamp-bundle
+  description: UDS Bundle deploying Headlamp from Git
+  version: 0.1.0
+
+packages:
+  - name: headlamp-ui
+    repository: ./zarf-package
+    ref: 0.1.0

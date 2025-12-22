@@ -1,0 +1,18 @@
+kind: ZarfPackageConfig
+metadata:
+  name: headlamp-example
+  description: Headlamp Kubernetes UI built and deployed from Git
+  version: 0.1.0
+
+components:
+  - name: headlamp-ui
+    required: true
+    charts:
+      - name: headlamp
+        version: 0.27.0
+        namespace: headlamp
+        url: https://headlamp-k8s.github.io/headlamp/
+        valuesFiles:
+          - values.yaml
+    images:
+      - ghcr.io/headlamp-k8s/headlamp:v0.27.0

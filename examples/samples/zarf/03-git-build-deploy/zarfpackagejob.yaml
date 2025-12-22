@@ -1,0 +1,65 @@
+# Example: Build from Git and Deploy to Cluster
+#
+# This example demonstrates:
+# - Fetching Zarf package definition from a public Git repository
+# - Building the package
+# - Deploying directly to the cluster
+#
+# This deploys Headlamp, a simple Kubernetes UI
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: git-build-deploy-sa
+  namespace: default
+  annotations:
+    # Allow Build, Deploy, and BuildDeploy actions
+    forge.dev/allowed-actions: "Build,Deploy,BuildDeploy"
+
+    # Allow fetching from forge repository
+    forge.dev/allowed-source-repos: "https://github.com/kylegalloway/forge,https://github.com/kylegalloway/forge/*"
+
+    # Allow deploying to the cluster where the controller is running
+    forge.dev/allowed-deploy-targets: "InCluster"
+
+    # Allow deploying to headlamp namespace
+    forge.dev/allowed-deploy-namespaces: "headlamp"
+
+---
+apiVersion: forge.dev/v1alpha1
+kind: ZarfPackageJob
+metadata:
+  name: git-build-deploy-example
+  namespace: default
+spec:
+  serviceAccountName: git-build-deploy-sa
+
+  # Build and Deploy pipeline
+  action: BuildDeploy
+
+  # Source: Git repository containing the Zarf package definition
+  source:
+    type: Git
+    git:
+      url: https://github.com/kylegalloway/forge
+      ref: main
+      path: examples/samples/zarf/03-git-build-deploy
+
+  # Deploy configuration
+  deploy:
+    # Deploy to the cluster where the controller is running
+    target: InCluster
+    # Deploy to the headlamp namespace
+    namespace: headlamp
+
+    # Deploy to all components
+    components: []
+
+  resources:
+    requests:
+      cpu: 500m
+      memory: 1Gi
+    limits:
+      cpu: 2
+      memory: 4Gi

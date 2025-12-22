@@ -33,6 +33,8 @@ go.work.sum
 
 # GenAI
 .claude/
+CLAUDE.local.md
+CLAUDE.md
 
 # Binaries
 bin/
@@ -52,6 +54,3 @@ dist/
 # Test coverage
 cover.out
 coverage.out
-
-# GenAI
-CLAUDE.local.md

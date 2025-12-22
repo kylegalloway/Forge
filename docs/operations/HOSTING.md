@@ -141,12 +141,14 @@ Support multiple architectures in release workflow:
 
 ## Bandwidth and Rate Limits
 
-### GHCR Limits:
+### GHCR Limits
+
 - No bandwidth charges for public images
 - No rate limits for public repositories
 - Good CDN distribution
 
-### Docker Hub Limits (Free Tier):
+### Docker Hub Limits (Free Tier)
+
 - 200 image pulls per 6 hours (anonymous)
 - Unlimited pulls for authenticated users
 - 1 private repository

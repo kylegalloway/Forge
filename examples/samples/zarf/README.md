@@ -43,6 +43,27 @@ kubectl apply -f 02-local-to-s3/zarfpackagejob.yaml
 kubectl get zarfpackagejobs local-to-s3-example -w
 ```
 
+### 03-git-build-deploy: Build from Git, Deploy to Cluster
+
+Demonstrates building a Zarf package from a public Git repository and deploying it directly to the cluster.
+
+**Package Content:**
+- Headlamp Kubernetes UI
+- Helm chart from official Headlamp repository
+- Located in `03-git-build-deploy/` directory
+
+**Workflow:**
+1. Fetch package definition from Git repository
+2. Build Zarf package (downloads Helm chart and container images)
+3. Deploy to cluster in `headlamp` namespace
+
+**Usage:**
+```bash
+kubectl apply -f 03-git-build-deploy/zarfpackagejob.yaml
+kubectl get zarfpackagejobs git-build-deploy-example -w
+# Access Headlamp: kubectl port-forward -n headlamp svc/headlamp 8080:80
+```
+
 ## Prerequisites
 
 1. **Forge Controller Installed**: Deploy Forge to your Kubernetes cluster

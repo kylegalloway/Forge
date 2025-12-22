@@ -27,7 +27,8 @@ func (source *GitSource) GetInitContainer(pkg *zarfv1alpha1.ZarfPackageJob) (*co
 	}
 
 	if gitSource.Path != "" && gitSource.Path != "." {
-		cloneCmd = fmt.Sprintf("%s && cd /workspace && mv %s/* . && rm -rf %s", cloneCmd, gitSource.Path, gitSource.Path)
+		// Move subdirectory contents to workspace root using tar to handle all files correctly
+		cloneCmd = fmt.Sprintf("%s && cd /workspace/%s && tar cf - . | (cd /workspace && tar xf -) && cd /workspace && rm -rf %s", cloneCmd, gitSource.Path, gitSource.Path)
 	}
 
 	container := &corev1.Container{

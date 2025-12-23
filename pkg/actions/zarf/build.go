@@ -14,6 +14,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog/v2"
 
+	"github.com/kylegalloway/forge/pkg/actions/common"
 	zarfv1alpha1 "github.com/kylegalloway/forge/pkg/apis/zarf/v1alpha1"
 	"github.com/kylegalloway/forge/pkg/constants"
 	"github.com/kylegalloway/forge/pkg/sources"
@@ -42,7 +43,7 @@ func NewBuildHandler(kubeClient kubernetes.Interface, metrics *telemetry.Metrics
 }
 
 // Execute performs a Build action for the given ZarfPackageJob
-func (handler *BuildHandler) Execute(ctx context.Context, pkg *zarfv1alpha1.ZarfPackageJob, artifactPVCName string) (*ActionResult, error) {
+func (handler *BuildHandler) Execute(ctx context.Context, pkg *zarfv1alpha1.ZarfPackageJob, artifactPVCName string) (*common.ActionResult, error) {
 
 	klog.InfoS("Executing Build action", "name", pkg.Name, "namespace", pkg.Namespace, "artifactPVC", artifactPVCName)
 
@@ -67,7 +68,7 @@ func (handler *BuildHandler) Execute(ctx context.Context, pkg *zarfv1alpha1.Zarf
 
 	klog.InfoS("Build job created", "name", pkg.Name, "job", job.Name)
 
-	result := &ActionResult{
+	result := &common.ActionResult{
 		JobName:   job.Name,
 		Phase:     "Running",
 		Message:   fmt.Sprintf("Build job %s created", job.Name),

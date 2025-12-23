@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/kylegalloway/forge/pkg/actions/common"
+
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -34,7 +36,7 @@ func NewDeployHandler(kubeClient kubernetes.Interface, metrics *telemetry.Metric
 }
 
 // Execute performs a Deploy action for the given ZarfPackageJob
-func (handler *DeployHandler) Execute(ctx context.Context, pkg *zarfv1alpha1.ZarfPackageJob, artifactPath string, artifactPVCName string) (*ActionResult, error) {
+func (handler *DeployHandler) Execute(ctx context.Context, pkg *zarfv1alpha1.ZarfPackageJob, artifactPath string, artifactPVCName string) (*common.ActionResult, error) {
 	klog.InfoS("Executing Deploy action", "name", pkg.Name, "namespace", pkg.Namespace, "artifactPVC", artifactPVCName)
 
 	// Record deploy started
@@ -58,7 +60,7 @@ func (handler *DeployHandler) Execute(ctx context.Context, pkg *zarfv1alpha1.Zar
 
 	klog.InfoS("Deploy job created", "name", pkg.Name, "job", job.Name)
 
-	result := &ActionResult{
+	result := &common.ActionResult{
 		JobName:   job.Name,
 		Phase:     "Running",
 		Message:   fmt.Sprintf("Deploy job %s created", job.Name),

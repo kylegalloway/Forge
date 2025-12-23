@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/kylegalloway/forge/pkg/actions/common"
+
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -34,7 +36,7 @@ func NewPublishHandler(kubeClient kubernetes.Interface, metrics *telemetry.Metri
 }
 
 // Execute performs a Publish action for the given ZarfPackageJob
-func (handler *PublishHandler) Execute(ctx context.Context, pkg *zarfv1alpha1.ZarfPackageJob, artifactPath string, artifactPVCName string) (*ActionResult, error) {
+func (handler *PublishHandler) Execute(ctx context.Context, pkg *zarfv1alpha1.ZarfPackageJob, artifactPath string, artifactPVCName string) (*common.ActionResult, error) {
 	klog.InfoS("Executing Publish action", "name", pkg.Name, "namespace", pkg.Namespace, "artifactPVC", artifactPVCName)
 
 	// Record publish started
@@ -58,7 +60,7 @@ func (handler *PublishHandler) Execute(ctx context.Context, pkg *zarfv1alpha1.Za
 
 	klog.InfoS("Publish job created", "name", pkg.Name, "job", job.Name)
 
-	result := &ActionResult{
+	result := &common.ActionResult{
 		JobName:   job.Name,
 		Phase:     "Running",
 		Message:   fmt.Sprintf("Publish job %s created", job.Name),

@@ -10,9 +10,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/fake"
 
+	"github.com/kylegalloway/forge/pkg/actions/common"
 	udsv1alpha1 "github.com/kylegalloway/forge/pkg/apis/uds/v1alpha1"
 	"github.com/kylegalloway/forge/pkg/telemetry"
-	"github.com/kylegalloway/forge/pkg/util"
 )
 
 // mustNewMetrics creates metrics instance for testing
@@ -578,12 +578,12 @@ func TestGetResources(t *testing.T) {
 	// Test with custom resources
 	customResources := &corev1.ResourceRequirements{
 		Requests: corev1.ResourceList{
-			corev1.ResourceCPU:    util.MustParseQuantity("100m"),
-			corev1.ResourceMemory: util.MustParseQuantity("256Mi"),
+			corev1.ResourceCPU:    common.MustParseQuantity("100m"),
+			corev1.ResourceMemory: common.MustParseQuantity("256Mi"),
 		},
 		Limits: corev1.ResourceList{
-			corev1.ResourceCPU:    util.MustParseQuantity("500m"),
-			corev1.ResourceMemory: util.MustParseQuantity("1Gi"),
+			corev1.ResourceCPU:    common.MustParseQuantity("500m"),
+			corev1.ResourceMemory: common.MustParseQuantity("1Gi"),
 		},
 	}
 	bundle.Spec.Resources = customResources

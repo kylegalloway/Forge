@@ -3,8 +3,8 @@ package sources
 import (
 	"testing"
 
+	"github.com/kylegalloway/forge/pkg/actions/common"
 	zarfv1alpha1 "github.com/kylegalloway/forge/pkg/apis/zarf/v1alpha1"
-	"github.com/kylegalloway/forge/pkg/util"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -469,18 +469,18 @@ func TestLocalSourceGetInitContainer(t *testing.T) {
 func TestPtr(t *testing.T) {
 	// Test the ptr helper function
 	intVal := 42
-	intPtr := util.Ptr(intVal)
+	intPtr := common.Ptr(intVal)
 	if intPtr == nil {
-		t.Fatal("util.Ptr() returned nil")
+		t.Fatal("common.Ptr() returned nil")
 	}
 	if *intPtr != intVal {
 		t.Errorf("Expected *ptr = %d, got %d", intVal, *intPtr)
 	}
 
 	strVal := "test"
-	strPtr := util.Ptr(strVal)
+	strPtr := common.Ptr(strVal)
 	if strPtr == nil {
-		t.Fatal("util.Ptr() returned nil for string")
+		t.Fatal("common.Ptr() returned nil for string")
 	}
 	if *strPtr != strVal {
 		t.Errorf("Expected *ptr = %s, got %s", strVal, *strPtr)

@@ -101,18 +101,12 @@
 
 ### Code Duplication
 
-* ~~**Create shared helpers package** ✅ COMPLETED~~
-  * ~~Create: `pkg/util/helpers.go`~~
-  * ~~Move: `ptr[T any](v T) *T` function (duplicated in 3 places) → util.Ptr()~~
-  * ~~Move: `mustParseQuantity(quantityStr string) resource.Quantity` function (duplicated in 2 places) → util.MustParseQuantity()~~
-  * ~~All action handlers, source handlers, and tests updated to use util package~~
-
-* **Consolidate ActionResult type**
-  * Location: Duplicated in `pkg/actions/zarf/types.go:8-33` and `pkg/actions/uds/types.go:17-42`
-  * Options:
-    1. Move to `pkg/actions/common/types.go` (recommended - aligns with common package)
-    2. Use generic type with package-specific aliases
-    3. Keep separate but document why (if they diverge in the future)
+* ~~**Create shared helpers package and consolidate ActionResult** ✅ COMPLETED~~
+  * ~~ActionResult moved to `pkg/actions/common/types.go` (shared by both Zarf and UDS)~~
+  * ~~Ptr() and MustParseQuantity() already existed in common, consolidated all usages~~
+  * ~~Removed duplicate types files: zarf/types.go, uds/types.go~~
+  * ~~All Zarf and UDS handlers now use common.ActionResult~~
+  * ~~All action handlers, source handlers, and tests updated to use common package~~
 
 ---
 
@@ -226,9 +220,12 @@
 * ✅ Defensive container bounds checking added to all handlers that need it
 * ✅ Hardcoded UIDs replaced with constants throughout action handlers
 * ✅ Resource requirements standardized (CPU millicore notation, consistent values)
+* ✅ ActionResult type consolidated in `pkg/actions/common/types.go` (eliminates duplication)
+* ✅ CLI image constants moved to `pkg/constants/config.go`
+* ✅ All helper functions (Ptr, MustParseQuantity) consolidated in common package
 
 **Next Steps**:
 1. Complete UDS source handler integration (use `pkg/sources` instead of inline Git)
-2. Create `pkg/util/` package for shared helper functions
-3. Consolidate ActionResult type into common package
-4. Make all timeouts configurable via CRD fields
+2. Make all timeouts configurable via CRD fields
+3. Standardize timeout parsing to use time.ParseDuration
+4. Standardize resource requirements across similar operations

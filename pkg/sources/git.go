@@ -4,8 +4,8 @@ package sources
 import (
 	"fmt"
 
+	"github.com/kylegalloway/forge/pkg/actions/common"
 	zarfv1alpha1 "github.com/kylegalloway/forge/pkg/apis/zarf/v1alpha1"
-	"github.com/kylegalloway/forge/pkg/util"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -44,9 +44,9 @@ func (source *GitSource) GetInitContainer(pkg *zarfv1alpha1.ZarfPackageJob) (*co
 			},
 		},
 		SecurityContext: &corev1.SecurityContext{
-			RunAsNonRoot:             util.Ptr(true),
-			RunAsUser:                util.Ptr(int64(1000)),
-			AllowPrivilegeEscalation: util.Ptr(false),
+			RunAsNonRoot:             common.Ptr(true),
+			RunAsUser:                common.Ptr(int64(1000)),
+			AllowPrivilegeEscalation: common.Ptr(false),
 			Capabilities: &corev1.Capabilities{
 				Drop: []corev1.Capability{"ALL"},
 			},

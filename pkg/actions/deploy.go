@@ -34,8 +34,8 @@ func NewDeployHandler(kubeClient kubernetes.Interface, metrics *telemetry.Metric
 }
 
 // Execute performs a Deploy action for the given ZarfPackageJob
-func (handler *DeployHandler) Execute(ctx context.Context, pkg *zarfv1alpha1.ZarfPackageJob, artifactPath string) (*ActionResult, error) {
-	klog.InfoS("Executing Deploy action", "name", pkg.Name, "namespace", pkg.Namespace)
+func (handler *DeployHandler) Execute(ctx context.Context, pkg *zarfv1alpha1.ZarfPackageJob, artifactPath string, artifactPVCName string) (*ActionResult, error) {
+	klog.InfoS("Executing Deploy action", "name", pkg.Name, "namespace", pkg.Namespace, "artifactPVC", artifactPVCName)
 
 	// Record deploy started
 	handler.metrics.RecordDeployStarted(ctx, pkg.Namespace, pkg.Name)
@@ -47,7 +47,7 @@ func (handler *DeployHandler) Execute(ctx context.Context, pkg *zarfv1alpha1.Zar
 	}
 
 	// Create Kubernetes Job to deploy the package
-	job, err := handler.createDeployJob(ctx, pkg, artifactPath)
+	job, err := handler.createDeployJob(ctx, pkg, artifactPath, artifactPVCName)
 	if err != nil {
 		handler.metrics.RecordDeployFailed(ctx, pkg.Namespace, pkg.Name)
 		return nil, fmt.Errorf("failed to create deploy job: %w", err)
@@ -70,9 +70,15 @@ func (handler *DeployHandler) Execute(ctx context.Context, pkg *zarfv1alpha1.Zar
 }
 
 // createDeployJob creates a Kubernetes Job to deploy a Zarf package
-func (handler *DeployHandler) createDeployJob(ctx context.Context, pkg *zarfv1alpha1.ZarfPackageJob, artifactPath string) (*batchv1.Job, error) {
+func (handler *DeployHandler) createDeployJob(ctx context.Context, pkg *zarfv1alpha1.ZarfPackageJob, artifactPath string, artifactPVCName string) (*batchv1.Job, error) {
 	jobName := fmt.Sprintf("%s-deploy", pkg.Name)
 	namespace := pkg.Namespace
+
+	// If multi-action job, update artifactPath to use glob pattern for PVC location
+	if artifactPVCName != "" {
+		// Use glob pattern to find the zarf package created by build job
+		artifactPath = "/artifacts/*.tar.zst"
+	}
 
 	// Build deploy command based on target
 	deployCmd := handler.buildDeployCommand(pkg, artifactPath)
@@ -174,6 +180,27 @@ func (handler *DeployHandler) createDeployJob(ctx context.Context, pkg *zarfv1al
 		},
 	}
 
+	// Add artifact PVC if multi-action job
+	if artifactPVCName != "" {
+		artifactVolume := corev1.Volume{
+			Name: "artifacts",
+			VolumeSource: corev1.VolumeSource{
+				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+					ClaimName: artifactPVCName,
+				},
+			},
+		}
+		artifactMount := corev1.VolumeMount{
+			Name:      "artifacts",
+			MountPath: "/artifacts",
+		}
+		job.Spec.Template.Spec.Volumes = append(job.Spec.Template.Spec.Volumes, artifactVolume)
+		job.Spec.Template.Spec.Containers[0].VolumeMounts = append(
+			job.Spec.Template.Spec.Containers[0].VolumeMounts,
+			artifactMount,
+		)
+	}
+
 	// Add ServiceAccount for in-cluster or external cluster access
 	handler.addServiceAccount(pkg, job)
 
@@ -183,12 +210,12 @@ func (handler *DeployHandler) createDeployJob(ctx context.Context, pkg *zarfv1al
 	}
 
 	// Add source credential volume if OCI source with credentials
-	if pkg.Spec.Source.Type == zarfv1alpha1.SourceTypeOCI && pkg.Spec.Source.OCI != nil && pkg.Spec.Source.OCI.CredentialsSecretRef != nil {
+	if pkg.Spec.Source.Type == zarfv1alpha1.SourceTypeOCI && pkg.Spec.Source.OCI != nil && pkg.Spec.Source.OCI.CredentialsSecretRef != nil { // pragma: allowlist secret
 		job.Spec.Template.Spec.Volumes = append(job.Spec.Template.Spec.Volumes, corev1.Volume{
 			Name: "source-docker-config",
 			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName: pkg.Spec.Source.OCI.CredentialsSecretRef.Name,
+				Secret: &corev1.SecretVolumeSource{ // pragma: allowlist secret
+					SecretName: pkg.Spec.Source.OCI.CredentialsSecretRef.Name, // pragma: allowlist secret
 					Items: []corev1.KeyToPath{
 						{
 							Key:  ".dockerconfigjson",
@@ -325,7 +352,7 @@ func (handler *DeployHandler) addKubeconfigVolume(pkg *zarfv1alpha1.ZarfPackageJ
 		return
 	}
 
-	secretName := pkg.Spec.Deploy.ExternalCluster.KubeconfigSecretRef.Name
+	secretName := pkg.Spec.Deploy.ExternalCluster.KubeconfigSecretRef.Name // pragma: allowlist secret
 
 	// Add volume
 	job.Spec.Template.Spec.Volumes = append(job.Spec.Template.Spec.Volumes, corev1.Volume{

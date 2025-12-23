@@ -86,6 +86,17 @@ rules:
   verbs:
   - create
   - patch
+# Permissions for PersistentVolumeClaims (for multi-action job artifact sharing)
+- apiGroups:
+  - ""
+  resources:
+  - persistentvolumeclaims
+  verbs:
+  - create
+  - get
+  - list
+  - watch
+  - delete
 # Permissions for leader election
 - apiGroups:
   - coordination.k8s.io

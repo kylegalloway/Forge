@@ -194,37 +194,51 @@ func (controller *Controller) reconcilePackage(ctx context.Context, unstrObj *un
 		return controller.updateStatus(ctx, unstrObj, "Failed", fmt.Sprintf("Policy violation: %v", err), nil)
 	}
 
+	// Create shared artifact PVC if this is a multi-action job
+	var artifactPVCName string
+	if isMultiActionZarfJob(pkg.Spec.Action) {
+		ownerRef := *metav1.NewControllerRef(pkg, zarfv1alpha1.SchemeGroupVersion.WithKind("ZarfPackageJob"))
+		pvc, err := ensureArtifactPVC(ctx, controller.kubeClient, pkg.Name, pkg.Namespace, ownerRef)
+		if err != nil {
+			klog.ErrorS(err, "Failed to create artifact PVC", "name", name, "namespace", namespace)
+			controller.metrics.RecordReconcileError(ctx, "pvc_creation_failed")
+			return controller.updateStatus(ctx, unstrObj, "Failed", fmt.Sprintf("Failed to create artifact storage: %v", err), nil)
+		}
+		artifactPVCName = pvc.Name
+		klog.InfoS("Using shared artifact PVC", "name", name, "pvc", artifactPVCName)
+	}
+
 	// Dispatch to appropriate action handler
 	var result *actions.ActionResult
 	var err error
 
 	switch pkg.Spec.Action {
 	case zarfv1alpha1.ActionBuild:
-		result, err = controller.buildHandler.Execute(ctx, pkg)
+		result, err = controller.buildHandler.Execute(ctx, pkg, artifactPVCName)
 
 	case zarfv1alpha1.ActionPublish:
 		// Standalone publish: artifact must be pre-staged at /workspace/package.tar.zst
-		result, err = controller.publishHandler.Execute(ctx, pkg, "/workspace/package.tar.zst")
+		result, err = controller.publishHandler.Execute(ctx, pkg, "/workspace/package.tar.zst", artifactPVCName)
 
 	case zarfv1alpha1.ActionDeploy:
 		// Standalone deploy: artifact must be pre-staged at /workspace/package.tar.zst
-		result, err = controller.deployHandler.Execute(ctx, pkg, "/workspace/package.tar.zst")
+		result, err = controller.deployHandler.Execute(ctx, pkg, "/workspace/package.tar.zst", artifactPVCName)
 
 	case zarfv1alpha1.ActionBuildPublish:
 		// Execute build first, job monitor will trigger publish when build completes
-		result, err = controller.buildHandler.Execute(ctx, pkg)
+		result, err = controller.buildHandler.Execute(ctx, pkg, artifactPVCName)
 
 	case zarfv1alpha1.ActionBuildDeploy:
 		// Execute build first, job monitor will trigger deploy when build completes
-		result, err = controller.buildHandler.Execute(ctx, pkg)
+		result, err = controller.buildHandler.Execute(ctx, pkg, artifactPVCName)
 
 	case zarfv1alpha1.ActionPublishDeploy:
 		// Execute publish first, job monitor will trigger deploy when publish completes
-		result, err = controller.publishHandler.Execute(ctx, pkg, "/workspace/package.tar.zst")
+		result, err = controller.publishHandler.Execute(ctx, pkg, "/workspace/package.tar.zst", artifactPVCName)
 
 	case zarfv1alpha1.ActionBuildPublishDeploy:
 		// Execute build first, job monitor will chain publish → deploy
-		result, err = controller.buildHandler.Execute(ctx, pkg)
+		result, err = controller.buildHandler.Execute(ctx, pkg, artifactPVCName)
 
 	default:
 		err = fmt.Errorf("action %s not yet implemented", pkg.Spec.Action)

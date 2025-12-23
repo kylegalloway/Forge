@@ -107,7 +107,7 @@ func TestBuildHandlerExecute(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := handler.Execute(context.Background(), tt.pkg)
+			_, err := handler.Execute(context.Background(), tt.pkg, "")
 			if (err != nil) != tt.wantErr {
 				t.Errorf("BuildHandler.Execute() error = %v, wantErr %v", err, tt.wantErr)
 			}
@@ -178,7 +178,7 @@ func TestPublishHandlerExecute(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := handler.Execute(context.Background(), tt.pkg, "/workspace/test.tar.zst")
+			_, err := handler.Execute(context.Background(), tt.pkg, "/workspace/test.tar.zst", "")
 			if (err != nil) != tt.wantErr {
 				t.Errorf("PublishHandler.Execute() error = %v, wantErr %v", err, tt.wantErr)
 			}
@@ -243,7 +243,7 @@ func TestDeployHandlerExecute(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := handler.Execute(context.Background(), tt.pkg, "/workspace/test.tar.zst")
+			_, err := handler.Execute(context.Background(), tt.pkg, "/workspace/test.tar.zst", "")
 			if (err != nil) != tt.wantErr {
 				t.Errorf("DeployHandler.Execute() error = %v, wantErr %v", err, tt.wantErr)
 			}
@@ -277,7 +277,7 @@ func TestDeployHandlerExecute_ExternalCluster(t *testing.T) {
 		},
 	}
 
-	result, err := handler.Execute(context.Background(), pkg, "/workspace/test.tar.zst")
+	result, err := handler.Execute(context.Background(), pkg, "/workspace/test.tar.zst", "")
 	if err != nil {
 		t.Errorf("DeployHandler.Execute() with external cluster failed: %v", err)
 	}
@@ -347,7 +347,7 @@ func TestDeployHandlerExecute_MissingDeployConfig(t *testing.T) {
 		},
 	}
 
-	_, err := handler.Execute(context.Background(), pkg, "/workspace/test.tar.zst")
+	_, err := handler.Execute(context.Background(), pkg, "/workspace/test.tar.zst", "")
 	if err == nil {
 		t.Error("Expected error for missing deploy config")
 	}
@@ -372,7 +372,7 @@ func TestPublishHandlerExecute_MissingPublishConfig(t *testing.T) {
 		},
 	}
 
-	_, err := handler.Execute(context.Background(), pkg, "/workspace/test.tar.zst")
+	_, err := handler.Execute(context.Background(), pkg, "/workspace/test.tar.zst", "")
 	if err == nil {
 		t.Error("Expected error for missing publish config")
 	}
@@ -400,7 +400,7 @@ func TestBuildHandlerExecute_LocalSource(t *testing.T) {
 		},
 	}
 
-	result, err := handler.Execute(context.Background(), pkg)
+	result, err := handler.Execute(context.Background(), pkg, "")
 	if err != nil {
 		t.Errorf("BuildHandler.Execute() with local source failed: %v", err)
 	}
@@ -456,7 +456,7 @@ func TestPublishHandlerExecute_LocalSource(t *testing.T) {
 		},
 	}
 
-	result, err := handler.Execute(context.Background(), pkg, "/workspace/test.tar.zst")
+	result, err := handler.Execute(context.Background(), pkg, "/workspace/test.tar.zst", "")
 	if err != nil {
 		t.Errorf("PublishHandler.Execute() with local source failed: %v", err)
 	}
@@ -506,7 +506,7 @@ func TestDeployHandlerExecute_LocalSource(t *testing.T) {
 		},
 	}
 
-	result, err := handler.Execute(context.Background(), pkg, "/workspace/test.tar.zst")
+	result, err := handler.Execute(context.Background(), pkg, "/workspace/test.tar.zst", "")
 	if err != nil {
 		t.Errorf("DeployHandler.Execute() with local source failed: %v", err)
 	}
@@ -561,7 +561,7 @@ func TestDeployHandlerExecute_WithComponentsAndVariables(t *testing.T) {
 		},
 	}
 
-	result, err := handler.Execute(context.Background(), pkg, "/workspace/test.tar.zst")
+	result, err := handler.Execute(context.Background(), pkg, "/workspace/test.tar.zst", "")
 	if err != nil {
 		t.Errorf("DeployHandler.Execute() with components and variables failed: %v", err)
 	}
@@ -624,7 +624,7 @@ func TestDeployHandlerExecute_ExternalClusterWithContext(t *testing.T) {
 		},
 	}
 
-	result, err := handler.Execute(context.Background(), pkg, "/workspace/test.tar.zst")
+	result, err := handler.Execute(context.Background(), pkg, "/workspace/test.tar.zst", "")
 	if err != nil {
 		t.Errorf("DeployHandler.Execute() with external cluster context failed: %v", err)
 	}

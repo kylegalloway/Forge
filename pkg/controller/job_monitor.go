@@ -244,15 +244,24 @@ func (controller *Controller) handleActionChaining(ctx context.Context, unstrObj
 
 	klog.InfoS("Triggering next action in chain", "package", pkg.Name, "nextAction", nextAction, "artifactPath", artifactPath)
 
+	// Determine artifact PVC name for multi-action jobs
+	var artifactPVCName string
+	if isMultiActionZarfJob(pkg.Spec.Action) {
+		artifactPVCName = fmt.Sprintf("%s-artifacts", pkg.Name)
+		// Override artifactPath to use glob pattern for PVC location
+		artifactPath = "/artifacts/*.tar.zst"
+		klog.InfoS("Using shared artifact PVC for chained action", "package", pkg.Name, "pvc", artifactPVCName)
+	}
+
 	// Execute the next action handler
 	var result *actions.ActionResult
 	var err error
 
 	switch nextAction {
 	case "publish":
-		result, err = controller.publishHandler.Execute(ctx, pkg, artifactPath)
+		result, err = controller.publishHandler.Execute(ctx, pkg, artifactPath, artifactPVCName)
 	case "deploy":
-		result, err = controller.deployHandler.Execute(ctx, pkg, artifactPath)
+		result, err = controller.deployHandler.Execute(ctx, pkg, artifactPath, artifactPVCName)
 	default:
 		return fmt.Errorf("unknown next action: %s", nextAction)
 	}

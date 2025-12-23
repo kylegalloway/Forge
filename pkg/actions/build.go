@@ -42,9 +42,9 @@ func NewBuildHandler(kubeClient kubernetes.Interface, metrics *telemetry.Metrics
 }
 
 // Execute performs a Build action for the given ZarfPackageJob
-func (handler *BuildHandler) Execute(ctx context.Context, pkg *zarfv1alpha1.ZarfPackageJob) (*ActionResult, error) {
+func (handler *BuildHandler) Execute(ctx context.Context, pkg *zarfv1alpha1.ZarfPackageJob, artifactPVCName string) (*ActionResult, error) {
 
-	klog.InfoS("Executing Build action", "name", pkg.Name, "namespace", pkg.Namespace)
+	klog.InfoS("Executing Build action", "name", pkg.Name, "namespace", pkg.Namespace, "artifactPVC", artifactPVCName)
 
 	// Record build started
 	handler.metrics.RecordBuildStarted(ctx, pkg.Namespace, pkg.Name)
@@ -56,7 +56,7 @@ func (handler *BuildHandler) Execute(ctx context.Context, pkg *zarfv1alpha1.Zarf
 	}
 
 	// Create Kubernetes Job to build the package
-	job, err := handler.createBuildJob(ctx, pkg)
+	job, err := handler.createBuildJob(ctx, pkg, artifactPVCName)
 	if err != nil {
 		handler.metrics.RecordBuildFailed(ctx, pkg.Namespace, pkg.Name)
 		return nil, fmt.Errorf("failed to create build job: %w", err)
@@ -79,15 +79,12 @@ func (handler *BuildHandler) Execute(ctx context.Context, pkg *zarfv1alpha1.Zarf
 }
 
 // createBuildJob creates a Kubernetes Job to build a Zarf package
-func (handler *BuildHandler) createBuildJob(ctx context.Context, pkg *zarfv1alpha1.ZarfPackageJob) (*batchv1.Job, error) {
+func (handler *BuildHandler) createBuildJob(ctx context.Context, pkg *zarfv1alpha1.ZarfPackageJob, artifactPVCName string) (*batchv1.Job, error) {
 	jobName := fmt.Sprintf("%s-build", pkg.Name)
 	namespace := pkg.Namespace
 
-	// Build zarf command based on source type
-	zarfCmd, workingDir, err := handler.buildZarfCommand(pkg)
-	if err != nil {
-		return nil, err
-	}
+	// Build zarf command based on source type and artifact PVC
+	zarfCmd, workingDir := handler.buildZarfCommand(pkg, artifactPVCName)
 
 	// Build init containers
 	initContainers, err := handler.buildInitContainers(pkg)
@@ -185,13 +182,34 @@ func (handler *BuildHandler) createBuildJob(ctx context.Context, pkg *zarfv1alph
 		},
 	}
 
+	// Add artifact PVC if multi-action job
+	if artifactPVCName != "" {
+		artifactVolume := corev1.Volume{
+			Name: "artifacts",
+			VolumeSource: corev1.VolumeSource{
+				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+					ClaimName: artifactPVCName,
+				},
+			},
+		}
+		artifactMount := corev1.VolumeMount{
+			Name:      "artifacts",
+			MountPath: "/artifacts",
+		}
+		job.Spec.Template.Spec.Volumes = append(job.Spec.Template.Spec.Volumes, artifactVolume)
+		job.Spec.Template.Spec.Containers[0].VolumeMounts = append(
+			job.Spec.Template.Spec.Containers[0].VolumeMounts,
+			artifactMount,
+		)
+	}
+
 	// Add docker-config volume if OCI source with credentials
-	if pkg.Spec.Source.Type == zarfv1alpha1.SourceTypeOCI && pkg.Spec.Source.OCI != nil && pkg.Spec.Source.OCI.CredentialsSecretRef != nil {
+	if pkg.Spec.Source.Type == zarfv1alpha1.SourceTypeOCI && pkg.Spec.Source.OCI != nil && pkg.Spec.Source.OCI.CredentialsSecretRef != nil { // pragma: allowlist secret
 		job.Spec.Template.Spec.Volumes = append(job.Spec.Template.Spec.Volumes, corev1.Volume{
 			Name: "docker-config",
 			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName: pkg.Spec.Source.OCI.CredentialsSecretRef.Name,
+				Secret: &corev1.SecretVolumeSource{ // pragma: allowlist secret
+					SecretName: pkg.Spec.Source.OCI.CredentialsSecretRef.Name, // pragma: allowlist secret
 					Items: []corev1.KeyToPath{
 						{
 							Key:  ".dockerconfigjson",
@@ -221,13 +239,21 @@ func (handler *BuildHandler) createBuildJob(ctx context.Context, pkg *zarfv1alph
 }
 
 // buildZarfCommand builds the zarf CLI command based on package source
-func (handler *BuildHandler) buildZarfCommand(_ *zarfv1alpha1.ZarfPackageJob) (string, string, error) {
+func (handler *BuildHandler) buildZarfCommand(_ *zarfv1alpha1.ZarfPackageJob, artifactPVCName string) (string, string) {
 	workingDir := "/workspace"
 
-	// Basic zarf package create command
-	cmd := "zarf package create . --confirm --output-directory /output"
+	// Build command - output to /artifacts if PVC exists, otherwise /output
+	var cmd string
+	if artifactPVCName != "" {
+		// Multi-action job: output to shared PVC directory
+		// Zarf will generate filename based on package metadata
+		cmd = "zarf package create . --confirm --output-directory /artifacts"
+	} else {
+		// Standalone build: output to EmptyDir
+		cmd = "zarf package create . --confirm --output-directory /output"
+	}
 
-	return cmd, workingDir, nil
+	return cmd, workingDir
 }
 
 // buildInitContainers creates init containers for source artifact retrieval

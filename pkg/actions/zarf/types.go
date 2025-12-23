@@ -1,4 +1,4 @@
-package actions
+package zarf
 
 import (
 	"k8s.io/apimachinery/pkg/api/resource"

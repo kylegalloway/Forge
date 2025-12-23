@@ -2,7 +2,7 @@
 //
 // Each action handler is responsible for executing a specific operation
 // on a Zarf package or UDS bundle.
-package actions
+package zarf
 
 import (
 	"context"

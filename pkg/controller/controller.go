@@ -19,7 +19,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog/v2"
 
-	"github.com/kylegalloway/forge/pkg/actions"
+	"github.com/kylegalloway/forge/pkg/actions/zarf"
 	zarfv1alpha1 "github.com/kylegalloway/forge/pkg/apis/zarf/v1alpha1"
 	"github.com/kylegalloway/forge/pkg/constants"
 	"github.com/kylegalloway/forge/pkg/policy"
@@ -34,9 +34,9 @@ type Controller struct {
 	metrics        *telemetry.Metrics
 	tracer         *telemetry.Tracer
 	policyEngine   *policy.Engine
-	buildHandler   *actions.BuildHandler
-	publishHandler *actions.PublishHandler
-	deployHandler  *actions.DeployHandler
+	buildHandler   *zarf.BuildHandler
+	publishHandler *zarf.PublishHandler
+	deployHandler  *zarf.DeployHandler
 	healthy        bool
 	ready          bool
 }
@@ -53,9 +53,9 @@ func NewController(
 	policyEngine := policy.NewEngine(kubeClient)
 
 	// Initialize action handlers
-	buildHandler := actions.NewBuildHandler(kubeClient, metrics, tracer)
-	publishHandler := actions.NewPublishHandler(kubeClient, metrics, tracer)
-	deployHandler := actions.NewDeployHandler(kubeClient, metrics, tracer)
+	buildHandler := zarf.NewBuildHandler(kubeClient, metrics, tracer)
+	publishHandler := zarf.NewPublishHandler(kubeClient, metrics, tracer)
+	deployHandler := zarf.NewDeployHandler(kubeClient, metrics, tracer)
 
 	return &Controller{
 		kubeClient:     kubeClient,
@@ -209,7 +209,7 @@ func (controller *Controller) reconcilePackage(ctx context.Context, unstrObj *un
 	}
 
 	// Dispatch to appropriate action handler
-	var result *actions.ActionResult
+	var result *zarf.ActionResult
 	var err error
 
 	switch pkg.Spec.Action {

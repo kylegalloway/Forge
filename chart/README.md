@@ -75,22 +75,23 @@ chart/forge/
 ├── values.yaml                         # Default values
 ├── crds/                               # Custom Resource Definitions
 │   ├── forge.dev_zarfpackagejobs.yaml
-│   └── forge.dev_udsbundlejobs.yaml
+│   ├── forge.dev_udsbundlejobs.yaml
+│   └── forge.dev_udspackagejobs.yaml   # v1alpha2 API
 └── templates/                          # Kubernetes manifests templates
     ├── _helpers.tpl                    # Template helpers
     ├── NOTES.txt                       # Post-install notes
     ├── namespace.yaml                  # Namespace
-    ├── controller-deployment.yaml      # Controller deployment
+    ├── controller/                     # Controller resources
+    │   ├── deployment.yaml
+    │   ├── serviceaccount.yaml
+    │   ├── rbac.yaml
+    │   └── service.yaml
     ├── webhook/                        # Webhook resources
     │   ├── deployment.yaml
     │   ├── service.yaml
     │   ├── rbac.yaml
     │   └── validatingwebhookconfiguration.yaml
-    ├── serviceaccount.yaml             # Service account
-    ├── rbac.yaml                       # RBAC resources
-    ├── metrics-service.yaml            # Metrics service
-    ├── networkpolicy.yaml              # Network policies
-    └── crd.yaml                        # CRD installation template
+    └── networkpolicy.yaml              # Network policies
 ```
 
 ## Configuration

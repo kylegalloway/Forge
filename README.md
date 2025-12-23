@@ -51,6 +51,8 @@ spec:
     timeout: 60m
 ```
 
+> **Note**: For UDS bundles, use `UDSPackageJob` with the v1alpha2 API for unified naming conventions. See [V1ALPHA2_MIGRATION.md](docs/operations/V1ALPHA2_MIGRATION.md) for details.
+
 ## Architecture
 
 ### Actions (What You Can Do)
@@ -360,9 +362,16 @@ See [.github/workflows/README.md](.github/workflows/README.md) for details.
 ```text
 forge/
 ├── pkg/
-│   ├── apis/zarf/v1alpha1/     # ZarfPackageJob CRD types
+│   ├── apis/
+│   │   ├── zarf/v1alpha1/       # ZarfPackageJob CRD types
+│   │   └── uds/
+│   │       ├── v1alpha1/        # UDSBundleJob (deprecated)
+│   │       └── v1alpha2/        # UDSPackageJob (recommended)
 │   ├── controller/              # Main controller
-│   ├── actions/                 # Action handlers
+│   ├── actions/
+│   │   ├── common/              # Shared action code (~610 lines)
+│   │   ├── zarf/                # Zarf action handlers
+│   │   └── uds/                 # UDS action handlers
 │   ├── sources/                 # Source handlers (Git, S3, OCI)
 │   ├── destinations/            # Destination handlers
 │   ├── credentials/             # Credential management
@@ -371,12 +380,16 @@ forge/
 │   ├── leaderelection/          # HA leader election
 │   └── webhook/                 # Admission webhook
 ├── chart/forge/                 # Helm chart for deployment
-│   ├── templates/               # Kubernetes manifests
+│   ├── templates/
+│   │   ├── controller/          # Controller manifests
+│   │   └── webhook/             # Webhook manifests
 │   ├── crds/                    # CRD definitions
 │   ├── dashboards/              # Grafana dashboards
 │   └── values*.yaml             # Configuration options
-├── examples/                    # Example resources
-│   └── samples/                 # ZarfPackageJob examples
+├── examples/
+│   └── samples/
+│       ├── zarf/                # ZarfPackageJob examples
+│       └── uds/                 # UDSPackageJob examples
 ├── docs/                        # Documentation
 └── cmd/                         # Entrypoints (controller, webhook)
 ```

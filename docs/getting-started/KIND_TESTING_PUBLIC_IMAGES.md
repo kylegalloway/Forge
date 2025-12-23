@@ -116,7 +116,7 @@ Expected output:
 
 ```text
 NAME            CHART VERSION   APP VERSION     DESCRIPTION
-forge/forge     0.1.2           v0.1.2          A Helm chart for deploying Forge - a Kubernetes...
+forge/forge     0.1.2           v0.2.0          A Helm chart for deploying Forge - a Kubernetes...
 ```
 
 ### 3. Install Forge

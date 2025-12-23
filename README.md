@@ -132,10 +132,10 @@ helm repo update
 helm install forge forge/forge \
   --namespace forge-system \
   --create-namespace \
-  --version 0.1.2
+  --version 0.2.0
 ```
 
-**Container Images**: `ghcr.io/kylegalloway/forge/forge-controller:v0.1.2` and `ghcr.io/kylegalloway/forge/forge-webhook:v0.1.2`
+**Container Images**: `ghcr.io/kylegalloway/forge/forge-controller:v0.2.0` and `ghcr.io/kylegalloway/forge/forge-webhook:v0.2.0`
 
 **Custom Configuration**:
 

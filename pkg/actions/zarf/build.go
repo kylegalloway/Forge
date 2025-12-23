@@ -144,7 +144,7 @@ func (handler *BuildHandler) createBuildJob(ctx context.Context, pkg *zarfv1alph
 							},
 							SecurityContext: &corev1.SecurityContext{
 								RunAsNonRoot:             ptr(true),
-								RunAsUser:                ptr(int64(1000)),
+								RunAsUser:                ptr(int64(constants.DefaultZarfUID)),
 								AllowPrivilegeEscalation: ptr(false),
 								Capabilities: &corev1.Capabilities{
 									Drop: []corev1.Capability{"ALL"},
@@ -172,8 +172,8 @@ func (handler *BuildHandler) createBuildJob(ctx context.Context, pkg *zarfv1alph
 					},
 					SecurityContext: &corev1.PodSecurityContext{
 						RunAsNonRoot: ptr(true),
-						RunAsUser:    ptr(int64(1000)),
-						FSGroup:      ptr(int64(1000)),
+						RunAsUser:    ptr(int64(constants.DefaultZarfUID)),
+						FSGroup:      ptr(int64(constants.DefaultZarfUID)),
 						SeccompProfile: &corev1.SeccompProfile{
 							Type: corev1.SeccompProfileTypeRuntimeDefault,
 						},
@@ -185,6 +185,10 @@ func (handler *BuildHandler) createBuildJob(ctx context.Context, pkg *zarfv1alph
 
 	// Add artifact PVC if multi-action job
 	if artifactPVCName != "" {
+		// Ensure the job has at least one container before accessing Containers[0]
+		if len(job.Spec.Template.Spec.Containers) == 0 {
+			return nil, fmt.Errorf("job has no containers, cannot add artifact PVC volume")
+		}
 		artifactVolume := corev1.Volume{
 			Name: "artifacts",
 			VolumeSource: corev1.VolumeSource{

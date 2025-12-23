@@ -134,7 +134,7 @@ func (handler *DeployHandler) createDeployJob(ctx context.Context, bundle *udsv1
 							},
 							SecurityContext: &corev1.SecurityContext{
 								RunAsNonRoot:             ptr(true),
-								RunAsUser:                ptr(int64(65532)),
+								RunAsUser:                ptr(int64(constants.DefaultUDSUID)),
 								AllowPrivilegeEscalation: ptr(false),
 								Capabilities: &corev1.Capabilities{
 									Drop: []corev1.Capability{"ALL"},
@@ -157,8 +157,8 @@ func (handler *DeployHandler) createDeployJob(ctx context.Context, bundle *udsv1
 					},
 					SecurityContext: &corev1.PodSecurityContext{
 						RunAsNonRoot: ptr(true),
-						RunAsUser:    ptr(int64(65532)),
-						FSGroup:      ptr(int64(65532)),
+						RunAsUser:    ptr(int64(constants.DefaultUDSUID)),
+						FSGroup:      ptr(int64(constants.DefaultUDSUID)),
 						SeccompProfile: &corev1.SeccompProfile{
 							Type: corev1.SeccompProfileTypeRuntimeDefault,
 						},
@@ -330,7 +330,7 @@ func (handler *DeployHandler) getResources(bundle *udsv1alpha1.UDSBundleJob) cor
 			corev1.ResourceMemory: mustParseQuantity("512Mi"),
 		},
 		Limits: corev1.ResourceList{
-			corev1.ResourceCPU:    mustParseQuantity("1"),
+			corev1.ResourceCPU:    mustParseQuantity("1000m"),
 			corev1.ResourceMemory: mustParseQuantity("2Gi"),
 		},
 	}

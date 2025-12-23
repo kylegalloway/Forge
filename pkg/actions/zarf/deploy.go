@@ -149,7 +149,7 @@ func (handler *DeployHandler) createDeployJob(ctx context.Context, pkg *zarfv1al
 							Env: handler.buildEnvVars(pkg),
 							SecurityContext: &corev1.SecurityContext{
 								RunAsNonRoot:             ptr(true),
-								RunAsUser:                ptr(int64(1000)),
+								RunAsUser:                ptr(int64(constants.DefaultZarfUID)),
 								AllowPrivilegeEscalation: ptr(false),
 								Capabilities: &corev1.Capabilities{
 									Drop: []corev1.Capability{"ALL"},
@@ -171,8 +171,8 @@ func (handler *DeployHandler) createDeployJob(ctx context.Context, pkg *zarfv1al
 					},
 					SecurityContext: &corev1.PodSecurityContext{
 						RunAsNonRoot: ptr(true),
-						RunAsUser:    ptr(int64(1000)),
-						FSGroup:      ptr(int64(1000)),
+						RunAsUser:    ptr(int64(constants.DefaultZarfUID)),
+						FSGroup:      ptr(int64(constants.DefaultZarfUID)),
 						SeccompProfile: &corev1.SeccompProfile{
 							Type: corev1.SeccompProfileTypeRuntimeDefault,
 						},

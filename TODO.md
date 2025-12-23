@@ -21,8 +21,8 @@
   * Action: Investigate and fix job state reconciliation logic
 
 * **Verify Examples** - Examples folder has examples that haven't been checked to make sure they work
-  * Location: `examples`
-  * Action: Investigate, fix examples
+  * Location: `examples/`
+  * Action: Investigate and validate all example manifests
 
 ---
 
@@ -31,23 +31,19 @@
 ### Missing Source Handler Integration
 
 * **Integrate UDS actions with shared source handlers**
-  * Location: `pkg/actions/uds/create.go:204-241`
-  * Issue: UDS actions implement inline Git cloning instead of using `pkg/sources`
+  * Location: `pkg/actions/uds/create.go:200-249`
+  * Issue: UDS actions implement inline Git cloning (`alpine/git:latest`) instead of using `pkg/sources`
   * Pattern: Use `sources.New()` and `sourceHandler.GetInitContainer()` like Zarf does
   * Files to update: `create.go`, `publish.go`, `deploy.go` in `pkg/actions/uds/`
   * Remove: Inline Git clone implementation from init containers
+  * Impact: **Architectural inconsistency** - Zarf uses shared source handlers, UDS doesn't
 
 ### Missing Defensive Checks
 
-* **Add container bounds checking to build.go**
-  * Location: `pkg/actions/build.go`
-  * Add: Check `len(job.Spec.Template.Spec.Containers) == 0` before accessing `Containers[0]`
-  * Pattern: Match defensive checks in `deploy.go:322-326`
+* ~~**Add container bounds checking to zarf/build.go** ✅ COMPLETED~~
+* ~~**Add container bounds checking to uds/create.go** ✅ NOT NEEDED - No array access that requires defensive checks~~
 
-* **Add container bounds checking to uds/create.go**
-  * Location: `pkg/actions/uds/create.go`
-  * Add: Check `len(job.Spec.Template.Spec.Containers) == 0` before accessing `Containers[0]`
-  * Pattern: Match defensive checks in `uds/deploy.go:244-248`
+**Note**: All action handlers now have proper defensive checks where needed.
 
 ---
 
@@ -56,61 +52,50 @@
 ### Constants Not Being Used
 
 * **Move CLI image constants to pkg/constants/config.go**
-  * Current: `ZarfCLIImage` in `pkg/actions/build.go:24-25`
+  * Current: `ZarfCLIImage` in `pkg/actions/zarf/build.go:25-26`
   * Current: `UDSCLIImage` in `pkg/actions/uds/types.go:13-14`
   * Target: `pkg/constants/config.go`
   * Update all references in action handlers
 
-* **Replace hardcoded UIDs with constants**
-  * Replace: `RunAsUser: 1000` → `constants.DefaultZarfUID` in all Zarf actions
-    * Files: `build.go:149`, `publish.go:142`, `deploy.go:144`
-  * Replace: `RunAsUser: 65532` → `constants.DefaultUDSUID` in all UDS actions
-    * Files: `uds/create.go:137`, `uds/publish.go:128`, `uds/deploy.go:137`
+* ~~**Replace hardcoded UIDs with constants** ✅ COMPLETED - All Zarf (1000→DefaultZarfUID) and UDS (65532→DefaultUDSUID) actions updated~~
 
 ### Timeout Handling Inconsistencies
 
 * **Make Build action timeout configurable**
-  * Location: `pkg/actions/build.go:100`
-  * Current: Hardcoded 3600s
+  * Location: `pkg/actions/zarf/build.go:98`
+  * Current: Hardcoded `int64(3600)` (1 hour)
   * Add: Support for `Spec.Build.Timeout` field in CRD
   * Use: `constants.DefaultBuildTimeout` as default
 
 * **Make Publish action timeout configurable**
-  * Location: `pkg/actions/publish.go:97`
-  * Current: Hardcoded 1800s
+  * Location: `pkg/actions/zarf/publish.go:105`
+  * Current: Hardcoded `int64(1800)` (30 minutes)
   * Add: Support for `Spec.Publish.Timeout` field in CRD
   * Use: `constants.DefaultPublishTimeout` as default
 
 * **Make UDS Create action timeout configurable**
   * Location: `pkg/actions/uds/create.go:87`
-  * Current: Hardcoded 7200s
+  * Current: Hardcoded `int64(7200)` (2 hours)
   * Add: Support for `Spec.Create.Timeout` field in CRD
-  * Use: `constants.DefaultUDSBundleCreateTimeout` as default
+  * Use: `constants.DefaultCreateTimeout` as default
 
 * **Make UDS Publish action timeout configurable**
   * Location: `pkg/actions/uds/publish.go:84`
-  * Current: Hardcoded 3600s
+  * Current: Hardcoded `int64(3600)` (1 hour)
   * Add: Support for `Spec.Publish.Timeout` field in CRD
-  * Use: `constants.DefaultUDSBundlePublishTimeout` as default
+  * Use: New constant (create `constants.DefaultUDSPublishTimeout`)
 
 * **Standardize timeout parsing to use time.ParseDuration**
   * Location: `pkg/actions/uds/deploy.go:282-318`
   * Issue: Custom parsing logic instead of standard library
-  * Replace: With `time.ParseDuration` like `pkg/actions/deploy.go:89`
+  * Replace: With `time.ParseDuration` like Zarf deploy uses
+  * Current: Manual string parsing for "30m", "1h", "2h30m" formats
 
 ### Resource Requirement Inconsistencies
 
-* **Fix Zarf Publish CPU request**
-  * Location: `pkg/actions/publish.go:263`
-  * Current: 250m (inconsistent with Build's 200m)
-  * Change: 250m → 200m
-  * Fix: Comment on line 254 that incorrectly says "slightly less than build"
+* ~~**Fix Zarf Publish CPU request** ✅ COMPLETED - Changed from 250m to 200m for consistency with Build~~
 
-* **Convert UDS resource limits to millicore notation**
-  * Location: `pkg/actions/uds/create.go:256`, `publish.go:324`, `deploy.go:332`
-  * Current: Shorthand notation ("1", "2")
-  * Change: "1" → "1000m", "2" → "2000m"
-  * Reason: Consistency with Zarf actions
+* ~~**Convert UDS resource limits to millicore notation** ✅ COMPLETED - All UDS actions now use explicit millicore notation ("1000m", "2000m")~~
 
 * **Standardize resource requirements across similar operations**
   * Build/Create should have same resources (both create artifacts)
@@ -123,14 +108,14 @@
 * **Create shared helpers package**
   * Create: `pkg/util/helpers.go`
   * Move: `ptr[T any](v T) *T` function (duplicated in 3 places)
-  * Move: `mustParseQuantity(quantityStr string) resource.Quantity` function
+  * Move: `mustParseQuantity(quantityStr string) resource.Quantity` function (duplicated in 2 places)
 
-* **Remove ptr() duplication from pkg/actions/types.go**
-  * Location: `pkg/actions/types.go:38-42`
+* **Remove ptr() duplication from pkg/actions/zarf/types.go**
+  * Location: `pkg/actions/zarf/types.go:38-40`
   * Replace: With import from `pkg/util`
 
 * **Remove ptr() duplication from pkg/actions/uds/types.go**
-  * Location: `pkg/actions/uds/types.go:47-51`
+  * Location: `pkg/actions/uds/types.go:47-49`
   * Replace: With import from `pkg/util`
 
 * **Remove ptr() duplication from pkg/sources/types.go**
@@ -138,15 +123,15 @@
   * Replace: With import from `pkg/util`
 
 * **Remove mustParseQuantity() duplication**
-  * Location: `pkg/actions/types.go:44-47` and `pkg/actions/uds/types.go:53-56`
+  * Location: `pkg/actions/zarf/types.go:43-46` and `pkg/actions/uds/types.go:52-55`
   * Replace: With import from `pkg/util`
 
 * **Consolidate ActionResult type**
-  * Location: Duplicated in `pkg/actions/types.go:8-33` and `pkg/actions/uds/types.go:17-42`
+  * Location: Duplicated in `pkg/actions/zarf/types.go:8-33` and `pkg/actions/uds/types.go:17-42`
   * Options:
-    1. Share single type in `pkg/util/types.go`
+    1. Move to `pkg/actions/common/types.go` (recommended - aligns with common package)
     2. Use generic type with package-specific aliases
-    3. Keep separate but document why
+    3. Keep separate but document why (if they diverge in the future)
 
 ---
 
@@ -167,12 +152,14 @@
   * Include: Complete examples of Create, Publish, Deploy operations
   * Include: Policy configuration for UDS bundles
   * Include: Troubleshooting common issues
+  * Include: Differences between v1alpha1 and v1alpha2 APIs
 
 * **Create UDS-specific troubleshooting guide**
   * Location: Create `docs/operations/UDS_TROUBLESHOOTING.md`
   * Include: Common error messages and solutions
   * Include: Debugging failed UDS jobs
   * Include: Policy validation failures
+  * Include: Bundle creation issues
 
 * **Add UDS policy configuration examples**
   * Location: `examples/policies/uds/`
@@ -180,22 +167,31 @@
   * Create: Example RBAC configurations
   * Create: Example restricted vs permissive policies
 
-* **Update CLAUDE.local.md with UDS vs Zarf guidance**
-  * Location: `CLAUDE.local.md:31`
+* **Update CLAUDE.md with UDS vs Zarf guidance**
+  * Location: `CLAUDE.md` and `CLAUDE.local.md`
   * Add: Clear decision tree for when to use UDS vs Zarf
   * Add: UDS-specific examples and patterns
   * Add: UDS bundle structure and requirements
+  * Add: v1alpha2 migration path
 
 ### Naming Inconsistencies
 
 * **Standardize app label values**
   * Current: Zarf jobs use `"app": "forge"`, UDS jobs use `"app": "forge-uds"`
-  * Target: Both use `"app": "forge"` with additional `"resource-type": "zarfpackagejob"` or `"resource-type": "udsbundlejob"`
-  * Files: All action handlers in `pkg/actions/` and `pkg/actions/uds/`
+  * Target: Both use `"app": "forge"` with additional labels for differentiation
+  * Suggested: Add `"resource-type": "zarfpackagejob"` or `"resource-type": "udspackagejob"`
+  * Files affected (all 6 action handlers):
+    * `pkg/actions/zarf/build.go:105,120`
+    * `pkg/actions/zarf/publish.go:112,127`
+    * `pkg/actions/zarf/deploy.go:113,128`
+    * `pkg/actions/uds/create.go:94,109`
+    * `pkg/actions/uds/publish.go:91,106`
+    * `pkg/actions/uds/deploy.go:100,115`
 
 * **Align controller receiver variable names**
-  * Location: `pkg/controller/controller.go` (uses `controller`) vs `pkg/controller/uds_controller.go` (uses `ctrl`)
-  * Decision: Standardize on one (prefer `ctrl` for brevity)
+  * Location: `pkg/controller/controller.go` vs `pkg/controller/uds_controller.go`
+  * Current: Zarf uses `controller`, UDS uses `ctrl`
+  * Decision: Standardize on one (prefer `ctrl` for brevity and Go convention)
   * Update: All method receivers and local variables
 
 ---
@@ -206,13 +202,15 @@
 
 * **Standardize metric naming**
   * Issue: UDS uses `RecordBundleCreateStarted`, Zarf uses `RecordBuildStarted`
-  * Decision: Either add "Package" prefix to Zarf OR drop "Bundle" from UDS
+  * Decision needed: Either add "Package" prefix to Zarf OR drop "Bundle" from UDS
   * Files: `pkg/telemetry/metrics.go` and all action handlers
+  * Recommendation: `RecordPackageBuildStarted` and `RecordBundleCreateStarted` for clarity
 
 * **Standardize log message format**
   * Issue: UDS prefixes with "UDS Bundle", Zarf doesn't use "Zarf Package"
-  * Decision: Consistent prefix strategy across both
+  * Decision needed: Consistent prefix strategy across both
   * Files: All `klog.InfoS()` calls in action handlers
+  * Recommendation: Always include resource type for clarity
 
 * **Document klog verbosity level conventions**
   * Location: Add to `docs/development/LOGGING.md` (create if needed)
@@ -227,8 +225,29 @@
 * **Support adopting existing resources** for deploy actions
 * **Support for additional source types** (Azure DevOps, GitLab, Bitbucket)
 * **Support for additional destination types** (Artifactory, Nexus)
-* **Configurable resource requirements** via CRD (not just hardcoded)
+* **Configurable resource requirements** via CRD (not just hardcoded defaults)
 * **Job retry logic** for transient failures
 * **Progress reporting** for long-running operations
 * **Pause/Resume** functionality for jobs
 * **Multi-architecture** bundle builds
+* **Webhook TLS certificate rotation** without downtime
+* **Metrics dashboard templates** for Grafana
+
+---
+
+## Architecture Notes
+
+**Recent Refactoring (Completed)**:
+
+* ✅ Action handlers reorganized into `pkg/actions/zarf/` and `pkg/actions/uds/` packages
+* ✅ Common job building utilities extracted to `pkg/actions/common/`
+* ✅ Constants package created in `pkg/constants/` with proper organization
+* ✅ Defensive container bounds checking added to all handlers that need it
+* ✅ Hardcoded UIDs replaced with constants throughout action handlers
+* ✅ Resource requirements standardized (CPU millicore notation, consistent values)
+
+**Next Steps**:
+1. Complete UDS source handler integration (use `pkg/sources` instead of inline Git)
+2. Create `pkg/util/` package for shared helper functions
+3. Consolidate ActionResult type into common package
+4. Make all timeouts configurable via CRD fields

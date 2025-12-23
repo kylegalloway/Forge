@@ -147,7 +147,7 @@ func (handler *PublishHandler) createPublishJob(ctx context.Context, pkg *zarfv1
 							},
 							SecurityContext: &corev1.SecurityContext{
 								RunAsNonRoot:             ptr(true),
-								RunAsUser:                ptr(int64(1000)),
+								RunAsUser:                ptr(int64(constants.DefaultZarfUID)),
 								AllowPrivilegeEscalation: ptr(false),
 								Capabilities: &corev1.Capabilities{
 									Drop: []corev1.Capability{"ALL"},
@@ -169,8 +169,8 @@ func (handler *PublishHandler) createPublishJob(ctx context.Context, pkg *zarfv1
 					},
 					SecurityContext: &corev1.PodSecurityContext{
 						RunAsNonRoot: ptr(true),
-						RunAsUser:    ptr(int64(1000)),
-						FSGroup:      ptr(int64(1000)),
+						RunAsUser:    ptr(int64(constants.DefaultZarfUID)),
+						FSGroup:      ptr(int64(constants.DefaultZarfUID)),
 						SeccompProfile: &corev1.SeccompProfile{
 							Type: corev1.SeccompProfileTypeRuntimeDefault,
 						},
@@ -283,7 +283,7 @@ func (handler *PublishHandler) getResources(pkg *zarfv1alpha1.ZarfPackageJob) co
 	// Default resources for publish jobs (slightly less than build)
 	return corev1.ResourceRequirements{
 		Requests: corev1.ResourceList{
-			corev1.ResourceCPU:    mustParseQuantity("250m"),
+			corev1.ResourceCPU:    mustParseQuantity("200m"),
 			corev1.ResourceMemory: mustParseQuantity("512Mi"),
 		},
 		Limits: corev1.ResourceList{

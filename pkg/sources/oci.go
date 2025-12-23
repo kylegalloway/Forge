@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	zarfv1alpha1 "github.com/kylegalloway/forge/pkg/apis/zarf/v1alpha1"
+	"github.com/kylegalloway/forge/pkg/util"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -26,7 +27,7 @@ func (source *OCISource) GetInitContainer(pkg *zarfv1alpha1.ZarfPackageJob) (*co
 		},
 	}
 
-	if ociSource.CredentialsSecretRef != nil {
+	if ociSource.CredentialsSecretRef != nil { // pragma: allowlist secret
 		volumeMounts = append(volumeMounts, corev1.VolumeMount{
 			Name:      "source-docker-config",
 			MountPath: "/home/nonroot/.docker",
@@ -41,9 +42,9 @@ func (source *OCISource) GetInitContainer(pkg *zarfv1alpha1.ZarfPackageJob) (*co
 		Args:         []string{pullCmd},
 		VolumeMounts: volumeMounts,
 		SecurityContext: &corev1.SecurityContext{
-			RunAsNonRoot:             ptr(true),
-			RunAsUser:                ptr(int64(65532)),
-			AllowPrivilegeEscalation: ptr(false),
+			RunAsNonRoot:             util.Ptr(true),
+			RunAsUser:                util.Ptr(int64(65532)),
+			AllowPrivilegeEscalation: util.Ptr(false),
 			Capabilities: &corev1.Capabilities{
 				Drop: []corev1.Capability{"ALL"},
 			},

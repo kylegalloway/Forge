@@ -28,7 +28,3 @@ func New(pkg *zarfv1alpha1.ZarfPackageJob) (Source, error) {
 		return nil, fmt.Errorf("unsupported source type: %s", pkg.Spec.Source.Type)
 	}
 }
-
-func ptr[T any](v T) *T {
-	return &v
-}

@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	zarfv1alpha1 "github.com/kylegalloway/forge/pkg/apis/zarf/v1alpha1"
+	"github.com/kylegalloway/forge/pkg/util"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -468,18 +469,18 @@ func TestLocalSourceGetInitContainer(t *testing.T) {
 func TestPtr(t *testing.T) {
 	// Test the ptr helper function
 	intVal := 42
-	intPtr := ptr(intVal)
+	intPtr := util.Ptr(intVal)
 	if intPtr == nil {
-		t.Fatal("ptr() returned nil")
+		t.Fatal("util.Ptr() returned nil")
 	}
 	if *intPtr != intVal {
 		t.Errorf("Expected *ptr = %d, got %d", intVal, *intPtr)
 	}
 
 	strVal := "test"
-	strPtr := ptr(strVal)
+	strPtr := util.Ptr(strVal)
 	if strPtr == nil {
-		t.Fatal("ptr() returned nil for string")
+		t.Fatal("util.Ptr() returned nil for string")
 	}
 	if *strPtr != strVal {
 		t.Errorf("Expected *ptr = %s, got %s", strVal, *strPtr)

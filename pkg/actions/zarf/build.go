@@ -19,11 +19,7 @@ import (
 	"github.com/kylegalloway/forge/pkg/constants"
 	"github.com/kylegalloway/forge/pkg/sources"
 	"github.com/kylegalloway/forge/pkg/telemetry"
-)
-
-const (
-	// ZarfCLIImage is the default Zarf CLI container image
-	ZarfCLIImage = "localhost/zarf:v0.66.0"
+	"github.com/kylegalloway/forge/pkg/util"
 )
 
 // BuildHandler handles Build actions for ZarfPackageJob resources
@@ -113,7 +109,7 @@ func (handler *BuildHandler) createBuildJob(ctx context.Context, pkg *zarfv1alph
 		Spec: batchv1.JobSpec{
 			BackoffLimit:            &backoffLimit,
 			ActiveDeadlineSeconds:   &activeDeadlineSeconds,
-			TTLSecondsAfterFinished: ptr(int32(3600)), // Clean up after 1 hour
+			TTLSecondsAfterFinished: util.Ptr(int32(3600)), // Clean up after 1 hour
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{
@@ -128,7 +124,7 @@ func (handler *BuildHandler) createBuildJob(ctx context.Context, pkg *zarfv1alph
 					Containers: []corev1.Container{
 						{
 							Name:       "zarf-build",
-							Image:      ZarfCLIImage,
+							Image:      constants.ZarfCLIImage,
 							Command:    []string{"/bin/sh", "-c"},
 							Args:       []string{zarfCmd},
 							WorkingDir: workingDir,
@@ -143,9 +139,9 @@ func (handler *BuildHandler) createBuildJob(ctx context.Context, pkg *zarfv1alph
 								},
 							},
 							SecurityContext: &corev1.SecurityContext{
-								RunAsNonRoot:             ptr(true),
-								RunAsUser:                ptr(int64(constants.DefaultZarfUID)),
-								AllowPrivilegeEscalation: ptr(false),
+								RunAsNonRoot:             util.Ptr(true),
+								RunAsUser:                util.Ptr(int64(constants.DefaultZarfUID)),
+								AllowPrivilegeEscalation: util.Ptr(false),
 								Capabilities: &corev1.Capabilities{
 									Drop: []corev1.Capability{"ALL"},
 								},
@@ -171,9 +167,9 @@ func (handler *BuildHandler) createBuildJob(ctx context.Context, pkg *zarfv1alph
 						},
 					},
 					SecurityContext: &corev1.PodSecurityContext{
-						RunAsNonRoot: ptr(true),
-						RunAsUser:    ptr(int64(constants.DefaultZarfUID)),
-						FSGroup:      ptr(int64(constants.DefaultZarfUID)),
+						RunAsNonRoot: util.Ptr(true),
+						RunAsUser:    util.Ptr(int64(constants.DefaultZarfUID)),
+						FSGroup:      util.Ptr(int64(constants.DefaultZarfUID)),
 						SeccompProfile: &corev1.SeccompProfile{
 							Type: corev1.SeccompProfileTypeRuntimeDefault,
 						},
@@ -291,12 +287,12 @@ func (handler *BuildHandler) getResources(pkg *zarfv1alpha1.ZarfPackageJob) core
 	// Default resources for build jobs
 	return corev1.ResourceRequirements{
 		Requests: corev1.ResourceList{
-			corev1.ResourceCPU:    mustParseQuantity("200m"),
-			corev1.ResourceMemory: mustParseQuantity("512Mi"),
+			corev1.ResourceCPU:    util.MustParseQuantity("200m"),
+			corev1.ResourceMemory: util.MustParseQuantity("512Mi"),
 		},
 		Limits: corev1.ResourceList{
-			corev1.ResourceCPU:    mustParseQuantity("1000m"),
-			corev1.ResourceMemory: mustParseQuantity("2Gi"),
+			corev1.ResourceCPU:    util.MustParseQuantity("1000m"),
+			corev1.ResourceMemory: util.MustParseQuantity("2Gi"),
 		},
 	}
 }

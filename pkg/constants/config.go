@@ -15,4 +15,8 @@ const (
 	// Security context UIDs
 	DefaultZarfUID = 1000
 	DefaultUDSUID  = 65532
+
+	// CLI container images
+	ZarfCLIImage = "localhost/zarf:v0.66.0"
+	UDSCLIImage  = "ghcr.io/defenseunicorns/uds-cli:latest"
 )

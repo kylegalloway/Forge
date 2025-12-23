@@ -5,13 +5,7 @@
 package uds
 
 import (
-	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-)
-
-const (
-	// UDSCLIImage is the default UDS CLI container image
-	UDSCLIImage = "ghcr.io/defenseunicorns/uds-cli:latest"
 )
 
 // ActionResult represents the result of executing a UDS bundle action
@@ -39,17 +33,4 @@ type ActionResult struct {
 
 	// Error if the action failed
 	Error error
-}
-
-// Helper functions
-
-// ptr returns a pointer to the given value
-func ptr[T any](v T) *T {
-	return &v
-}
-
-// mustParseQuantity parses a resource quantity or panics
-func mustParseQuantity(quantityStr string) resource.Quantity {
-	quantity := resource.MustParse(quantityStr)
-	return quantity
 }

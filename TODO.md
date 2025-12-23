@@ -51,11 +51,7 @@
 
 ### Constants Not Being Used
 
-* **Move CLI image constants to pkg/constants/config.go**
-  * Current: `ZarfCLIImage` in `pkg/actions/zarf/build.go:25-26`
-  * Current: `UDSCLIImage` in `pkg/actions/uds/types.go:13-14`
-  * Target: `pkg/constants/config.go`
-  * Update all references in action handlers
+* ~~**Move CLI image constants to pkg/constants/config.go** ✅ COMPLETED - ZarfCLIImage and UDSCLIImage now in constants package~~
 
 * ~~**Replace hardcoded UIDs with constants** ✅ COMPLETED - All Zarf (1000→DefaultZarfUID) and UDS (65532→DefaultUDSUID) actions updated~~
 
@@ -105,26 +101,11 @@
 
 ### Code Duplication
 
-* **Create shared helpers package**
-  * Create: `pkg/util/helpers.go`
-  * Move: `ptr[T any](v T) *T` function (duplicated in 3 places)
-  * Move: `mustParseQuantity(quantityStr string) resource.Quantity` function (duplicated in 2 places)
-
-* **Remove ptr() duplication from pkg/actions/zarf/types.go**
-  * Location: `pkg/actions/zarf/types.go:38-40`
-  * Replace: With import from `pkg/util`
-
-* **Remove ptr() duplication from pkg/actions/uds/types.go**
-  * Location: `pkg/actions/uds/types.go:47-49`
-  * Replace: With import from `pkg/util`
-
-* **Remove ptr() duplication from pkg/sources/types.go**
-  * Location: `pkg/sources/types.go:32-34`
-  * Replace: With import from `pkg/util`
-
-* **Remove mustParseQuantity() duplication**
-  * Location: `pkg/actions/zarf/types.go:43-46` and `pkg/actions/uds/types.go:52-55`
-  * Replace: With import from `pkg/util`
+* ~~**Create shared helpers package** ✅ COMPLETED~~
+  * ~~Create: `pkg/util/helpers.go`~~
+  * ~~Move: `ptr[T any](v T) *T` function (duplicated in 3 places) → util.Ptr()~~
+  * ~~Move: `mustParseQuantity(quantityStr string) resource.Quantity` function (duplicated in 2 places) → util.MustParseQuantity()~~
+  * ~~All action handlers, source handlers, and tests updated to use util package~~
 
 * **Consolidate ActionResult type**
   * Location: Duplicated in `pkg/actions/zarf/types.go:8-33` and `pkg/actions/uds/types.go:17-42`

@@ -12,6 +12,7 @@ import (
 
 	udsv1alpha1 "github.com/kylegalloway/forge/pkg/apis/uds/v1alpha1"
 	"github.com/kylegalloway/forge/pkg/telemetry"
+	"github.com/kylegalloway/forge/pkg/util"
 )
 
 // mustNewMetrics creates metrics instance for testing
@@ -577,12 +578,12 @@ func TestGetResources(t *testing.T) {
 	// Test with custom resources
 	customResources := &corev1.ResourceRequirements{
 		Requests: corev1.ResourceList{
-			corev1.ResourceCPU:    mustParseQuantity("100m"),
-			corev1.ResourceMemory: mustParseQuantity("256Mi"),
+			corev1.ResourceCPU:    util.MustParseQuantity("100m"),
+			corev1.ResourceMemory: util.MustParseQuantity("256Mi"),
 		},
 		Limits: corev1.ResourceList{
-			corev1.ResourceCPU:    mustParseQuantity("500m"),
-			corev1.ResourceMemory: mustParseQuantity("1Gi"),
+			corev1.ResourceCPU:    util.MustParseQuantity("500m"),
+			corev1.ResourceMemory: util.MustParseQuantity("1Gi"),
 		},
 	}
 	bundle.Spec.Resources = customResources

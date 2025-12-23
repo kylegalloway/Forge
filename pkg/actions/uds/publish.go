@@ -13,6 +13,7 @@ import (
 	udsv1alpha1 "github.com/kylegalloway/forge/pkg/apis/uds/v1alpha1"
 	"github.com/kylegalloway/forge/pkg/constants"
 	"github.com/kylegalloway/forge/pkg/telemetry"
+	"github.com/kylegalloway/forge/pkg/util"
 )
 
 // PublishHandler handles Publish actions for UDSBundleJob resources
@@ -99,7 +100,7 @@ func (handler *PublishHandler) createPublishJob(ctx context.Context, bundle *uds
 		Spec: batchv1.JobSpec{
 			BackoffLimit:            &backoffLimit,
 			ActiveDeadlineSeconds:   &activeDeadlineSeconds,
-			TTLSecondsAfterFinished: ptr(int32(3600)),
+			TTLSecondsAfterFinished: util.Ptr(int32(3600)),
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{
@@ -114,7 +115,7 @@ func (handler *PublishHandler) createPublishJob(ctx context.Context, bundle *uds
 					Containers: []corev1.Container{
 						{
 							Name:    "uds-publish",
-							Image:   UDSCLIImage,
+							Image:   constants.UDSCLIImage,
 							Command: []string{"/bin/sh", "-c"},
 							Args:    []string{udsCmd},
 							VolumeMounts: []corev1.VolumeMount{
@@ -124,9 +125,9 @@ func (handler *PublishHandler) createPublishJob(ctx context.Context, bundle *uds
 								},
 							},
 							SecurityContext: &corev1.SecurityContext{
-								RunAsNonRoot:             ptr(true),
-								RunAsUser:                ptr(int64(constants.DefaultUDSUID)),
-								AllowPrivilegeEscalation: ptr(false),
+								RunAsNonRoot:             util.Ptr(true),
+								RunAsUser:                util.Ptr(int64(constants.DefaultUDSUID)),
+								AllowPrivilegeEscalation: util.Ptr(false),
 								Capabilities: &corev1.Capabilities{
 									Drop: []corev1.Capability{"ALL"},
 								},
@@ -147,9 +148,9 @@ func (handler *PublishHandler) createPublishJob(ctx context.Context, bundle *uds
 						},
 					},
 					SecurityContext: &corev1.PodSecurityContext{
-						RunAsNonRoot: ptr(true),
-						RunAsUser:    ptr(int64(constants.DefaultUDSUID)),
-						FSGroup:      ptr(int64(constants.DefaultUDSUID)),
+						RunAsNonRoot: util.Ptr(true),
+						RunAsUser:    util.Ptr(int64(constants.DefaultUDSUID)),
+						FSGroup:      util.Ptr(int64(constants.DefaultUDSUID)),
 						SeccompProfile: &corev1.SeccompProfile{
 							Type: corev1.SeccompProfileTypeRuntimeDefault,
 						},
@@ -318,12 +319,12 @@ func (handler *PublishHandler) getResources(bundle *udsv1alpha1.UDSBundleJob) co
 	// Default resources for publishing
 	return corev1.ResourceRequirements{
 		Requests: corev1.ResourceList{
-			corev1.ResourceCPU:    mustParseQuantity("200m"),
-			corev1.ResourceMemory: mustParseQuantity("512Mi"),
+			corev1.ResourceCPU:    util.MustParseQuantity("200m"),
+			corev1.ResourceMemory: util.MustParseQuantity("512Mi"),
 		},
 		Limits: corev1.ResourceList{
-			corev1.ResourceCPU:    mustParseQuantity("1000m"),
-			corev1.ResourceMemory: mustParseQuantity("2Gi"),
+			corev1.ResourceCPU:    util.MustParseQuantity("1000m"),
+			corev1.ResourceMemory: util.MustParseQuantity("2Gi"),
 		},
 	}
 }

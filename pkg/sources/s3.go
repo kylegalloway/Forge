@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	zarfv1alpha1 "github.com/kylegalloway/forge/pkg/apis/zarf/v1alpha1"
+	"github.com/kylegalloway/forge/pkg/util"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -21,7 +22,7 @@ func (source *S3Source) GetInitContainer(pkg *zarfv1alpha1.ZarfPackageJob) (*cor
 	downloadCmd := fmt.Sprintf("aws s3 cp %s /workspace/package.tar.zst --region %s", s3Path, s3Source.Region)
 
 	env := []corev1.EnvVar{}
-	if s3Source.CredentialsSecretRef != nil {
+	if s3Source.CredentialsSecretRef != nil { // pragma: allowlist secret
 		env = append(env,
 			corev1.EnvVar{
 				Name: "AWS_ACCESS_KEY_ID",
@@ -61,9 +62,9 @@ func (source *S3Source) GetInitContainer(pkg *zarfv1alpha1.ZarfPackageJob) (*cor
 			},
 		},
 		SecurityContext: &corev1.SecurityContext{
-			RunAsNonRoot:             ptr(true),
-			RunAsUser:                ptr(int64(1000)),
-			AllowPrivilegeEscalation: ptr(false),
+			RunAsNonRoot:             util.Ptr(true),
+			RunAsUser:                util.Ptr(int64(1000)),
+			AllowPrivilegeEscalation: util.Ptr(false),
 			Capabilities: &corev1.Capabilities{
 				Drop: []corev1.Capability{"ALL"},
 			},

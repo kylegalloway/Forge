@@ -13,6 +13,7 @@ import (
 	udsv1alpha1 "github.com/kylegalloway/forge/pkg/apis/uds/v1alpha1"
 	"github.com/kylegalloway/forge/pkg/constants"
 	"github.com/kylegalloway/forge/pkg/telemetry"
+	"github.com/kylegalloway/forge/pkg/util"
 )
 
 // CreateHandler handles Create actions for UDSBundleJob resources
@@ -102,7 +103,7 @@ func (handler *CreateHandler) createBundleJob(ctx context.Context, bundle *udsv1
 		Spec: batchv1.JobSpec{
 			BackoffLimit:            &backoffLimit,
 			ActiveDeadlineSeconds:   &activeDeadlineSeconds,
-			TTLSecondsAfterFinished: ptr(int32(3600)), // Clean up after 1 hour
+			TTLSecondsAfterFinished: util.Ptr(int32(3600)), // Clean up after 1 hour
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{
@@ -118,7 +119,7 @@ func (handler *CreateHandler) createBundleJob(ctx context.Context, bundle *udsv1
 					Containers: []corev1.Container{
 						{
 							Name:       "uds-create",
-							Image:      UDSCLIImage,
+							Image:      constants.UDSCLIImage,
 							Command:    []string{"/bin/sh", "-c"},
 							Args:       []string{udsCmd},
 							WorkingDir: workingDir,
@@ -133,9 +134,9 @@ func (handler *CreateHandler) createBundleJob(ctx context.Context, bundle *udsv1
 								},
 							},
 							SecurityContext: &corev1.SecurityContext{
-								RunAsNonRoot:             ptr(true),
-								RunAsUser:                ptr(int64(constants.DefaultUDSUID)),
-								AllowPrivilegeEscalation: ptr(false),
+								RunAsNonRoot:             util.Ptr(true),
+								RunAsUser:                util.Ptr(int64(constants.DefaultUDSUID)),
+								AllowPrivilegeEscalation: util.Ptr(false),
 								Capabilities: &corev1.Capabilities{
 									Drop: []corev1.Capability{"ALL"},
 								},
@@ -148,9 +149,9 @@ func (handler *CreateHandler) createBundleJob(ctx context.Context, bundle *udsv1
 					},
 					Volumes: handler.buildVolumes(bundle),
 					SecurityContext: &corev1.PodSecurityContext{
-						RunAsNonRoot: ptr(true),
-						RunAsUser:    ptr(int64(constants.DefaultUDSUID)),
-						FSGroup:      ptr(int64(constants.DefaultUDSUID)),
+						RunAsNonRoot: util.Ptr(true),
+						RunAsUser:    util.Ptr(int64(constants.DefaultUDSUID)),
+						FSGroup:      util.Ptr(int64(constants.DefaultUDSUID)),
 						SeccompProfile: &corev1.SeccompProfile{
 							Type: corev1.SeccompProfileTypeRuntimeDefault,
 						},
@@ -223,9 +224,9 @@ func (handler *CreateHandler) buildInitContainers(bundle *udsv1alpha1.UDSBundleJ
 				},
 			},
 			SecurityContext: &corev1.SecurityContext{
-				RunAsNonRoot:             ptr(true),
-				RunAsUser:                ptr(int64(65532)),
-				AllowPrivilegeEscalation: ptr(false),
+				RunAsNonRoot:             util.Ptr(true),
+				RunAsUser:                util.Ptr(int64(65532)),
+				AllowPrivilegeEscalation: util.Ptr(false),
 				Capabilities: &corev1.Capabilities{
 					Drop: []corev1.Capability{"ALL"},
 				},
@@ -316,12 +317,12 @@ func (handler *CreateHandler) getResources(bundle *udsv1alpha1.UDSBundleJob) cor
 	// Default resources for UDS bundle creation (higher than Zarf due to bundle size)
 	return corev1.ResourceRequirements{
 		Requests: corev1.ResourceList{
-			corev1.ResourceCPU:    mustParseQuantity("500m"),
-			corev1.ResourceMemory: mustParseQuantity("1Gi"),
+			corev1.ResourceCPU:    util.MustParseQuantity("500m"),
+			corev1.ResourceMemory: util.MustParseQuantity("1Gi"),
 		},
 		Limits: corev1.ResourceList{
-			corev1.ResourceCPU:    mustParseQuantity("2000m"),
-			corev1.ResourceMemory: mustParseQuantity("4Gi"),
+			corev1.ResourceCPU:    util.MustParseQuantity("2000m"),
+			corev1.ResourceMemory: util.MustParseQuantity("4Gi"),
 		},
 	}
 }

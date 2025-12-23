@@ -184,6 +184,9 @@ func (ctrl *UDSController) handleWatchEvent(ctx context.Context, event watch.Eve
 
 // reconcile handles the reconciliation logic for a UDSBundleJob
 func (ctrl *UDSController) reconcile(ctx context.Context, bundle *udsv1alpha1.UDSBundleJob) error {
+	// Deprecation warning for v1alpha1 API
+	klog.InfoS("DEPRECATION WARNING: v1alpha1 UDSBundleJob API is deprecated and will be removed in Forge v0.10.0. Please migrate to v1alpha2 UDSPackageJob. See docs/operations/V1ALPHA2_MIGRATION.md for details.", "name", bundle.Name, "namespace", bundle.Namespace)
+
 	klog.V(2).InfoS("Reconciling UDSBundleJob", "name", bundle.Name, "namespace", bundle.Namespace, "action", bundle.Spec.Action)
 
 	// Skip if already completed

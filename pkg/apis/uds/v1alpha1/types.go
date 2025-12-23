@@ -1,5 +1,12 @@
 // Package v1alpha1 defines the v1alpha1 API for UDS bundle job specifications.
 //
+// Deprecated: v1alpha1 is deprecated in favor of v1alpha2 which uses unified
+// naming conventions matching Zarf (Action instead of BundleAction).
+// This API version will be removed in Forge v0.10.0 (approximately 6 months).
+//
+// Migration Guide: See docs/operations/V1ALPHA2_MIGRATION.md for detailed
+// instructions on migrating to v1alpha2.
+//
 // This package contains type definitions for UDSBundleJob resources that enable
 // creating, publishing, and deploying UDS bundles in a Kubernetes-native way.
 //
@@ -20,6 +27,8 @@ const (
 )
 
 // BundleAction represents an operation to perform on a UDS bundle
+//
+// Deprecated: Use v1alpha2.Action instead, which matches Zarf naming conventions.
 // +kubebuilder:validation:Enum=Create;Publish;Deploy;CreatePublish;CreateDeploy;PublishDeploy;CreatePublishDeploy
 type BundleAction string
 
@@ -355,7 +364,12 @@ type OperationStatus struct {
 	JobName string `json:"jobName,omitempty"`
 }
 
-// UDSBundleJob represents a job to create, publish, or deploy a UDS bundle
+// UDSBundleJob represents a UDS bundle operation job
+//
+// Deprecated: Use v1alpha2.UDSPackageJob instead, which provides unified naming
+// conventions with Zarf. This type will be removed in Forge v0.10.0.
+// See docs/operations/V1ALPHA2_MIGRATION.md for migration instructions.
+//
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
 // +kubebuilder:resource:shortName=ubj

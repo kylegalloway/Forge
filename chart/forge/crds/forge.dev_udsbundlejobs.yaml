@@ -29,6 +29,8 @@ spec:
     - jsonPath: .metadata.creationTimestamp
       name: Age
       type: date
+    deprecated: true
+    deprecationWarning: "v1alpha1 is deprecated. Please migrate to v1alpha2 UDSPackageJob API. See docs/operations/V1ALPHA2_MIGRATION.md"
     name: v1alpha1
     schema:
       openAPIV3Schema:

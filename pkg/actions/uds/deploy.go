@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -80,16 +81,15 @@ func (handler *DeployHandler) createDeployJob(ctx context.Context, bundle *udsv1
 	// Build UDS CLI deploy command
 	udsCmd := handler.buildDeployCommand(bundle)
 
-	// Determine timeout (default 60m, configurable)
-	timeout := "60m"
+	// Determine timeout - use Deploy.Timeout if specified, otherwise use default
+	activeDeadlineSeconds := int64(constants.DefaultDeployTimeout)
 	if bundle.Spec.Deploy.Timeout != "" {
-		timeout = bundle.Spec.Deploy.Timeout
-	}
-
-	// Convert timeout to seconds for ActiveDeadlineSeconds
-	activeDeadlineSeconds, err := handler.parseTimeout(timeout)
-	if err != nil {
-		return nil, fmt.Errorf("invalid timeout format: %w", err)
+		timeout, parseErr := time.ParseDuration(bundle.Spec.Deploy.Timeout)
+		if parseErr != nil {
+			klog.V(4).InfoS("Invalid deploy timeout format, using default", "timeout", bundle.Spec.Deploy.Timeout, "error", parseErr)
+		} else {
+			activeDeadlineSeconds = int64(timeout.Seconds())
+		}
 	}
 
 	// Job configuration
@@ -282,59 +282,23 @@ func (handler *DeployHandler) addKubeconfigVolume(bundle *udsv1alpha1.UDSBundleJ
 	)
 }
 
-// parseTimeout converts a timeout string (e.g., "60m", "2h") to seconds
-func (handler *DeployHandler) parseTimeout(timeout string) (int64, error) {
-	// Simple parser for common timeout formats
-	// Supports: "30m", "1h", "90m", "2h30m"
-
-	var totalSeconds int64
-
-	// Parse hours
-	if strings.Contains(timeout, "h") {
-		parts := strings.Split(timeout, "h")
-		var hours int64
-		_, err := fmt.Sscanf(parts[0], "%d", &hours)
-		if err != nil {
-			return 0, fmt.Errorf("invalid hours in timeout: %s", timeout)
-		}
-		totalSeconds += hours * 3600
-		timeout = parts[1] // Remaining part after hours
-	}
-
-	// Parse minutes
-	if strings.Contains(timeout, "m") {
-		parts := strings.Split(timeout, "m")
-		var minutes int64
-		_, err := fmt.Sscanf(parts[0], "%d", &minutes)
-		if err != nil {
-			return 0, fmt.Errorf("invalid minutes in timeout: %s", timeout)
-		}
-		totalSeconds += minutes * 60
-	}
-
-	// Default to 60 minutes if parsing failed
-	if totalSeconds == 0 {
-		totalSeconds = 3600
-	}
-
-	return totalSeconds, nil
-}
-
 // getResources returns resource requirements for the deploy job
 func (handler *DeployHandler) getResources(bundle *udsv1alpha1.UDSBundleJob) corev1.ResourceRequirements {
 	if bundle.Spec.Resources != nil {
 		return *bundle.Spec.Resources
 	}
 
-	// Default resources for deployment
+	// Default resources for deploy jobs
+	// Standardized with Zarf Deploy (both deploy packages to clusters)
+	// Higher resources account for unpacking, kubectl operations, and cluster interactions
 	return corev1.ResourceRequirements{
 		Requests: corev1.ResourceList{
-			corev1.ResourceCPU:    common.MustParseQuantity("200m"),
-			corev1.ResourceMemory: common.MustParseQuantity("512Mi"),
+			corev1.ResourceCPU:    common.MustParseQuantity("500m"),
+			corev1.ResourceMemory: common.MustParseQuantity("1Gi"),
 		},
 		Limits: corev1.ResourceList{
-			corev1.ResourceCPU:    common.MustParseQuantity("1000m"),
-			corev1.ResourceMemory: common.MustParseQuantity("2Gi"),
+			corev1.ResourceCPU:    common.MustParseQuantity("2000m"),
+			corev1.ResourceMemory: common.MustParseQuantity("4Gi"),
 		},
 	}
 }

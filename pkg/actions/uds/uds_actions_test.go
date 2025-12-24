@@ -500,55 +500,6 @@ func TestCreateHandlerBuildUDSCommand(t *testing.T) {
 	}
 }
 
-// TestParseTimeout tests timeout parsing
-func TestParseTimeout(t *testing.T) {
-	tests := []struct {
-		name        string
-		timeoutStr  string
-		wantSeconds int64
-		wantErr     bool
-	}{
-		{
-			name:        "valid minutes",
-			timeoutStr:  "60m",
-			wantSeconds: 3600,
-			wantErr:     false,
-		},
-		{
-			name:        "valid hours",
-			timeoutStr:  "2h",
-			wantSeconds: 7200,
-			wantErr:     false,
-		},
-		{
-			name:        "empty string defaults",
-			timeoutStr:  "",
-			wantSeconds: 3600, // 60m default
-			wantErr:     false,
-		},
-		{
-			name:        "invalid format",
-			timeoutStr:  "invalid",
-			wantSeconds: 3600, // falls back to default
-			wantErr:     false,
-		},
-	}
-
-	handler := &DeployHandler{}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := handler.parseTimeout(tt.timeoutStr)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("parseTimeout() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if !tt.wantErr && got != tt.wantSeconds {
-				t.Errorf("parseTimeout() = %v, want %v", got, tt.wantSeconds)
-			}
-		})
-	}
-}
-
 // TestGetResources tests resource requirements extraction
 func TestGetResources(t *testing.T) {
 	createHandler := &CreateHandler{}
@@ -571,8 +522,8 @@ func TestGetResources(t *testing.T) {
 	}
 
 	deployRes := deployHandler.getResources(bundle)
-	if deployRes.Limits.Cpu().String() != "1" {
-		t.Errorf("default CPU limit = %v, want 1", deployRes.Limits.Cpu())
+	if deployRes.Limits.Cpu().String() != "2" {
+		t.Errorf("default CPU limit = %v, want 2", deployRes.Limits.Cpu())
 	}
 
 	// Test with custom resources

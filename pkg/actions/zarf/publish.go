@@ -3,6 +3,7 @@ package zarf
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/kylegalloway/forge/pkg/actions/common"
 
@@ -100,9 +101,19 @@ func (handler *PublishHandler) createPublishJob(ctx context.Context, pkg *zarfv1
 		return nil, fmt.Errorf("failed to build init containers: %w", err)
 	}
 
+	// Determine timeout - use Publish.Timeout if specified, otherwise use default
+	activeDeadlineSeconds := int64(constants.DefaultPublishTimeout)
+	if pkg.Spec.Publish.Timeout != "" {
+		timeout, parseErr := time.ParseDuration(pkg.Spec.Publish.Timeout)
+		if parseErr != nil {
+			klog.V(4).InfoS("Invalid publish timeout format, using default", "timeout", pkg.Spec.Publish.Timeout, "error", parseErr)
+		} else {
+			activeDeadlineSeconds = int64(timeout.Seconds())
+		}
+	}
+
 	// Job configuration
 	backoffLimit := int32(0)
-	activeDeadlineSeconds := int64(1800) // 30 minutes timeout
 
 	job := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
@@ -280,7 +291,9 @@ func (handler *PublishHandler) getResources(pkg *zarfv1alpha1.ZarfPackageJob) co
 		return *pkg.Spec.Resources
 	}
 
-	// Default resources for publish jobs (slightly less than build)
+	// Default resources for publish jobs
+	// Standardized with UDS Publish (both upload artifacts to registries/storage)
+	// Lower than Build/Deploy since primarily network I/O with minimal processing
 	return corev1.ResourceRequirements{
 		Requests: corev1.ResourceList{
 			corev1.ResourceCPU:    common.MustParseQuantity("200m"),

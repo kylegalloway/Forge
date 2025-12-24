@@ -98,6 +98,10 @@ type ZarfPackageJobSpec struct {
 	// +kubebuilder:validation:Required
 	Source PackageSource `json:"source"`
 
+	// Build defines configuration for building the package (optional)
+	// +optional
+	Build *BuildConfig `json:"build,omitempty"`
+
 	// Publish defines where to publish the built package (required if action includes Publish)
 	// +optional
 	Publish *PublishConfig `json:"publish,omitempty"`
@@ -266,11 +270,24 @@ type LocalSource struct {
 	DevMode bool `json:"devMode"`
 }
 
+// BuildConfig defines configuration for package building
+type BuildConfig struct {
+	// Timeout for the build operation
+	// +optional
+	// +kubebuilder:default="1h"
+	Timeout string `json:"timeout,omitempty"`
+}
+
 // PublishConfig defines where and how to publish packages
 type PublishConfig struct {
 	// Destination specifies where to publish
 	// +kubebuilder:validation:Required
 	Destination PublishDestination `json:"destination"`
+
+	// Timeout for the publish operation
+	// +optional
+	// +kubebuilder:default="30m"
+	Timeout string `json:"timeout,omitempty"`
 }
 
 // PublishDestination defines the publish target

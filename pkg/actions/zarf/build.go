@@ -7,6 +7,7 @@ package zarf
 import (
 	"context"
 	"fmt"
+	"time"
 
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -88,9 +89,19 @@ func (handler *BuildHandler) createBuildJob(ctx context.Context, pkg *zarfv1alph
 		return nil, fmt.Errorf("failed to build init containers: %w", err)
 	}
 
+	// Determine timeout - use Build.Timeout if specified, otherwise use default
+	activeDeadlineSeconds := int64(constants.DefaultBuildTimeout)
+	if pkg.Spec.Build != nil && pkg.Spec.Build.Timeout != "" {
+		timeout, parseErr := time.ParseDuration(pkg.Spec.Build.Timeout)
+		if parseErr != nil {
+			klog.V(4).InfoS("Invalid build timeout format, using default", "timeout", pkg.Spec.Build.Timeout, "error", parseErr)
+		} else {
+			activeDeadlineSeconds = int64(timeout.Seconds())
+		}
+	}
+
 	// Job configuration
-	backoffLimit := int32(0)             // Don't retry failed builds
-	activeDeadlineSeconds := int64(3600) // 1 hour timeout
+	backoffLimit := int32(0) // Don't retry failed builds
 
 	job := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
@@ -284,14 +295,16 @@ func (handler *BuildHandler) getResources(pkg *zarfv1alpha1.ZarfPackageJob) core
 	}
 
 	// Default resources for build jobs
+	// Standardized with UDS Create (both create artifacts)
+	// Higher resources account for compilation, compression, and artifact creation
 	return corev1.ResourceRequirements{
 		Requests: corev1.ResourceList{
-			corev1.ResourceCPU:    common.MustParseQuantity("200m"),
-			corev1.ResourceMemory: common.MustParseQuantity("512Mi"),
+			corev1.ResourceCPU:    common.MustParseQuantity("500m"),
+			corev1.ResourceMemory: common.MustParseQuantity("1Gi"),
 		},
 		Limits: corev1.ResourceList{
-			corev1.ResourceCPU:    common.MustParseQuantity("1000m"),
-			corev1.ResourceMemory: common.MustParseQuantity("2Gi"),
+			corev1.ResourceCPU:    common.MustParseQuantity("2000m"),
+			corev1.ResourceMemory: common.MustParseQuantity("4Gi"),
 		},
 	}
 }

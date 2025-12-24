@@ -3,6 +3,7 @@ package uds
 import (
 	"context"
 	"fmt"
+	"time"
 
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -89,9 +90,19 @@ func (handler *CreateHandler) createBundleJob(ctx context.Context, bundle *udsv1
 		return nil, fmt.Errorf("failed to build init containers: %w", err)
 	}
 
+	// Determine timeout - use Create.Timeout if specified, otherwise use default
+	activeDeadlineSeconds := int64(constants.DefaultCreateTimeout)
+	if bundle.Spec.Create != nil && bundle.Spec.Create.Timeout != "" {
+		timeout, parseErr := time.ParseDuration(bundle.Spec.Create.Timeout)
+		if parseErr != nil {
+			klog.V(4).InfoS("Invalid create timeout format, using default", "timeout", bundle.Spec.Create.Timeout, "error", parseErr)
+		} else {
+			activeDeadlineSeconds = int64(timeout.Seconds())
+		}
+	}
+
 	// Job configuration
-	backoffLimit := int32(0)             // Don't retry failed creates
-	activeDeadlineSeconds := int64(7200) // 2 hour timeout (bundles can be large)
+	backoffLimit := int32(0) // Don't retry failed creates
 
 	job := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
@@ -256,7 +267,9 @@ func (handler *CreateHandler) getResources(bundle *udsv1alpha1.UDSBundleJob) cor
 		return *bundle.Spec.Resources
 	}
 
-	// Default resources for UDS bundle creation (higher than Zarf due to bundle size)
+	// Default resources for UDS bundle creation
+	// Standardized with Zarf Build (both create artifacts)
+	// Higher resources account for bundling multiple packages, compression, and artifact creation
 	return corev1.ResourceRequirements{
 		Requests: corev1.ResourceList{
 			corev1.ResourceCPU:    common.MustParseQuantity("500m"),

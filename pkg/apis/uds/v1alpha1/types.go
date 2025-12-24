@@ -107,6 +107,10 @@ type UDSBundleJobSpec struct {
 	// +kubebuilder:validation:Required
 	Source BundleSource `json:"source"`
 
+	// Create defines configuration for bundle creation (optional)
+	// +optional
+	Create *BundleCreateConfig `json:"create,omitempty"`
+
 	// Publish defines where to publish the bundle artifact (optional)
 	// +optional
 	Publish *BundlePublishConfig `json:"publish,omitempty"`
@@ -208,11 +212,24 @@ type LocalSource struct {
 	Path string `json:"path"`
 }
 
+// BundleCreateConfig defines configuration for bundle creation
+type BundleCreateConfig struct {
+	// Timeout for the create operation
+	// +optional
+	// +kubebuilder:default="2h"
+	Timeout string `json:"timeout,omitempty"`
+}
+
 // BundlePublishConfig defines where and how to publish bundle artifacts
 type BundlePublishConfig struct {
 	// Destination defines where to publish
 	// +kubebuilder:validation:Required
 	Destination BundleDestination `json:"destination"`
+
+	// Timeout for the publish operation
+	// +optional
+	// +kubebuilder:default="1h"
+	Timeout string `json:"timeout,omitempty"`
 }
 
 // BundleDestination defines the publish destination

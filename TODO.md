@@ -55,49 +55,45 @@
 
 * ~~**Replace hardcoded UIDs with constants** ✅ COMPLETED - All Zarf (1000→DefaultZarfUID) and UDS (65532→DefaultUDSUID) actions updated~~
 
-### Timeout Handling Inconsistencies
+### ~~Timeout Handling Inconsistencies~~ ✅ COMPLETED
 
-* **Make Build action timeout configurable**
-  * Location: `pkg/actions/zarf/build.go:98`
-  * Current: Hardcoded `int64(3600)` (1 hour)
-  * Add: Support for `Spec.Build.Timeout` field in CRD
-  * Use: `constants.DefaultBuildTimeout` as default
+* ~~**Make Build action timeout configurable** ✅ COMPLETED - Added BuildConfig with Timeout field, handlers use time.ParseDuration~~
+  * ~~Added `BuildConfig` struct to Zarf CRD with `Timeout` field~~
+  * ~~Updated `pkg/actions/zarf/build.go` to check `pkg.Spec.Build.Timeout` with fallback to `constants.DefaultBuildTimeout`~~
+  * ~~Uses `time.ParseDuration` for parsing with graceful fallback on invalid input~~
 
-* **Make Publish action timeout configurable**
-  * Location: `pkg/actions/zarf/publish.go:105`
-  * Current: Hardcoded `int64(1800)` (30 minutes)
-  * Add: Support for `Spec.Publish.Timeout` field in CRD
-  * Use: `constants.DefaultPublishTimeout` as default
+* ~~**Make Publish action timeout configurable** ✅ COMPLETED - Added Timeout field to PublishConfig~~
+  * ~~Added `Timeout` field to both Zarf and UDS `PublishConfig` structs~~
+  * ~~Updated `pkg/actions/zarf/publish.go` and `pkg/actions/uds/publish.go` to use configurable timeout~~
+  * ~~Falls back to `constants.DefaultPublishTimeout` if not specified~~
 
-* **Make UDS Create action timeout configurable**
-  * Location: `pkg/actions/uds/create.go:87`
-  * Current: Hardcoded `int64(7200)` (2 hours)
-  * Add: Support for `Spec.Create.Timeout` field in CRD
-  * Use: `constants.DefaultCreateTimeout` as default
+* ~~**Make UDS Create action timeout configurable** ✅ COMPLETED - Added BundleCreateConfig~~
+  * ~~Added `BundleCreateConfig` struct with `Timeout` field to UDS CRD~~
+  * ~~Updated `pkg/actions/uds/create.go` to check `bundle.Spec.Create.Timeout`~~
+  * ~~Falls back to `constants.DefaultCreateTimeout` (7200 seconds / 2 hours)~~
 
-* **Make UDS Publish action timeout configurable**
-  * Location: `pkg/actions/uds/publish.go:84`
-  * Current: Hardcoded `int64(3600)` (1 hour)
-  * Add: Support for `Spec.Publish.Timeout` field in CRD
-  * Use: New constant (create `constants.DefaultUDSPublishTimeout`)
+* ~~**Make UDS Publish action timeout configurable** ✅ COMPLETED~~
+  * ~~Added `Timeout` field to `BundlePublishConfig` (default "1h")~~
+  * ~~Updated handler to use time.ParseDuration with fallback to constants~~
 
-* **Standardize timeout parsing to use time.ParseDuration**
-  * Location: `pkg/actions/uds/deploy.go:282-318`
-  * Issue: Custom parsing logic instead of standard library
-  * Replace: With `time.ParseDuration` like Zarf deploy uses
-  * Current: Manual string parsing for "30m", "1h", "2h30m" formats
+* ~~**Standardize timeout parsing to use time.ParseDuration** ✅ COMPLETED~~
+  * ~~Replaced custom `parseTimeout()` function in `pkg/actions/uds/deploy.go` with `time.ParseDuration`~~
+  * ~~Removed 37 lines of manual parsing logic~~
+  * ~~All action handlers now use consistent timeout parsing pattern~~
+  * ~~Deleted TestParseTimeout since we now use standard library (well-tested)~~
 
-### Resource Requirement Inconsistencies
+### ~~Resource Requirement Inconsistencies~~ ✅ COMPLETED
 
 * ~~**Fix Zarf Publish CPU request** ✅ COMPLETED - Changed from 250m to 200m for consistency with Build~~
 
 * ~~**Convert UDS resource limits to millicore notation** ✅ COMPLETED - All UDS actions now use explicit millicore notation ("1000m", "2000m")~~
 
-* **Standardize resource requirements across similar operations**
-  * Build/Create should have same resources (both create artifacts)
-  * Publish should have same resources across Zarf and UDS
-  * Deploy should have same resources across Zarf and UDS
-  * Document reasoning in comments
+* ~~**Standardize resource requirements across similar operations** ✅ COMPLETED~~
+  * ~~Build/Create now standardized at 500m/2000m CPU, 1Gi/4Gi memory (both create artifacts)~~
+  * ~~Publish already standardized at 200m/1000m CPU, 512Mi/2Gi memory (network I/O focused)~~
+  * ~~Deploy now standardized at 500m/2000m CPU, 1Gi/4Gi memory (both deploy to clusters)~~
+  * ~~All handlers now include documentation comments explaining resource allocation reasoning~~
+  * ~~Updated test expectations in uds_actions_test.go to match new standards~~
 
 ### Code Duplication
 

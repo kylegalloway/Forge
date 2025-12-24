@@ -3,6 +3,7 @@ package uds
 import (
 	"context"
 	"fmt"
+	"time"
 
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -82,9 +83,19 @@ func (handler *PublishHandler) createPublishJob(ctx context.Context, bundle *uds
 		return nil, err
 	}
 
+	// Determine timeout - use Publish.Timeout if specified, otherwise use default
+	activeDeadlineSeconds := int64(constants.DefaultPublishTimeout)
+	if bundle.Spec.Publish.Timeout != "" {
+		timeout, parseErr := time.ParseDuration(bundle.Spec.Publish.Timeout)
+		if parseErr != nil {
+			klog.V(4).InfoS("Invalid publish timeout format, using default", "timeout", bundle.Spec.Publish.Timeout, "error", parseErr)
+		} else {
+			activeDeadlineSeconds = int64(timeout.Seconds())
+		}
+	}
+
 	// Job configuration
-	backoffLimit := int32(0)             // Don't retry failed publishes
-	activeDeadlineSeconds := int64(3600) // 1 hour timeout
+	backoffLimit := int32(0) // Don't retry failed publishes
 
 	job := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
@@ -318,7 +329,9 @@ func (handler *PublishHandler) getResources(bundle *udsv1alpha1.UDSBundleJob) co
 		return *bundle.Spec.Resources
 	}
 
-	// Default resources for publishing
+	// Default resources for publish jobs
+	// Standardized with Zarf Publish (both upload artifacts to registries/storage)
+	// Lower than Create/Deploy since primarily network I/O with minimal processing
 	return corev1.ResourceRequirements{
 		Requests: corev1.ResourceList{
 			corev1.ResourceCPU:    common.MustParseQuantity("200m"),

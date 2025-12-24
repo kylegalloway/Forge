@@ -19,7 +19,7 @@ import (
 )
 
 // startJobMonitoring starts a goroutine to monitor Job completion
-func (controller *Controller) startJobMonitoring(ctx context.Context) {
+func (ctrl *Controller) startJobMonitoring(ctx context.Context) {
 	ticker := time.NewTicker(constants.JobMonitorInterval)
 	defer ticker.Stop()
 
@@ -31,7 +31,7 @@ func (controller *Controller) startJobMonitoring(ctx context.Context) {
 			klog.Info("Job monitoring stopped")
 			return
 		case <-ticker.C:
-			if err := controller.checkJobStatuses(ctx); err != nil {
+			if err := ctrl.checkJobStatuses(ctx); err != nil {
 				klog.ErrorS(err, "Error checking job statuses")
 			}
 		}
@@ -39,9 +39,9 @@ func (controller *Controller) startJobMonitoring(ctx context.Context) {
 }
 
 // checkJobStatuses checks all Jobs labeled with forge labels and updates ZarfPackageJob status
-func (controller *Controller) checkJobStatuses(ctx context.Context) error {
+func (ctrl *Controller) checkJobStatuses(ctx context.Context) error {
 	// List all Jobs with forge labels
-	jobs, err := controller.kubeClient.BatchV1().Jobs(controller.namespace).List(ctx, metav1.ListOptions{
+	jobs, err := ctrl.kubeClient.BatchV1().Jobs(ctrl.namespace).List(ctx, metav1.ListOptions{
 		LabelSelector: "app=forge",
 	})
 	if err != nil {
@@ -49,7 +49,7 @@ func (controller *Controller) checkJobStatuses(ctx context.Context) error {
 	}
 
 	for _, job := range jobs.Items {
-		if err := controller.processJobStatus(ctx, &job); err != nil {
+		if err := ctrl.processJobStatus(ctx, &job); err != nil {
 			klog.ErrorS(err, "Failed to process job status", "job", job.Name, "namespace", job.Namespace)
 			// Continue processing other jobs
 		}
@@ -59,7 +59,7 @@ func (controller *Controller) checkJobStatuses(ctx context.Context) error {
 }
 
 // processJobStatus checks a single Job and updates the corresponding ZarfPackageJob status
-func (controller *Controller) processJobStatus(ctx context.Context, job *batchv1.Job) error {
+func (ctrl *Controller) processJobStatus(ctx context.Context, job *batchv1.Job) error {
 	// Get the ZarfPackageJob name from job labels
 	packageName, ok := job.Labels[constants.LabelPackage]
 	if !ok {
@@ -86,22 +86,22 @@ func (controller *Controller) processJobStatus(ctx context.Context, job *batchv1
 			completionTime = condition.LastTransitionTime.DeepCopy()
 
 			// Record job completion metrics
-			controller.metrics.RecordJobCompleted(ctx, job.Namespace, packageName, action)
+			ctrl.metrics.RecordJobCompleted(ctx, job.Namespace, packageName, action)
 
 			// Record action-specific completion metrics
 			switch action {
 			case constants.ActionBuild:
-				controller.metrics.RecordBuildCompleted(ctx, job.Namespace, packageName)
+				ctrl.metrics.RecordBuildCompleted(ctx, job.Namespace, packageName)
 			case constants.ActionPublish:
-				controller.metrics.RecordPublishCompleted(ctx, job.Namespace, packageName)
+				ctrl.metrics.RecordPublishCompleted(ctx, job.Namespace, packageName)
 			case constants.ActionDeploy:
-				controller.metrics.RecordDeployCompleted(ctx, job.Namespace, packageName)
+				ctrl.metrics.RecordDeployCompleted(ctx, job.Namespace, packageName)
 			}
 
 			// Calculate and record action duration if start time is available
 			if job.Status.StartTime != nil {
 				duration := completionTime.Sub(job.Status.StartTime.Time).Seconds()
-				controller.metrics.RecordActionDuration(ctx, job.Namespace, packageName, action, duration, "success")
+				ctrl.metrics.RecordActionDuration(ctx, job.Namespace, packageName, action, duration, "success")
 			}
 
 			break
@@ -113,22 +113,22 @@ func (controller *Controller) processJobStatus(ctx context.Context, job *batchv1
 			completionTime = condition.LastTransitionTime.DeepCopy()
 
 			// Record job failure metrics
-			controller.metrics.RecordJobFailed(ctx, job.Namespace, packageName, action)
+			ctrl.metrics.RecordJobFailed(ctx, job.Namespace, packageName, action)
 
 			// Record action-specific failure metrics
 			switch action {
 			case constants.ActionBuild:
-				controller.metrics.RecordBuildFailed(ctx, job.Namespace, packageName)
+				ctrl.metrics.RecordBuildFailed(ctx, job.Namespace, packageName)
 			case constants.ActionPublish:
-				controller.metrics.RecordPublishFailed(ctx, job.Namespace, packageName)
+				ctrl.metrics.RecordPublishFailed(ctx, job.Namespace, packageName)
 			case constants.ActionDeploy:
-				controller.metrics.RecordDeployFailed(ctx, job.Namespace, packageName)
+				ctrl.metrics.RecordDeployFailed(ctx, job.Namespace, packageName)
 			}
 
 			// Calculate and record action duration if start time is available
 			if job.Status.StartTime != nil {
 				duration := completionTime.Sub(job.Status.StartTime.Time).Seconds()
-				controller.metrics.RecordActionDuration(ctx, job.Namespace, packageName, action, duration, "failure")
+				ctrl.metrics.RecordActionDuration(ctx, job.Namespace, packageName, action, duration, "failure")
 			}
 
 			break
@@ -143,7 +143,7 @@ func (controller *Controller) processJobStatus(ctx context.Context, job *batchv1
 	klog.InfoS("Job status changed", "job", job.Name, "package", packageName, "phase", phase)
 
 	// Get the ZarfPackageJob resource
-	unstrObj, err := controller.dynamicClient.Resource(constants.ZarfPackageJobGVR).Namespace(job.Namespace).Get(ctx, packageName, metav1.GetOptions{})
+	unstrObj, err := ctrl.dynamicClient.Resource(constants.ZarfPackageJobGVR).Namespace(job.Namespace).Get(ctx, packageName, metav1.GetOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to get ZarfPackageJob: %w", err)
 	}
@@ -175,21 +175,21 @@ func (controller *Controller) processJobStatus(ctx context.Context, job *batchv1
 	}
 
 	// Update ZarfPackageJob status
-	if err := controller.updateStatus(ctx, unstrObj, phase, message, opStatus); err != nil {
+	if err := ctrl.updateStatus(ctx, unstrObj, phase, message, opStatus); err != nil {
 		return err
 	}
 
 	// Handle action chaining: if this job succeeded and is part of a chained workflow,
 	// trigger the next action
 	if phase == "Completed" {
-		return controller.handleActionChaining(ctx, unstrObj, action, artifactLocation)
+		return ctrl.handleActionChaining(ctx, unstrObj, action, artifactLocation)
 	}
 
 	return nil
 }
 
 // handleActionChaining triggers the next action in a chained workflow
-func (controller *Controller) handleActionChaining(ctx context.Context, unstrObj *unstructured.Unstructured, completedAction, artifactPath string) error {
+func (ctrl *Controller) handleActionChaining(ctx context.Context, unstrObj *unstructured.Unstructured, completedAction, artifactPath string) error {
 	// Get the action from spec to determine if this is a chained workflow
 	spec, ok := unstrObj.Object["spec"].(map[string]interface{})
 	if !ok {
@@ -259,9 +259,9 @@ func (controller *Controller) handleActionChaining(ctx context.Context, unstrObj
 
 	switch nextAction {
 	case "publish":
-		result, err = controller.publishHandler.Execute(ctx, pkg, artifactPath, artifactPVCName)
+		result, err = ctrl.publishHandler.Execute(ctx, pkg, artifactPath, artifactPVCName)
 	case "deploy":
-		result, err = controller.deployHandler.Execute(ctx, pkg, artifactPath, artifactPVCName)
+		result, err = ctrl.deployHandler.Execute(ctx, pkg, artifactPath, artifactPVCName)
 	default:
 		return fmt.Errorf("unknown next action: %s", nextAction)
 	}
@@ -269,7 +269,7 @@ func (controller *Controller) handleActionChaining(ctx context.Context, unstrObj
 	if err != nil {
 		klog.ErrorS(err, "Failed to execute next action", "package", pkg.Name, "action", nextAction)
 		// Update status to Failed
-		return controller.updateStatus(ctx, unstrObj, "Failed", fmt.Sprintf("Failed to execute %s: %v", nextAction, err), nil)
+		return ctrl.updateStatus(ctx, unstrObj, "Failed", fmt.Sprintf("Failed to execute %s: %v", nextAction, err), nil)
 	}
 
 	if result != nil {
@@ -281,7 +281,7 @@ func (controller *Controller) handleActionChaining(ctx context.Context, unstrObj
 			"message":   result.Message,
 			"startTime": result.StartTime.Format(time.RFC3339),
 		}
-		return controller.updateStatus(ctx, unstrObj, result.Phase, result.Message, opStatus)
+		return ctrl.updateStatus(ctx, unstrObj, result.Phase, result.Message, opStatus)
 	}
 
 	return nil

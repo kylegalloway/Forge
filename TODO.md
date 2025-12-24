@@ -154,11 +154,11 @@
   * ~~Updated all 6 action handlers (build, publish, deploy for both Zarf and UDS)~~
   * ~~Jobs can now be selected by `app=forge` for all jobs, or filtered by resource-type~~
 
-* **Align controller receiver variable names**
-  * Location: `pkg/controller/controller.go` vs `pkg/controller/uds_controller.go`
-  * Current: Zarf uses `controller`, UDS uses `ctrl`
-  * Decision: Standardize on one (prefer `ctrl` for brevity and Go convention)
-  * Update: All method receivers and local variables
+* ~~**Align controller receiver variable names** ✅ COMPLETED~~
+  * ~~Standardized all controller receivers to use `ctrl` for Go convention and brevity~~
+  * ~~Updated Zarf controller files: `pkg/controller/controller.go` and `pkg/controller/job_monitor.go`~~
+  * ~~UDS controller already used `ctrl`, so no changes needed there~~
+  * ~~All method receivers and member access now consistent across both controllers~~
 
 ---
 

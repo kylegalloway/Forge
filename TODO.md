@@ -28,15 +28,15 @@
 
 ## Critical Inconsistencies (Fix Immediately)
 
-### Missing Source Handler Integration
+### ~~Missing Source Handler Integration~~ ✅ COMPLETED
 
-* **Integrate UDS actions with shared source handlers**
-  * Location: `pkg/actions/uds/create.go:200-249`
-  * Issue: UDS actions implement inline Git cloning (`alpine/git:latest`) instead of using `pkg/sources`
-  * Pattern: Use `sources.New()` and `sourceHandler.GetInitContainer()` like Zarf does
-  * Files to update: `create.go`, `publish.go`, `deploy.go` in `pkg/actions/uds/`
-  * Remove: Inline Git clone implementation from init containers
-  * Impact: **Architectural inconsistency** - Zarf uses shared source handlers, UDS doesn't
+* ~~**Integrate UDS actions with shared source handlers** ✅ COMPLETED - UDS now uses shared source handlers via `pkg/sources/uds_adapters.go` and `pkg/sources/git_common.go`~~
+  * ~~Created `BuildGitInitContainer()` in `git_common.go` to eliminate duplication between Zarf and UDS~~
+  * ~~Created `GetUDSInitContainer()` adapter in `uds_adapters.go` to convert UDS types to common config~~
+  * ~~Refactored both Zarf and UDS to use shared Git init container logic with appropriate UIDs (1000 for Zarf, 65532 for UDS)~~
+  * ~~Updated `pkg/actions/uds/create.go` to use `sources.GetUDSInitContainer()` instead of inline Git implementation~~
+  * ~~Removed 79 lines of duplicated Git cloning logic from create.go (buildInitContainers)~~
+  * ~~All tests passing: sources tests 100%, UDS actions tests 80.7% coverage~~
 
 ### Missing Defensive Checks
 

@@ -13,6 +13,7 @@ import (
 	"github.com/kylegalloway/forge/pkg/actions/common"
 	udsv1alpha1 "github.com/kylegalloway/forge/pkg/apis/uds/v1alpha1"
 	"github.com/kylegalloway/forge/pkg/constants"
+	"github.com/kylegalloway/forge/pkg/sources"
 	"github.com/kylegalloway/forge/pkg/telemetry"
 )
 
@@ -83,7 +84,10 @@ func (handler *CreateHandler) createBundleJob(ctx context.Context, bundle *udsv1
 	}
 
 	// Build init containers for source retrieval
-	initContainers := handler.buildInitContainers(bundle)
+	initContainers, err := handler.buildInitContainers(bundle)
+	if err != nil {
+		return nil, fmt.Errorf("failed to build init containers: %w", err)
+	}
 
 	// Job configuration
 	backoffLimit := int32(0)             // Don't retry failed creates
@@ -192,84 +196,20 @@ func (handler *CreateHandler) buildUDSCommand(_ *udsv1alpha1.UDSBundleJob) (stri
 }
 
 // buildInitContainers creates init containers for source retrieval
-func (handler *CreateHandler) buildInitContainers(bundle *udsv1alpha1.UDSBundleJob) []corev1.Container {
-	// UDS bundles currently use a simplified inline Git source handler.
-	// Full integration with pkg/sources handlers is planned for future versions.
-
-	// For Git sources, clone the repository directly
-	if bundle.Spec.Source.Type == udsv1alpha1.BundleSourceTypeGit && bundle.Spec.Source.Git != nil {
-		gitSource := bundle.Spec.Source.Git
-
-		// Construct git clone command (with or without credentials)
-		var cloneCmd string
-		if gitSource.DisableCloneCredentials {
-			cloneCmd = fmt.Sprintf("GIT_ASKPASS='' git clone --depth 1 --branch %s %s /workspace", gitSource.Ref, gitSource.URL)
-		} else {
-			cloneCmd = fmt.Sprintf("git clone --depth 1 --branch %s %s /workspace", gitSource.Ref, gitSource.URL)
-		}
-
-		if gitSource.Path != "" && gitSource.Path != "." {
-			cloneCmd = fmt.Sprintf("%s && cd /workspace && mv %s/* . && rm -rf %s", cloneCmd, gitSource.Path, gitSource.Path)
-		}
-
-		cloneCmd = fmt.Sprintf("%s && cd /workspace && ls -la", cloneCmd)
-
-		container := &corev1.Container{
-			Name:    "fetch-source",
-			Image:   "alpine/git:latest",
-			Command: []string{"/bin/sh", "-c"},
-			Args:    []string{cloneCmd},
-			VolumeMounts: []corev1.VolumeMount{
-				{
-					Name:      "workspace",
-					MountPath: "/workspace",
-				},
-			},
-			SecurityContext: &corev1.SecurityContext{
-				RunAsNonRoot:             common.Ptr(true),
-				RunAsUser:                common.Ptr(int64(65532)),
-				AllowPrivilegeEscalation: common.Ptr(false),
-				Capabilities: &corev1.Capabilities{
-					Drop: []corev1.Capability{"ALL"},
-				},
-			},
-		}
-
-		// Handle credentials if provided and not disabled  # pragma: allowlist secret
-		if gitSource.CredentialsSecretRef != nil && !gitSource.DisableCloneCredentials { // pragma: allowlist secret
-			// Mount secret to /etc/git-secret  # pragma: allowlist secret
-			container.VolumeMounts = append(container.VolumeMounts, corev1.VolumeMount{
-				Name:      "git-creds",
-				MountPath: "/etc/git-secret",
-				ReadOnly:  true,
-			})
-
-			// Setup command to configure credentials
-			// #nosec G101 - This is a shell script template, not a hardcoded credential  # pragma: allowlist secret
-			setupCmd := `
-if [ -f /etc/git-secret/ssh-key ]; then  # pragma: allowlist secret
-  mkdir -p ~/.ssh
-  cp /etc/git-secret/ssh-key ~/.ssh/id_rsa  # pragma: allowlist secret
-  chmod 600 ~/.ssh/id_rsa
-  echo "StrictHostKeyChecking no" >> ~/.ssh/config
-elif [ -f /etc/git-secret/token ]; then  # pragma: allowlist secret
-  git config --global credential.helper store
-  token=$(cat /etc/git-secret/token)  # pragma: allowlist secret
-  echo "https://oauth2:${token}@github.com" > ~/.git-credentials
-  echo "https://oauth2:${token}@gitlab.com" >> ~/.git-credentials
-fi
-`
-			// Prepend setup to clone command
-			cloneCmd = fmt.Sprintf("%s && %s", setupCmd, cloneCmd)
-			container.Args = []string{cloneCmd}
-		}
-
-		return []corev1.Container{*container}
+//
+//nolint:staticcheck // SA1019: UDSBundleJob v1alpha1 must be supported until v0.10.0
+func (handler *CreateHandler) buildInitContainers(bundle *udsv1alpha1.UDSBundleJob) ([]corev1.Container, error) {
+	// Use shared source handler logic from pkg/sources
+	container, err := sources.GetUDSInitContainer(bundle)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get init container: %w", err)
 	}
 
-	// For other source types (S3, OCI), return empty for now
-	// These will be implemented as part of full source handler integration
-	return nil
+	if container == nil {
+		return nil, nil
+	}
+
+	return []corev1.Container{*container}, nil
 }
 
 // buildVolumes creates volumes for the create job

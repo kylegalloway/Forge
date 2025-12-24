@@ -840,7 +840,10 @@ func TestBuildInitContainers(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			containers := handler.buildInitContainers(tt.bundle)
+			containers, err := handler.buildInitContainers(tt.bundle)
+			if err != nil {
+				t.Fatalf("buildInitContainers() unexpected error = %v", err)
+			}
 
 			if len(containers) != tt.wantContainerCount {
 				t.Errorf("buildInitContainers() container count = %d, want %d", len(containers), tt.wantContainerCount)

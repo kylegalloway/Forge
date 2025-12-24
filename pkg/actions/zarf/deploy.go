@@ -37,7 +37,7 @@ func NewDeployHandler(kubeClient kubernetes.Interface, metrics *telemetry.Metric
 
 // Execute performs a Deploy action for the given ZarfPackageJob
 func (handler *DeployHandler) Execute(ctx context.Context, pkg *zarfv1alpha1.ZarfPackageJob, artifactPath string, artifactPVCName string) (*common.ActionResult, error) {
-	klog.InfoS("Executing Deploy action", "name", pkg.Name, "namespace", pkg.Namespace, "artifactPVC", artifactPVCName)
+	klog.InfoS("Executing Zarf Package Deploy action", "name", pkg.Name, "namespace", pkg.Namespace, "artifactPVC", artifactPVCName)
 
 	// Record deploy started
 	handler.metrics.RecordDeployStarted(ctx, pkg.Namespace, pkg.Name)
@@ -58,7 +58,7 @@ func (handler *DeployHandler) Execute(ctx context.Context, pkg *zarfv1alpha1.Zar
 	// Record Job creation
 	handler.metrics.RecordJobCreated(ctx, pkg.Namespace, pkg.Name, "deploy")
 
-	klog.InfoS("Deploy job created", "name", pkg.Name, "job", job.Name)
+	klog.InfoS("Zarf package deploy job created", "name", pkg.Name, "job", job.Name)
 
 	result := &common.ActionResult{
 		JobName:   job.Name,

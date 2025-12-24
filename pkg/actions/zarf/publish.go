@@ -38,7 +38,7 @@ func NewPublishHandler(kubeClient kubernetes.Interface, metrics *telemetry.Metri
 
 // Execute performs a Publish action for the given ZarfPackageJob
 func (handler *PublishHandler) Execute(ctx context.Context, pkg *zarfv1alpha1.ZarfPackageJob, artifactPath string, artifactPVCName string) (*common.ActionResult, error) {
-	klog.InfoS("Executing Publish action", "name", pkg.Name, "namespace", pkg.Namespace, "artifactPVC", artifactPVCName)
+	klog.InfoS("Executing Zarf Package Publish action", "name", pkg.Name, "namespace", pkg.Namespace, "artifactPVC", artifactPVCName)
 
 	// Record publish started
 	handler.metrics.RecordPublishStarted(ctx, pkg.Namespace, pkg.Name)
@@ -59,7 +59,7 @@ func (handler *PublishHandler) Execute(ctx context.Context, pkg *zarfv1alpha1.Za
 	// Record Job creation
 	handler.metrics.RecordJobCreated(ctx, pkg.Namespace, pkg.Name, "publish")
 
-	klog.InfoS("Publish job created", "name", pkg.Name, "job", job.Name)
+	klog.InfoS("Zarf package publish job created", "name", pkg.Name, "job", job.Name)
 
 	result := &common.ActionResult{
 		JobName:   job.Name,

@@ -172,11 +172,11 @@
   * Files: `pkg/telemetry/metrics.go` and all action handlers
   * Recommendation: `RecordPackageBuildStarted` and `RecordBundleCreateStarted` for clarity
 
-* **Standardize log message format**
-  * Issue: UDS prefixes with "UDS Bundle", Zarf doesn't use "Zarf Package"
-  * Decision needed: Consistent prefix strategy across both
-  * Files: All `klog.InfoS()` calls in action handlers
-  * Recommendation: Always include resource type for clarity
+* ~~**Standardize log message format** ✅ COMPLETED~~
+  * ~~All log messages now include resource type for clarity~~
+  * ~~Zarf: "Executing Zarf Package Build action", "Zarf package build job created"~~
+  * ~~UDS: "Executing UDS Bundle Create action", "Bundle create job created"~~
+  * ~~Consistent pattern across all 6 action handlers (build, publish, deploy for both)~~
 
 * **Document klog verbosity level conventions**
   * Location: Add to `docs/development/LOGGING.md` (create if needed)

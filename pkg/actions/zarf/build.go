@@ -41,7 +41,7 @@ func NewBuildHandler(kubeClient kubernetes.Interface, metrics *telemetry.Metrics
 // Execute performs a Build action for the given ZarfPackageJob
 func (handler *BuildHandler) Execute(ctx context.Context, pkg *zarfv1alpha1.ZarfPackageJob, artifactPVCName string) (*common.ActionResult, error) {
 
-	klog.InfoS("Executing Build action", "name", pkg.Name, "namespace", pkg.Namespace, "artifactPVC", artifactPVCName)
+	klog.InfoS("Executing Zarf Package Build action", "name", pkg.Name, "namespace", pkg.Namespace, "artifactPVC", artifactPVCName)
 
 	// Record build started
 	handler.metrics.RecordBuildStarted(ctx, pkg.Namespace, pkg.Name)
@@ -62,7 +62,7 @@ func (handler *BuildHandler) Execute(ctx context.Context, pkg *zarfv1alpha1.Zarf
 	// Record Job creation
 	handler.metrics.RecordJobCreated(ctx, pkg.Namespace, pkg.Name, "build")
 
-	klog.InfoS("Build job created", "name", pkg.Name, "job", job.Name)
+	klog.InfoS("Zarf package build job created", "name", pkg.Name, "job", job.Name)
 
 	result := &common.ActionResult{
 		JobName:   job.Name,

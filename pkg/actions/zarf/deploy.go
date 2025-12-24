@@ -111,6 +111,7 @@ func (handler *DeployHandler) createDeployJob(ctx context.Context, pkg *zarfv1al
 			Namespace: namespace,
 			Labels: map[string]string{
 				"app":                  "forge",
+				"resource-type":        "zarfpackagejob",
 				constants.LabelPackage: pkg.Name,
 				constants.LabelAction:  "deploy",
 			},
@@ -126,6 +127,7 @@ func (handler *DeployHandler) createDeployJob(ctx context.Context, pkg *zarfv1al
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{
 						"app":                  "forge",
+						"resource-type":        "zarfpackagejob",
 						constants.LabelPackage: pkg.Name,
 						constants.LabelAction:  "deploy",
 					},

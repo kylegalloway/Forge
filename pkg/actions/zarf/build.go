@@ -109,6 +109,7 @@ func (handler *BuildHandler) createBuildJob(ctx context.Context, pkg *zarfv1alph
 			Namespace: namespace,
 			Labels: map[string]string{
 				"app":                  "forge",
+				"resource-type":        "zarfpackagejob",
 				constants.LabelPackage: pkg.Name,
 				constants.LabelAction:  "build",
 			},
@@ -124,6 +125,7 @@ func (handler *BuildHandler) createBuildJob(ctx context.Context, pkg *zarfv1alph
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{
 						"app":                  "forge",
+						"resource-type":        "zarfpackagejob",
 						constants.LabelPackage: pkg.Name,
 						constants.LabelAction:  "build",
 					},

@@ -147,17 +147,12 @@
 
 ### Naming Inconsistencies
 
-* **Standardize app label values**
-  * Current: Zarf jobs use `"app": "forge"`, UDS jobs use `"app": "forge-uds"`
-  * Target: Both use `"app": "forge"` with additional labels for differentiation
-  * Suggested: Add `"resource-type": "zarfpackagejob"` or `"resource-type": "udspackagejob"`
-  * Files affected (all 6 action handlers):
-    * `pkg/actions/zarf/build.go:105,120`
-    * `pkg/actions/zarf/publish.go:112,127`
-    * `pkg/actions/zarf/deploy.go:113,128`
-    * `pkg/actions/uds/create.go:94,109`
-    * `pkg/actions/uds/publish.go:91,106`
-    * `pkg/actions/uds/deploy.go:100,115`
+* ~~**Standardize app label values** ✅ COMPLETED~~
+  * ~~All jobs now use `"app": "forge"` for consistency~~
+  * ~~Added `"resource-type": "zarfpackagejob"` to Zarf jobs~~
+  * ~~Added `"resource-type": "udspackagejob"` to UDS jobs~~
+  * ~~Updated all 6 action handlers (build, publish, deploy for both Zarf and UDS)~~
+  * ~~Jobs can now be selected by `app=forge` for all jobs, or filtered by resource-type~~
 
 * **Align controller receiver variable names**
   * Location: `pkg/controller/controller.go` vs `pkg/controller/uds_controller.go`

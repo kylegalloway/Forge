@@ -121,6 +121,7 @@ func (handler *PublishHandler) createPublishJob(ctx context.Context, pkg *zarfv1
 			Namespace: namespace,
 			Labels: map[string]string{
 				"app":                  "forge",
+				"resource-type":        "zarfpackagejob",
 				constants.LabelPackage: pkg.Name,
 				constants.LabelAction:  "publish",
 			},
@@ -136,6 +137,7 @@ func (handler *PublishHandler) createPublishJob(ctx context.Context, pkg *zarfv1
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{
 						"app":                  "forge",
+						"resource-type":        "zarfpackagejob",
 						constants.LabelPackage: pkg.Name,
 						constants.LabelAction:  "publish",
 					},

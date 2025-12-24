@@ -100,7 +100,8 @@ func (handler *DeployHandler) createDeployJob(ctx context.Context, bundle *udsv1
 			Name:      jobName,
 			Namespace: namespace,
 			Labels: map[string]string{
-				"app":                  "forge-uds",
+				"app":                  "forge",
+				"resource-type":        "udspackagejob",
 				constants.LabelPackage: bundle.Name,
 				constants.LabelAction:  "deploy",
 			},
@@ -115,7 +116,8 @@ func (handler *DeployHandler) createDeployJob(ctx context.Context, bundle *udsv1
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{
-						"app":                  "forge-uds",
+						"app":                  "forge",
+						"resource-type":        "udspackagejob",
 						constants.LabelPackage: bundle.Name,
 						constants.LabelAction:  "deploy",
 					},

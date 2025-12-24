@@ -102,7 +102,8 @@ func (handler *PublishHandler) createPublishJob(ctx context.Context, bundle *uds
 			Name:      jobName,
 			Namespace: namespace,
 			Labels: map[string]string{
-				"app":                  "forge-uds",
+				"app":                  "forge",
+				"resource-type":        "udspackagejob",
 				constants.LabelPackage: bundle.Name,
 				constants.LabelAction:  "publish",
 			},
@@ -117,7 +118,8 @@ func (handler *PublishHandler) createPublishJob(ctx context.Context, bundle *uds
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{
-						"app":                  "forge-uds",
+						"app":                  "forge",
+						"resource-type":        "udspackagejob",
 						constants.LabelPackage: bundle.Name,
 						constants.LabelAction:  "publish",
 					},

@@ -132,11 +132,13 @@
   * Include: Policy validation failures
   * Include: Bundle creation issues
 
-* **Add UDS policy configuration examples**
-  * Location: `examples/policies/uds/`
-  * Create: Example ServiceAccount annotations for UDS bundles
-  * Create: Example RBAC configurations
-  * Create: Example restricted vs permissive policies
+* ~~**Add UDS policy configuration examples** ✅ COMPLETED~~
+  * ~~Created `examples/policies/uds/` directory with comprehensive examples~~
+  * ~~permissive-serviceaccount.yaml - Development use, all permissions~~
+  * ~~restricted-serviceaccount.yaml - Production use, least-privilege model~~
+  * ~~ci-cd-serviceaccount.yaml - CI/CD pipeline, build & publish only~~
+  * ~~README.md - Complete guide with policy annotations, RBAC requirements, troubleshooting~~
+  * ~~Includes example Secrets for OCI, S3, and Git credentials~~
 
 * **Update CLAUDE.md with UDS vs Zarf guidance**
   * Location: `CLAUDE.md` and `CLAUDE.local.md`

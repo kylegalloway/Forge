@@ -91,11 +91,11 @@ func (ctrl *Controller) processJobStatus(ctx context.Context, job *batchv1.Job) 
 			// Record action-specific completion metrics
 			switch action {
 			case constants.ActionBuild:
-				ctrl.metrics.RecordBuildCompleted(ctx, job.Namespace, packageName)
+				ctrl.metrics.RecordPackageBuildCompleted(ctx, job.Namespace, packageName)
 			case constants.ActionPublish:
-				ctrl.metrics.RecordPublishCompleted(ctx, job.Namespace, packageName)
+				ctrl.metrics.RecordPackagePublishCompleted(ctx, job.Namespace, packageName)
 			case constants.ActionDeploy:
-				ctrl.metrics.RecordDeployCompleted(ctx, job.Namespace, packageName)
+				ctrl.metrics.RecordPackageDeployCompleted(ctx, job.Namespace, packageName)
 			}
 
 			// Calculate and record action duration if start time is available
@@ -118,11 +118,11 @@ func (ctrl *Controller) processJobStatus(ctx context.Context, job *batchv1.Job) 
 			// Record action-specific failure metrics
 			switch action {
 			case constants.ActionBuild:
-				ctrl.metrics.RecordBuildFailed(ctx, job.Namespace, packageName)
+				ctrl.metrics.RecordPackageBuildFailed(ctx, job.Namespace, packageName)
 			case constants.ActionPublish:
-				ctrl.metrics.RecordPublishFailed(ctx, job.Namespace, packageName)
+				ctrl.metrics.RecordPackagePublishFailed(ctx, job.Namespace, packageName)
 			case constants.ActionDeploy:
-				ctrl.metrics.RecordDeployFailed(ctx, job.Namespace, packageName)
+				ctrl.metrics.RecordPackageDeployFailed(ctx, job.Namespace, packageName)
 			}
 
 			// Calculate and record action duration if start time is available

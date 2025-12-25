@@ -86,9 +86,9 @@ func TestRecordBuildActions(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	metrics.RecordBuildStarted(ctx, "default", "test-pkg")
-	metrics.RecordBuildCompleted(ctx, "default", "test-pkg")
-	metrics.RecordBuildFailed(ctx, "default", "test-pkg")
+	metrics.RecordPackageBuildStarted(ctx, "default", "test-pkg")
+	metrics.RecordPackageBuildCompleted(ctx, "default", "test-pkg")
+	metrics.RecordPackageBuildFailed(ctx, "default", "test-pkg")
 }
 
 func TestRecordPublishActions(t *testing.T) {
@@ -98,9 +98,9 @@ func TestRecordPublishActions(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	metrics.RecordPublishStarted(ctx, "default", "test-pkg")
-	metrics.RecordPublishCompleted(ctx, "default", "test-pkg")
-	metrics.RecordPublishFailed(ctx, "default", "test-pkg")
+	metrics.RecordPackagePublishStarted(ctx, "default", "test-pkg")
+	metrics.RecordPackagePublishCompleted(ctx, "default", "test-pkg")
+	metrics.RecordPackagePublishFailed(ctx, "default", "test-pkg")
 }
 
 func TestRecordDeployActions(t *testing.T) {
@@ -110,9 +110,9 @@ func TestRecordDeployActions(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	metrics.RecordDeployStarted(ctx, "default", "test-pkg")
-	metrics.RecordDeployCompleted(ctx, "default", "test-pkg")
-	metrics.RecordDeployFailed(ctx, "default", "test-pkg")
+	metrics.RecordPackageDeployStarted(ctx, "default", "test-pkg")
+	metrics.RecordPackageDeployCompleted(ctx, "default", "test-pkg")
+	metrics.RecordPackageDeployFailed(ctx, "default", "test-pkg")
 }
 
 func TestRecordActionDuration(t *testing.T) {

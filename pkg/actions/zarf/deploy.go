@@ -40,18 +40,18 @@ func (handler *DeployHandler) Execute(ctx context.Context, pkg *zarfv1alpha1.Zar
 	klog.InfoS("Executing Zarf Package Deploy action", "name", pkg.Name, "namespace", pkg.Namespace, "artifactPVC", artifactPVCName)
 
 	// Record deploy started
-	handler.metrics.RecordDeployStarted(ctx, pkg.Namespace, pkg.Name)
+	handler.metrics.RecordPackageDeployStarted(ctx, pkg.Namespace, pkg.Name)
 
 	// Validate deploy config is provided
 	if pkg.Spec.Deploy == nil {
-		handler.metrics.RecordDeployFailed(ctx, pkg.Namespace, pkg.Name)
+		handler.metrics.RecordPackageDeployFailed(ctx, pkg.Namespace, pkg.Name)
 		return nil, fmt.Errorf("deploy configuration is required for Deploy action")
 	}
 
 	// Create Kubernetes Job to deploy the package
 	job, err := handler.createDeployJob(ctx, pkg, artifactPath, artifactPVCName)
 	if err != nil {
-		handler.metrics.RecordDeployFailed(ctx, pkg.Namespace, pkg.Name)
+		handler.metrics.RecordPackageDeployFailed(ctx, pkg.Namespace, pkg.Name)
 		return nil, fmt.Errorf("failed to create deploy job: %w", err)
 	}
 

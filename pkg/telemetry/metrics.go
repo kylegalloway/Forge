@@ -405,8 +405,8 @@ func (metrics *Metrics) RecordJobFailed(ctx context.Context, namespace, packageN
 		))
 }
 
-// RecordBuildStarted increments the build started counter
-func (metrics *Metrics) RecordBuildStarted(ctx context.Context, namespace, packageName string) {
+// RecordPackageBuildStarted increments the package build started counter
+func (metrics *Metrics) RecordPackageBuildStarted(ctx context.Context, namespace, packageName string) {
 	metrics.buildsStarted.Add(ctx, 1,
 		metric.WithAttributes(
 			attribute.String("namespace", namespace),
@@ -414,8 +414,8 @@ func (metrics *Metrics) RecordBuildStarted(ctx context.Context, namespace, packa
 		))
 }
 
-// RecordBuildCompleted increments the build completed counter
-func (metrics *Metrics) RecordBuildCompleted(ctx context.Context, namespace, packageName string) {
+// RecordPackageBuildCompleted increments the package build completed counter
+func (metrics *Metrics) RecordPackageBuildCompleted(ctx context.Context, namespace, packageName string) {
 	metrics.buildsCompleted.Add(ctx, 1,
 		metric.WithAttributes(
 			attribute.String("namespace", namespace),
@@ -423,8 +423,8 @@ func (metrics *Metrics) RecordBuildCompleted(ctx context.Context, namespace, pac
 		))
 }
 
-// RecordBuildFailed increments the build failed counter
-func (metrics *Metrics) RecordBuildFailed(ctx context.Context, namespace, packageName string) {
+// RecordPackageBuildFailed increments the package build failed counter
+func (metrics *Metrics) RecordPackageBuildFailed(ctx context.Context, namespace, packageName string) {
 	metrics.buildsFailed.Add(ctx, 1,
 		metric.WithAttributes(
 			attribute.String("namespace", namespace),
@@ -432,8 +432,8 @@ func (metrics *Metrics) RecordBuildFailed(ctx context.Context, namespace, packag
 		))
 }
 
-// RecordPublishStarted increments the publish started counter
-func (metrics *Metrics) RecordPublishStarted(ctx context.Context, namespace, packageName string) {
+// RecordPackagePublishStarted increments the package publish started counter
+func (metrics *Metrics) RecordPackagePublishStarted(ctx context.Context, namespace, packageName string) {
 	metrics.publishesStarted.Add(ctx, 1,
 		metric.WithAttributes(
 			attribute.String("namespace", namespace),
@@ -441,8 +441,8 @@ func (metrics *Metrics) RecordPublishStarted(ctx context.Context, namespace, pac
 		))
 }
 
-// RecordPublishCompleted increments the publish completed counter
-func (metrics *Metrics) RecordPublishCompleted(ctx context.Context, namespace, packageName string) {
+// RecordPackagePublishCompleted increments the package publish completed counter
+func (metrics *Metrics) RecordPackagePublishCompleted(ctx context.Context, namespace, packageName string) {
 	metrics.publishesCompleted.Add(ctx, 1,
 		metric.WithAttributes(
 			attribute.String("namespace", namespace),
@@ -450,8 +450,8 @@ func (metrics *Metrics) RecordPublishCompleted(ctx context.Context, namespace, p
 		))
 }
 
-// RecordPublishFailed increments the publish failed counter
-func (metrics *Metrics) RecordPublishFailed(ctx context.Context, namespace, packageName string) {
+// RecordPackagePublishFailed increments the package publish failed counter
+func (metrics *Metrics) RecordPackagePublishFailed(ctx context.Context, namespace, packageName string) {
 	metrics.publishesFailed.Add(ctx, 1,
 		metric.WithAttributes(
 			attribute.String("namespace", namespace),
@@ -459,8 +459,8 @@ func (metrics *Metrics) RecordPublishFailed(ctx context.Context, namespace, pack
 		))
 }
 
-// RecordDeployStarted increments the deploy started counter
-func (metrics *Metrics) RecordDeployStarted(ctx context.Context, namespace, packageName string) {
+// RecordPackageDeployStarted increments the package deploy started counter
+func (metrics *Metrics) RecordPackageDeployStarted(ctx context.Context, namespace, packageName string) {
 	metrics.deploysStarted.Add(ctx, 1,
 		metric.WithAttributes(
 			attribute.String("namespace", namespace),
@@ -468,8 +468,8 @@ func (metrics *Metrics) RecordDeployStarted(ctx context.Context, namespace, pack
 		))
 }
 
-// RecordDeployCompleted increments the deploy completed counter
-func (metrics *Metrics) RecordDeployCompleted(ctx context.Context, namespace, packageName string) {
+// RecordPackageDeployCompleted increments the package deploy completed counter
+func (metrics *Metrics) RecordPackageDeployCompleted(ctx context.Context, namespace, packageName string) {
 	metrics.deploysCompleted.Add(ctx, 1,
 		metric.WithAttributes(
 			attribute.String("namespace", namespace),
@@ -477,8 +477,8 @@ func (metrics *Metrics) RecordDeployCompleted(ctx context.Context, namespace, pa
 		))
 }
 
-// RecordDeployFailed increments the deploy failed counter
-func (metrics *Metrics) RecordDeployFailed(ctx context.Context, namespace, packageName string) {
+// RecordPackageDeployFailed increments the package deploy failed counter
+func (metrics *Metrics) RecordPackageDeployFailed(ctx context.Context, namespace, packageName string) {
 	metrics.deploysFailed.Add(ctx, 1,
 		metric.WithAttributes(
 			attribute.String("namespace", namespace),

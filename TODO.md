@@ -126,12 +126,18 @@
   * ~~Side-by-side v1alpha1 vs v1alpha2 comparison table with migration examples~~
   * ~~Follows same structure and style as existing USER_GUIDE.md~~
 
-* **Create UDS-specific troubleshooting guide**
-  * Location: Create `docs/operations/UDS_TROUBLESHOOTING.md`
-  * Include: Common error messages and solutions
-  * Include: Debugging failed UDS jobs
-  * Include: Policy validation failures
-  * Include: Bundle creation issues
+* ~~**Create UDS-specific troubleshooting guide** ✅ COMPLETED~~
+  * ~~Created `docs/operations/UDS_TROUBLESHOOTING.md` with 1223 lines of comprehensive troubleshooting~~
+  * ~~Common error messages with root cause analysis and step-by-step solutions~~
+  * ~~Debugging commands for UDSPackageJobs, Jobs, Pods, ServiceAccounts, and Controller~~
+  * ~~Policy validation failures with diagnosis and fixes for all annotation types~~
+  * ~~Bundle creation issues (package not found, validation errors, timeouts)~~
+  * ~~Bundle deployment failures (component errors, resource conflicts, timeouts)~~
+  * ~~OCI registry issues (auth, manifest not found, rate limits)~~
+  * ~~S3 storage issues (access denied, bucket not found, region errors)~~
+  * ~~Git source issues (auth, repository not found, branch/tag errors)~~
+  * ~~API version migration issues (v1alpha1 to v1alpha2)~~
+  * ~~Diagnostic collection script for support tickets~~
 
 * ~~**Add UDS policy configuration examples** ✅ COMPLETED~~
   * ~~Created `examples/policies/uds/` directory with comprehensive examples~~

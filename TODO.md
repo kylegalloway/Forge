@@ -118,12 +118,13 @@
 
 ### Missing UDS Documentation
 
-* **Create dedicated UDS user guide**
-  * Location: Create `docs/getting-started/UDS_GUIDE.md`
-  * Include: Complete examples of Create, Publish, Deploy operations
-  * Include: Policy configuration for UDS bundles
-  * Include: Troubleshooting common issues
-  * Include: Differences between v1alpha1 and v1alpha2 APIs
+* ~~**Create dedicated UDS user guide** ✅ COMPLETED~~
+  * ~~Created `docs/getting-started/UDS_GUIDE.md` with 738 lines of comprehensive documentation~~
+  * ~~Complete examples for Create, Publish, Deploy operations (Git, OCI, S3 sources)~~
+  * ~~Policy configuration with references to examples/policies/uds/ templates~~
+  * ~~Troubleshooting section covering bundle creation, deployment, OCI, S3, and controller issues~~
+  * ~~Side-by-side v1alpha1 vs v1alpha2 comparison table with migration examples~~
+  * ~~Follows same structure and style as existing USER_GUIDE.md~~
 
 * **Create UDS-specific troubleshooting guide**
   * Location: Create `docs/operations/UDS_TROUBLESHOOTING.md`

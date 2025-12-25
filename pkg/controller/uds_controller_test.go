@@ -2,6 +2,7 @@ package controller
 
 import (
 	"context"
+	"net/http"
 	"testing"
 
 	batchv1 "k8s.io/api/batch/v1"
@@ -709,4 +710,185 @@ func TestUDSHandleActionChaining(t *testing.T) {
 			// For chained actions, errors are expected (missing infra), just verify no panic
 		})
 	}
+}
+
+func TestUDSHealthzHandler(t *testing.T) {
+	kubeClient := fake.NewSimpleClientset()
+	dynamicClient := dynamicfake.NewSimpleDynamicClient(runtime.NewScheme())
+	ctrl := NewUDSController(kubeClient, dynamicClient, "forge-system", mustNewMetrics(), telemetry.NewTracer())
+
+	tests := []struct {
+		name           string
+		healthy        bool
+		expectedStatus int
+		expectedBody   string
+	}{
+		{
+			name:           "healthy controller",
+			healthy:        true,
+			expectedStatus: 200,
+			expectedBody:   "ok",
+		},
+		{
+			name:           "unhealthy controller",
+			healthy:        false,
+			expectedStatus: 503,
+			expectedBody:   "unhealthy",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctrl.healthy = tt.healthy
+			// Health check testing would require HTTP testing infrastructure
+			// This validates the handler creation doesn't panic
+			handler := ctrl.HealthzHandler()
+			if handler == nil {
+				t.Error("HealthzHandler returned nil")
+			}
+		})
+	}
+}
+
+func TestUDSReadyzHandler(t *testing.T) {
+	kubeClient := fake.NewSimpleClientset()
+	dynamicClient := dynamicfake.NewSimpleDynamicClient(runtime.NewScheme())
+	ctrl := NewUDSController(kubeClient, dynamicClient, "forge-system", mustNewMetrics(), telemetry.NewTracer())
+
+	tests := []struct {
+		name           string
+		ready          bool
+		expectedStatus int
+		expectedBody   string
+	}{
+		{
+			name:           "ready controller",
+			ready:          true,
+			expectedStatus: 200,
+			expectedBody:   "ready",
+		},
+		{
+			name:           "not ready controller",
+			ready:          false,
+			expectedStatus: 503,
+			expectedBody:   "not ready",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctrl.ready = tt.ready
+			handler := ctrl.ReadyzHandler()
+			if handler == nil {
+				t.Error("ReadyzHandler returned nil")
+			}
+		})
+	}
+}
+
+func TestUDSHealthzHandlerResponse(t *testing.T) {
+	kubeClient := fake.NewSimpleClientset()
+	dynamicClient := dynamicfake.NewSimpleDynamicClient(runtime.NewScheme())
+	ctrl := NewUDSController(kubeClient, dynamicClient, "forge-system", mustNewMetrics(), telemetry.NewTracer())
+
+	tests := []struct {
+		name           string
+		healthy        bool
+		expectedStatus int
+		expectedBody   string
+	}{
+		{
+			name:           "healthy",
+			healthy:        true,
+			expectedStatus: 200,
+			expectedBody:   "ok",
+		},
+		{
+			name:           "unhealthy",
+			healthy:        false,
+			expectedStatus: 503,
+			expectedBody:   "unhealthy",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctrl.healthy = tt.healthy
+			handler := ctrl.HealthzHandler()
+
+			req := &http.Request{}
+			writer := &fakeUDSResponseWriter{status: 200, body: []byte{}}
+			handler(writer, req)
+
+			if writer.status != tt.expectedStatus {
+				t.Errorf("Expected status %d, got %d", tt.expectedStatus, writer.status)
+			}
+			if string(writer.body) != tt.expectedBody {
+				t.Errorf("Expected body %q, got %q", tt.expectedBody, string(writer.body))
+			}
+		})
+	}
+}
+
+func TestUDSReadyzHandlerResponse(t *testing.T) {
+	kubeClient := fake.NewSimpleClientset()
+	dynamicClient := dynamicfake.NewSimpleDynamicClient(runtime.NewScheme())
+	ctrl := NewUDSController(kubeClient, dynamicClient, "forge-system", mustNewMetrics(), telemetry.NewTracer())
+
+	tests := []struct {
+		name           string
+		ready          bool
+		expectedStatus int
+		expectedBody   string
+	}{
+		{
+			name:           "ready",
+			ready:          true,
+			expectedStatus: 200,
+			expectedBody:   "ready",
+		},
+		{
+			name:           "not ready",
+			ready:          false,
+			expectedStatus: 503,
+			expectedBody:   "not ready",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctrl.ready = tt.ready
+			handler := ctrl.ReadyzHandler()
+
+			req := &http.Request{}
+			writer := &fakeUDSResponseWriter{status: 200, body: []byte{}}
+			handler(writer, req)
+
+			if writer.status != tt.expectedStatus {
+				t.Errorf("Expected status %d, got %d", tt.expectedStatus, writer.status)
+			}
+			if string(writer.body) != tt.expectedBody {
+				t.Errorf("Expected body %q, got %q", tt.expectedBody, string(writer.body))
+			}
+		})
+	}
+}
+
+// fakeUDSResponseWriter implements http.ResponseWriter for testing
+type fakeUDSResponseWriter struct {
+	status int
+	body   []byte
+}
+
+func (f *fakeUDSResponseWriter) Header() http.Header {
+	return http.Header{}
+}
+
+func (f *fakeUDSResponseWriter) Write(data []byte) (int, error) {
+	f.body = append(f.body, data...)
+	return len(data), nil
+}
+
+func (f *fakeUDSResponseWriter) WriteHeader(statusCode int) {
+	f.status = statusCode
 }

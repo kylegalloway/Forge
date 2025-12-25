@@ -4,6 +4,7 @@ package controller
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -378,4 +379,38 @@ func (ctrl *UDSController) Healthy() bool {
 // Ready returns whether the controller is ready to serve traffic
 func (ctrl *UDSController) Ready() bool {
 	return ctrl.ready
+}
+
+// HealthzHandler returns an HTTP handler for health checks
+func (ctrl *UDSController) HealthzHandler() http.HandlerFunc {
+	return func(responseWriter http.ResponseWriter, _ *http.Request) {
+		if ctrl.healthy {
+			responseWriter.WriteHeader(http.StatusOK)
+			if _, err := responseWriter.Write([]byte("ok")); err != nil {
+				klog.ErrorS(err, "Failed to write health response")
+			}
+		} else {
+			responseWriter.WriteHeader(http.StatusServiceUnavailable)
+			if _, err := responseWriter.Write([]byte("unhealthy")); err != nil {
+				klog.ErrorS(err, "Failed to write unhealthy response")
+			}
+		}
+	}
+}
+
+// ReadyzHandler returns an HTTP handler for readiness checks
+func (ctrl *UDSController) ReadyzHandler() http.HandlerFunc {
+	return func(responseWriter http.ResponseWriter, _ *http.Request) {
+		if ctrl.ready {
+			responseWriter.WriteHeader(http.StatusOK)
+			if _, err := responseWriter.Write([]byte("ready")); err != nil {
+				klog.ErrorS(err, "Failed to write ready response")
+			}
+		} else {
+			responseWriter.WriteHeader(http.StatusServiceUnavailable)
+			if _, err := responseWriter.Write([]byte("not ready")); err != nil {
+				klog.ErrorS(err, "Failed to write not ready response")
+			}
+		}
+	}
 }

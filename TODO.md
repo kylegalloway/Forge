@@ -140,12 +140,14 @@
   * ~~README.md - Complete guide with policy annotations, RBAC requirements, troubleshooting~~
   * ~~Includes example Secrets for OCI, S3, and Git credentials~~
 
-* **Update CLAUDE.md with UDS vs Zarf guidance**
-  * Location: `CLAUDE.md` and `CLAUDE.local.md`
-  * Add: Clear decision tree for when to use UDS vs Zarf
-  * Add: UDS-specific examples and patterns
-  * Add: UDS bundle structure and requirements
-  * Add: v1alpha2 migration path
+* ~~**Update CLAUDE.md with UDS vs Zarf guidance** ✅ COMPLETED~~
+  * ~~Added comprehensive "UDS vs Zarf: When to Use Which" section to both CLAUDE.md and CLAUDE.local.md~~
+  * ~~ASCII decision tree for choosing between UDS and Zarf based on single package vs bundle~~
+  * ~~Complete examples for both ZarfPackageJob and UDSPackageJob (v1alpha2 + v1alpha1)~~
+  * ~~Key differences table comparing 9 aspects (actions, CLI, resources, UIDs, etc.)~~
+  * ~~API version guidance: v1alpha1 deprecated, v1alpha2 recommended~~
+  * ~~Common patterns with complete YAML examples~~
+  * ~~Implementation notes for developers (handler locations, policy schema)~~
 
 ### Naming Inconsistencies
 

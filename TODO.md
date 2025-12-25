@@ -177,11 +177,14 @@
 
 ### Logging Inconsistencies
 
-* **Standardize metric naming**
-  * Issue: UDS uses `RecordBundleCreateStarted`, Zarf uses `RecordBuildStarted`
-  * Decision needed: Either add "Package" prefix to Zarf OR drop "Bundle" from UDS
-  * Files: `pkg/telemetry/metrics.go` and all action handlers
-  * Recommendation: `RecordPackageBuildStarted` and `RecordBundleCreateStarted` for clarity
+* ~~**Standardize metric naming** ✅ COMPLETED~~
+  * ~~Added "Package" prefix to all Zarf metric methods for consistency with UDS "Bundle" prefix~~
+  * ~~Renamed: `RecordBuildStarted` → `RecordPackageBuildStarted` (and Completed/Failed variants)~~
+  * ~~Renamed: `RecordPublishStarted` → `RecordPackagePublishStarted` (and Completed/Failed variants)~~
+  * ~~Renamed: `RecordDeployStarted` → `RecordPackageDeployStarted` (and Completed/Failed variants)~~
+  * ~~Updated: `pkg/telemetry/metrics.go`, action handlers (build.go, publish.go, deploy.go), job_monitor.go, metrics_test.go~~
+  * ~~Now clear: `RecordPackage*` = Zarf packages, `RecordBundle*` = UDS bundles~~
+  * ~~All tests passing~~
 
 * ~~**Standardize log message format** ✅ COMPLETED~~
   * ~~All log messages now include resource type for clarity~~

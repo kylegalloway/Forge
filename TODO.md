@@ -10,22 +10,13 @@
 
 ## 🟡 High Priority (Consistency/Maintainability)
 
-### 1. Handler Signature Mismatch Between Zarf and UDS
-
-**Location**: `pkg/actions/zarf/*.go` vs `pkg/actions/uds/*.go`
-**Issue**:
-
-- Zarf: `Execute(ctx, pkg *ZarfPackageJob, artifactPVCName string)`
-- UDS: `Execute(ctx, bundle *UDSBundleJob)`
-
-**Impact**: Makes generic handler interfaces impossible, increases maintenance burden.
-**Action**: Unify signatures or document architectural decision for divergence.
+**All high-priority issues resolved! 🎉**
 
 ---
 
 ## 🟢 Medium Priority (Code Quality)
 
-### 2. Significant Code Duplication in Action Handlers
+### 1. Significant Code Duplication in Action Handlers
 
 **Location**: `pkg/actions/zarf/*.go` and `pkg/actions/uds/*.go`
 **Issue**: ~2000 lines across 6 handlers share only 610 lines via `pkg/actions/common/`.
@@ -38,7 +29,7 @@
 
 **Action**: Consolidate Job building logic - expand JobBuilder pattern to reduce duplication.
 
-### 3. v1alpha1 → v1alpha2 Migration Incomplete
+### 2. v1alpha1 → v1alpha2 Migration Incomplete
 
 **Location**: `pkg/apis/uds/v1alpha2/`, CRD definitions, controllers
 **Missing pieces**:
@@ -50,7 +41,7 @@
 
 **Action**: Implement full migration path or deprecate v1alpha1 completely.
 
-### 4. Reconciliation Methods Lack Inline Comments
+### 3. Reconciliation Methods Lack Inline Comments
 
 **Location**: `pkg/controller/controller.go:183-277`, `pkg/controller/uds_controller.go:186-260`
 **Issue**: 95-line reconciliation methods with minimal documentation explaining:
@@ -65,7 +56,7 @@
 
 ## 📊 Testing Gaps
 
-### 5. Multi-Action Job Chaining Not Comprehensively Tested
+### 4. Multi-Action Job Chaining Not Comprehensively Tested
 
 **Location**: Test files for controllers and handlers
 **Issue**: Complex orchestration (Build → Publish → Deploy) requires Job completion monitoring and status tracking, but test coverage is minimal.
@@ -75,7 +66,7 @@
 - BuildDeploy action
 - Full BuildPublishDeploy chain
 
-### 6. Error Path Coverage Limited
+### 5. Error Path Coverage Limited
 
 **Location**: `pkg/actions/zarf/*_test.go`, `pkg/actions/uds/*_test.go`
 **Missing tests**:
@@ -91,7 +82,7 @@
 
 ## 🔧 Tool & Dependency Updates
 
-### 7. Create Tool Version Tracking Document
+### 6. Create Tool Version Tracking Document
 
 **Action**: Create `docs/development/TOOL_VERSIONS.md` to document all tools and their current/target versions.
 **Should include**:
@@ -106,7 +97,7 @@
 
 **Format**: Table with columns: Tool, Current Version, Latest Stable, EOL Date, Update Priority
 
-### 8. Update Development Tools to Latest Stable Versions
+### 7. Update Development Tools to Latest Stable Versions
 
 **Research needed**: Use [endoflife.date](https://endoflife.date/) and/or direct tool documentation to identify latest stable versions.
 
@@ -129,7 +120,7 @@
 
 **Strategy**: Target latest stable/LTS versions, avoid bleeding-edge releases. Prioritize security-supported versions.
 
-### 9. Update GitHub Actions to Latest Stable
+### 8. Update GitHub Actions to Latest Stable
 
 **Action**: Review `.github/workflows/*.yaml` and update action versions.
 
@@ -142,7 +133,7 @@
 
 **Reference**: https://github.com/actions/* for official actions
 
-### 10. Update Go Dependencies
+### 9. Update Go Dependencies
 
 **Action**: Review and update major Go modules in `go.mod`.
 
@@ -197,6 +188,7 @@ The following are working well:
 - ✅ Magic strings replaced with typed constants throughout
 - ✅ UDS examples updated to v1alpha2 with correct annotation keys
 - ✅ SERVICEACCOUNT_REFERENCE.md exists and is comprehensive
+- ✅ Handler signature divergence documented in ARCHITECTURE.md
 
 ---
 

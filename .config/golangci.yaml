@@ -96,6 +96,11 @@ issues:
       linters:
         - all
 
+    # Allow v1alpha1 deprecation warnings - maintained for backward compatibility until v0.10.0
+    - text: "SA1019.*uds/v1alpha1"
+      linters:
+        - staticcheck
+
   max-issues-per-linter: 0
   max-same-issues: 0
 

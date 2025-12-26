@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	udsv1alpha1 "github.com/kylegalloway/forge/pkg/apis/uds/v1alpha1"
+	udsv1alpha2 "github.com/kylegalloway/forge/pkg/apis/uds/v1alpha2"
 	zarfv1alpha1 "github.com/kylegalloway/forge/pkg/apis/zarf/v1alpha1"
 	"github.com/kylegalloway/forge/pkg/constants"
 	corev1 "k8s.io/api/core/v1"
@@ -1026,14 +1026,14 @@ func TestValidateUDSBundle_MissingServiceAccount(t *testing.T) {
 	client := fake.NewSimpleClientset()
 	engine := NewEngine(client)
 
-	bundle := &udsv1alpha1.UDSBundleJob{
+	bundle := &udsv1alpha2.UDSPackageJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-bundle",
 			Namespace: "default",
 		},
-		Spec: udsv1alpha1.UDSBundleJobSpec{
+		Spec: udsv1alpha2.UDSPackageJobSpec{
 			ServiceAccountName: "",
-			Action:             udsv1alpha1.BundleActionCreate,
+			Action:             udsv1alpha2.ActionCreate,
 		},
 	}
 
@@ -1050,14 +1050,14 @@ func TestValidateUDSBundle_ServiceAccountNotFound(t *testing.T) {
 	client := fake.NewSimpleClientset()
 	engine := NewEngine(client)
 
-	bundle := &udsv1alpha1.UDSBundleJob{
+	bundle := &udsv1alpha2.UDSPackageJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-bundle",
 			Namespace: "default",
 		},
-		Spec: udsv1alpha1.UDSBundleJobSpec{
+		Spec: udsv1alpha2.UDSPackageJobSpec{
 			ServiceAccountName: "nonexistent-sa",
-			Action:             udsv1alpha1.BundleActionCreate,
+			Action:             udsv1alpha2.ActionCreate,
 		},
 	}
 
@@ -1081,17 +1081,17 @@ func TestValidateUDSBundle_ActionNotAllowed(t *testing.T) {
 	client := fake.NewSimpleClientset(sa)
 	engine := NewEngine(client)
 
-	bundle := &udsv1alpha1.UDSBundleJob{
+	bundle := &udsv1alpha2.UDSPackageJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-bundle",
 			Namespace: "default",
 		},
-		Spec: udsv1alpha1.UDSBundleJobSpec{
+		Spec: udsv1alpha2.UDSPackageJobSpec{
 			ServiceAccountName: "test-sa",
-			Action:             udsv1alpha1.BundleActionDeploy,
-			Source: udsv1alpha1.BundleSource{
-				Type: udsv1alpha1.BundleSourceTypeGit,
-				Git: &udsv1alpha1.GitSource{
+			Action:             udsv1alpha2.ActionDeploy,
+			Source: udsv1alpha2.PackageSource{
+				Type: udsv1alpha2.SourceTypeGit,
+				Git: &udsv1alpha2.GitSource{
 					URL: "https://github.com/test/repo",
 					Ref: "main",
 				},
@@ -1123,17 +1123,17 @@ func TestValidateUDSBundle_GitSourceAllowed(t *testing.T) {
 	client := fake.NewSimpleClientset(sa)
 	engine := NewEngine(client)
 
-	bundle := &udsv1alpha1.UDSBundleJob{
+	bundle := &udsv1alpha2.UDSPackageJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-bundle",
 			Namespace: "default",
 		},
-		Spec: udsv1alpha1.UDSBundleJobSpec{
+		Spec: udsv1alpha2.UDSPackageJobSpec{
 			ServiceAccountName: "test-sa",
-			Action:             udsv1alpha1.BundleActionCreate,
-			Source: udsv1alpha1.BundleSource{
-				Type: udsv1alpha1.BundleSourceTypeGit,
-				Git: &udsv1alpha1.GitSource{
+			Action:             udsv1alpha2.ActionCreate,
+			Source: udsv1alpha2.PackageSource{
+				Type: udsv1alpha2.SourceTypeGit,
+				Git: &udsv1alpha2.GitSource{
 					URL: "https://github.com/test/repo",
 					Ref: "main",
 				},
@@ -1162,17 +1162,17 @@ func TestValidateUDSBundle_GitSourceNotAllowed(t *testing.T) {
 	client := fake.NewSimpleClientset(sa)
 	engine := NewEngine(client)
 
-	bundle := &udsv1alpha1.UDSBundleJob{
+	bundle := &udsv1alpha2.UDSPackageJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-bundle",
 			Namespace: "default",
 		},
-		Spec: udsv1alpha1.UDSBundleJobSpec{
+		Spec: udsv1alpha2.UDSPackageJobSpec{
 			ServiceAccountName: "test-sa",
-			Action:             udsv1alpha1.BundleActionCreate,
-			Source: udsv1alpha1.BundleSource{
-				Type: udsv1alpha1.BundleSourceTypeGit,
-				Git: &udsv1alpha1.GitSource{
+			Action:             udsv1alpha2.ActionCreate,
+			Source: udsv1alpha2.PackageSource{
+				Type: udsv1alpha2.SourceTypeGit,
+				Git: &udsv1alpha2.GitSource{
 					URL: "https://github.com/forbidden/repo",
 					Ref: "main",
 				},
@@ -1205,24 +1205,24 @@ func TestValidateUDSBundle_S3SourceAllowed(t *testing.T) {
 	client := fake.NewSimpleClientset(sa)
 	engine := NewEngine(client)
 
-	bundle := &udsv1alpha1.UDSBundleJob{
+	bundle := &udsv1alpha2.UDSPackageJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-bundle",
 			Namespace: "default",
 		},
-		Spec: udsv1alpha1.UDSBundleJobSpec{
+		Spec: udsv1alpha2.UDSPackageJobSpec{
 			ServiceAccountName: "test-sa",
-			Action:             udsv1alpha1.BundleActionDeploy,
-			Source: udsv1alpha1.BundleSource{
-				Type: udsv1alpha1.BundleSourceTypeS3,
-				S3: &udsv1alpha1.S3Source{
+			Action:             udsv1alpha2.ActionDeploy,
+			Source: udsv1alpha2.PackageSource{
+				Type: udsv1alpha2.SourceTypeS3,
+				S3: &udsv1alpha2.S3Source{
 					Bucket: "allowed-bucket",
 					Key:    "bundles/test.tar.zst",
 					Region: "us-east-1",
 				},
 			},
-			Deploy: &udsv1alpha1.BundleDeployConfig{
-				Target:    udsv1alpha1.BundleDeployTargetInCluster,
+			Deploy: &udsv1alpha2.DeployConfig{
+				Target:    udsv1alpha2.DeployTargetInCluster,
 				Namespace: "default",
 			},
 		},
@@ -1250,22 +1250,22 @@ func TestValidateUDSBundle_OCISourceAllowed(t *testing.T) {
 	client := fake.NewSimpleClientset(sa)
 	engine := NewEngine(client)
 
-	bundle := &udsv1alpha1.UDSBundleJob{
+	bundle := &udsv1alpha2.UDSPackageJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-bundle",
 			Namespace: "default",
 		},
-		Spec: udsv1alpha1.UDSBundleJobSpec{
+		Spec: udsv1alpha2.UDSPackageJobSpec{
 			ServiceAccountName: "test-sa",
-			Action:             udsv1alpha1.BundleActionDeploy,
-			Source: udsv1alpha1.BundleSource{
-				Type: udsv1alpha1.BundleSourceTypeOCI,
-				OCI: &udsv1alpha1.OCISource{
+			Action:             udsv1alpha2.ActionDeploy,
+			Source: udsv1alpha2.PackageSource{
+				Type: udsv1alpha2.SourceTypeOCI,
+				OCI: &udsv1alpha2.OCISource{
 					Reference: "ghcr.io/test/bundle:v1.0.0",
 				},
 			},
-			Deploy: &udsv1alpha1.BundleDeployConfig{
-				Target:    udsv1alpha1.BundleDeployTargetInCluster,
+			Deploy: &udsv1alpha2.DeployConfig{
+				Target:    udsv1alpha2.DeployTargetInCluster,
 				Namespace: "default",
 			},
 		},
@@ -1293,25 +1293,25 @@ func TestValidateUDSBundle_PublishDestinationOCIAllowed(t *testing.T) {
 	client := fake.NewSimpleClientset(sa)
 	engine := NewEngine(client)
 
-	bundle := &udsv1alpha1.UDSBundleJob{
+	bundle := &udsv1alpha2.UDSPackageJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-bundle",
 			Namespace: "default",
 		},
-		Spec: udsv1alpha1.UDSBundleJobSpec{
+		Spec: udsv1alpha2.UDSPackageJobSpec{
 			ServiceAccountName: "test-sa",
-			Action:             udsv1alpha1.BundleActionPublish,
-			Source: udsv1alpha1.BundleSource{
-				Type: udsv1alpha1.BundleSourceTypeGit,
-				Git: &udsv1alpha1.GitSource{
+			Action:             udsv1alpha2.ActionPublish,
+			Source: udsv1alpha2.PackageSource{
+				Type: udsv1alpha2.SourceTypeGit,
+				Git: &udsv1alpha2.GitSource{
 					URL: "https://github.com/test/repo",
 					Ref: "main",
 				},
 			},
-			Publish: &udsv1alpha1.BundlePublishConfig{
-				Destination: udsv1alpha1.BundleDestination{
-					Type: udsv1alpha1.BundleDestinationTypeOCI,
-					OCI: &udsv1alpha1.OCIDestination{
+			Publish: &udsv1alpha2.PublishConfig{
+				Destination: udsv1alpha2.PublishDestination{
+					Type: udsv1alpha2.DestinationTypeOCI,
+					OCI: &udsv1alpha2.OCIDestination{
 						Registry:   "ghcr.io",
 						Repository: "test/bundles",
 						Tag:        "v1.0.0",
@@ -1343,25 +1343,25 @@ func TestValidateUDSBundle_PublishDestinationS3Allowed(t *testing.T) {
 	client := fake.NewSimpleClientset(sa)
 	engine := NewEngine(client)
 
-	bundle := &udsv1alpha1.UDSBundleJob{
+	bundle := &udsv1alpha2.UDSPackageJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-bundle",
 			Namespace: "default",
 		},
-		Spec: udsv1alpha1.UDSBundleJobSpec{
+		Spec: udsv1alpha2.UDSPackageJobSpec{
 			ServiceAccountName: "test-sa",
-			Action:             udsv1alpha1.BundleActionPublish,
-			Source: udsv1alpha1.BundleSource{
-				Type: udsv1alpha1.BundleSourceTypeGit,
-				Git: &udsv1alpha1.GitSource{
+			Action:             udsv1alpha2.ActionPublish,
+			Source: udsv1alpha2.PackageSource{
+				Type: udsv1alpha2.SourceTypeGit,
+				Git: &udsv1alpha2.GitSource{
 					URL: "https://github.com/test/repo",
 					Ref: "main",
 				},
 			},
-			Publish: &udsv1alpha1.BundlePublishConfig{
-				Destination: udsv1alpha1.BundleDestination{
-					Type: udsv1alpha1.BundleDestinationTypeS3,
-					S3: &udsv1alpha1.S3Destination{
+			Publish: &udsv1alpha2.PublishConfig{
+				Destination: udsv1alpha2.PublishDestination{
+					Type: udsv1alpha2.DestinationTypeS3,
+					S3: &udsv1alpha2.S3Destination{
 						Bucket: "publish-bucket",
 						Key:    "bundles/",
 						Region: "us-east-1",
@@ -1393,23 +1393,23 @@ func TestValidateUDSBundle_DeployTargetAllowed(t *testing.T) {
 	client := fake.NewSimpleClientset(sa)
 	engine := NewEngine(client)
 
-	bundle := &udsv1alpha1.UDSBundleJob{
+	bundle := &udsv1alpha2.UDSPackageJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-bundle",
 			Namespace: "default",
 		},
-		Spec: udsv1alpha1.UDSBundleJobSpec{
+		Spec: udsv1alpha2.UDSPackageJobSpec{
 			ServiceAccountName: "test-sa",
-			Action:             udsv1alpha1.BundleActionDeploy,
-			Source: udsv1alpha1.BundleSource{
-				Type: udsv1alpha1.BundleSourceTypeGit,
-				Git: &udsv1alpha1.GitSource{
+			Action:             udsv1alpha2.ActionDeploy,
+			Source: udsv1alpha2.PackageSource{
+				Type: udsv1alpha2.SourceTypeGit,
+				Git: &udsv1alpha2.GitSource{
 					URL: "https://github.com/test/repo",
 					Ref: "main",
 				},
 			},
-			Deploy: &udsv1alpha1.BundleDeployConfig{
-				Target:    udsv1alpha1.BundleDeployTargetInCluster,
+			Deploy: &udsv1alpha2.DeployConfig{
+				Target:    udsv1alpha2.DeployTargetInCluster,
 				Namespace: "default",
 			},
 		},
@@ -1437,23 +1437,23 @@ func TestValidateUDSBundle_DeployTargetNotAllowed(t *testing.T) {
 	client := fake.NewSimpleClientset(sa)
 	engine := NewEngine(client)
 
-	bundle := &udsv1alpha1.UDSBundleJob{
+	bundle := &udsv1alpha2.UDSPackageJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-bundle",
 			Namespace: "default",
 		},
-		Spec: udsv1alpha1.UDSBundleJobSpec{
+		Spec: udsv1alpha2.UDSPackageJobSpec{
 			ServiceAccountName: "test-sa",
-			Action:             udsv1alpha1.BundleActionDeploy,
-			Source: udsv1alpha1.BundleSource{
-				Type: udsv1alpha1.BundleSourceTypeGit,
-				Git: &udsv1alpha1.GitSource{
+			Action:             udsv1alpha2.ActionDeploy,
+			Source: udsv1alpha2.PackageSource{
+				Type: udsv1alpha2.SourceTypeGit,
+				Git: &udsv1alpha2.GitSource{
 					URL: "https://github.com/test/repo",
 					Ref: "main",
 				},
 			},
-			Deploy: &udsv1alpha1.BundleDeployConfig{
-				Target: udsv1alpha1.BundleDeployTargetExternalCluster,
+			Deploy: &udsv1alpha2.DeployConfig{
+				Target: udsv1alpha2.DeployTargetExternalCluster,
 			},
 		},
 	}
@@ -1484,33 +1484,33 @@ func TestValidateUDSBundle_CompleteWorkflow(t *testing.T) {
 	client := fake.NewSimpleClientset(sa)
 	engine := NewEngine(client)
 
-	bundle := &udsv1alpha1.UDSBundleJob{
+	bundle := &udsv1alpha2.UDSPackageJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-bundle",
 			Namespace: "default",
 		},
-		Spec: udsv1alpha1.UDSBundleJobSpec{
+		Spec: udsv1alpha2.UDSPackageJobSpec{
 			ServiceAccountName: "test-sa",
-			Action:             udsv1alpha1.BundleActionCreatePublishDeploy,
-			Source: udsv1alpha1.BundleSource{
-				Type: udsv1alpha1.BundleSourceTypeGit,
-				Git: &udsv1alpha1.GitSource{
+			Action:             udsv1alpha2.ActionCreatePublishDeploy,
+			Source: udsv1alpha2.PackageSource{
+				Type: udsv1alpha2.SourceTypeGit,
+				Git: &udsv1alpha2.GitSource{
 					URL: "https://github.com/test/repo",
 					Ref: "main",
 				},
 			},
-			Publish: &udsv1alpha1.BundlePublishConfig{
-				Destination: udsv1alpha1.BundleDestination{
-					Type: udsv1alpha1.BundleDestinationTypeOCI,
-					OCI: &udsv1alpha1.OCIDestination{
+			Publish: &udsv1alpha2.PublishConfig{
+				Destination: udsv1alpha2.PublishDestination{
+					Type: udsv1alpha2.DestinationTypeOCI,
+					OCI: &udsv1alpha2.OCIDestination{
 						Registry:   "ghcr.io",
 						Repository: "test/bundles",
 						Tag:        "v1.0.0",
 					},
 				},
 			},
-			Deploy: &udsv1alpha1.BundleDeployConfig{
-				Target:    udsv1alpha1.BundleDeployTargetInCluster,
+			Deploy: &udsv1alpha2.DeployConfig{
+				Target:    udsv1alpha2.DeployTargetInCluster,
 				Namespace: "default",
 			},
 		},
@@ -1537,17 +1537,17 @@ func TestValidateUDSBundle_LocalSourceAllowed(t *testing.T) {
 	client := fake.NewSimpleClientset(sa)
 	engine := NewEngine(client)
 
-	bundle := &udsv1alpha1.UDSBundleJob{
+	bundle := &udsv1alpha2.UDSPackageJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-bundle",
 			Namespace: "default",
 		},
-		Spec: udsv1alpha1.UDSBundleJobSpec{
+		Spec: udsv1alpha2.UDSPackageJobSpec{
 			ServiceAccountName: "test-sa",
-			Action:             udsv1alpha1.BundleActionCreate,
-			Source: udsv1alpha1.BundleSource{
-				Type: udsv1alpha1.BundleSourceTypeLocal,
-				Local: &udsv1alpha1.LocalSource{
+			Action:             udsv1alpha2.ActionCreate,
+			Source: udsv1alpha2.PackageSource{
+				Type: udsv1alpha2.SourceTypeLocal,
+				Local: &udsv1alpha2.LocalSource{
 					Path: "/tmp/bundle",
 				},
 			},
@@ -1574,17 +1574,17 @@ func TestValidateUDSBundle_LocalSourceNotAllowed(t *testing.T) {
 	client := fake.NewSimpleClientset(sa)
 	engine := NewEngine(client)
 
-	bundle := &udsv1alpha1.UDSBundleJob{
+	bundle := &udsv1alpha2.UDSPackageJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-bundle",
 			Namespace: "default",
 		},
-		Spec: udsv1alpha1.UDSBundleJobSpec{
+		Spec: udsv1alpha2.UDSPackageJobSpec{
 			ServiceAccountName: "test-sa",
-			Action:             udsv1alpha1.BundleActionCreate,
-			Source: udsv1alpha1.BundleSource{
-				Type: udsv1alpha1.BundleSourceTypeLocal,
-				Local: &udsv1alpha1.LocalSource{
+			Action:             udsv1alpha2.ActionCreate,
+			Source: udsv1alpha2.PackageSource{
+				Type: udsv1alpha2.SourceTypeLocal,
+				Local: &udsv1alpha2.LocalSource{
 					Path: "/tmp/bundle",
 				},
 			},

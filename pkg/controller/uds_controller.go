@@ -1,4 +1,4 @@
-// Package controller implements the Forge controller for UDSBundleJob resources.
+// Package controller implements the Forge controller for UDSPackageJob resources.
 package controller
 
 import (
@@ -16,13 +16,13 @@ import (
 	"k8s.io/klog/v2"
 
 	udsactions "github.com/kylegalloway/forge/pkg/actions/uds"
-	udsv1alpha1 "github.com/kylegalloway/forge/pkg/apis/uds/v1alpha1"
+	udsv1alpha2 "github.com/kylegalloway/forge/pkg/apis/uds/v1alpha2"
 	"github.com/kylegalloway/forge/pkg/constants"
 	"github.com/kylegalloway/forge/pkg/policy"
 	"github.com/kylegalloway/forge/pkg/telemetry"
 )
 
-// UDSController watches UDSBundleJob resources and executes actions
+// UDSController watches UDSPackageJob resources and executes actions
 type UDSController struct {
 	kubeClient     kubernetes.Interface
 	dynamicClient  dynamic.Interface
@@ -75,14 +75,14 @@ func (ctrl *UDSController) Run(ctx context.Context) error {
 	// Start Job monitoring in background
 	go ctrl.startJobMonitoring(ctx)
 
-	// Watch UDSBundleJob resources
+	// Watch UDSPackageJob resources
 	for {
 		select {
 		case <-ctx.Done():
 			klog.Info("Stopping UDS controller: context canceled")
 			return ctx.Err()
 		default:
-			if err := ctrl.watchUDSBundleJobs(ctx); err != nil {
+			if err := ctrl.watchUDSPackageJobs(ctx); err != nil {
 				klog.ErrorS(err, "Watch error, restarting in 5 seconds")
 				time.Sleep(5 * time.Second)
 			}
@@ -90,16 +90,16 @@ func (ctrl *UDSController) Run(ctx context.Context) error {
 	}
 }
 
-// watchUDSBundleJobs establishes a watch on UDSBundleJob resources
-func (ctrl *UDSController) watchUDSBundleJobs(ctx context.Context) error {
-	klog.V(2).Info("Starting watch on UDSBundleJob resources")
+// watchUDSPackageJobs establishes a watch on UDSPackageJob resources
+func (ctrl *UDSController) watchUDSPackageJobs(ctx context.Context) error {
+	klog.V(2).Info("Starting watch on UDSPackageJob resources")
 
 	// Set up resource interface
 	var resourceInterface dynamic.ResourceInterface
 	if ctrl.namespace == "" {
-		resourceInterface = ctrl.dynamicClient.Resource(constants.UDSBundleJobGVR)
+		resourceInterface = ctrl.dynamicClient.Resource(constants.UDSPackageJobGVR)
 	} else {
-		resourceInterface = ctrl.dynamicClient.Resource(constants.UDSBundleJobGVR).Namespace(ctrl.namespace)
+		resourceInterface = ctrl.dynamicClient.Resource(constants.UDSPackageJobGVR).Namespace(ctrl.namespace)
 	}
 
 	// Start watch
@@ -143,17 +143,17 @@ func (ctrl *UDSController) handleWatchEvent(ctx context.Context, event watch.Eve
 			return
 		}
 
-		// Convert unstructured to UDSBundleJob
-		bundle := &udsv1alpha1.UDSBundleJob{}
+		// Convert unstructured to UDSPackageJob
+		bundle := &udsv1alpha2.UDSPackageJob{}
 		if err := runtime.DefaultUnstructuredConverter.FromUnstructured(unstructuredObj.Object, bundle); err != nil {
-			klog.ErrorS(err, "Failed to convert to UDSBundleJob")
+			klog.ErrorS(err, "Failed to convert to UDSPackageJob")
 			return
 		}
 
-		klog.V(2).InfoS("Processing UDSBundleJob event", "type", event.Type, "name", bundle.Name, "namespace", bundle.Namespace)
+		klog.V(2).InfoS("Processing UDSPackageJob event", "type", event.Type, "name", bundle.Name, "namespace", bundle.Namespace)
 
 		if event.Type == watch.Added {
-			ctrl.metrics.RecordUDSBundleJobCreated(ctx, bundle.Namespace)
+			ctrl.metrics.RecordUDSPackageJobCreated(ctx, bundle.Namespace)
 		}
 
 		// Reconcile the bundle
@@ -169,26 +169,26 @@ func (ctrl *UDSController) handleWatchEvent(ctx context.Context, event watch.Eve
 			return
 		}
 
-		bundle := &udsv1alpha1.UDSBundleJob{}
+		bundle := &udsv1alpha2.UDSPackageJob{}
 		if err := runtime.DefaultUnstructuredConverter.FromUnstructured(unstructuredObj.Object, bundle); err != nil {
-			klog.ErrorS(err, "Failed to convert to UDSBundleJob")
+			klog.ErrorS(err, "Failed to convert to UDSPackageJob")
 			return
 		}
 
-		klog.V(2).InfoS("UDSBundleJob deleted", "name", bundle.Name, "namespace", bundle.Namespace)
-		ctrl.metrics.RecordUDSBundleJobDeleted(ctx, bundle.Namespace)
+		klog.V(2).InfoS("UDSPackageJob deleted", "name", bundle.Name, "namespace", bundle.Namespace)
+		ctrl.metrics.RecordUDSPackageJobDeleted(ctx, bundle.Namespace)
 
 	case watch.Error:
 		klog.ErrorS(nil, "Watch error event", "object", event.Object)
 	}
 }
 
-// reconcile handles the reconciliation logic for a UDSBundleJob
-func (ctrl *UDSController) reconcile(ctx context.Context, bundle *udsv1alpha1.UDSBundleJob) error {
+// reconcile handles the reconciliation logic for a UDSPackageJob
+func (ctrl *UDSController) reconcile(ctx context.Context, bundle *udsv1alpha2.UDSPackageJob) error {
 	// Deprecation warning for v1alpha1 API
-	klog.InfoS("DEPRECATION WARNING: v1alpha1 UDSBundleJob API is deprecated and will be removed in Forge v0.10.0. Please migrate to v1alpha2 UDSPackageJob. See docs/operations/V1ALPHA2_MIGRATION.md for details.", "name", bundle.Name, "namespace", bundle.Namespace)
+	klog.InfoS("DEPRECATION WARNING: v1alpha1 UDSPackageJob API is deprecated and will be removed in Forge v0.10.0. Please migrate to v1alpha2 UDSPackageJob. See docs/operations/V1ALPHA2_MIGRATION.md for details.", "name", bundle.Name, "namespace", bundle.Namespace)
 
-	klog.V(2).InfoS("Reconciling UDSBundleJob", "name", bundle.Name, "namespace", bundle.Namespace, "action", bundle.Spec.Action)
+	klog.V(2).InfoS("Reconciling UDSPackageJob", "name", bundle.Name, "namespace", bundle.Namespace, "action", bundle.Spec.Action)
 
 	// Skip if already completed
 	if bundle.Status.Phase == "Completed" || bundle.Status.Phase == "Failed" {
@@ -213,40 +213,40 @@ func (ctrl *UDSController) reconcile(ctx context.Context, bundle *udsv1alpha1.UD
 
 // validatePolicy validates the bundle against ServiceAccount policies
 //
-//nolint:staticcheck // SA1019: UDSBundleJob v1alpha1 must be supported until v0.10.0
-func (ctrl *UDSController) validatePolicy(ctx context.Context, bundle *udsv1alpha1.UDSBundleJob) error {
+//nolint:staticcheck // SA1019: UDSPackageJob v1alpha1 must be supported until v0.10.0
+func (ctrl *UDSController) validatePolicy(ctx context.Context, bundle *udsv1alpha2.UDSPackageJob) error {
 	return ctrl.policyEngine.ValidateUDSBundle(ctx, bundle)
 }
 
 // dispatchAction routes the bundle to the appropriate action handler
-func (ctrl *UDSController) dispatchAction(ctx context.Context, bundle *udsv1alpha1.UDSBundleJob) error {
+func (ctrl *UDSController) dispatchAction(ctx context.Context, bundle *udsv1alpha2.UDSPackageJob) error {
 	action := bundle.Spec.Action
 
 	// Handle compound actions by dispatching the first action
 	// Job monitoring will handle chaining
 	switch action {
-	case udsv1alpha1.BundleActionCreate:
+	case udsv1alpha2.ActionCreate:
 		return ctrl.executeCreate(ctx, bundle)
 
-	case udsv1alpha1.BundleActionPublish:
+	case udsv1alpha2.ActionPublish:
 		return ctrl.executePublish(ctx, bundle)
 
-	case udsv1alpha1.BundleActionDeploy:
+	case udsv1alpha2.ActionDeploy:
 		return ctrl.executeDeploy(ctx, bundle)
 
-	case udsv1alpha1.BundleActionCreatePublish:
+	case udsv1alpha2.ActionCreatePublish:
 		// Start with Create, monitoring will trigger Publish
 		return ctrl.executeCreate(ctx, bundle)
 
-	case udsv1alpha1.BundleActionCreateDeploy:
+	case udsv1alpha2.ActionCreateDeploy:
 		// Start with Create, monitoring will trigger Deploy
 		return ctrl.executeCreate(ctx, bundle)
 
-	case udsv1alpha1.BundleActionPublishDeploy:
+	case udsv1alpha2.ActionPublishDeploy:
 		// Start with Publish, monitoring will trigger Deploy
 		return ctrl.executePublish(ctx, bundle)
 
-	case udsv1alpha1.BundleActionCreatePublishDeploy:
+	case udsv1alpha2.ActionCreatePublishDeploy:
 		// Start with Create, monitoring will chain through all
 		return ctrl.executeCreate(ctx, bundle)
 
@@ -256,7 +256,7 @@ func (ctrl *UDSController) dispatchAction(ctx context.Context, bundle *udsv1alph
 }
 
 // executeCreate executes the Create action
-func (ctrl *UDSController) executeCreate(ctx context.Context, bundle *udsv1alpha1.UDSBundleJob) error {
+func (ctrl *UDSController) executeCreate(ctx context.Context, bundle *udsv1alpha2.UDSPackageJob) error {
 	// Skip if create already started
 	if bundle.Status.CreateStatus != nil && bundle.Status.CreateStatus.State != "" {
 		klog.V(2).InfoS("Create already started", "name", bundle.Name, "state", bundle.Status.CreateStatus.State)
@@ -271,7 +271,7 @@ func (ctrl *UDSController) executeCreate(ctx context.Context, bundle *udsv1alpha
 	}
 
 	// Update status with create operation details
-	bundle.Status.CreateStatus = &udsv1alpha1.OperationStatus{
+	bundle.Status.CreateStatus = &udsv1alpha2.OperationStatus{
 		State:     result.Phase,
 		Message:   result.Message,
 		StartTime: &result.StartTime,
@@ -284,7 +284,7 @@ func (ctrl *UDSController) executeCreate(ctx context.Context, bundle *udsv1alpha
 }
 
 // executePublish executes the Publish action
-func (ctrl *UDSController) executePublish(ctx context.Context, bundle *udsv1alpha1.UDSBundleJob) error {
+func (ctrl *UDSController) executePublish(ctx context.Context, bundle *udsv1alpha2.UDSPackageJob) error {
 	// Skip if publish already started
 	if bundle.Status.PublishStatus != nil && bundle.Status.PublishStatus.State != "" {
 		klog.V(2).InfoS("Publish already started", "name", bundle.Name, "state", bundle.Status.PublishStatus.State)
@@ -299,7 +299,7 @@ func (ctrl *UDSController) executePublish(ctx context.Context, bundle *udsv1alph
 	}
 
 	// Update status with publish operation details
-	bundle.Status.PublishStatus = &udsv1alpha1.OperationStatus{
+	bundle.Status.PublishStatus = &udsv1alpha2.OperationStatus{
 		State:     result.Phase,
 		Message:   result.Message,
 		StartTime: &result.StartTime,
@@ -312,7 +312,7 @@ func (ctrl *UDSController) executePublish(ctx context.Context, bundle *udsv1alph
 }
 
 // executeDeploy executes the Deploy action
-func (ctrl *UDSController) executeDeploy(ctx context.Context, bundle *udsv1alpha1.UDSBundleJob) error {
+func (ctrl *UDSController) executeDeploy(ctx context.Context, bundle *udsv1alpha2.UDSPackageJob) error {
 	// Skip if deploy already started
 	if bundle.Status.DeployStatus != nil && bundle.Status.DeployStatus.State != "" {
 		klog.V(2).InfoS("Deploy already started", "name", bundle.Name, "state", bundle.Status.DeployStatus.State)
@@ -327,7 +327,7 @@ func (ctrl *UDSController) executeDeploy(ctx context.Context, bundle *udsv1alpha
 	}
 
 	// Update status with deploy operation details
-	bundle.Status.DeployStatus = &udsv1alpha1.OperationStatus{
+	bundle.Status.DeployStatus = &udsv1alpha2.OperationStatus{
 		State:     result.Phase,
 		Message:   result.Message,
 		StartTime: &result.StartTime,
@@ -339,8 +339,8 @@ func (ctrl *UDSController) executeDeploy(ctx context.Context, bundle *udsv1alpha
 	return ctrl.updateStatus(ctx, bundle, bundle.Status.Phase, bundle.Status.Message)
 }
 
-// updateStatus updates the UDSBundleJob status
-func (ctrl *UDSController) updateStatus(ctx context.Context, bundle *udsv1alpha1.UDSBundleJob, phase, message string) error {
+// updateStatus updates the UDSPackageJob status
+func (ctrl *UDSController) updateStatus(ctx context.Context, bundle *udsv1alpha2.UDSPackageJob, phase, message string) error {
 	bundle.Status.Phase = phase
 	bundle.Status.Message = message
 	bundle.Status.LastUpdateTime = &metav1.Time{Time: time.Now()}
@@ -355,7 +355,7 @@ func (ctrl *UDSController) updateStatus(ctx context.Context, bundle *udsv1alpha1
 	unstructuredBundle := &unstructured.Unstructured{Object: unstructuredObj}
 
 	// Update status subresource
-	_, err = ctrl.dynamicClient.Resource(constants.UDSBundleJobGVR).
+	_, err = ctrl.dynamicClient.Resource(constants.UDSPackageJobGVR).
 		Namespace(bundle.Namespace).
 		UpdateStatus(ctx, unstructuredBundle, metav1.UpdateOptions{})
 

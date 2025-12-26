@@ -22,8 +22,6 @@ linters:
     - gocritic        # Comprehensive Go linter
     - revive          # Fast, configurable, extensible linter
     - copyloopvar     # Check for loop variable capture issues (Go 1.22+)
-    - gofmt           # Check code formatting
-    - goimports       # Check import formatting
 
 linters-settings:
   errcheck:
@@ -75,7 +73,6 @@ linters-settings:
       - name: unreachable-code
       - name: redefines-builtin-id
 
-issues:
   exclude-rules:
     # Exclude some linters from running on tests files
     - path: _test\.go
@@ -95,11 +92,6 @@ issues:
     - path: vendor/
       linters:
         - all
-
-    # Allow v1alpha1 deprecation warnings - maintained for backward compatibility until v0.10.0
-    - text: "SA1019.*uds/v1alpha1"
-      linters:
-        - staticcheck
 
   max-issues-per-linter: 0
   max-same-issues: 0

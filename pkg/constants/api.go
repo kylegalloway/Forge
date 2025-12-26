@@ -15,27 +15,25 @@ import "k8s.io/apimachinery/pkg/runtime/schema"
 const (
 	// APIGroup is the API group for all Forge resources
 	APIGroup = "forge.dev"
-	// APIVersion is the API version for all Forge resources
-	APIVersion = "v1alpha1"
 
 	// ZarfPackageJobResource is the resource name for ZarfPackageJob
 	ZarfPackageJobResource = "zarfpackagejobs"
-	// UDSBundleJobResource is the resource name for UDSBundleJob
-	UDSBundleJobResource = "udsbundlejobs"
+	// UDSPackageJobResource is the resource name for UDSPackageJob
+	UDSPackageJobResource = "udspackagejobs"
 )
 
 var (
 	// ZarfPackageJobGVR is the GroupVersionResource for ZarfPackageJob
 	ZarfPackageJobGVR = schema.GroupVersionResource{
 		Group:    APIGroup,
-		Version:  APIVersion,
+		Version:  "v1alpha1",
 		Resource: ZarfPackageJobResource,
 	}
 
-	// UDSBundleJobGVR is the GroupVersionResource for UDSBundleJob
-	UDSBundleJobGVR = schema.GroupVersionResource{
+	// UDSPackageJobGVR is the GroupVersionResource for UDSPackageJob
+	UDSPackageJobGVR = schema.GroupVersionResource{
 		Group:    APIGroup,
-		Version:  APIVersion,
-		Resource: UDSBundleJobResource,
+		Version:  "v1alpha2",
+		Resource: UDSPackageJobResource,
 	}
 )

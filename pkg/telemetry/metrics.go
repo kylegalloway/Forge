@@ -45,7 +45,7 @@ type Metrics struct {
 
 	// Gauge metrics (using UpDownCounter for current state)
 	zarfPackageJobsActive metric.Int64UpDownCounter
-	udsBundleJobsActive   metric.Int64UpDownCounter
+	udsPackageJobsActive  metric.Int64UpDownCounter
 
 	// Histogram metrics
 	actionDuration    metric.Float64Histogram
@@ -319,7 +319,7 @@ func NewMetrics() (*Metrics, error) {
 		return nil, err
 	}
 
-	udsBundleJobsActive, err := meter.Int64UpDownCounter(
+	udsPackageJobsActive, err := meter.Int64UpDownCounter(
 		"forge.uds_bundle_jobs.active",
 		metric.WithDescription("Current number of active UDSBundleJob resources"),
 		metric.WithUnit("{resource}"),
@@ -353,7 +353,7 @@ func NewMetrics() (*Metrics, error) {
 		bundleDeploysCompleted:   bundleDeploysCompleted,
 		bundleDeploysFailed:      bundleDeploysFailed,
 		bundleJobsCreated:        bundleJobsCreated,
-		udsBundleJobsActive:      udsBundleJobsActive,
+		udsPackageJobsActive:     udsPackageJobsActive,
 		reconcileErrors:          reconcileErrors,
 		webhookValidations:       webhookValidations,
 		actionDuration:           actionDuration,
@@ -614,14 +614,14 @@ func (metrics *Metrics) RecordBundleJobCreated(ctx context.Context, namespace, b
 		))
 }
 
-// RecordUDSBundleJobCreated increments the UDSBundleJob created and active counters
-func (metrics *Metrics) RecordUDSBundleJobCreated(ctx context.Context, namespace string) {
-	metrics.udsBundleJobsActive.Add(ctx, 1,
+// RecordUDSPackageJobCreated increments the UDSPackageJob created and active counters
+func (metrics *Metrics) RecordUDSPackageJobCreated(ctx context.Context, namespace string) {
+	metrics.udsPackageJobsActive.Add(ctx, 1,
 		metric.WithAttributes(attribute.String("namespace", namespace)))
 }
 
-// RecordUDSBundleJobDeleted decrements the active UDSBundleJob counter
-func (metrics *Metrics) RecordUDSBundleJobDeleted(ctx context.Context, namespace string) {
-	metrics.udsBundleJobsActive.Add(ctx, -1,
+// RecordUDSPackageJobDeleted decrements the active UDSPackageJob counter
+func (metrics *Metrics) RecordUDSPackageJobDeleted(ctx context.Context, namespace string) {
+	metrics.udsPackageJobsActive.Add(ctx, -1,
 		metric.WithAttributes(attribute.String("namespace", namespace)))
 }

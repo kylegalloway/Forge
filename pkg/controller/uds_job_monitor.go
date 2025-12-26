@@ -12,7 +12,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/klog/v2"
 
-	udsv1alpha1 "github.com/kylegalloway/forge/pkg/apis/uds/v1alpha1"
+	udsv1alpha2 "github.com/kylegalloway/forge/pkg/apis/uds/v1alpha2"
 	"github.com/kylegalloway/forge/pkg/constants"
 )
 
@@ -36,7 +36,7 @@ func (ctrl *UDSController) startJobMonitoring(ctx context.Context) {
 	}
 }
 
-// checkJobStatuses checks all Jobs labeled with forge-uds labels and updates UDSBundleJob status
+// checkJobStatuses checks all Jobs labeled with forge-uds labels and updates UDSPackageJob status
 func (ctrl *UDSController) checkJobStatuses(ctx context.Context) error {
 	// List all Jobs with forge-uds labels
 	jobs, err := ctrl.kubeClient.BatchV1().Jobs(ctrl.namespace).List(ctx, metav1.ListOptions{
@@ -56,9 +56,9 @@ func (ctrl *UDSController) checkJobStatuses(ctx context.Context) error {
 	return nil
 }
 
-// processJobStatus checks a single Job and updates the corresponding UDSBundleJob status
+// processJobStatus checks a single Job and updates the corresponding UDSPackageJob status
 func (ctrl *UDSController) processJobStatus(ctx context.Context, job *batchv1.Job) error {
-	// Get the UDSBundleJob name from job labels
+	// Get the UDSPackageJob name from job labels
 	bundleName, ok := job.Labels[constants.LabelPackage]
 	if !ok {
 		klog.V(4).InfoS("Job missing bundle label, skipping", "job", job.Name)
@@ -71,18 +71,18 @@ func (ctrl *UDSController) processJobStatus(ctx context.Context, job *batchv1.Jo
 		return nil
 	}
 
-	// Get the UDSBundleJob resource
-	unstructuredBundle, err := ctrl.dynamicClient.Resource(constants.UDSBundleJobGVR).
+	// Get the UDSPackageJob resource
+	unstructuredBundle, err := ctrl.dynamicClient.Resource(constants.UDSPackageJobGVR).
 		Namespace(job.Namespace).
 		Get(ctx, bundleName, metav1.GetOptions{})
 	if err != nil {
-		klog.V(4).InfoS("Failed to get UDSBundleJob, may be deleted", "bundle", bundleName, "error", err)
+		klog.V(4).InfoS("Failed to get UDSPackageJob, may be deleted", "bundle", bundleName, "error", err)
 		return nil
 	}
 
-	bundle := &udsv1alpha1.UDSBundleJob{}
+	bundle := &udsv1alpha2.UDSPackageJob{}
 	if err := runtime.DefaultUnstructuredConverter.FromUnstructured(unstructuredBundle.Object, bundle); err != nil {
-		return fmt.Errorf("failed to convert to UDSBundleJob: %w", err)
+		return fmt.Errorf("failed to convert to UDSPackageJob: %w", err)
 	}
 
 	// Check if job is complete or failed
@@ -113,21 +113,21 @@ func (ctrl *UDSController) processJobStatus(ctx context.Context, job *batchv1.Jo
 
 		// Update operation status
 		switch action {
-		case constants.BundleActionCreate:
+		case constants.ActionCreate:
 			if bundle.Status.CreateStatus != nil {
 				bundle.Status.CreateStatus.State = "Completed"
 				bundle.Status.CreateStatus.CompletionTime = &now
 			}
 			ctrl.metrics.RecordBundleCreateCompleted(ctx, bundle.Namespace, bundle.Name)
 
-		case constants.BundleActionPublish:
+		case constants.ActionPublish:
 			if bundle.Status.PublishStatus != nil {
 				bundle.Status.PublishStatus.State = "Completed"
 				bundle.Status.PublishStatus.CompletionTime = &now
 			}
 			ctrl.metrics.RecordBundlePublishCompleted(ctx, bundle.Namespace, bundle.Name)
 
-		case constants.BundleActionDeploy:
+		case constants.ActionDeploy:
 			if bundle.Status.DeployStatus != nil {
 				bundle.Status.DeployStatus.State = "Completed"
 				bundle.Status.DeployStatus.CompletionTime = &now
@@ -147,7 +147,7 @@ func (ctrl *UDSController) processJobStatus(ctx context.Context, job *batchv1.Jo
 		// Update operation status
 		failureMsg := "Job failed"
 		switch action {
-		case constants.BundleActionCreate:
+		case constants.ActionCreate:
 			if bundle.Status.CreateStatus != nil {
 				bundle.Status.CreateStatus.State = "Failed"
 				bundle.Status.CreateStatus.CompletionTime = &now
@@ -155,7 +155,7 @@ func (ctrl *UDSController) processJobStatus(ctx context.Context, job *batchv1.Jo
 			}
 			ctrl.metrics.RecordBundleCreateFailed(ctx, bundle.Namespace, bundle.Name)
 
-		case constants.BundleActionPublish:
+		case constants.ActionPublish:
 			if bundle.Status.PublishStatus != nil {
 				bundle.Status.PublishStatus.State = "Failed"
 				bundle.Status.PublishStatus.CompletionTime = &now
@@ -163,7 +163,7 @@ func (ctrl *UDSController) processJobStatus(ctx context.Context, job *batchv1.Jo
 			}
 			ctrl.metrics.RecordBundlePublishFailed(ctx, bundle.Namespace, bundle.Name)
 
-		case constants.BundleActionDeploy:
+		case constants.ActionDeploy:
 			if bundle.Status.DeployStatus != nil {
 				bundle.Status.DeployStatus.State = "Failed"
 				bundle.Status.DeployStatus.CompletionTime = &now
@@ -179,45 +179,45 @@ func (ctrl *UDSController) processJobStatus(ctx context.Context, job *batchv1.Jo
 }
 
 // handleActionChaining triggers the next action in compound action workflows
-func (ctrl *UDSController) handleActionChaining(ctx context.Context, bundle *udsv1alpha1.UDSBundleJob, completedAction string) error {
+func (ctrl *UDSController) handleActionChaining(ctx context.Context, bundle *udsv1alpha2.UDSPackageJob, completedAction string) error {
 	action := bundle.Spec.Action
 
 	klog.V(2).InfoS("Checking action chaining", "bundle", bundle.Name, "mainAction", action, "completedAction", completedAction)
 
 	switch action {
-	case udsv1alpha1.BundleActionCreatePublish:
-		if completedAction == constants.BundleActionCreate {
+	case udsv1alpha2.ActionCreatePublish:
+		if completedAction == constants.ActionCreate {
 			klog.InfoS("Chaining to Publish after Create", "bundle", bundle.Name)
 			return ctrl.executePublish(ctx, bundle)
-		} else if completedAction == constants.BundleActionPublish {
+		} else if completedAction == constants.ActionPublish {
 			return ctrl.markBundleCompleted(ctx, bundle)
 		}
 
-	case udsv1alpha1.BundleActionCreateDeploy:
-		if completedAction == constants.BundleActionCreate {
+	case udsv1alpha2.ActionCreateDeploy:
+		if completedAction == constants.ActionCreate {
 			klog.InfoS("Chaining to Deploy after Create", "bundle", bundle.Name)
 			return ctrl.executeDeploy(ctx, bundle)
-		} else if completedAction == constants.BundleActionDeploy {
+		} else if completedAction == constants.ActionDeploy {
 			return ctrl.markBundleCompleted(ctx, bundle)
 		}
 
-	case udsv1alpha1.BundleActionPublishDeploy:
-		if completedAction == constants.BundleActionPublish {
+	case udsv1alpha2.ActionPublishDeploy:
+		if completedAction == constants.ActionPublish {
 			klog.InfoS("Chaining to Deploy after Publish", "bundle", bundle.Name)
 			return ctrl.executeDeploy(ctx, bundle)
-		} else if completedAction == constants.BundleActionDeploy {
+		} else if completedAction == constants.ActionDeploy {
 			return ctrl.markBundleCompleted(ctx, bundle)
 		}
 
-	case udsv1alpha1.BundleActionCreatePublishDeploy:
+	case udsv1alpha2.ActionCreatePublishDeploy:
 		switch completedAction {
-		case constants.BundleActionCreate:
+		case constants.ActionCreate:
 			klog.InfoS("Chaining to Publish after Create (full pipeline)", "bundle", bundle.Name)
 			return ctrl.executePublish(ctx, bundle)
-		case constants.BundleActionPublish:
+		case constants.ActionPublish:
 			klog.InfoS("Chaining to Deploy after Publish (full pipeline)", "bundle", bundle.Name)
 			return ctrl.executeDeploy(ctx, bundle)
-		case constants.BundleActionDeploy:
+		case constants.ActionDeploy:
 			return ctrl.markBundleCompleted(ctx, bundle)
 		}
 
@@ -229,14 +229,14 @@ func (ctrl *UDSController) handleActionChaining(ctx context.Context, bundle *uds
 	return nil
 }
 
-// markBundleCompleted marks the UDSBundleJob as completed
-func (ctrl *UDSController) markBundleCompleted(ctx context.Context, bundle *udsv1alpha1.UDSBundleJob) error {
-	klog.InfoS("Marking UDSBundleJob as completed", "bundle", bundle.Name, "namespace", bundle.Namespace)
+// markBundleCompleted marks the UDSPackageJob as completed
+func (ctrl *UDSController) markBundleCompleted(ctx context.Context, bundle *udsv1alpha2.UDSPackageJob) error {
+	klog.InfoS("Marking UDSPackageJob as completed", "bundle", bundle.Name, "namespace", bundle.Namespace)
 	return ctrl.updateStatus(ctx, bundle, "Completed", "All actions completed successfully")
 }
 
-// markBundleFailed marks the UDSBundleJob as failed
-func (ctrl *UDSController) markBundleFailed(ctx context.Context, bundle *udsv1alpha1.UDSBundleJob, message string) error {
-	klog.InfoS("Marking UDSBundleJob as failed", "bundle", bundle.Name, "namespace", bundle.Namespace, "message", message)
+// markBundleFailed marks the UDSPackageJob as failed
+func (ctrl *UDSController) markBundleFailed(ctx context.Context, bundle *udsv1alpha2.UDSPackageJob, message string) error {
+	klog.InfoS("Marking UDSPackageJob as failed", "bundle", bundle.Name, "namespace", bundle.Namespace, "message", message)
 	return ctrl.updateStatus(ctx, bundle, "Failed", message)
 }

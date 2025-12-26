@@ -21,7 +21,7 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/klog/v2"
 
-	udsv1alpha1 "github.com/kylegalloway/forge/pkg/apis/uds/v1alpha1"
+	udsv1alpha2 "github.com/kylegalloway/forge/pkg/apis/uds/v1alpha2"
 	zarfv1alpha1 "github.com/kylegalloway/forge/pkg/apis/zarf/v1alpha1"
 	"github.com/kylegalloway/forge/pkg/webhook"
 )
@@ -41,8 +41,8 @@ func init() {
 	if err := zarfv1alpha1.AddToScheme(scheme); err != nil {
 		panic(fmt.Sprintf("failed to add zarfv1alpha1 to scheme: %v", err))
 	}
-	if err := udsv1alpha1.AddToScheme(scheme); err != nil {
-		panic(fmt.Sprintf("failed to add udsv1alpha1 to scheme: %v", err))
+	if err := udsv1alpha2.AddToScheme(scheme); err != nil {
+		panic(fmt.Sprintf("failed to add udsv1alpha2 to scheme: %v", err))
 	}
 }
 
@@ -66,7 +66,7 @@ func main() {
 
 	// Create validators
 	zarfValidator := webhook.NewZarfPackageJobValidator(kubeClient)
-	udsValidator := webhook.NewUDSBundleJobValidator(kubeClient)
+	udsValidator := webhook.NewUDSPackageJobValidator(kubeClient)
 
 	// Create webhook server
 	server := &WebhookServer{
@@ -111,10 +111,10 @@ func main() {
 	klog.Info("Webhook server stopped")
 }
 
-// WebhookServer handles admission webhook requests for ZarfPackageJob and UDSBundleJob resources
+// WebhookServer handles admission webhook requests for ZarfPackageJob and UDSPackageJob resources
 type WebhookServer struct {
 	zarfValidator *webhook.ZarfPackageJobValidator
-	udsValidator  *webhook.UDSBundleJobValidator
+	udsValidator  *webhook.UDSPackageJobValidator
 }
 
 // serveValidate handles validation webhook requests
@@ -172,8 +172,8 @@ func (ws *WebhookServer) validate(ctx context.Context, request *admissionv1.Admi
 	switch request.Kind.Kind {
 	case "ZarfPackageJob":
 		return ws.validateZarfPackageJob(ctx, request)
-	case "UDSBundleJob":
-		return ws.validateUDSBundleJob(ctx, request)
+	case "UDSPackageJob":
+		return ws.validateUDSPackageJob(ctx, request)
 	default:
 		return &admissionv1.AdmissionResponse{
 			Allowed: false,
@@ -229,29 +229,29 @@ func (ws *WebhookServer) validateZarfPackageJob(ctx context.Context, request *ad
 	}
 }
 
-// validateUDSBundleJob validates a UDSBundleJob resource
-func (ws *WebhookServer) validateUDSBundleJob(ctx context.Context, request *admissionv1.AdmissionRequest) *admissionv1.AdmissionResponse {
-	klog.InfoS("Validating UDSBundleJob",
+// validateUDSPackageJob validates a UDSPackageJob resource
+func (ws *WebhookServer) validateUDSPackageJob(ctx context.Context, request *admissionv1.AdmissionRequest) *admissionv1.AdmissionResponse {
+	klog.InfoS("Validating UDSPackageJob",
 		"name", request.Name,
 		"namespace", request.Namespace,
 		"operation", request.Operation,
 		"user", request.UserInfo.Username)
 
-	// Decode UDSBundleJob object
-	var bundle udsv1alpha1.UDSBundleJob
+	// Decode UDSPackageJob object
+	var bundle udsv1alpha2.UDSPackageJob
 	deserializer := codecs.UniversalDeserializer()
 	if _, _, err := deserializer.Decode(request.Object.Raw, nil, &bundle); err != nil {
-		klog.ErrorS(err, "Failed to decode UDSBundleJob")
+		klog.ErrorS(err, "Failed to decode UDSPackageJob")
 		return &admissionv1.AdmissionResponse{
 			Allowed: false,
 			Result: &metav1.Status{
-				Message: fmt.Sprintf("failed to decode UDSBundleJob: %v", err),
+				Message: fmt.Sprintf("failed to decode UDSPackageJob: %v", err),
 			},
 		}
 	}
 
-	// Validate the UDSBundleJob against ServiceAccount permissions
-	if err := ws.udsValidator.ValidateUDSBundleJob(ctx, &bundle); err != nil {
+	// Validate the UDSPackageJob against ServiceAccount permissions
+	if err := ws.udsValidator.ValidateUDSPackageJob(ctx, &bundle); err != nil {
 		klog.InfoS("Validation failed",
 			"name", bundle.Name,
 			"namespace", bundle.Namespace,
@@ -260,7 +260,7 @@ func (ws *WebhookServer) validateUDSBundleJob(ctx context.Context, request *admi
 		return &admissionv1.AdmissionResponse{
 			Allowed: false,
 			Result: &metav1.Status{
-				Message: fmt.Sprintf("UDSBundleJob validation failed: %v", err),
+				Message: fmt.Sprintf("UDSPackageJob validation failed: %v", err),
 			},
 		}
 	}
@@ -272,7 +272,7 @@ func (ws *WebhookServer) validateUDSBundleJob(ctx context.Context, request *admi
 	return &admissionv1.AdmissionResponse{
 		Allowed: true,
 		Warnings: []string{
-			"v1alpha1 UDSBundleJob API is deprecated and will be removed in Forge v0.10.0. Please migrate to v1alpha2 UDSPackageJob. See docs/operations/V1ALPHA2_MIGRATION.md for migration guide.",
+			"v1alpha1 UDSPackageJob API is deprecated and will be removed in Forge v0.10.0. Please migrate to v1alpha2 UDSPackageJob. See docs/operations/V1ALPHA2_MIGRATION.md for migration guide.",
 		},
 	}
 }

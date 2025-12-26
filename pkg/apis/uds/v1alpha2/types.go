@@ -4,7 +4,7 @@
 // creating, publishing, and deploying UDS bundles in a Kubernetes-native way.
 //
 // v1alpha2 API Changes:
-// - Unified naming with Zarf: BundleAction → Action, BundleSourceType → SourceType, etc.
+// - Unified naming with Zarf: BundleAction → Action, PackageSourceType → SourceType, etc.
 // - UDSBundleJob → UDSPackageJob for consistency with ZarfPackageJob
 // - Maintains backward compatibility with v1alpha1 via conversion webhook
 //

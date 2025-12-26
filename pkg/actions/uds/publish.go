@@ -3,7 +3,6 @@ package uds
 import (
 	"context"
 	"fmt"
-	"time"
 
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -12,12 +11,12 @@ import (
 	"k8s.io/klog/v2"
 
 	"github.com/kylegalloway/forge/pkg/actions/common"
-	udsv1alpha1 "github.com/kylegalloway/forge/pkg/apis/uds/v1alpha1"
+	udsv1alpha2 "github.com/kylegalloway/forge/pkg/apis/uds/v1alpha2"
 	"github.com/kylegalloway/forge/pkg/constants"
 	"github.com/kylegalloway/forge/pkg/telemetry"
 )
 
-// PublishHandler handles Publish actions for UDSBundleJob resources
+// PublishHandler handles Publish actions for UDSPackageJob resources
 type PublishHandler struct {
 	kubeClient kubernetes.Interface
 	metrics    *telemetry.Metrics
@@ -33,10 +32,10 @@ func NewPublishHandler(kubeClient kubernetes.Interface, metrics *telemetry.Metri
 	}
 }
 
-// Execute performs a Publish action for the given UDSBundleJob
+// Execute performs a Publish action for the given UDSPackageJob
 //
-//nolint:staticcheck // SA1019: UDSBundleJob v1alpha1 must be supported until v0.10.0
-func (handler *PublishHandler) Execute(ctx context.Context, bundle *udsv1alpha1.UDSBundleJob) (*common.ActionResult, error) {
+//nolint:staticcheck // SA1019: UDSPackageJob v1alpha1 must be supported until v0.10.0
+func (handler *PublishHandler) Execute(ctx context.Context, bundle *udsv1alpha2.UDSPackageJob) (*common.ActionResult, error) {
 
 	klog.InfoS("Executing UDS Bundle Publish action", "name", bundle.Name, "namespace", bundle.Namespace)
 
@@ -73,7 +72,7 @@ func (handler *PublishHandler) Execute(ctx context.Context, bundle *udsv1alpha1.
 }
 
 // createPublishJob creates a Kubernetes Job to publish a UDS bundle
-func (handler *PublishHandler) createPublishJob(ctx context.Context, bundle *udsv1alpha1.UDSBundleJob) (*batchv1.Job, error) {
+func (handler *PublishHandler) createPublishJob(ctx context.Context, bundle *udsv1alpha2.UDSPackageJob) (*batchv1.Job, error) {
 	jobName := fmt.Sprintf("%s-publish", bundle.Name)
 	namespace := bundle.Namespace
 
@@ -83,16 +82,8 @@ func (handler *PublishHandler) createPublishJob(ctx context.Context, bundle *uds
 		return nil, err
 	}
 
-	// Determine timeout - use Publish.Timeout if specified, otherwise use default
+	// Use default timeout for publish operations
 	activeDeadlineSeconds := int64(constants.DefaultPublishTimeout)
-	if bundle.Spec.Publish.Timeout != "" {
-		timeout, parseErr := time.ParseDuration(bundle.Spec.Publish.Timeout)
-		if parseErr != nil {
-			klog.V(4).InfoS("Invalid publish timeout format, using default", "timeout", bundle.Spec.Publish.Timeout, "error", parseErr)
-		} else {
-			activeDeadlineSeconds = int64(timeout.Seconds())
-		}
-	}
 
 	// Job configuration
 	backoffLimit := int32(0) // Don't retry failed publishes
@@ -108,7 +99,7 @@ func (handler *PublishHandler) createPublishJob(ctx context.Context, bundle *uds
 				constants.LabelAction:  "publish",
 			},
 			OwnerReferences: []metav1.OwnerReference{
-				*metav1.NewControllerRef(bundle, udsv1alpha1.SchemeGroupVersion.WithKind("UDSBundleJob")),
+				*metav1.NewControllerRef(bundle, udsv1alpha2.SchemeGroupVersion.WithKind("UDSPackageJob")),
 			},
 		},
 		Spec: batchv1.JobSpec{
@@ -195,11 +186,11 @@ func (handler *PublishHandler) createPublishJob(ctx context.Context, bundle *uds
 }
 
 // buildPublishCommand builds the UDS CLI publish command
-func (handler *PublishHandler) buildPublishCommand(bundle *udsv1alpha1.UDSBundleJob) (string, error) {
+func (handler *PublishHandler) buildPublishCommand(bundle *udsv1alpha2.UDSPackageJob) (string, error) {
 	dest := bundle.Spec.Publish.Destination
 
 	switch dest.Type {
-	case udsv1alpha1.BundleDestinationTypeOCI:
+	case udsv1alpha2.DestinationTypeOCI:
 		if dest.OCI == nil {
 			return "", fmt.Errorf("OCI destination configuration is required")
 		}
@@ -207,7 +198,7 @@ func (handler *PublishHandler) buildPublishCommand(bundle *udsv1alpha1.UDSBundle
 		ociRef := fmt.Sprintf("%s/%s:%s", dest.OCI.Registry, dest.OCI.Repository, dest.OCI.Tag)
 		return fmt.Sprintf("uds publish /workspace/uds-bundle-*.tar.zst %s", ociRef), nil
 
-	case udsv1alpha1.BundleDestinationTypeS3:
+	case udsv1alpha2.DestinationTypeS3:
 		if dest.S3 == nil {
 			return "", fmt.Errorf("S3 destination configuration is required")
 		}
@@ -215,7 +206,7 @@ func (handler *PublishHandler) buildPublishCommand(bundle *udsv1alpha1.UDSBundle
 		s3Path := fmt.Sprintf("s3://%s/%s", dest.S3.Bucket, dest.S3.Key)
 		return fmt.Sprintf("aws s3 cp /workspace/uds-bundle-*.tar.zst %s", s3Path), nil
 
-	case udsv1alpha1.BundleDestinationTypeLocal:
+	case udsv1alpha2.DestinationTypeLocal:
 		// Local destination - just echo success
 		return "echo 'Bundle artifact stored locally in /workspace'", nil
 
@@ -225,13 +216,13 @@ func (handler *PublishHandler) buildPublishCommand(bundle *udsv1alpha1.UDSBundle
 }
 
 // buildEnvVars builds environment variables for the publish job
-func (handler *PublishHandler) buildEnvVars(bundle *udsv1alpha1.UDSBundleJob) []corev1.EnvVar {
+func (handler *PublishHandler) buildEnvVars(bundle *udsv1alpha2.UDSPackageJob) []corev1.EnvVar {
 	envVars := []corev1.EnvVar{}
 
 	dest := bundle.Spec.Publish.Destination
 
 	// S3 configuration
-	if dest.Type == udsv1alpha1.BundleDestinationTypeS3 && dest.S3 != nil {
+	if dest.Type == udsv1alpha2.DestinationTypeS3 && dest.S3 != nil {
 		if dest.S3.Region != "" {
 			envVars = append(envVars, corev1.EnvVar{
 				Name:  "AWS_REGION",
@@ -278,11 +269,11 @@ func (handler *PublishHandler) buildEnvVars(bundle *udsv1alpha1.UDSBundleJob) []
 }
 
 // addCredentialVolumes adds credential volumes for OCI registries
-func (handler *PublishHandler) addCredentialVolumes(bundle *udsv1alpha1.UDSBundleJob, job *batchv1.Job) {
+func (handler *PublishHandler) addCredentialVolumes(bundle *udsv1alpha2.UDSPackageJob, job *batchv1.Job) {
 	dest := bundle.Spec.Publish.Destination
 
 	// Add docker-config volume for OCI registries
-	if dest.Type == udsv1alpha1.BundleDestinationTypeOCI && dest.OCI != nil && dest.OCI.CredentialsSecretRef != nil { // pragma: allowlist secret
+	if dest.Type == udsv1alpha2.DestinationTypeOCI && dest.OCI != nil && dest.OCI.CredentialsSecretRef != nil { // pragma: allowlist secret
 		// Ensure the job has at least one container before accessing Containers[0]
 		if len(job.Spec.Template.Spec.Containers) == 0 {
 			klog.ErrorS(nil, "Job has no containers, cannot add credential volumes", "job", job.Name)
@@ -326,7 +317,7 @@ func (handler *PublishHandler) addCredentialVolumes(bundle *udsv1alpha1.UDSBundl
 }
 
 // getResources returns resource requirements for the publish job
-func (handler *PublishHandler) getResources(bundle *udsv1alpha1.UDSBundleJob) corev1.ResourceRequirements {
+func (handler *PublishHandler) getResources(bundle *udsv1alpha2.UDSPackageJob) corev1.ResourceRequirements {
 	if bundle.Spec.Resources != nil {
 		return *bundle.Spec.Resources
 	}

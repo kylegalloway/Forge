@@ -1,4 +1,4 @@
-// Package policy enforces access control policies for ZarfPackageJob and UDSBundleJob operations based on ServiceAccount permissions.
+// Package policy enforces access control policies for ZarfPackageJob and UDSPackageJob operations based on ServiceAccount permissions.
 package policy
 
 import (
@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	udsv1alpha1 "github.com/kylegalloway/forge/pkg/apis/uds/v1alpha1"
+	udsv1alpha2 "github.com/kylegalloway/forge/pkg/apis/uds/v1alpha2"
 	zarfv1alpha1 "github.com/kylegalloway/forge/pkg/apis/zarf/v1alpha1"
 	"github.com/kylegalloway/forge/pkg/constants"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -47,7 +47,7 @@ func (engine *Engine) Validate(ctx context.Context, pkg *zarfv1alpha1.ZarfPackag
 
 	// 2. Check Allowed Actions
 	allowedActions := parseList(annotations[constants.AnnotationAllowedActions])
-	if !isActionAllowed(pkg.Spec.Action, allowedActions) {
+	if !isActionAllowed(string(pkg.Spec.Action), allowedActions) {
 		return fmt.Errorf("action %s is not allowed (allowed actions: %v) for ServiceAccount %s",
 			pkg.Spec.Action, allowedActions, saName)
 	}
@@ -176,12 +176,12 @@ func (engine *Engine) validateDestination(dest zarfv1alpha1.PublishDestination, 
 	return nil
 }
 
-func isActionAllowed(action zarfv1alpha1.Action, allowed []string) bool {
+func isActionAllowed(action string, allowed []string) bool {
 	if len(allowed) == 0 {
 		return false
 	}
 	for _, allowedAction := range allowed {
-		if string(action) == allowedAction || allowedAction == "*" {
+		if action == allowedAction || allowedAction == "*" {
 			return true
 		}
 	}
@@ -235,7 +235,7 @@ func matchAny(patterns []string, value string) bool {
 }
 
 // ValidateUDSBundle checks if the UDS bundle operation is allowed based on the ServiceAccount permissions
-func (engine *Engine) ValidateUDSBundle(ctx context.Context, bundle *udsv1alpha1.UDSBundleJob) error {
+func (engine *Engine) ValidateUDSBundle(ctx context.Context, bundle *udsv1alpha2.UDSPackageJob) error {
 	// 1. Fetch ServiceAccount
 	saName := bundle.Spec.ServiceAccountName
 	if saName == "" {
@@ -254,19 +254,19 @@ func (engine *Engine) ValidateUDSBundle(ctx context.Context, bundle *udsv1alpha1
 
 	// 2. Check Allowed Actions
 	allowedActions := parseList(annotations[constants.AnnotationAllowedActions])
-	if !isBundleActionAllowed(bundle.Spec.Action, allowedActions) {
+	if !isActionAllowed(string(bundle.Spec.Action), allowedActions) {
 		return fmt.Errorf("action %s is not allowed (allowed actions: %v) for ServiceAccount %s",
 			bundle.Spec.Action, allowedActions, saName)
 	}
 
 	// 3. Check Allowed Sources
-	if err := engine.validateBundleSource(bundle.Spec.Source, annotations, saName); err != nil {
+	if err := engine.validatePackageSource(bundle.Spec.Source, annotations, saName); err != nil {
 		return err
 	}
 
 	// 4. Check Allowed Destinations
 	if bundle.Spec.Publish != nil {
-		if err := engine.validateBundleDestination(bundle.Spec.Publish.Destination, annotations, saName); err != nil {
+		if err := engine.validatePublishDestination(bundle.Spec.Publish.Destination, annotations, saName); err != nil {
 			return err
 		}
 	}
@@ -290,13 +290,13 @@ func (engine *Engine) ValidateUDSBundle(ctx context.Context, bundle *udsv1alpha1
 	return nil
 }
 
-// validateBundleSource checks if the UDS bundle source is allowed
-func (engine *Engine) validateBundleSource(source udsv1alpha1.BundleSource, annotations map[string]string, saName string) error {
+// validatePackageSource checks if the UDS bundle source is allowed
+func (engine *Engine) validatePackageSource(source udsv1alpha2.PackageSource, annotations map[string]string, saName string) error {
 	// Security by default: if the required annotation is missing, access is denied.
 	// Each source type requires its corresponding annotation to be present with allowed values.
 
 	switch source.Type {
-	case udsv1alpha1.BundleSourceTypeGit:
+	case udsv1alpha2.SourceTypeGit:
 		allowedRepos := parseList(annotations[constants.AnnotationAllowedSourceRepos])
 		if len(allowedRepos) == 0 {
 			return fmt.Errorf("no allowed source repos defined (annotation %s is required)", constants.AnnotationAllowedSourceRepos)
@@ -308,7 +308,7 @@ func (engine *Engine) validateBundleSource(source udsv1alpha1.BundleSource, anno
 			return fmt.Errorf("git repo %s is not allowed (allowed repos: %v) for ServiceAccount %s",
 				source.Git.URL, allowedRepos, saName)
 		}
-	case udsv1alpha1.BundleSourceTypeS3:
+	case udsv1alpha2.SourceTypeS3:
 		allowedBuckets := parseList(annotations[constants.AnnotationAllowedSourceBuckets])
 		if len(allowedBuckets) == 0 {
 			return fmt.Errorf("no allowed source buckets defined (annotation %s is required)", constants.AnnotationAllowedSourceBuckets)
@@ -320,7 +320,7 @@ func (engine *Engine) validateBundleSource(source udsv1alpha1.BundleSource, anno
 			return fmt.Errorf("S3 bucket %s is not allowed (allowed buckets: %v) for ServiceAccount %s",
 				source.S3.Bucket, allowedBuckets, saName)
 		}
-	case udsv1alpha1.BundleSourceTypeOCI:
+	case udsv1alpha2.SourceTypeOCI:
 		allowedRegistries := parseList(annotations[constants.AnnotationAllowedSourceRegistries])
 		if len(allowedRegistries) == 0 {
 			return fmt.Errorf("no allowed source registries defined (annotation %s is required)", constants.AnnotationAllowedSourceRegistries)
@@ -332,7 +332,7 @@ func (engine *Engine) validateBundleSource(source udsv1alpha1.BundleSource, anno
 			return fmt.Errorf("OCI reference %s is not allowed (allowed registries: %v) for ServiceAccount %s",
 				source.OCI.Reference, allowedRegistries, saName)
 		}
-	case udsv1alpha1.BundleSourceTypeLocal:
+	case udsv1alpha2.SourceTypeLocal:
 		// Local sources require explicit permission (dev mode only)
 		if annotations[constants.AnnotationAllowLocalSources] != "true" {
 			return fmt.Errorf("local sources are not allowed (set annotation %s: true for dev mode)", constants.AnnotationAllowLocalSources)
@@ -343,10 +343,10 @@ func (engine *Engine) validateBundleSource(source udsv1alpha1.BundleSource, anno
 	return nil
 }
 
-// validateBundleDestination checks if the UDS bundle destination is allowed
-func (engine *Engine) validateBundleDestination(dest udsv1alpha1.BundleDestination, annotations map[string]string, saName string) error {
+// validatePublishDestination checks if the UDS bundle destination is allowed
+func (engine *Engine) validatePublishDestination(dest udsv1alpha2.PublishDestination, annotations map[string]string, saName string) error {
 	switch dest.Type {
-	case udsv1alpha1.BundleDestinationTypeS3:
+	case udsv1alpha2.DestinationTypeS3:
 		allowedBuckets := parseList(annotations[constants.AnnotationAllowedPublishBuckets])
 		if len(allowedBuckets) == 0 {
 			return fmt.Errorf("no allowed publish buckets defined (annotation %s is required)", constants.AnnotationAllowedPublishBuckets)
@@ -358,7 +358,7 @@ func (engine *Engine) validateBundleDestination(dest udsv1alpha1.BundleDestinati
 			return fmt.Errorf("S3 bucket %s is not allowed (allowed buckets: %v) for ServiceAccount %s",
 				dest.S3.Bucket, allowedBuckets, saName)
 		}
-	case udsv1alpha1.BundleDestinationTypeOCI:
+	case udsv1alpha2.DestinationTypeOCI:
 		allowedRegistries := parseList(annotations[constants.AnnotationAllowedPublishRegistries])
 		if len(allowedRegistries) == 0 {
 			return fmt.Errorf("no allowed publish registries defined (annotation %s is required)", constants.AnnotationAllowedPublishRegistries)
@@ -372,7 +372,7 @@ func (engine *Engine) validateBundleDestination(dest udsv1alpha1.BundleDestinati
 			return fmt.Errorf("OCI registry %s is not allowed (allowed registries: %v) for ServiceAccount %s",
 				ociRef, allowedRegistries, saName)
 		}
-	case udsv1alpha1.BundleDestinationTypeLocal:
+	case udsv1alpha2.DestinationTypeLocal:
 		// Local destinations require explicit permission (dev mode only)
 		if annotations[constants.AnnotationAllowLocalSources] != "true" {
 			return fmt.Errorf("local destinations are not allowed (set annotation %s: true for dev mode)", constants.AnnotationAllowLocalSources)
@@ -383,19 +383,7 @@ func (engine *Engine) validateBundleDestination(dest udsv1alpha1.BundleDestinati
 	return nil
 }
 
-func isBundleActionAllowed(action udsv1alpha1.BundleAction, allowed []string) bool {
-	if len(allowed) == 0 {
-		return false
-	}
-	for _, allowedAction := range allowed {
-		if string(action) == allowedAction || allowedAction == "*" {
-			return true
-		}
-	}
-	return false
-}
-
-func isBundleDeployTargetAllowed(target udsv1alpha1.BundleDeployTargetType, allowed []string) bool {
+func isBundleDeployTargetAllowed(target udsv1alpha2.DeployTargetType, allowed []string) bool {
 	if len(allowed) == 0 {
 		return false
 	}

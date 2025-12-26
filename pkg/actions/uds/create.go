@@ -3,7 +3,6 @@ package uds
 import (
 	"context"
 	"fmt"
-	"time"
 
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -12,13 +11,13 @@ import (
 	"k8s.io/klog/v2"
 
 	"github.com/kylegalloway/forge/pkg/actions/common"
-	udsv1alpha1 "github.com/kylegalloway/forge/pkg/apis/uds/v1alpha1"
+	udsv1alpha2 "github.com/kylegalloway/forge/pkg/apis/uds/v1alpha2"
 	"github.com/kylegalloway/forge/pkg/constants"
 	"github.com/kylegalloway/forge/pkg/sources"
 	"github.com/kylegalloway/forge/pkg/telemetry"
 )
 
-// CreateHandler handles Create actions for UDSBundleJob resources
+// CreateHandler handles Create actions for UDSPackageJob resources
 type CreateHandler struct {
 	kubeClient kubernetes.Interface
 	metrics    *telemetry.Metrics
@@ -34,7 +33,7 @@ func NewCreateHandler(kubeClient kubernetes.Interface, metrics *telemetry.Metric
 	}
 }
 
-// Execute performs a Create action for the given UDSBundleJob
+// Execute performs a Create action for the given UDSPackageJob
 //
 // Unlike Zarf handlers, UDS handlers don't accept an artifactPVCName parameter because
 // UDS multi-action jobs (CreatePublish, CreateDeploy, etc.) don't currently implement
@@ -44,9 +43,7 @@ func NewCreateHandler(kubeClient kubernetes.Interface, metrics *telemetry.Metric
 //
 // Future enhancement: Implement artifact PVC sharing for UDS to match Zarf's multi-action
 // efficiency (see TODO.md). This would unify the handler signatures across both systems.
-//
-//nolint:staticcheck // SA1019: UDSBundleJob v1alpha1 must be supported until v0.10.0
-func (handler *CreateHandler) Execute(ctx context.Context, bundle *udsv1alpha1.UDSBundleJob) (*common.ActionResult, error) {
+func (handler *CreateHandler) Execute(ctx context.Context, bundle *udsv1alpha2.UDSPackageJob) (*common.ActionResult, error) {
 
 	klog.InfoS("Executing UDS Bundle Create action", "name", bundle.Name, "namespace", bundle.Namespace)
 
@@ -83,7 +80,7 @@ func (handler *CreateHandler) Execute(ctx context.Context, bundle *udsv1alpha1.U
 }
 
 // createBundleJob creates a Kubernetes Job to create a UDS bundle
-func (handler *CreateHandler) createBundleJob(ctx context.Context, bundle *udsv1alpha1.UDSBundleJob) (*batchv1.Job, error) {
+func (handler *CreateHandler) createBundleJob(ctx context.Context, bundle *udsv1alpha2.UDSPackageJob) (*batchv1.Job, error) {
 	jobName := fmt.Sprintf("%s-create", bundle.Name)
 	namespace := bundle.Namespace
 
@@ -99,16 +96,8 @@ func (handler *CreateHandler) createBundleJob(ctx context.Context, bundle *udsv1
 		return nil, fmt.Errorf("failed to build init containers: %w", err)
 	}
 
-	// Determine timeout - use Create.Timeout if specified, otherwise use default
+	// Use default timeout for create operations
 	activeDeadlineSeconds := int64(constants.DefaultCreateTimeout)
-	if bundle.Spec.Create != nil && bundle.Spec.Create.Timeout != "" {
-		timeout, parseErr := time.ParseDuration(bundle.Spec.Create.Timeout)
-		if parseErr != nil {
-			klog.V(4).InfoS("Invalid create timeout format, using default", "timeout", bundle.Spec.Create.Timeout, "error", parseErr)
-		} else {
-			activeDeadlineSeconds = int64(timeout.Seconds())
-		}
-	}
 
 	// Job configuration
 	backoffLimit := int32(0) // Don't retry failed creates
@@ -124,7 +113,7 @@ func (handler *CreateHandler) createBundleJob(ctx context.Context, bundle *udsv1
 				constants.LabelAction:  "create",
 			},
 			OwnerReferences: []metav1.OwnerReference{
-				*metav1.NewControllerRef(bundle, udsv1alpha1.SchemeGroupVersion.WithKind("UDSBundleJob")),
+				*metav1.NewControllerRef(bundle, udsv1alpha2.SchemeGroupVersion.WithKind("UDSPackageJob")),
 			},
 		},
 		Spec: batchv1.JobSpec{
@@ -207,7 +196,7 @@ func (handler *CreateHandler) createBundleJob(ctx context.Context, bundle *udsv1
 }
 
 // buildUDSCommand builds the UDS CLI command for bundle creation
-func (handler *CreateHandler) buildUDSCommand(_ *udsv1alpha1.UDSBundleJob) (string, string, error) {
+func (handler *CreateHandler) buildUDSCommand(_ *udsv1alpha2.UDSPackageJob) (string, string, error) {
 	workingDir := "/workspace"
 
 	// UDS bundle create command
@@ -219,8 +208,8 @@ func (handler *CreateHandler) buildUDSCommand(_ *udsv1alpha1.UDSBundleJob) (stri
 
 // buildInitContainers creates init containers for source retrieval
 //
-//nolint:staticcheck // SA1019: UDSBundleJob v1alpha1 must be supported until v0.10.0
-func (handler *CreateHandler) buildInitContainers(bundle *udsv1alpha1.UDSBundleJob) ([]corev1.Container, error) {
+//nolint:staticcheck // SA1019: UDSPackageJob v1alpha1 must be supported until v0.10.0
+func (handler *CreateHandler) buildInitContainers(bundle *udsv1alpha2.UDSPackageJob) ([]corev1.Container, error) {
 	// Use shared source handler logic from pkg/sources
 	container, err := sources.GetUDSInitContainer(bundle)
 	if err != nil {
@@ -235,7 +224,7 @@ func (handler *CreateHandler) buildInitContainers(bundle *udsv1alpha1.UDSBundleJ
 }
 
 // buildVolumes creates volumes for the create job
-func (handler *CreateHandler) buildVolumes(bundle *udsv1alpha1.UDSBundleJob) []corev1.Volume {
+func (handler *CreateHandler) buildVolumes(bundle *udsv1alpha2.UDSPackageJob) []corev1.Volume {
 	volumes := []corev1.Volume{
 		{
 			Name: "workspace",
@@ -252,7 +241,7 @@ func (handler *CreateHandler) buildVolumes(bundle *udsv1alpha1.UDSBundleJob) []c
 	}
 
 	// Add git credentials volume if needed  # pragma: allowlist secret
-	if bundle.Spec.Source.Type == udsv1alpha1.BundleSourceTypeGit &&
+	if bundle.Spec.Source.Type == udsv1alpha2.SourceTypeGit &&
 		bundle.Spec.Source.Git != nil &&
 		bundle.Spec.Source.Git.CredentialsSecretRef != nil && // pragma: allowlist secret
 		!bundle.Spec.Source.Git.DisableCloneCredentials {
@@ -272,7 +261,7 @@ func (handler *CreateHandler) buildVolumes(bundle *udsv1alpha1.UDSBundleJob) []c
 }
 
 // getResources returns resource requirements for the bundle create job
-func (handler *CreateHandler) getResources(bundle *udsv1alpha1.UDSBundleJob) corev1.ResourceRequirements {
+func (handler *CreateHandler) getResources(bundle *udsv1alpha2.UDSPackageJob) corev1.ResourceRequirements {
 	// Use user-provided resources if specified
 	if bundle.Spec.Resources != nil {
 		return *bundle.Spec.Resources

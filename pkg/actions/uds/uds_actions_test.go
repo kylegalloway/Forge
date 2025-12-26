@@ -136,7 +136,7 @@ func TestCreateHandlerExecute(t *testing.T) {
 					},
 				},
 			},
-			wantErr: true, // OCI source not yet implemented
+			wantErr: false, // OCI source now implemented
 		},
 		{
 			name: "create with local source",

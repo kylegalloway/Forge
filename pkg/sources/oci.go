@@ -5,8 +5,15 @@ import (
 
 	"github.com/kylegalloway/forge/pkg/actions"
 	zarfv1alpha1 "github.com/kylegalloway/forge/pkg/apis/zarf/v1alpha1"
+	"github.com/kylegalloway/forge/pkg/constants"
 	corev1 "k8s.io/api/core/v1"
 )
+
+// OCISourceConfig contains configuration for OCI source pulls
+type OCISourceConfig struct {
+	Reference             string
+	CredentialsSecretName string
+}
 
 // OCISource handles OCI registry sources
 type OCISource struct{}
@@ -18,16 +25,38 @@ func (source *OCISource) GetInitContainer(pkg *zarfv1alpha1.ZarfPackageJob) (*co
 		return nil, fmt.Errorf("oci source configuration is missing")
 	}
 
-	pullCmd := fmt.Sprintf("crane export %s - | tar -xz -C /workspace", ociSource.Image)
+	// Convert to common config
+	var secretName string
+	if ociSource.CredentialsSecretRef != nil { // pragma: allowlist secret
+		secretName = ociSource.CredentialsSecretRef.Name // pragma: allowlist secret
+	}
+
+	config := &OCISourceConfig{
+		Reference:             ociSource.Image,
+		CredentialsSecretName: secretName,
+	}
+
+	// Use common builder with Zarf UID (note: OCI originally used 65532, keeping that)
+	return BuildOCIInitContainer(config, int64(constants.DefaultUDSUID))
+}
+
+// BuildOCIInitContainer creates an init container for OCI pulls
+// This is shared between Zarf and UDS sources, with configurable runAsUser
+func BuildOCIInitContainer(config *OCISourceConfig, runAsUser int64) (*corev1.Container, error) {
+	if config == nil {
+		return nil, fmt.Errorf("oci source configuration is missing")
+	}
+
+	pullCmd := fmt.Sprintf("crane export %s - | tar -xz -C %s", config.Reference, constants.VolumeMountPathWorkspace)
 
 	volumeMounts := []corev1.VolumeMount{
 		{
-			Name:      "workspace",
-			MountPath: "/workspace",
+			Name:      constants.VolumeNameWorkspace,
+			MountPath: constants.VolumeMountPathWorkspace,
 		},
 	}
 
-	if ociSource.CredentialsSecretRef != nil { // pragma: allowlist secret
+	if config.CredentialsSecretName != "" { // pragma: allowlist secret
 		volumeMounts = append(volumeMounts, corev1.VolumeMount{
 			Name:      "source-docker-config",
 			MountPath: "/home/nonroot/.docker",
@@ -43,7 +72,7 @@ func (source *OCISource) GetInitContainer(pkg *zarfv1alpha1.ZarfPackageJob) (*co
 		VolumeMounts: volumeMounts,
 		SecurityContext: &corev1.SecurityContext{
 			RunAsNonRoot:             actions.Ptr(true),
-			RunAsUser:                actions.Ptr(int64(65532)),
+			RunAsUser:                actions.Ptr(runAsUser),
 			AllowPrivilegeEscalation: actions.Ptr(false),
 			Capabilities: &corev1.Capabilities{
 				Drop: []corev1.Capability{"ALL"},

@@ -4,32 +4,13 @@
 
 ## 🔴 Critical Issues (Security/Correctness)
 
-### 1. UDS Policy Validation Not Implemented
-
-**Location**: `pkg/controller/uds_controller.go:217`
-**Issue**: `validatePolicy()` always returns `nil` - UDS bundles bypass all policy enforcement while Zarf packages are validated.
-**Impact**: Security gap - UDS operations not subject to RBAC controls via ServiceAccount annotations.
-**Action**: Implement proper policy validation using the same engine as Zarf controller.
-
-### 2. ServiceAccountName Missing in Zarf Build/Publish Jobs
-
-**Location**: `pkg/actions/zarf/build.go`, `pkg/actions/zarf/publish.go`
-**Issue**: Deploy handler sets `job.Spec.Template.Spec.ServiceAccountName` correctly, but Build and Publish handlers don't.
-**Impact**: RBAC controls bypassed - jobs run under `default` service account instead of specified one.
-**Action**: Add `job.Spec.Template.Spec.ServiceAccountName = pkg.Spec.ServiceAccountName` to both handlers.
-
-### 3. UDS Source Adapters Incomplete (S3, OCI)
-
-**Location**: `pkg/sources/uds_adapters.go:40-52`
-**Issue**: S3 and OCI source handlers return `nil, nil` (silent failure) with TODO comments.
-**Impact**: Jobs silently fail at runtime instead of failing fast at creation.
-**Action**: Either implement adapters or return proper errors (don't silently ignore).
+**All critical issues resolved! 🎉**
 
 ---
 
 ## 🟡 High Priority (Consistency/Maintainability)
 
-### 4. Handler Signature Mismatch Between Zarf and UDS
+### 1. Handler Signature Mismatch Between Zarf and UDS
 
 **Location**: `pkg/actions/zarf/*.go` vs `pkg/actions/uds/*.go`
 **Issue**:
@@ -40,44 +21,11 @@
 **Impact**: Makes generic handler interfaces impossible, increases maintenance burden.
 **Action**: Unify signatures or document architectural decision for divergence.
 
-### 5. Controller Watch Reconnection Logic Divergence
-
-**Location**: `pkg/controller/controller.go` vs `pkg/controller/uds_controller.go`
-**Issue**:
-
-- Zarf: No sleep on watcher reconnect (tight loop risk)
-- UDS: 5-second sleep on watch errors (more resilient)
-
-**Impact**: Zarf controller could hammer API server during outages.
-**Action**: Add backoff/sleep to Zarf controller watch loop for consistency.
-
-### 6. Missing Package Documentation in Constants
-
-**Location**: `pkg/constants/*.go` (4 files)
-**Issue**: No package-level godoc comments in:
-
-- `actions.go`
-- `api.go`
-- `labels.go`
-- `config.go`
-
-**Action**: Add package-level documentation explaining purpose and usage patterns.
-
-### 7. Magic Strings Not Using Constants
-
-**Location**: Throughout codebase (job creation, labels, volume names)
-**Issue**: Hardcoded strings like `"workspace"`, `"output"`, `"artifacts"`, `"zarf-build"` instead of constants.
-**Action**: Create constants for:
-
-- Volume and mount names
-- Container names
-- Job label selectors (`"app=forge"`, `"app=forge-uds"`)
-
 ---
 
 ## 🟢 Medium Priority (Code Quality)
 
-### 8. Significant Code Duplication in Action Handlers
+### 2. Significant Code Duplication in Action Handlers
 
 **Location**: `pkg/actions/zarf/*.go` and `pkg/actions/uds/*.go`
 **Issue**: ~2000 lines across 6 handlers share only 610 lines via `pkg/actions/common/`.
@@ -90,7 +38,7 @@
 
 **Action**: Consolidate Job building logic - expand JobBuilder pattern to reduce duplication.
 
-### 9. v1alpha1 → v1alpha2 Migration Incomplete
+### 3. v1alpha1 → v1alpha2 Migration Incomplete
 
 **Location**: `pkg/apis/uds/v1alpha2/`, CRD definitions, controllers
 **Missing pieces**:
@@ -102,7 +50,7 @@
 
 **Action**: Implement full migration path or deprecate v1alpha1 completely.
 
-### 10. Examples Use Deprecated v1alpha1 API
+### 4. Examples Use Deprecated v1alpha1 API
 
 **Location**: `examples/samples/uds/`
 **Issue**: Most examples still use `UDSBundleJob` (v1alpha1) instead of `UDSPackageJob` (v1alpha2).
@@ -114,13 +62,7 @@
 
 **Action**: Update examples to use v1alpha2 as primary, keep v1alpha1 as legacy reference.
 
-### 11. Inconsistent Error Handling in Source Adapters
-
-**Location**: `pkg/sources/uds_adapters.go`
-**Issue**: Unimplemented sources return `nil, nil`; unknown sources return errors. Inconsistent pattern.
-**Action**: Standardize error handling - all unsupported/unimplemented sources should return errors.
-
-### 12. Reconciliation Methods Lack Inline Comments
+### 5. Reconciliation Methods Lack Inline Comments
 
 **Location**: `pkg/controller/controller.go:183-277`, `pkg/controller/uds_controller.go:186-260`
 **Issue**: 95-line reconciliation methods with minimal documentation explaining:
@@ -135,7 +77,7 @@
 
 ## 📊 Testing Gaps
 
-### 13. Multi-Action Job Chaining Not Comprehensively Tested
+### 6. Multi-Action Job Chaining Not Comprehensively Tested
 
 **Location**: Test files for controllers and handlers
 **Issue**: Complex orchestration (Build → Publish → Deploy) requires Job completion monitoring and status tracking, but test coverage is minimal.
@@ -145,7 +87,7 @@
 - BuildDeploy action
 - Full BuildPublishDeploy chain
 
-### 14. Error Path Coverage Limited
+### 7. Error Path Coverage Limited
 
 **Location**: `pkg/actions/zarf/*_test.go`, `pkg/actions/uds/*_test.go`
 **Missing tests**:
@@ -161,7 +103,7 @@
 
 ## 📝 Documentation Issues
 
-### 15. README References Non-Existent Documentation Files
+### 8. README References Non-Existent Documentation Files
 
 **Location**: `README.md`
 **Issue**: References `docs/development/SERVICEACCOUNT_REFERENCE.md` which doesn't exist.
@@ -171,7 +113,7 @@
 
 ## 🔧 Tool & Dependency Updates
 
-### 17. Create Tool Version Tracking Document
+### 9. Create Tool Version Tracking Document
 
 **Action**: Create `docs/development/TOOL_VERSIONS.md` to document all tools and their current/target versions.
 **Should include**:
@@ -186,7 +128,7 @@
 
 **Format**: Table with columns: Tool, Current Version, Latest Stable, EOL Date, Update Priority
 
-### 18. Update Development Tools to Latest Stable Versions
+### 10. Update Development Tools to Latest Stable Versions
 
 **Research needed**: Use [endoflife.date](https://endoflife.date/) and/or direct tool documentation to identify latest stable versions.
 
@@ -209,7 +151,7 @@
 
 **Strategy**: Target latest stable/LTS versions, avoid bleeding-edge releases. Prioritize security-supported versions.
 
-### 19. Update GitHub Actions to Latest Stable
+### 11. Update GitHub Actions to Latest Stable
 
 **Action**: Review `.github/workflows/*.yaml` and update action versions.
 
@@ -222,7 +164,7 @@
 
 **Reference**: https://github.com/actions/* for official actions
 
-### 20. Update Go Dependencies
+### 12. Update Go Dependencies
 
 **Action**: Review and update major Go modules in `go.mod`.
 
@@ -246,7 +188,7 @@
 
 ## Architecture Observations (For Consideration)
 
-### 16. Controller Complexity Growing (Optional Refactor)
+### Controller Complexity Growing (Optional Refactor)
 
 **Current state**:
 
@@ -269,6 +211,12 @@ The following are working well:
 - ✅ Attestation system fully implemented with comprehensive tests
 - ✅ Clear separation between examples and tests
 - ✅ Good dependency injection throughout
+- ✅ UDS Policy validation fully implemented
+- ✅ ServiceAccount enforcement in all Zarf handlers
+- ✅ UDS S3 and OCI sources implemented with shared builder pattern
+- ✅ Controller watch loops with consistent retry logic
+- ✅ Constants package with comprehensive documentation
+- ✅ Magic strings replaced with typed constants throughout
 
 ---
 

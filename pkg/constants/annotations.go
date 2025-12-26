@@ -1,4 +1,25 @@
-// Package constants defines shared constants used across Forge components.
+// Package constants defines ServiceAccount annotation keys for policy enforcement.
+//
+// These annotations are applied to ServiceAccounts and validated by:
+//   - Admission webhooks during ZarfPackageJob/UDSPackageJob creation
+//   - Controllers before executing Job operations
+//
+// The policy engine (pkg/policy) uses these annotations to enforce RBAC-like controls:
+//   - Which actions are permitted (build, publish, deploy, create)
+//   - Which source repositories can be cloned (Git URLs, S3 buckets, OCI registries)
+//   - Which destination registries can receive published artifacts
+//   - Which Kubernetes clusters can be deployment targets
+//
+// Example ServiceAccount with policy annotations:
+//
+//	apiVersion: v1
+//	kind: ServiceAccount
+//	metadata:
+//	  name: zarf-builder
+//	  annotations:
+//	    forge.dev/allowed-actions: "build,publish"
+//	    forge.dev/allowed-source-repos: "https://github.com/myorg/*"
+//	    forge.dev/allowed-publish-registries: "ghcr.io/myorg/*"
 package constants
 
 const (

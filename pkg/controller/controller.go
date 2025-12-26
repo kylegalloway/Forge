@@ -99,7 +99,8 @@ func (ctrl *Controller) Run(ctx context.Context) error {
 
 		case event, ok := <-watcher.ResultChan():
 			if !ok {
-				klog.Warning("Watch channel closed, restarting watcher")
+				klog.Warning("Watch channel closed, restarting watcher in 5 seconds")
+				time.Sleep(5 * time.Second)
 				// Recreate watcher
 				var watchErr error
 				watcher, watchErr = ctrl.dynamicClient.Resource(constants.ZarfPackageJobGVR).Namespace(ctrl.namespace).Watch(ctx, metav1.ListOptions{})

@@ -1,3 +1,18 @@
+// Package constants provides label keys and values for Kubernetes resource identification.
+//
+// Labels are used to:
+//   - Identify Jobs and Pods created by Forge controllers
+//   - Filter resources during Job monitoring and cleanup
+//   - Distinguish between Zarf and UDS operations
+//   - Track package names and action types in metrics
+//
+// Example usage:
+//
+//	labels := map[string]string{
+//	    constants.LabelApp:     constants.LabelAppValueZarf,
+//	    constants.LabelPackage: pkg.Name,
+//	    constants.LabelAction:  constants.ActionBuild,
+//	}
 package constants
 
 const (

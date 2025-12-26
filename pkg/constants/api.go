@@ -1,3 +1,13 @@
+// Package constants defines API group, version, and resource identifiers for Forge CRDs.
+//
+// These constants are used by:
+//   - Dynamic Kubernetes clients for resource discovery
+//   - Controllers to watch and reconcile custom resources
+//   - Webhooks for admission control
+//
+// GroupVersionResource (GVR) values are constructed from these constants and used
+// throughout the codebase to interact with ZarfPackageJob and UDSBundleJob resources
+// via the Kubernetes dynamic client.
 package constants
 
 import "k8s.io/apimachinery/pkg/runtime/schema"

@@ -39,6 +39,13 @@ func NewBuildHandler(kubeClient kubernetes.Interface, metrics *telemetry.Metrics
 }
 
 // Execute performs a Build action for the given ZarfPackageJob
+//
+// The artifactPVCName parameter enables multi-action job support (BuildPublish, BuildDeploy, etc.)
+// by providing a shared PersistentVolumeClaim for artifacts. When set, build outputs are stored
+// in the PVC so subsequent actions (Publish/Deploy) can access them without re-building.
+//
+// This differs from UDS handlers which don't accept artifactPVCName because UDS multi-action
+// jobs don't currently implement artifact sharing - each action runs independently.
 func (handler *BuildHandler) Execute(ctx context.Context, pkg *zarfv1alpha1.ZarfPackageJob, artifactPVCName string) (*common.ActionResult, error) {
 
 	klog.InfoS("Executing Zarf Package Build action", "name", pkg.Name, "namespace", pkg.Namespace, "artifactPVC", artifactPVCName)

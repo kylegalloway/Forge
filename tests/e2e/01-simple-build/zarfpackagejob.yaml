@@ -1,0 +1,20 @@
+apiVersion: forge.dev/v1alpha1
+kind: ZarfPackageJob
+metadata:
+  name: test-simple-build
+  namespace: default
+  labels:
+    app: forge-test
+    test: e2e
+spec:
+  serviceAccountName: test-builder
+  action: Build
+  source:
+    type: Git
+    git:
+      url: https://github.com/defenseunicorns/zarf-hello-world
+      ref: main
+  build:
+    # Use devMode to avoid needing external storage
+    # Package will be stored in /workspace/package.tar.zst
+    devMode: true

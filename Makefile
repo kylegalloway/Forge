@@ -78,6 +78,39 @@ test-validation: ## Run YAML validation tests.
 test-unit: ## Run unit tests only (no integration tests).
 	go test ./pkg/... -short
 
+.PHONY: e2e-test
+e2e-test: ## Run E2E tests (creates Kind cluster, deploys Forge, runs tests, cleans up).
+	@echo "Creating Kind cluster..."
+	$(MAKE) kind-create
+	@echo "Building and deploying Forge..."
+	$(MAKE) kind-deploy
+	@echo "Waiting for controller to be ready..."
+	sleep 10
+	@echo "Running E2E tests..."
+	cd tests/e2e && ./run-all-tests.sh
+	@echo "Cleaning up Kind cluster..."
+	$(MAKE) kind-delete
+	@echo "E2E tests complete!"
+
+.PHONY: e2e-test-keep
+e2e-test-keep: ## Run E2E tests and keep Kind cluster for debugging.
+	@echo "Creating Kind cluster..."
+	$(MAKE) kind-create
+	@echo "Building and deploying Forge..."
+	$(MAKE) kind-deploy
+	@echo "Waiting for controller to be ready..."
+	sleep 10
+	@echo "Running E2E tests..."
+	cd tests/e2e && ./run-all-tests.sh
+	@echo "E2E tests complete! Kind cluster is still running."
+	@echo "To cleanup: make kind-delete"
+
+.PHONY: e2e-test-existing
+e2e-test-existing: ## Run E2E tests against existing cluster (assumes Forge is already deployed).
+	@echo "Running E2E tests against existing cluster..."
+	cd tests/e2e && ./run-all-tests.sh
+	@echo "E2E tests complete!"
+
 .PHONY: tidy
 tidy: ## Run go mod tidy
 	go mod tidy

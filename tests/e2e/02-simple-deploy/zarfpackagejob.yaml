@@ -1,0 +1,22 @@
+apiVersion: forge.dev/v1alpha1
+kind: ZarfPackageJob
+metadata:
+  name: test-simple-deploy
+  namespace: default
+  labels:
+    app: forge-test
+    test: e2e
+spec:
+  serviceAccountName: test-deployer
+  action: Deploy
+  source:
+    # NOTE: Replace with actual public OCI package if available
+    # For now, using Git source + devMode for testing
+    type: Git
+    git:
+      url: https://github.com/defenseunicorns/zarf-hello-world
+      ref: main
+  deploy:
+    target: InCluster
+    # Store temporary build artifacts locally
+    devMode: true

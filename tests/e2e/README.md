@@ -190,3 +190,12 @@ kubectl apply -f .
 - Criterion 1
 - Criterion 2
 ```
+
+## Related Examples
+
+For more complex reference examples showing real-world workflows:
+
+- **[Zarf Package Examples](../../examples/samples/zarf/)** - Git→OCI, Local→S3, BuildDeploy workflows
+- **[UDS Bundle Examples](../../examples/samples/uds/)** - UDS bundle creation and deployment
+- **[ServiceAccount Policies](../../examples/service-accounts/)** - RBAC configuration examples
+- **[UDS Policies](../../examples/policies/uds/)** - UDS-specific policy examples

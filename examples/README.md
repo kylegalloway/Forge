@@ -9,9 +9,32 @@ examples/
 ├── samples/              # Complete workflow examples
 │   ├── zarf/            # ZarfPackageJob examples
 │   └── uds/             # UDSBundleJob examples
-├── service-accounts/     # ServiceAccount policy examples
-└── test-packages/        # Minimal packages for testing
+├── policies/            # Policy examples by type
+│   └── uds/             # UDS-specific policies
+└── service-accounts/     # ServiceAccount policy examples
 ```
+
+## Examples vs Tests
+
+This directory contains **reference material** for users to learn Forge workflows. For **automated testing**, see:
+
+**`examples/`** - Reference examples (this directory)
+- Complex workflows with real-world packages
+- Comprehensive documentation and prerequisites
+- Includes credentials setup, monitoring, troubleshooting
+- Educational value for understanding Forge capabilities
+
+**[`tests/e2e/`](../tests/e2e/)** - Automated functional tests
+- Simple, focused tests for CI/CD
+- Work on both Kind and production clusters
+- Used by `make e2e-test`
+- No external dependencies (public repos only)
+
+| Workflow Type | Where to Find It | Purpose |
+|---------------|------------------|---------|
+| Complex real-world workflows | `examples/samples/` | Learning and customization |
+| Simple automated tests | `tests/e2e/` | CI/CD and verification |
+| Policy configurations | `examples/policies/`, `examples/service-accounts/` | RBAC reference |
 
 ## Workflow Examples
 
@@ -64,16 +87,6 @@ The [service-accounts/](service-accounts/) directory contains policy configurati
   - Ideal for Kind local development
 
 See the [ServiceAccount Reference](../docs/development/SERVICEACCOUNT_REFERENCE.md) for complete policy documentation.
-
-## Test Packages
-
-The [test-packages/](test-packages/) directory contains minimal Zarf packages for testing:
-
-- **[hello-forge/](test-packages/hello-forge/)**
-  - Minimal Zarf package (ConfigMap only)
-  - Fast build times for testing
-  - Ideal for resource-constrained environments
-  - Used in CI/CD pipelines
 
 ## Quick Start
 
@@ -129,22 +142,32 @@ See [docs/getting-started/KIND_SETUP.md](../docs/getting-started/KIND_SETUP.md) 
 - **[KIND Setup](../docs/getting-started/KIND_SETUP.md)** - Local testing with Kind
 - **[Troubleshooting](../docs/operations/TROUBLESHOOTING.md)** - Common issues and solutions
 
-## Example Coverage
+## Workflow Coverage
 
-| Workflow | Zarf | UDS | Notes |
-|----------|------|-----|-------|
-| Git → OCI | ✅ | ✅ | Most common workflow |
-| Local → S3 | ✅ | ✅ | Development/testing |
-| Build only | ⏸️ | ⏸️ | Planned |
-| Deploy only | ⏸️ | ⏸️ | Planned |
-| Full pipeline | ⏸️ | ⏸️ | BuildPublishDeploy |
+| Workflow | Examples | Tests | Notes |
+|----------|----------|-------|-------|
+| Git → OCI | ✅ Zarf, UDS | ⏸️ | Reference examples (samples/) |
+| Local → S3 | ✅ Zarf, UDS | ⏸️ | Reference examples (samples/) |
+| BuildDeploy | ✅ Zarf, UDS | ⏸️ | Reference examples (samples/) |
+| Build only | ⏸️ | ✅ | Automated test (tests/e2e/01) |
+| Deploy only | ⏸️ | ✅ | Automated test (tests/e2e/02) |
+| Health check | ⏸️ | ✅ | Automated test (tests/e2e/03) |
+| Full pipeline | ⏸️ | ⏸️ | BuildPublishDeploy (planned) |
 
 ## Contributing Examples
 
 When adding new examples:
 
-1. Create numbered directory (e.g., `03-deploy-only-oci/`)
+1. Create numbered directory (e.g., `04-deploy-only-oci/`)
 2. Include complete YAML files (resource + ServiceAccount + Secret)
 3. Add descriptive README with workflow explanation
 4. Update this main README with the new example
 5. Test in Kind before committing
+
+## Related Documentation
+
+- **[User Guide](../docs/getting-started/USER_GUIDE.md)** - Complete usage guide
+- **[Automated Tests](../tests/e2e/)** - Simple tests for CI/CD
+- **[ServiceAccount Reference](../docs/development/SERVICEACCOUNT_REFERENCE.md)** - Policy configuration
+- **[KIND Setup](../docs/getting-started/KIND_SETUP.md)** - Local testing with Kind
+- **[Troubleshooting](../docs/operations/TROUBLESHOOTING.md)** - Common issues and solutions

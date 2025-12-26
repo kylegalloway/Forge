@@ -25,9 +25,9 @@ jobs:
           cache: true
 
       - name: Run golangci-lint
-        uses: golangci/golangci-lint-action@v6
+        uses: golangci/golangci-lint-action@v9
         with:
-          version: v1.64.8
+          version: v2.7.2
           args: --config=.config/golangci.yaml --timeout=10m
 
       - name: Run go fmt

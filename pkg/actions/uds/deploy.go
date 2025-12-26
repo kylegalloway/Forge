@@ -125,14 +125,14 @@ func (handler *DeployHandler) createDeployJob(ctx context.Context, bundle *udsv1
 					ServiceAccountName: bundle.Spec.ServiceAccountName,
 					Containers: []corev1.Container{
 						{
-							Name:    "uds-deploy",
+							Name:    constants.ContainerNameUDSDeploy,
 							Image:   constants.UDSCLIImage,
 							Command: []string{"/bin/sh", "-c"},
 							Args:    []string{udsCmd},
 							VolumeMounts: []corev1.VolumeMount{
 								{
-									Name:      "workspace",
-									MountPath: "/workspace",
+									Name:      constants.VolumeNameWorkspace,
+									MountPath: constants.VolumeMountPathWorkspace,
 								},
 							},
 							SecurityContext: &corev1.SecurityContext{
@@ -152,7 +152,7 @@ func (handler *DeployHandler) createDeployJob(ctx context.Context, bundle *udsv1
 					},
 					Volumes: []corev1.Volume{
 						{
-							Name: "workspace",
+							Name: constants.VolumeNameWorkspace,
 							VolumeSource: corev1.VolumeSource{
 								EmptyDir: &corev1.EmptyDirVolumeSource{},
 							},
@@ -197,7 +197,7 @@ func (handler *DeployHandler) buildDeployCommand(bundle *udsv1alpha2.UDSPackageJ
 	deploy := bundle.Spec.Deploy
 
 	// Base command
-	cmd := "uds deploy /workspace/uds-bundle-*.tar.zst --confirm"
+	cmd := "uds deploy " + constants.VolumeMountPathWorkspace + "/uds-bundle-*.tar.zst --confirm"
 
 	// Add namespace if specified
 	if deploy.Namespace != "" {

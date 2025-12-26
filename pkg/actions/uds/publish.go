@@ -120,14 +120,14 @@ func (handler *PublishHandler) createPublishJob(ctx context.Context, bundle *uds
 					ServiceAccountName: bundle.Spec.ServiceAccountName,
 					Containers: []corev1.Container{
 						{
-							Name:    "uds-publish",
+							Name:    constants.ContainerNameUDSPublish,
 							Image:   constants.UDSCLIImage,
 							Command: []string{"/bin/sh", "-c"},
 							Args:    []string{udsCmd},
 							VolumeMounts: []corev1.VolumeMount{
 								{
-									Name:      "workspace",
-									MountPath: "/workspace",
+									Name:      constants.VolumeNameWorkspace,
+									MountPath: constants.VolumeMountPathWorkspace,
 								},
 							},
 							SecurityContext: &corev1.SecurityContext{
@@ -147,7 +147,7 @@ func (handler *PublishHandler) createPublishJob(ctx context.Context, bundle *uds
 					},
 					Volumes: []corev1.Volume{
 						{
-							Name: "workspace",
+							Name: constants.VolumeNameWorkspace,
 							VolumeSource: corev1.VolumeSource{
 								EmptyDir: &corev1.EmptyDirVolumeSource{},
 							},
@@ -196,7 +196,7 @@ func (handler *PublishHandler) buildPublishCommand(bundle *udsv1alpha2.UDSPackag
 		}
 		// UDS publish command for OCI registry
 		ociRef := fmt.Sprintf("%s/%s:%s", dest.OCI.Registry, dest.OCI.Repository, dest.OCI.Tag)
-		return fmt.Sprintf("uds publish /workspace/uds-bundle-*.tar.zst %s", ociRef), nil
+		return fmt.Sprintf("uds publish "+constants.VolumeMountPathWorkspace+"/uds-bundle-*.tar.zst %s", ociRef), nil
 
 	case udsv1alpha2.DestinationTypeS3:
 		if dest.S3 == nil {
@@ -204,11 +204,11 @@ func (handler *PublishHandler) buildPublishCommand(bundle *udsv1alpha2.UDSPackag
 		}
 		// For S3, we'll use AWS CLI to upload
 		s3Path := fmt.Sprintf("s3://%s/%s", dest.S3.Bucket, dest.S3.Key)
-		return fmt.Sprintf("aws s3 cp /workspace/uds-bundle-*.tar.zst %s", s3Path), nil
+		return fmt.Sprintf("aws s3 cp "+constants.VolumeMountPathWorkspace+"/uds-bundle-*.tar.zst %s", s3Path), nil
 
 	case udsv1alpha2.DestinationTypeLocal:
 		// Local destination - just echo success
-		return "echo 'Bundle artifact stored locally in /workspace'", nil
+		return "echo 'Bundle artifact stored locally in " + constants.VolumeMountPathWorkspace + "'", nil
 
 	default:
 		return "", fmt.Errorf("unsupported destination type: %s", dest.Type)

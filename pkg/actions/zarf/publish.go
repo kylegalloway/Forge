@@ -80,7 +80,7 @@ func (handler *PublishHandler) createPublishJob(ctx context.Context, pkg *zarfv1
 	// If multi-action job, update artifactPath to use glob pattern for PVC location
 	if artifactPVCName != "" {
 		// Use glob pattern to find the zarf package created by build job
-		artifactPath = "/artifacts/*.tar.zst"
+		artifactPath = constants.VolumeMountPathArtifacts + "/*.tar.zst"
 	}
 
 	// Create destination handler
@@ -148,15 +148,15 @@ func (handler *PublishHandler) createPublishJob(ctx context.Context, pkg *zarfv1
 					InitContainers:     initContainers,
 					Containers: []corev1.Container{
 						{
-							Name:       "zarf-publish",
+							Name:       constants.ContainerNameZarfPublish,
 							Image:      constants.ZarfCLIImage,
 							Command:    []string{"/bin/sh", "-c"},
 							Args:       []string{publishCmd},
-							WorkingDir: "/workspace",
+							WorkingDir: constants.VolumeMountPathWorkspace,
 							VolumeMounts: []corev1.VolumeMount{
 								{
-									Name:      "workspace",
-									MountPath: "/workspace",
+									Name:      constants.VolumeNameWorkspace,
+									MountPath: constants.VolumeMountPathWorkspace,
 								},
 							},
 							SecurityContext: &corev1.SecurityContext{
@@ -175,7 +175,7 @@ func (handler *PublishHandler) createPublishJob(ctx context.Context, pkg *zarfv1
 					},
 					Volumes: []corev1.Volume{
 						{
-							Name: "workspace",
+							Name: constants.VolumeNameWorkspace,
 							VolumeSource: corev1.VolumeSource{
 								EmptyDir: &corev1.EmptyDirVolumeSource{},
 							},
@@ -197,7 +197,7 @@ func (handler *PublishHandler) createPublishJob(ctx context.Context, pkg *zarfv1
 	// Add artifact PVC if multi-action job
 	if artifactPVCName != "" {
 		artifactVolume := corev1.Volume{
-			Name: "artifacts",
+			Name: constants.VolumeNameArtifacts,
 			VolumeSource: corev1.VolumeSource{
 				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
 					ClaimName: artifactPVCName,
@@ -205,8 +205,8 @@ func (handler *PublishHandler) createPublishJob(ctx context.Context, pkg *zarfv1
 			},
 		}
 		artifactMount := corev1.VolumeMount{
-			Name:      "artifacts",
-			MountPath: "/artifacts",
+			Name:      constants.VolumeNameArtifacts,
+			MountPath: constants.VolumeMountPathArtifacts,
 		}
 		job.Spec.Template.Spec.Volumes = append(job.Spec.Template.Spec.Volumes, artifactVolume)
 		job.Spec.Template.Spec.Containers[0].VolumeMounts = append(

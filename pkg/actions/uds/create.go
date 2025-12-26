@@ -139,19 +139,19 @@ func (handler *CreateHandler) createBundleJob(ctx context.Context, bundle *udsv1
 					InitContainers:     initContainers,
 					Containers: []corev1.Container{
 						{
-							Name:       "uds-create",
+							Name:       constants.ContainerNameUDSCreate,
 							Image:      constants.UDSCLIImage,
 							Command:    []string{"/bin/sh", "-c"},
 							Args:       []string{udsCmd},
 							WorkingDir: workingDir,
 							VolumeMounts: []corev1.VolumeMount{
 								{
-									Name:      "workspace",
-									MountPath: "/workspace",
+									Name:      constants.VolumeNameWorkspace,
+									MountPath: constants.VolumeMountPathWorkspace,
 								},
 								{
-									Name:      "output",
-									MountPath: "/output",
+									Name:      constants.VolumeNameOutput,
+									MountPath: constants.VolumeMountPathOutput,
 								},
 							},
 							SecurityContext: &corev1.SecurityContext{
@@ -201,11 +201,11 @@ func (handler *CreateHandler) createBundleJob(ctx context.Context, bundle *udsv1
 
 // buildUDSCommand builds the UDS CLI command for bundle creation
 func (handler *CreateHandler) buildUDSCommand(_ *udsv1alpha2.UDSPackageJob) (string, string, error) {
-	workingDir := "/workspace"
+	workingDir := constants.VolumeMountPathWorkspace
 
 	// UDS bundle create command
 	// Assumes uds-bundle.yaml is in the workspace root
-	cmd := "uds create . --confirm --output-directory /output"
+	cmd := "uds create . --confirm --output-directory " + constants.VolumeMountPathOutput
 
 	return cmd, workingDir, nil
 }
@@ -231,13 +231,13 @@ func (handler *CreateHandler) buildInitContainers(bundle *udsv1alpha2.UDSPackage
 func (handler *CreateHandler) buildVolumes(bundle *udsv1alpha2.UDSPackageJob) []corev1.Volume {
 	volumes := []corev1.Volume{
 		{
-			Name: "workspace",
+			Name: constants.VolumeNameWorkspace,
 			VolumeSource: corev1.VolumeSource{
 				EmptyDir: &corev1.EmptyDirVolumeSource{},
 			},
 		},
 		{
-			Name: "output",
+			Name: constants.VolumeNameOutput,
 			VolumeSource: corev1.VolumeSource{
 				EmptyDir: &corev1.EmptyDirVolumeSource{},
 			},

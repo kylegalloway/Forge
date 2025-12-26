@@ -143,19 +143,19 @@ func (handler *BuildHandler) createBuildJob(ctx context.Context, pkg *zarfv1alph
 					InitContainers:     initContainers,
 					Containers: []corev1.Container{
 						{
-							Name:       "zarf-build",
+							Name:       constants.ContainerNameZarfBuild,
 							Image:      constants.ZarfCLIImage,
 							Command:    []string{"/bin/sh", "-c"},
 							Args:       []string{zarfCmd},
 							WorkingDir: workingDir,
 							VolumeMounts: []corev1.VolumeMount{
 								{
-									Name:      "workspace",
-									MountPath: "/workspace",
+									Name:      constants.VolumeNameWorkspace,
+									MountPath: constants.VolumeMountPathWorkspace,
 								},
 								{
-									Name:      "output",
-									MountPath: "/output",
+									Name:      constants.VolumeNameOutput,
+									MountPath: constants.VolumeMountPathOutput,
 								},
 							},
 							SecurityContext: &corev1.SecurityContext{
@@ -174,13 +174,13 @@ func (handler *BuildHandler) createBuildJob(ctx context.Context, pkg *zarfv1alph
 					},
 					Volumes: []corev1.Volume{
 						{
-							Name: "workspace",
+							Name: constants.VolumeNameWorkspace,
 							VolumeSource: corev1.VolumeSource{
 								EmptyDir: &corev1.EmptyDirVolumeSource{},
 							},
 						},
 						{
-							Name: "output",
+							Name: constants.VolumeNameOutput,
 							VolumeSource: corev1.VolumeSource{
 								EmptyDir: &corev1.EmptyDirVolumeSource{},
 							},
@@ -206,7 +206,7 @@ func (handler *BuildHandler) createBuildJob(ctx context.Context, pkg *zarfv1alph
 			return nil, fmt.Errorf("job has no containers, cannot add artifact PVC volume")
 		}
 		artifactVolume := corev1.Volume{
-			Name: "artifacts",
+			Name: constants.VolumeNameArtifacts,
 			VolumeSource: corev1.VolumeSource{
 				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
 					ClaimName: artifactPVCName,
@@ -214,8 +214,8 @@ func (handler *BuildHandler) createBuildJob(ctx context.Context, pkg *zarfv1alph
 			},
 		}
 		artifactMount := corev1.VolumeMount{
-			Name:      "artifacts",
-			MountPath: "/artifacts",
+			Name:      constants.VolumeNameArtifacts,
+			MountPath: constants.VolumeMountPathArtifacts,
 		}
 		job.Spec.Template.Spec.Volumes = append(job.Spec.Template.Spec.Volumes, artifactVolume)
 		job.Spec.Template.Spec.Containers[0].VolumeMounts = append(
@@ -261,17 +261,17 @@ func (handler *BuildHandler) createBuildJob(ctx context.Context, pkg *zarfv1alph
 
 // buildZarfCommand builds the zarf CLI command based on package source
 func (handler *BuildHandler) buildZarfCommand(_ *zarfv1alpha1.ZarfPackageJob, artifactPVCName string) (string, string) {
-	workingDir := "/workspace"
+	workingDir := constants.VolumeMountPathWorkspace
 
 	// Build command - output to /artifacts if PVC exists, otherwise /output
 	var cmd string
 	if artifactPVCName != "" {
 		// Multi-action job: output to shared PVC directory
 		// Zarf will generate filename based on package metadata
-		cmd = "zarf package create . --confirm --output-directory /artifacts"
+		cmd = "zarf package create . --confirm --output-directory " + constants.VolumeMountPathArtifacts
 	} else {
 		// Standalone build: output to EmptyDir
-		cmd = "zarf package create . --confirm --output-directory /output"
+		cmd = "zarf package create . --confirm --output-directory " + constants.VolumeMountPathOutput
 	}
 
 	return cmd, workingDir

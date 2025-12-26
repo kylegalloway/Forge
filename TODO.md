@@ -50,19 +50,7 @@
 
 **Action**: Implement full migration path or deprecate v1alpha1 completely.
 
-### 4. Examples Use Deprecated v1alpha1 API
-
-**Location**: `examples/samples/uds/`
-**Issue**: Most examples still use `UDSBundleJob` (v1alpha1) instead of `UDSPackageJob` (v1alpha2).
-**Files**:
-
-- `01-git-to-oci/udsbundlejob.yaml`
-- `02-local-to-s3/udsbundlejob.yaml`
-- `03-git-build-deploy/udsbundlejob.yaml`
-
-**Action**: Update examples to use v1alpha2 as primary, keep v1alpha1 as legacy reference.
-
-### 5. Reconciliation Methods Lack Inline Comments
+### 4. Reconciliation Methods Lack Inline Comments
 
 **Location**: `pkg/controller/controller.go:183-277`, `pkg/controller/uds_controller.go:186-260`
 **Issue**: 95-line reconciliation methods with minimal documentation explaining:
@@ -77,7 +65,7 @@
 
 ## 📊 Testing Gaps
 
-### 6. Multi-Action Job Chaining Not Comprehensively Tested
+### 5. Multi-Action Job Chaining Not Comprehensively Tested
 
 **Location**: Test files for controllers and handlers
 **Issue**: Complex orchestration (Build → Publish → Deploy) requires Job completion monitoring and status tracking, but test coverage is minimal.
@@ -87,7 +75,7 @@
 - BuildDeploy action
 - Full BuildPublishDeploy chain
 
-### 7. Error Path Coverage Limited
+### 6. Error Path Coverage Limited
 
 **Location**: `pkg/actions/zarf/*_test.go`, `pkg/actions/uds/*_test.go`
 **Missing tests**:
@@ -101,19 +89,9 @@
 
 ---
 
-## 📝 Documentation Issues
-
-### 8. README References Non-Existent Documentation Files
-
-**Location**: `README.md`
-**Issue**: References `docs/development/SERVICEACCOUNT_REFERENCE.md` which doesn't exist.
-**Action**: Update README to reference correct documentation structure or create missing file.
-
----
-
 ## 🔧 Tool & Dependency Updates
 
-### 9. Create Tool Version Tracking Document
+### 7. Create Tool Version Tracking Document
 
 **Action**: Create `docs/development/TOOL_VERSIONS.md` to document all tools and their current/target versions.
 **Should include**:
@@ -128,7 +106,7 @@
 
 **Format**: Table with columns: Tool, Current Version, Latest Stable, EOL Date, Update Priority
 
-### 10. Update Development Tools to Latest Stable Versions
+### 8. Update Development Tools to Latest Stable Versions
 
 **Research needed**: Use [endoflife.date](https://endoflife.date/) and/or direct tool documentation to identify latest stable versions.
 
@@ -151,7 +129,7 @@
 
 **Strategy**: Target latest stable/LTS versions, avoid bleeding-edge releases. Prioritize security-supported versions.
 
-### 11. Update GitHub Actions to Latest Stable
+### 9. Update GitHub Actions to Latest Stable
 
 **Action**: Review `.github/workflows/*.yaml` and update action versions.
 
@@ -164,7 +142,7 @@
 
 **Reference**: https://github.com/actions/* for official actions
 
-### 12. Update Go Dependencies
+### 10. Update Go Dependencies
 
 **Action**: Review and update major Go modules in `go.mod`.
 
@@ -217,6 +195,8 @@ The following are working well:
 - ✅ Controller watch loops with consistent retry logic
 - ✅ Constants package with comprehensive documentation
 - ✅ Magic strings replaced with typed constants throughout
+- ✅ UDS examples updated to v1alpha2 with correct annotation keys
+- ✅ SERVICEACCOUNT_REFERENCE.md exists and is comprehensive
 
 ---
 

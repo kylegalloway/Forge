@@ -46,6 +46,9 @@ func NewBuildHandler(kubeClient kubernetes.Interface, metrics *telemetry.Metrics
 //
 // This differs from UDS handlers which don't accept artifactPVCName because UDS multi-action
 // jobs don't currently implement artifact sharing - each action runs independently.
+//
+// For the rationale behind this signature divergence, see:
+// docs/development/ARCHITECTURE.md#handler-signature-divergence
 func (handler *BuildHandler) Execute(ctx context.Context, pkg *zarfv1alpha1.ZarfPackageJob, artifactPVCName string) (*actions.ActionResult, error) {
 
 	klog.InfoS("Executing Zarf Package Build action", "name", pkg.Name, "namespace", pkg.Namespace, "artifactPVC", artifactPVCName)

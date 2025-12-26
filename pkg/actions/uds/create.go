@@ -40,13 +40,14 @@ func NewCreateHandler(kubeClient kubernetes.Interface, metrics *telemetry.Metric
 // Execute performs a Create action for the given UDSPackageJob
 //
 // Unlike Zarf handlers, UDS handlers don't accept an artifactPVCName parameter because
-// UDS multi-action jobs (CreatePublish, CreateDeploy, etc.) don't currently implement
-// artifact sharing between actions. Each UDS action runs independently in its own Job
-// with isolated storage. This design choice simplifies UDS job lifecycle at the cost
-// of less efficiency for multi-action workflows.
+// UDS multi-action jobs (CreatePublish, CreateDeploy, etc.) run each action independently
+// without artifact sharing. Each action re-fetches source and rebuilds in isolation.
 //
-// Future enhancement: Implement artifact PVC sharing for UDS to match Zarf's multi-action
-// efficiency (see TODO.md). This would unify the handler signatures across both systems.
+// This is an intentional architectural decision that trades performance for simplicity:
+// no PVC management, no shared state, cleaner Job lifecycle, better idempotency.
+//
+// For the rationale behind this signature divergence, see:
+// docs/development/ARCHITECTURE.md#handler-signature-divergence
 func (handler *CreateHandler) Execute(ctx context.Context, bundle *udsv1alpha2.UDSPackageJob) (*actions.ActionResult, error) {
 
 	klog.InfoS("Executing UDS Bundle Create action", "name", bundle.Name, "namespace", bundle.Namespace)

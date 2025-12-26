@@ -361,7 +361,7 @@ func NewMetrics() (*Metrics, error) {
 	}, nil
 }
 
-// RecordZarfPackageCreated increments the ZarfPackageJob created counter
+// RecordZarfPackageJobCreated increments the ZarfPackageJob created counter.
 func (metrics *Metrics) RecordZarfPackageJobCreated(ctx context.Context, namespace string) {
 	metrics.zarfPackageJobsCreated.Add(ctx, 1,
 		metric.WithAttributes(attribute.String("namespace", namespace)))
@@ -369,7 +369,7 @@ func (metrics *Metrics) RecordZarfPackageJobCreated(ctx context.Context, namespa
 		metric.WithAttributes(attribute.String("namespace", namespace)))
 }
 
-// RecordZarfPackageDeleted decrements the active ZarfPackageJob counter
+// RecordZarfPackageJobDeleted decrements the active ZarfPackageJob counter.
 func (metrics *Metrics) RecordZarfPackageJobDeleted(ctx context.Context, namespace string) {
 	metrics.zarfPackageJobsActive.Add(ctx, -1,
 		metric.WithAttributes(attribute.String("namespace", namespace)))

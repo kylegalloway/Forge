@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/kylegalloway/forge/pkg/actions/common"
+	"github.com/kylegalloway/forge/pkg/actions"
 
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -36,7 +36,7 @@ func NewDeployHandler(kubeClient kubernetes.Interface, metrics *telemetry.Metric
 }
 
 // Execute performs a Deploy action for the given ZarfPackageJob
-func (handler *DeployHandler) Execute(ctx context.Context, pkg *zarfv1alpha1.ZarfPackageJob, artifactPath string, artifactPVCName string) (*common.ActionResult, error) {
+func (handler *DeployHandler) Execute(ctx context.Context, pkg *zarfv1alpha1.ZarfPackageJob, artifactPath string, artifactPVCName string) (*actions.ActionResult, error) {
 	klog.InfoS("Executing Zarf Package Deploy action", "name", pkg.Name, "namespace", pkg.Namespace, "artifactPVC", artifactPVCName)
 
 	// Record deploy started
@@ -60,7 +60,7 @@ func (handler *DeployHandler) Execute(ctx context.Context, pkg *zarfv1alpha1.Zar
 
 	klog.InfoS("Zarf package deploy job created", "name", pkg.Name, "job", job.Name)
 
-	result := &common.ActionResult{
+	result := &actions.ActionResult{
 		JobName:   job.Name,
 		Phase:     "Running",
 		Message:   fmt.Sprintf("Deploy job %s created", job.Name),
@@ -122,7 +122,7 @@ func (handler *DeployHandler) createDeployJob(ctx context.Context, pkg *zarfv1al
 		Spec: batchv1.JobSpec{
 			BackoffLimit:            &backoffLimit,
 			ActiveDeadlineSeconds:   &activeDeadlineSeconds,
-			TTLSecondsAfterFinished: common.Ptr(int32(3600)),
+			TTLSecondsAfterFinished: actions.Ptr(int32(3600)),
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{
@@ -150,9 +150,9 @@ func (handler *DeployHandler) createDeployJob(ctx context.Context, pkg *zarfv1al
 							},
 							Env: handler.buildEnvVars(pkg),
 							SecurityContext: &corev1.SecurityContext{
-								RunAsNonRoot:             common.Ptr(true),
-								RunAsUser:                common.Ptr(int64(constants.DefaultZarfUID)),
-								AllowPrivilegeEscalation: common.Ptr(false),
+								RunAsNonRoot:             actions.Ptr(true),
+								RunAsUser:                actions.Ptr(int64(constants.DefaultZarfUID)),
+								AllowPrivilegeEscalation: actions.Ptr(false),
 								Capabilities: &corev1.Capabilities{
 									Drop: []corev1.Capability{"ALL"},
 								},
@@ -172,9 +172,9 @@ func (handler *DeployHandler) createDeployJob(ctx context.Context, pkg *zarfv1al
 						},
 					},
 					SecurityContext: &corev1.PodSecurityContext{
-						RunAsNonRoot: common.Ptr(true),
-						RunAsUser:    common.Ptr(int64(constants.DefaultZarfUID)),
-						FSGroup:      common.Ptr(int64(constants.DefaultZarfUID)),
+						RunAsNonRoot: actions.Ptr(true),
+						RunAsUser:    actions.Ptr(int64(constants.DefaultZarfUID)),
+						FSGroup:      actions.Ptr(int64(constants.DefaultZarfUID)),
 						SeccompProfile: &corev1.SeccompProfile{
 							Type: corev1.SeccompProfileTypeRuntimeDefault,
 						},
@@ -328,12 +328,12 @@ func (handler *DeployHandler) getResources(pkg *zarfv1alpha1.ZarfPackageJob) cor
 	// Default resources for deploy jobs
 	return corev1.ResourceRequirements{
 		Requests: corev1.ResourceList{
-			corev1.ResourceCPU:    common.MustParseQuantity("500m"),
-			corev1.ResourceMemory: common.MustParseQuantity("1Gi"),
+			corev1.ResourceCPU:    actions.MustParseQuantity("500m"),
+			corev1.ResourceMemory: actions.MustParseQuantity("1Gi"),
 		},
 		Limits: corev1.ResourceList{
-			corev1.ResourceCPU:    common.MustParseQuantity("2000m"),
-			corev1.ResourceMemory: common.MustParseQuantity("4Gi"),
+			corev1.ResourceCPU:    actions.MustParseQuantity("2000m"),
+			corev1.ResourceMemory: actions.MustParseQuantity("4Gi"),
 		},
 	}
 }

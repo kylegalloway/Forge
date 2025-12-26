@@ -62,7 +62,7 @@ type LocalStorage struct {
 // NewLocalStorage creates a new local storage backend
 func NewLocalStorage(basePath string) (*LocalStorage, error) {
 	// Create base directory if it doesn't exist
-	if err := os.MkdirAll(basePath, 0755); err != nil {
+	if err := os.MkdirAll(basePath, 0750); err != nil {
 		return nil, fmt.Errorf("failed to create attestation storage directory: %w", err)
 	}
 
@@ -77,7 +77,7 @@ func (s *LocalStorage) Store(_ context.Context, bundle *AttestationBundle, opts 
 
 	// Create namespace directory
 	nsDir := filepath.Join(s.BasePath, opts.Namespace)
-	if err := os.MkdirAll(nsDir, 0755); err != nil {
+	if err := os.MkdirAll(nsDir, 0750); err != nil {
 		return fmt.Errorf("failed to create namespace directory: %w", err)
 	}
 
@@ -226,8 +226,8 @@ func (s *LocalStorage) List(_ context.Context, opts ListOptions) ([]*Attestation
 }
 
 // readAttestationFile reads and unmarshals an attestation from a file
-func (s *LocalStorage) readAttestationFile(filePath string) (*AttestationBundle, error) {
-	data, err := os.ReadFile(filePath)
+func (s *LocalStorage) readAttestationFile(basePath string) (*AttestationBundle, error) {
+	data, err := os.ReadFile(filepath.Clean(basePath))
 	if err != nil {
 		return nil, fmt.Errorf("failed to read file: %w", err)
 	}

@@ -3,7 +3,7 @@ package sources
 import (
 	"fmt"
 
-	"github.com/kylegalloway/forge/pkg/actions/common"
+	"github.com/kylegalloway/forge/pkg/actions"
 	zarfv1alpha1 "github.com/kylegalloway/forge/pkg/apis/zarf/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -62,9 +62,9 @@ func (source *S3Source) GetInitContainer(pkg *zarfv1alpha1.ZarfPackageJob) (*cor
 			},
 		},
 		SecurityContext: &corev1.SecurityContext{
-			RunAsNonRoot:             common.Ptr(true),
-			RunAsUser:                common.Ptr(int64(1000)),
-			AllowPrivilegeEscalation: common.Ptr(false),
+			RunAsNonRoot:             actions.Ptr(true),
+			RunAsUser:                actions.Ptr(int64(1000)),
+			AllowPrivilegeEscalation: actions.Ptr(false),
 			Capabilities: &corev1.Capabilities{
 				Drop: []corev1.Capability{"ALL"},
 			},

@@ -1,8 +1,4 @@
-// Package common provides shared validation utilities for webhook validators.
-//
-// This package consolidates duplicated validation logic that was previously
-// in both zarfpackage_validator.go and udsbundle_validator.go.
-package common
+package webhook
 
 import (
 	"fmt"

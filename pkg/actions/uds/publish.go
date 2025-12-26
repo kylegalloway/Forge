@@ -10,7 +10,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog/v2"
 
-	"github.com/kylegalloway/forge/pkg/actions/common"
+	"github.com/kylegalloway/forge/pkg/actions"
 	udsv1alpha2 "github.com/kylegalloway/forge/pkg/apis/uds/v1alpha2"
 	"github.com/kylegalloway/forge/pkg/constants"
 	"github.com/kylegalloway/forge/pkg/telemetry"
@@ -35,7 +35,7 @@ func NewPublishHandler(kubeClient kubernetes.Interface, metrics *telemetry.Metri
 // Execute performs a Publish action for the given UDSPackageJob
 //
 //nolint:staticcheck // SA1019: UDSPackageJob v1alpha1 must be supported until v0.10.0
-func (handler *PublishHandler) Execute(ctx context.Context, bundle *udsv1alpha2.UDSPackageJob) (*common.ActionResult, error) {
+func (handler *PublishHandler) Execute(ctx context.Context, bundle *udsv1alpha2.UDSPackageJob) (*actions.ActionResult, error) {
 
 	klog.InfoS("Executing UDS Bundle Publish action", "name", bundle.Name, "namespace", bundle.Namespace)
 
@@ -60,7 +60,7 @@ func (handler *PublishHandler) Execute(ctx context.Context, bundle *udsv1alpha2.
 
 	klog.InfoS("Bundle publish job created", "name", bundle.Name, "job", job.Name)
 
-	result := &common.ActionResult{
+	result := &actions.ActionResult{
 		JobName:   job.Name,
 		Phase:     "Running",
 		Message:   fmt.Sprintf("Bundle publish job %s created", job.Name),
@@ -105,7 +105,7 @@ func (handler *PublishHandler) createPublishJob(ctx context.Context, bundle *uds
 		Spec: batchv1.JobSpec{
 			BackoffLimit:            &backoffLimit,
 			ActiveDeadlineSeconds:   &activeDeadlineSeconds,
-			TTLSecondsAfterFinished: common.Ptr(int32(3600)),
+			TTLSecondsAfterFinished: actions.Ptr(int32(3600)),
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{
@@ -131,9 +131,9 @@ func (handler *PublishHandler) createPublishJob(ctx context.Context, bundle *uds
 								},
 							},
 							SecurityContext: &corev1.SecurityContext{
-								RunAsNonRoot:             common.Ptr(true),
-								RunAsUser:                common.Ptr(int64(constants.DefaultUDSUID)),
-								AllowPrivilegeEscalation: common.Ptr(false),
+								RunAsNonRoot:             actions.Ptr(true),
+								RunAsUser:                actions.Ptr(int64(constants.DefaultUDSUID)),
+								AllowPrivilegeEscalation: actions.Ptr(false),
 								Capabilities: &corev1.Capabilities{
 									Drop: []corev1.Capability{"ALL"},
 								},
@@ -154,9 +154,9 @@ func (handler *PublishHandler) createPublishJob(ctx context.Context, bundle *uds
 						},
 					},
 					SecurityContext: &corev1.PodSecurityContext{
-						RunAsNonRoot: common.Ptr(true),
-						RunAsUser:    common.Ptr(int64(constants.DefaultUDSUID)),
-						FSGroup:      common.Ptr(int64(constants.DefaultUDSUID)),
+						RunAsNonRoot: actions.Ptr(true),
+						RunAsUser:    actions.Ptr(int64(constants.DefaultUDSUID)),
+						FSGroup:      actions.Ptr(int64(constants.DefaultUDSUID)),
 						SeccompProfile: &corev1.SeccompProfile{
 							Type: corev1.SeccompProfileTypeRuntimeDefault,
 						},
@@ -327,12 +327,12 @@ func (handler *PublishHandler) getResources(bundle *udsv1alpha2.UDSPackageJob) c
 	// Lower than Create/Deploy since primarily network I/O with minimal processing
 	return corev1.ResourceRequirements{
 		Requests: corev1.ResourceList{
-			corev1.ResourceCPU:    common.MustParseQuantity("200m"),
-			corev1.ResourceMemory: common.MustParseQuantity("512Mi"),
+			corev1.ResourceCPU:    actions.MustParseQuantity("200m"),
+			corev1.ResourceMemory: actions.MustParseQuantity("512Mi"),
 		},
 		Limits: corev1.ResourceList{
-			corev1.ResourceCPU:    common.MustParseQuantity("1000m"),
-			corev1.ResourceMemory: common.MustParseQuantity("2Gi"),
+			corev1.ResourceCPU:    actions.MustParseQuantity("1000m"),
+			corev1.ResourceMemory: actions.MustParseQuantity("2Gi"),
 		},
 	}
 }

@@ -186,26 +186,29 @@ func (ctrl *UDSController) handleActionChaining(ctx context.Context, bundle *uds
 
 	switch action {
 	case udsv1alpha2.ActionCreatePublish:
-		if completedAction == constants.ActionCreate {
+		switch completedAction {
+		case constants.ActionCreate:
 			klog.InfoS("Chaining to Publish after Create", "bundle", bundle.Name)
 			return ctrl.executePublish(ctx, bundle)
-		} else if completedAction == constants.ActionPublish {
+		case constants.ActionPublish:
 			return ctrl.markBundleCompleted(ctx, bundle)
 		}
 
 	case udsv1alpha2.ActionCreateDeploy:
-		if completedAction == constants.ActionCreate {
+		switch completedAction {
+		case constants.ActionCreate:
 			klog.InfoS("Chaining to Deploy after Create", "bundle", bundle.Name)
 			return ctrl.executeDeploy(ctx, bundle)
-		} else if completedAction == constants.ActionDeploy {
+		case constants.ActionDeploy:
 			return ctrl.markBundleCompleted(ctx, bundle)
 		}
 
 	case udsv1alpha2.ActionPublishDeploy:
-		if completedAction == constants.ActionPublish {
+		switch completedAction {
+		case constants.ActionPublish:
 			klog.InfoS("Chaining to Deploy after Publish", "bundle", bundle.Name)
 			return ctrl.executeDeploy(ctx, bundle)
-		} else if completedAction == constants.ActionDeploy {
+		case constants.ActionDeploy:
 			return ctrl.markBundleCompleted(ctx, bundle)
 		}
 

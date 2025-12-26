@@ -13,7 +13,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/klog/v2"
 
-	"github.com/kylegalloway/forge/pkg/actions/common"
+	"github.com/kylegalloway/forge/pkg/actions"
 	zarfv1alpha1 "github.com/kylegalloway/forge/pkg/apis/zarf/v1alpha1"
 	"github.com/kylegalloway/forge/pkg/constants"
 )
@@ -254,7 +254,7 @@ func (ctrl *Controller) handleActionChaining(ctx context.Context, unstrObj *unst
 	}
 
 	// Execute the next action handler
-	var result *common.ActionResult
+	var result *actions.ActionResult
 	var err error
 
 	switch nextAction {

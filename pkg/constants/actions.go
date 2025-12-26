@@ -13,13 +13,15 @@
 package constants
 
 const (
-	// Zarf action names used in Job labels and monitoring
+	// ActionBuild is the Zarf action name for building packages.
 	ActionBuild = "build"
 
-	// Shared action names used by both Zarf and UDS
+	// ActionPublish is the action name for publishing packages to registries (used by both Zarf and UDS).
 	ActionPublish = "publish"
-	ActionDeploy  = "deploy"
 
-	// UDS bundle action names used in Job labels and monitoring
+	// ActionDeploy is the action name for deploying packages to clusters (used by both Zarf and UDS).
+	ActionDeploy = "deploy"
+
+	// ActionCreate is the UDS action name for creating bundles.
 	ActionCreate = "create"
 )

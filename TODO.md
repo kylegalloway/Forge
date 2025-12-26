@@ -169,6 +169,81 @@
 
 ---
 
+## 🔧 Tool & Dependency Updates
+
+### 17. Create Tool Version Tracking Document
+
+**Action**: Create `docs/development/TOOL_VERSIONS.md` to document all tools and their current/target versions.
+**Should include**:
+
+- Language runtime (Go version)
+- Build tools (golangci-lint, controller-gen, gofmt, goimports)
+- Kubernetes tools (kubectl, helm, kind)
+- CI/CD tools (GitHub Actions versions)
+- Container tools (Docker/Podman versions)
+- Development tools (pre-commit, yamllint, markdownlint-cli2)
+- Go dependencies (major libraries like controller-runtime, client-go, etc.)
+
+**Format**: Table with columns: Tool, Current Version, Latest Stable, EOL Date, Update Priority
+
+### 18. Update Development Tools to Latest Stable Versions
+
+**Research needed**: Use [endoflife.date](https://endoflife.date/) and/or direct tool documentation to identify latest stable versions.
+
+**Tools to update**:
+
+- **golangci-lint** - Currently on v2 format (recent upgrade from v1)
+  - Check: `golangci-lint version` vs https://endoflife.date/golangci-lint
+- **controller-gen** - Used for CRD generation
+  - Check: Go module version vs https://github.com/kubernetes-sigs/controller-tools/releases
+- **kubectl** - Kubernetes CLI
+  - Check: https://endoflife.date/kubectl
+- **helm** - Package manager
+  - Check: https://endoflife.date/helm
+- **kind** - Local cluster tool
+  - Check: https://endoflife.date/kind or https://github.com/kubernetes-sigs/kind/releases
+- **pre-commit** - Git hook manager
+  - Check: https://github.com/pre-commit/pre-commit/releases
+- **Go runtime** - Language version
+  - Check: https://endoflife.date/go
+
+**Strategy**: Target latest stable/LTS versions, avoid bleeding-edge releases. Prioritize security-supported versions.
+
+### 19. Update GitHub Actions to Latest Stable
+
+**Action**: Review `.github/workflows/*.yaml` and update action versions.
+
+**Common actions to check**:
+
+- `actions/checkout@v*`
+- `actions/setup-go@v*`
+- `docker/build-push-action@v*`
+- `golangci/golangci-lint-action@v*`
+
+**Reference**: https://github.com/actions/* for official actions
+
+### 20. Update Go Dependencies
+
+**Action**: Review and update major Go modules in `go.mod`.
+
+**Key dependencies to check**:
+
+- `sigs.k8s.io/controller-runtime`
+- `k8s.io/client-go`
+- `k8s.io/api`
+- `k8s.io/apimachinery`
+- OpenTelemetry libraries
+- Zarf/UDS CLI container image versions (constants.ZarfCLIImage, constants.UDSCLIImage)
+
+**Process**:
+
+1. Run `go list -u -m all` to see available updates
+2. Check compatibility matrices for Kubernetes client-go versions
+3. Update incrementally, run tests after each major update
+4. Update vendor directory if used
+
+---
+
 ## Architecture Observations (For Consideration)
 
 ### 16. Controller Complexity Growing (Optional Refactor)

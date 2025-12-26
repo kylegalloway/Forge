@@ -1,4 +1,4 @@
-// Package actions provides handlers for ZarfPackageJob actions (Build, Publish, Deploy).
+// Package zarf provides handlers for ZarfPackageJob actions (Build, Publish, Deploy).
 //
 // Each action handler is responsible for executing a specific operation
 // on a Zarf package or UDS bundle.
@@ -15,7 +15,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog/v2"
 
-	"github.com/kylegalloway/forge/pkg/actions/common"
+	"github.com/kylegalloway/forge/pkg/actions"
 	zarfv1alpha1 "github.com/kylegalloway/forge/pkg/apis/zarf/v1alpha1"
 	"github.com/kylegalloway/forge/pkg/constants"
 	"github.com/kylegalloway/forge/pkg/sources"
@@ -46,7 +46,7 @@ func NewBuildHandler(kubeClient kubernetes.Interface, metrics *telemetry.Metrics
 //
 // This differs from UDS handlers which don't accept artifactPVCName because UDS multi-action
 // jobs don't currently implement artifact sharing - each action runs independently.
-func (handler *BuildHandler) Execute(ctx context.Context, pkg *zarfv1alpha1.ZarfPackageJob, artifactPVCName string) (*common.ActionResult, error) {
+func (handler *BuildHandler) Execute(ctx context.Context, pkg *zarfv1alpha1.ZarfPackageJob, artifactPVCName string) (*actions.ActionResult, error) {
 
 	klog.InfoS("Executing Zarf Package Build action", "name", pkg.Name, "namespace", pkg.Namespace, "artifactPVC", artifactPVCName)
 
@@ -71,7 +71,7 @@ func (handler *BuildHandler) Execute(ctx context.Context, pkg *zarfv1alpha1.Zarf
 
 	klog.InfoS("Zarf package build job created", "name", pkg.Name, "job", job.Name)
 
-	result := &common.ActionResult{
+	result := &actions.ActionResult{
 		JobName:   job.Name,
 		Phase:     "Running",
 		Message:   fmt.Sprintf("Build job %s created", job.Name),
@@ -127,7 +127,7 @@ func (handler *BuildHandler) createBuildJob(ctx context.Context, pkg *zarfv1alph
 		Spec: batchv1.JobSpec{
 			BackoffLimit:            &backoffLimit,
 			ActiveDeadlineSeconds:   &activeDeadlineSeconds,
-			TTLSecondsAfterFinished: common.Ptr(int32(3600)), // Clean up after 1 hour
+			TTLSecondsAfterFinished: actions.Ptr(int32(3600)), // Clean up after 1 hour
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{
@@ -159,9 +159,9 @@ func (handler *BuildHandler) createBuildJob(ctx context.Context, pkg *zarfv1alph
 								},
 							},
 							SecurityContext: &corev1.SecurityContext{
-								RunAsNonRoot:             common.Ptr(true),
-								RunAsUser:                common.Ptr(int64(constants.DefaultZarfUID)),
-								AllowPrivilegeEscalation: common.Ptr(false),
+								RunAsNonRoot:             actions.Ptr(true),
+								RunAsUser:                actions.Ptr(int64(constants.DefaultZarfUID)),
+								AllowPrivilegeEscalation: actions.Ptr(false),
 								Capabilities: &corev1.Capabilities{
 									Drop: []corev1.Capability{"ALL"},
 								},
@@ -187,9 +187,9 @@ func (handler *BuildHandler) createBuildJob(ctx context.Context, pkg *zarfv1alph
 						},
 					},
 					SecurityContext: &corev1.PodSecurityContext{
-						RunAsNonRoot: common.Ptr(true),
-						RunAsUser:    common.Ptr(int64(constants.DefaultZarfUID)),
-						FSGroup:      common.Ptr(int64(constants.DefaultZarfUID)),
+						RunAsNonRoot: actions.Ptr(true),
+						RunAsUser:    actions.Ptr(int64(constants.DefaultZarfUID)),
+						FSGroup:      actions.Ptr(int64(constants.DefaultZarfUID)),
 						SeccompProfile: &corev1.SeccompProfile{
 							Type: corev1.SeccompProfileTypeRuntimeDefault,
 						},
@@ -309,12 +309,12 @@ func (handler *BuildHandler) getResources(pkg *zarfv1alpha1.ZarfPackageJob) core
 	// Higher resources account for compilation, compression, and artifact creation
 	return corev1.ResourceRequirements{
 		Requests: corev1.ResourceList{
-			corev1.ResourceCPU:    common.MustParseQuantity("500m"),
-			corev1.ResourceMemory: common.MustParseQuantity("1Gi"),
+			corev1.ResourceCPU:    actions.MustParseQuantity("500m"),
+			corev1.ResourceMemory: actions.MustParseQuantity("1Gi"),
 		},
 		Limits: corev1.ResourceList{
-			corev1.ResourceCPU:    common.MustParseQuantity("2000m"),
-			corev1.ResourceMemory: common.MustParseQuantity("4Gi"),
+			corev1.ResourceCPU:    actions.MustParseQuantity("2000m"),
+			corev1.ResourceMemory: actions.MustParseQuantity("4Gi"),
 		},
 	}
 }

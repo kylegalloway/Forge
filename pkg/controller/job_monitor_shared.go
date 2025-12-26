@@ -1,8 +1,4 @@
-// Package common provides shared Job monitoring utilities for controllers.
-//
-// This package consolidates duplicated Job monitoring logic that was previously
-// in both controller.go and uds_controller.go.
-package common
+package controller
 
 import (
 	"fmt"

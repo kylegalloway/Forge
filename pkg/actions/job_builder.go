@@ -1,5 +1,4 @@
-// Package common provides shared Job building utilities for action handlers.
-package common
+package actions
 
 import (
 	"context"

@@ -3,6 +3,7 @@ package attestation
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"github.com/google/go-containerregistry/pkg/authn"
@@ -177,7 +178,9 @@ func (storage *OCIStorageImpl) RetrieveByReference(_ context.Context, reference 
 	if err != nil {
 		return nil, fmt.Errorf("failed to read layer: %w", err)
 	}
-	defer reader.Close()
+	defer func() {
+		err = errors.Join(err, reader.Close())
+	}()
 
 	// Unmarshal attestation
 	var bundle AttestationBundle

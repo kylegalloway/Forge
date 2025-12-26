@@ -17,40 +17,66 @@ package constants
 import "time"
 
 const (
-	// JobMonitorInterval is how often to check Job statuses
+	// JobMonitorInterval is how often to check Job statuses.
 	JobMonitorInterval = 10 * time.Second
 
-	// Default timeout values (in seconds)
-	DefaultBuildTimeout   = 3600 // 1 hour
-	DefaultPublishTimeout = 1800 // 30 minutes
-	DefaultDeployTimeout  = 1800 // 30 minutes
-	DefaultCreateTimeout  = 3600 // 1 hour for UDS bundle creation
+	// DefaultBuildTimeout is the default timeout for Zarf build operations (1 hour).
+	DefaultBuildTimeout = 3600
 
-	// Security context UIDs
+	// DefaultPublishTimeout is the default timeout for publish operations (30 minutes).
+	DefaultPublishTimeout = 1800
+
+	// DefaultDeployTimeout is the default timeout for deploy operations (30 minutes).
+	DefaultDeployTimeout = 1800
+
+	// DefaultCreateTimeout is the default timeout for UDS bundle creation (1 hour).
+	DefaultCreateTimeout = 3600
+
+	// DefaultZarfUID is the UID for Zarf CLI containers (1000).
 	DefaultZarfUID = 1000
-	DefaultUDSUID  = 65532
 
-	// CLI container images
+	// DefaultUDSUID is the UID for UDS CLI containers (65532).
+	DefaultUDSUID = 65532
+
+	// ZarfCLIImage is the container image for Zarf CLI operations.
 	ZarfCLIImage = "localhost/zarf:v0.66.0"
-	UDSCLIImage  = "ghcr.io/defenseunicorns/uds-cli:latest"
 
-	// Volume names for Job containers
+	// UDSCLIImage is the container image for UDS CLI operations.
+	UDSCLIImage = "ghcr.io/defenseunicorns/uds-cli:latest"
+
+	// VolumeNameWorkspace is the name of the workspace volume.
 	VolumeNameWorkspace = "workspace"
-	VolumeNameOutput    = "output"
+
+	// VolumeNameOutput is the name of the output volume.
+	VolumeNameOutput = "output"
+
+	// VolumeNameArtifacts is the name of the artifacts volume.
 	VolumeNameArtifacts = "artifacts"
 
-	// Volume mount paths
+	// VolumeMountPathWorkspace is the mount path for the workspace volume.
 	VolumeMountPathWorkspace = "/workspace"
-	VolumeMountPathOutput    = "/output"
+
+	// VolumeMountPathOutput is the mount path for the output volume.
+	VolumeMountPathOutput = "/output"
+
+	// VolumeMountPathArtifacts is the mount path for the artifacts volume.
 	VolumeMountPathArtifacts = "/artifacts"
 
-	// Container names for Zarf Jobs
-	ContainerNameZarfBuild   = "zarf-build"
-	ContainerNameZarfPublish = "zarf-publish"
-	ContainerNameZarfDeploy  = "zarf-deploy"
+	// ContainerNameZarfBuild is the container name for Zarf build Jobs.
+	ContainerNameZarfBuild = "zarf-build"
 
-	// Container names for UDS Bundle Jobs
-	ContainerNameUDSCreate  = "uds-create"
+	// ContainerNameZarfPublish is the container name for Zarf publish Jobs.
+	ContainerNameZarfPublish = "zarf-publish"
+
+	// ContainerNameZarfDeploy is the container name for Zarf deploy Jobs.
+	ContainerNameZarfDeploy = "zarf-deploy"
+
+	// ContainerNameUDSCreate is the container name for UDS bundle create Jobs.
+	ContainerNameUDSCreate = "uds-create"
+
+	// ContainerNameUDSPublish is the container name for UDS bundle publish Jobs.
 	ContainerNameUDSPublish = "uds-publish"
-	ContainerNameUDSDeploy  = "uds-deploy"
+
+	// ContainerNameUDSDeploy is the container name for UDS bundle deploy Jobs.
+	ContainerNameUDSDeploy = "uds-deploy"
 )

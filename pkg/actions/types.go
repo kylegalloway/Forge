@@ -1,8 +1,8 @@
-// Package common provides shared types and utilities for Zarf and UDS action handlers.
+// Package actions provides shared types and utilities for Zarf and UDS action handlers.
 //
-// This package consolidates duplicated code that was previously in both
-// pkg/actions and pkg/actions/uds packages.
-package common
+// This package consolidates common code used by both pkg/actions/zarf and
+// pkg/actions/uds subpackages.
+package actions
 
 import (
 	"k8s.io/apimachinery/pkg/api/resource"

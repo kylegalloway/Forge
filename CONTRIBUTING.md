@@ -183,8 +183,8 @@ pkg/
 ### Example: Adding a New Action Handler
 
 ```go
-// pkg/actions/build.go
-package actions
+// pkg/actions/zarf/build.go
+package zarf
 
 func (h *BuildHandler) Execute(ctx context.Context, pkg *v1alpha1.ZarfPackageJob) error {
     span := trace.SpanFromContext(ctx)

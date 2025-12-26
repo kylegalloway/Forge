@@ -1,3 +1,7 @@
+// Package attestation implements SLSA provenance generation and verification for Zarf packages.
+//
+// This package provides attestation generation, signing, storage, and verification
+// for packages built by Forge.
 package attestation
 
 import (
@@ -5,6 +9,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"os"
+	"path/filepath"
 	"time"
 
 	"k8s.io/klog/v2"
@@ -244,8 +249,8 @@ func (generator *Generator) generateForgeOperationPredicate(operation string, op
 }
 
 // ComputeDigest computes a SHA256 digest of a file
-func ComputeDigest(filePath string) (string, error) {
-	data, err := os.ReadFile(filePath)
+func ComputeDigest(basePath string) (string, error) {
+	data, err := os.ReadFile(filepath.Clean(basePath))
 	if err != nil {
 		return "", fmt.Errorf("failed to read file: %w", err)
 	}
@@ -254,7 +259,7 @@ func ComputeDigest(filePath string) (string, error) {
 	return hex.EncodeToString(hash[:]), nil
 }
 
-// AttestationOptions contains common options for attestation generation
+// CommonOptions contains common options for attestation generation.
 type CommonOptions struct {
 	// ZarfPackageJob is the name of the ZarfPackageJob
 	ZarfPackageJob string

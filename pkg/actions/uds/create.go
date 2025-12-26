@@ -1,3 +1,7 @@
+// Package uds provides handlers for UDSPackageJob actions (Create, Publish, Deploy).
+//
+// Each action handler is responsible for executing a specific operation
+// on a UDS bundle.
 package uds
 
 import (
@@ -10,7 +14,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog/v2"
 
-	"github.com/kylegalloway/forge/pkg/actions/common"
+	"github.com/kylegalloway/forge/pkg/actions"
 	udsv1alpha2 "github.com/kylegalloway/forge/pkg/apis/uds/v1alpha2"
 	"github.com/kylegalloway/forge/pkg/constants"
 	"github.com/kylegalloway/forge/pkg/sources"
@@ -43,7 +47,7 @@ func NewCreateHandler(kubeClient kubernetes.Interface, metrics *telemetry.Metric
 //
 // Future enhancement: Implement artifact PVC sharing for UDS to match Zarf's multi-action
 // efficiency (see TODO.md). This would unify the handler signatures across both systems.
-func (handler *CreateHandler) Execute(ctx context.Context, bundle *udsv1alpha2.UDSPackageJob) (*common.ActionResult, error) {
+func (handler *CreateHandler) Execute(ctx context.Context, bundle *udsv1alpha2.UDSPackageJob) (*actions.ActionResult, error) {
 
 	klog.InfoS("Executing UDS Bundle Create action", "name", bundle.Name, "namespace", bundle.Namespace)
 
@@ -68,7 +72,7 @@ func (handler *CreateHandler) Execute(ctx context.Context, bundle *udsv1alpha2.U
 
 	klog.InfoS("Bundle create job created", "name", bundle.Name, "job", job.Name)
 
-	result := &common.ActionResult{
+	result := &actions.ActionResult{
 		JobName:   job.Name,
 		Phase:     "Running",
 		Message:   fmt.Sprintf("Bundle create job %s created", job.Name),
@@ -119,7 +123,7 @@ func (handler *CreateHandler) createBundleJob(ctx context.Context, bundle *udsv1
 		Spec: batchv1.JobSpec{
 			BackoffLimit:            &backoffLimit,
 			ActiveDeadlineSeconds:   &activeDeadlineSeconds,
-			TTLSecondsAfterFinished: common.Ptr(int32(3600)), // Clean up after 1 hour
+			TTLSecondsAfterFinished: actions.Ptr(int32(3600)), // Clean up after 1 hour
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{
@@ -151,9 +155,9 @@ func (handler *CreateHandler) createBundleJob(ctx context.Context, bundle *udsv1
 								},
 							},
 							SecurityContext: &corev1.SecurityContext{
-								RunAsNonRoot:             common.Ptr(true),
-								RunAsUser:                common.Ptr(int64(constants.DefaultUDSUID)),
-								AllowPrivilegeEscalation: common.Ptr(false),
+								RunAsNonRoot:             actions.Ptr(true),
+								RunAsUser:                actions.Ptr(int64(constants.DefaultUDSUID)),
+								AllowPrivilegeEscalation: actions.Ptr(false),
 								Capabilities: &corev1.Capabilities{
 									Drop: []corev1.Capability{"ALL"},
 								},
@@ -166,9 +170,9 @@ func (handler *CreateHandler) createBundleJob(ctx context.Context, bundle *udsv1
 					},
 					Volumes: handler.buildVolumes(bundle),
 					SecurityContext: &corev1.PodSecurityContext{
-						RunAsNonRoot: common.Ptr(true),
-						RunAsUser:    common.Ptr(int64(constants.DefaultUDSUID)),
-						FSGroup:      common.Ptr(int64(constants.DefaultUDSUID)),
+						RunAsNonRoot: actions.Ptr(true),
+						RunAsUser:    actions.Ptr(int64(constants.DefaultUDSUID)),
+						FSGroup:      actions.Ptr(int64(constants.DefaultUDSUID)),
 						SeccompProfile: &corev1.SeccompProfile{
 							Type: corev1.SeccompProfileTypeRuntimeDefault,
 						},
@@ -272,12 +276,12 @@ func (handler *CreateHandler) getResources(bundle *udsv1alpha2.UDSPackageJob) co
 	// Higher resources account for bundling multiple packages, compression, and artifact creation
 	return corev1.ResourceRequirements{
 		Requests: corev1.ResourceList{
-			corev1.ResourceCPU:    common.MustParseQuantity("500m"),
-			corev1.ResourceMemory: common.MustParseQuantity("1Gi"),
+			corev1.ResourceCPU:    actions.MustParseQuantity("500m"),
+			corev1.ResourceMemory: actions.MustParseQuantity("1Gi"),
 		},
 		Limits: corev1.ResourceList{
-			corev1.ResourceCPU:    common.MustParseQuantity("2000m"),
-			corev1.ResourceMemory: common.MustParseQuantity("4Gi"),
+			corev1.ResourceCPU:    actions.MustParseQuantity("2000m"),
+			corev1.ResourceMemory: actions.MustParseQuantity("4Gi"),
 		},
 	}
 }

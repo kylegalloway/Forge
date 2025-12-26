@@ -64,8 +64,8 @@ func GenerateInvocationID(namespace, name string, timestamp time.Time) string {
 	return hex.EncodeToString(hash[:16])
 }
 
-// SourceInfoFromSpec extracts source info from ZarfPackageJob spec
-// This is a helper that would be called from the controller
+// SourceInfoFromGitSpec extracts source info from Git source parameters.
+// This is a helper that would be called from the controller.
 func SourceInfoFromGitSpec(url, ref, commitSHA, path string) *SourceInfo {
 	return &SourceInfo{
 		Type: "Git",

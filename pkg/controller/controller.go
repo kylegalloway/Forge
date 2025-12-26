@@ -19,7 +19,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog/v2"
 
-	"github.com/kylegalloway/forge/pkg/actions/common"
+	"github.com/kylegalloway/forge/pkg/actions"
 	"github.com/kylegalloway/forge/pkg/actions/zarf"
 	zarfv1alpha1 "github.com/kylegalloway/forge/pkg/apis/zarf/v1alpha1"
 	"github.com/kylegalloway/forge/pkg/constants"
@@ -211,7 +211,7 @@ func (ctrl *Controller) reconcilePackage(ctx context.Context, unstrObj *unstruct
 	}
 
 	// Dispatch to appropriate action handler
-	var result *common.ActionResult
+	var result *actions.ActionResult
 	var err error
 
 	switch pkg.Spec.Action {

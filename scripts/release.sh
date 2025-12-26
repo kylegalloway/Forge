@@ -237,7 +237,7 @@ echo ""
 # Step 6: Package and publish Helm chart
 print_step "Step 6: Packaging Helm chart"
 TMP_DIR=$(mktemp -d)
-helm package "$CHART_FILE" -d "$TMP_DIR"
+helm package "chart/forge" -d "$TMP_DIR"
 CHART_PACKAGE="${TMP_DIR}/forge-${NEW_VERSION}.tgz"
 print_success "Chart packaged: forge-${NEW_VERSION}.tgz"
 echo ""

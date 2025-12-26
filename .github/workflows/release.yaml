@@ -31,12 +31,12 @@ jobs:
           echo "webhook=ghcr.io/${{ github.repository }}/forge-webhook" | tr '[:upper:]' '[:lower:]' >> $GITHUB_OUTPUT
 
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0  # Full history for SLSA provenance
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
           cache: true
@@ -241,7 +241,7 @@ jobs:
           output: 'webhook-trivy-results.sarif'
 
       - name: Upload Trivy results to GitHub Security
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         if: always()
         continue-on-error: true
         with:
@@ -365,7 +365,7 @@ jobs:
 
       # Publish to GitHub Pages (optional - for Helm repository)
       - name: Checkout gh-pages
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: gh-pages
           path: gh-pages

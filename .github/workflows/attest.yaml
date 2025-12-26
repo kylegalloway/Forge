@@ -34,12 +34,12 @@ jobs:
           echo "webhook=ghcr.io/${{ github.repository }}/forge-webhook" | tr '[:upper:]' '[:lower:]' >> $GITHUB_OUTPUT
 
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0  # Full history for SLSA provenance
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
           cache: true
@@ -115,7 +115,7 @@ jobs:
       # Uses cache from CI workflow for fast rebuilds
       - name: Build and push controller image
         id: build-controller
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: .
           file: Dockerfile
@@ -132,7 +132,7 @@ jobs:
       # Build and push webhook image
       - name: Build and push webhook image
         id: build-webhook
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: .
           file: Dockerfile
@@ -249,7 +249,7 @@ jobs:
           output: 'webhook-trivy-results.sarif'
 
       - name: Upload Trivy results to GitHub Security
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         if: always()
         continue-on-error: true
         with:

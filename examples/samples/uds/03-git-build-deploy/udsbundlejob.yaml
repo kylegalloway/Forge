@@ -13,18 +13,18 @@ metadata:
   name: bundle-git-build-deploy-sa
   namespace: default
   annotations:
-    # Allow Create, Deploy, and CreateDeploy actions for bundles
-    forge.dev/allowed-bundle-actions: "Create,Deploy,CreateDeploy"
+    # Allow Create, Deploy, and CreateDeploy actions
+    forge.dev/allowed-actions: "create,deploy,createdeploy"
 
     # Allow fetching from forge repository
-    forge.dev/allowed-bundle-source-repos: "https://github.com/kylegalloway/forge/*"
+    forge.dev/allowed-source-repos: "https://github.com/kylegalloway/forge/*"
 
-    # Allow deploying to headlamp namespace
-    forge.dev/allowed-bundle-deploy-namespaces: "headlamp"
+    # Allow deploying to local cluster
+    forge.dev/allowed-deploy-targets: "local,*"
 
 ---
-apiVersion: forge.dev/v1alpha1
-kind: UDSBundleJob
+apiVersion: forge.dev/v1alpha2
+kind: UDSPackageJob
 metadata:
   name: git-build-deploy-bundle-example
   namespace: default
@@ -32,11 +32,11 @@ spec:
   serviceAccountName: bundle-git-build-deploy-sa
 
   # Create and Deploy pipeline
-  action: CreateDeploy
+  action: createdeploy
 
   # Source: Git repository containing the UDS bundle definition
   source:
-    type: Git
+    type: git
     git:
       url: https://github.com/kylegalloway/forge
       ref: main

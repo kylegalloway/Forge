@@ -14,13 +14,13 @@ metadata:
   namespace: default
   annotations:
     # Allow Create and Publish actions
-    forge.dev/allowed-bundle-actions: "Create,Publish,CreatePublish"
+    forge.dev/allowed-actions: "create,publish,createpublish"
 
     # Allow fetching from this repository
-    forge.dev/allowed-bundle-source-repos: "https://github.com/kylegalloway/forge/*"
+    forge.dev/allowed-source-repos: "https://github.com/kylegalloway/forge/*"
 
     # Allow publishing to target OCI registry
-    forge.dev/allowed-bundle-publish-registries: "ghcr.io/myorg/bundles/*"
+    forge.dev/allowed-publish-registries: "ghcr.io/myorg/bundles/*"
 
 ---
 # Secret for OCI registry credentials
@@ -34,8 +34,8 @@ data:
   .dockerconfigjson: eyJhdXRocyI6e319  # Replace with actual base64-encoded docker config
 
 ---
-apiVersion: forge.dev/v1alpha1
-kind: UDSBundleJob
+apiVersion: forge.dev/v1alpha2
+kind: UDSPackageJob
 metadata:
   name: git-to-oci-bundle-example
   namespace: default
@@ -43,11 +43,11 @@ spec:
   serviceAccountName: bundle-git-to-oci-builder
 
   # Create and Publish pipeline
-  action: CreatePublish
+  action: createpublish
 
   # Source: Git repository
   source:
-    type: Git
+    type: git
     git:
       url: https://github.com/kylegalloway/forge
       ref: main
@@ -56,7 +56,7 @@ spec:
   # Publish to OCI registry
   publish:
     destination:
-      type: OCI
+      type: oci
       oci:
         registry: ghcr.io
         repository: myorg/bundles/hello-git-to-oci-bundle

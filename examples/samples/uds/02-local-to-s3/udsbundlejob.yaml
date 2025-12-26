@@ -14,13 +14,13 @@ metadata:
   namespace: default
   annotations:
     # Allow Create and Publish actions
-    forge.dev/allowed-bundle-actions: "Create,Publish,CreatePublish"
+    forge.dev/allowed-actions: "create,publish,createpublish"
 
     # Allow local sources
-    forge.dev/allowed-bundle-source-types: "Local"
+    forge.dev/allow-local-sources: "true"
 
     # Allow publishing to S3 buckets
-    forge.dev/allowed-bundle-publish-s3-buckets: "my-uds-bundles/*"
+    forge.dev/allowed-publish-buckets: "my-uds-bundles/*"
 
 ---
 # Secret for AWS S3 credentials
@@ -31,13 +31,12 @@ metadata:
   namespace: default
 type: Opaque
 stringData:
-  AWS_ACCESS_KEY_ID: "AKIAIOSFODNN7EXAMPLE"
-  AWS_SECRET_ACCESS_KEY: "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
-  AWS_DEFAULT_REGION: "us-west-2"
+  access-key-id: "AKIAIOSFODNN7EXAMPLE"
+  secret-access-key: "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
 
 ---
-apiVersion: forge.dev/v1alpha1
-kind: UDSBundleJob
+apiVersion: forge.dev/v1alpha2
+kind: UDSPackageJob
 metadata:
   name: local-to-s3-bundle-example
   namespace: default
@@ -45,18 +44,18 @@ spec:
   serviceAccountName: bundle-local-to-s3-builder
 
   # Create and Publish pipeline
-  action: CreatePublish
+  action: createpublish
 
   # Source: Local filesystem (in practice, mounted via PVC)
   source:
-    type: Local
+    type: local
     local:
       path: /workspace/bundle  # Would be mounted from a PVC
 
   # Publish to S3 bucket
   publish:
     destination:
-      type: S3
+      type: s3
       s3:
         bucket: my-uds-bundles
         key: hello-local-to-s3-bundle/uds-bundle-hello-local-to-s3-bundle-amd64-1.0.0.tar.zst

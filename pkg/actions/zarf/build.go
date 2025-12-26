@@ -131,8 +131,9 @@ func (handler *BuildHandler) createBuildJob(ctx context.Context, pkg *zarfv1alph
 					},
 				},
 				Spec: corev1.PodSpec{
-					RestartPolicy:  corev1.RestartPolicyNever,
-					InitContainers: initContainers,
+					RestartPolicy:      corev1.RestartPolicyNever,
+					ServiceAccountName: pkg.Spec.ServiceAccountName,
+					InitContainers:     initContainers,
 					Containers: []corev1.Container{
 						{
 							Name:       "zarf-build",

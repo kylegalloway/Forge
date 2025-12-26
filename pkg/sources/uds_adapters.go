@@ -39,13 +39,11 @@ func GetUDSInitContainer(bundle *udsv1alpha1.UDSBundleJob) (*corev1.Container, e
 
 	case udsv1alpha1.BundleSourceTypeS3:
 		// TODO: Implement S3 source adapter when needed
-		// For now, return nil to allow job creation (source will be handled differently)
-		return nil, nil
+		return nil, fmt.Errorf("S3 source type is not yet implemented for UDS bundles")
 
 	case udsv1alpha1.BundleSourceTypeOCI:
 		// TODO: Implement OCI source adapter when needed
-		// For now, return nil to allow job creation (source will be handled differently)
-		return nil, nil
+		return nil, fmt.Errorf("OCI source type is not yet implemented for UDS bundles")
 
 	case udsv1alpha1.BundleSourceTypeLocal:
 		// Local sources don't need an init container - the volume is mounted directly

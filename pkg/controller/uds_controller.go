@@ -213,13 +213,9 @@ func (ctrl *UDSController) reconcile(ctx context.Context, bundle *udsv1alpha1.UD
 
 // validatePolicy validates the bundle against ServiceAccount policies
 //
-//nolint:unparam // error return reserved for future policy validation implementation
-func (ctrl *UDSController) validatePolicy(_ context.Context, bundle *udsv1alpha1.UDSBundleJob) error {
-	// Policy validation is currently a placeholder. Full UDS bundle policy validation
-	// will use the same annotation-based approach as Zarf packages, checking allowed
-	// bundle sources, registries, and deployment targets against ServiceAccount annotations.
-	klog.V(2).InfoS("Policy validation placeholder", "name", bundle.Name, "serviceAccount", bundle.Spec.ServiceAccountName)
-	return nil
+//nolint:staticcheck // SA1019: UDSBundleJob v1alpha1 must be supported until v0.10.0
+func (ctrl *UDSController) validatePolicy(ctx context.Context, bundle *udsv1alpha1.UDSBundleJob) error {
+	return ctrl.policyEngine.ValidateUDSBundle(ctx, bundle)
 }
 
 // dispatchAction routes the bundle to the appropriate action handler

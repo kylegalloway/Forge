@@ -136,7 +136,7 @@ func TestCreateHandlerExecute(t *testing.T) {
 					},
 				},
 			},
-			wantErr: false,
+			wantErr: true, // OCI source not yet implemented
 		},
 		{
 			name: "create with local source",
@@ -717,6 +717,7 @@ func TestBuildInitContainers(t *testing.T) {
 		wantContainerCount      int
 		wantGitAskpassInCmd     bool
 		wantGitCredsVolumeMount bool
+		wantErr                 bool
 	}{
 		{
 			name: "git source without credentials",
@@ -786,14 +787,19 @@ func TestBuildInitContainers(t *testing.T) {
 				},
 			},
 			wantContainerCount: 0,
+			wantErr:            true, // OCI source not yet implemented
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			containers, err := handler.buildInitContainers(tt.bundle)
-			if err != nil {
-				t.Fatalf("buildInitContainers() unexpected error = %v", err)
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("buildInitContainers() error = %v, wantErr %v", err, tt.wantErr)
+			}
+
+			if tt.wantErr {
+				return
 			}
 
 			if len(containers) != tt.wantContainerCount {

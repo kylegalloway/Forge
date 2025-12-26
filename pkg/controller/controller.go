@@ -80,7 +80,26 @@ func (ctrl *Controller) Run(ctx context.Context) error {
 	// Start Job monitoring in background
 	go ctrl.startJobMonitoring(ctx)
 
-	// Watch ZarfPackageJob resources
+	// Watch ZarfPackageJob resources with retry loop
+	for {
+		select {
+		case <-ctx.Done():
+			klog.Info("Context canceled, stopping controller")
+			return nil
+		default:
+			if err := ctrl.watchZarfPackageJobs(ctx); err != nil {
+				klog.ErrorS(err, "Watch error, restarting in 5 seconds")
+				time.Sleep(5 * time.Second)
+			}
+		}
+	}
+}
+
+// watchZarfPackageJobs establishes a watch on ZarfPackageJob resources
+func (ctrl *Controller) watchZarfPackageJobs(ctx context.Context) error {
+	klog.V(2).Info("Starting watch on ZarfPackageJob resources")
+
+	// Create watcher
 	watcher, err := ctrl.dynamicClient.Resource(constants.ZarfPackageJobGVR).Namespace(ctrl.namespace).Watch(ctx, metav1.ListOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to create watcher: %w", err)
@@ -90,24 +109,17 @@ func (ctrl *Controller) Run(ctx context.Context) error {
 	ctrl.ready = true
 	klog.Info("Forge controller is ready")
 
-	// Main event loop
+	// Process events
 	for {
 		select {
 		case <-ctx.Done():
-			klog.Info("Context canceled, stopping controller")
+			klog.Info("Context canceled, stopping watcher")
 			return nil
 
 		case event, ok := <-watcher.ResultChan():
 			if !ok {
-				klog.Warning("Watch channel closed, restarting watcher in 5 seconds")
-				time.Sleep(5 * time.Second)
-				// Recreate watcher
-				var watchErr error
-				watcher, watchErr = ctrl.dynamicClient.Resource(constants.ZarfPackageJobGVR).Namespace(ctrl.namespace).Watch(ctx, metav1.ListOptions{})
-				if watchErr != nil {
-					return fmt.Errorf("failed to recreate watcher: %w", watchErr)
-				}
-				continue
+				klog.Warning("Watch channel closed, recreating watcher")
+				return fmt.Errorf("watch channel closed")
 			}
 
 			if handleErr := ctrl.handleEvent(ctx, event); handleErr != nil {

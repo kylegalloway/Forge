@@ -26,7 +26,7 @@ func mustNewMetrics() *telemetry.Metrics {
 
 // TestNewCreateHandler tests CreateHandler initialization
 func TestNewCreateHandler(t *testing.T) {
-	kubeClient := fake.NewSimpleClientset()
+	kubeClient := fake.NewClientset()
 	metrics := mustNewMetrics()
 	tracer := telemetry.NewTracer()
 
@@ -47,7 +47,7 @@ func TestNewCreateHandler(t *testing.T) {
 
 // TestNewPublishHandler tests PublishHandler initialization
 func TestNewPublishHandler(t *testing.T) {
-	kubeClient := fake.NewSimpleClientset()
+	kubeClient := fake.NewClientset()
 	metrics := mustNewMetrics()
 	tracer := telemetry.NewTracer()
 
@@ -68,7 +68,7 @@ func TestNewPublishHandler(t *testing.T) {
 
 // TestNewDeployHandler tests DeployHandler initialization
 func TestNewDeployHandler(t *testing.T) {
-	kubeClient := fake.NewSimpleClientset()
+	kubeClient := fake.NewClientset()
 	metrics := mustNewMetrics()
 	tracer := telemetry.NewTracer()
 
@@ -89,7 +89,7 @@ func TestNewDeployHandler(t *testing.T) {
 
 // TestCreateHandlerExecute tests CreateHandler.Execute
 func TestCreateHandlerExecute(t *testing.T) {
-	kubeClient := fake.NewSimpleClientset()
+	kubeClient := fake.NewClientset()
 	handler := NewCreateHandler(kubeClient, mustNewMetrics(), telemetry.NewTracer())
 
 	tests := []struct {
@@ -203,7 +203,7 @@ func TestCreateHandlerExecute(t *testing.T) {
 
 // TestPublishHandlerExecute tests PublishHandler.Execute
 func TestPublishHandlerExecute(t *testing.T) {
-	kubeClient := fake.NewSimpleClientset()
+	kubeClient := fake.NewClientset()
 	handler := NewPublishHandler(kubeClient, mustNewMetrics(), telemetry.NewTracer())
 
 	tests := []struct {
@@ -315,7 +315,7 @@ func TestPublishHandlerExecute(t *testing.T) {
 
 // TestDeployHandlerExecute tests DeployHandler.Execute
 func TestDeployHandlerExecute(t *testing.T) {
-	kubeClient := fake.NewSimpleClientset()
+	kubeClient := fake.NewClientset()
 	handler := NewDeployHandler(kubeClient, mustNewMetrics(), telemetry.NewTracer())
 
 	tests := []struct {
@@ -706,7 +706,7 @@ func TestAddCredentialVolumes(t *testing.T) {
 // TestBuildInitContainers tests init container generation
 func TestBuildInitContainers(t *testing.T) {
 	handler := &CreateHandler{
-		kubeClient: fake.NewSimpleClientset(),
+		kubeClient: fake.NewClientset(),
 		metrics:    mustNewMetrics(),
 		tracer:     telemetry.NewTracer(),
 	}
@@ -841,7 +841,7 @@ func TestBuildInitContainers(t *testing.T) {
 // TestBuildVolumes tests volume generation
 func TestBuildVolumes(t *testing.T) {
 	handler := &CreateHandler{
-		kubeClient: fake.NewSimpleClientset(),
+		kubeClient: fake.NewClientset(),
 		metrics:    mustNewMetrics(),
 		tracer:     telemetry.NewTracer(),
 	}

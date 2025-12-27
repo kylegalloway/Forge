@@ -21,7 +21,7 @@ import (
 )
 
 func TestNewController(t *testing.T) {
-	kubeClient := fake.NewSimpleClientset()
+	kubeClient := fake.NewClientset()
 	dynamicClient := dynamicfake.NewSimpleDynamicClient(runtime.NewScheme())
 	metrics := mustNewMetrics()
 	tracer := telemetry.NewTracer()
@@ -67,7 +67,7 @@ func TestNewController(t *testing.T) {
 }
 
 func TestHealthzHandler(t *testing.T) {
-	kubeClient := fake.NewSimpleClientset()
+	kubeClient := fake.NewClientset()
 	dynamicClient := dynamicfake.NewSimpleDynamicClient(runtime.NewScheme())
 	ctrl := NewController(kubeClient, dynamicClient, "forge-system", mustNewMetrics(), telemetry.NewTracer())
 
@@ -105,7 +105,7 @@ func TestHealthzHandler(t *testing.T) {
 }
 
 func TestReadyzHandler(t *testing.T) {
-	kubeClient := fake.NewSimpleClientset()
+	kubeClient := fake.NewClientset()
 	dynamicClient := dynamicfake.NewSimpleDynamicClient(runtime.NewScheme())
 	ctrl := NewController(kubeClient, dynamicClient, "forge-system", mustNewMetrics(), telemetry.NewTracer())
 
@@ -141,7 +141,7 @@ func TestReadyzHandler(t *testing.T) {
 }
 
 func TestHandleEvent(t *testing.T) {
-	kubeClient := fake.NewSimpleClientset()
+	kubeClient := fake.NewClientset()
 	scheme := runtime.NewScheme()
 	_ = zarfv1alpha1.AddToScheme(scheme)
 	dynamicClient := dynamicfake.NewSimpleDynamicClient(scheme)
@@ -231,7 +231,7 @@ func TestUpdateStatus(t *testing.T) {
 	scheme := runtime.NewScheme()
 	_ = zarfv1alpha1.AddToScheme(scheme)
 	dynamicClient := dynamicfake.NewSimpleDynamicClient(scheme)
-	kubeClient := fake.NewSimpleClientset()
+	kubeClient := fake.NewClientset()
 	ctrl := NewController(kubeClient, dynamicClient, "forge-system", mustNewMetrics(), telemetry.NewTracer())
 
 	pkg := &zarfv1alpha1.ZarfPackageJob{
@@ -305,7 +305,7 @@ func TestReconcilePackage(t *testing.T) {
 	scheme := runtime.NewScheme()
 	_ = zarfv1alpha1.AddToScheme(scheme)
 	dynamicClient := dynamicfake.NewSimpleDynamicClient(scheme)
-	kubeClient := fake.NewSimpleClientset()
+	kubeClient := fake.NewClientset()
 	ctrl := NewController(kubeClient, dynamicClient, "forge-system", mustNewMetrics(), telemetry.NewTracer())
 
 	tests := []struct {
@@ -401,7 +401,7 @@ func TestReconcilePackage(t *testing.T) {
 }
 
 func TestHealthzHandlerResponse(t *testing.T) {
-	kubeClient := fake.NewSimpleClientset()
+	kubeClient := fake.NewClientset()
 	dynamicClient := dynamicfake.NewSimpleDynamicClient(runtime.NewScheme())
 	ctrl := NewController(kubeClient, dynamicClient, "forge-system", mustNewMetrics(), telemetry.NewTracer())
 
@@ -445,7 +445,7 @@ func TestHealthzHandlerResponse(t *testing.T) {
 }
 
 func TestReadyzHandlerResponse(t *testing.T) {
-	kubeClient := fake.NewSimpleClientset()
+	kubeClient := fake.NewClientset()
 	dynamicClient := dynamicfake.NewSimpleDynamicClient(runtime.NewScheme())
 	ctrl := NewController(kubeClient, dynamicClient, "forge-system", mustNewMetrics(), telemetry.NewTracer())
 
@@ -511,7 +511,7 @@ func TestProcessJobStatus(t *testing.T) {
 	scheme := runtime.NewScheme()
 	_ = zarfv1alpha1.AddToScheme(scheme)
 	dynamicClient := dynamicfake.NewSimpleDynamicClient(scheme)
-	kubeClient := fake.NewSimpleClientset()
+	kubeClient := fake.NewClientset()
 	ctrl := NewController(kubeClient, dynamicClient, "forge-system", mustNewMetrics(), telemetry.NewTracer())
 
 	// Create a ZarfPackageJob first
@@ -685,7 +685,7 @@ func TestCheckJobStatuses(t *testing.T) {
 	scheme := runtime.NewScheme()
 	_ = zarfv1alpha1.AddToScheme(scheme)
 	dynamicClient := dynamicfake.NewSimpleDynamicClient(scheme)
-	kubeClient := fake.NewSimpleClientset()
+	kubeClient := fake.NewClientset()
 	ctrl := NewController(kubeClient, dynamicClient, "forge-system", mustNewMetrics(), telemetry.NewTracer())
 
 	// Create some test Jobs in the fake client
@@ -714,7 +714,7 @@ func TestHandleActionChaining(t *testing.T) {
 	scheme := runtime.NewScheme()
 	_ = zarfv1alpha1.AddToScheme(scheme)
 	dynamicClient := dynamicfake.NewSimpleDynamicClient(scheme)
-	kubeClient := fake.NewSimpleClientset()
+	kubeClient := fake.NewClientset()
 	ctrl := NewController(kubeClient, dynamicClient, "forge-system", mustNewMetrics(), telemetry.NewTracer())
 
 	tests := []struct {

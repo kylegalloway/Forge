@@ -10,7 +10,7 @@ import (
 )
 
 func TestRealKubeClient_CreateConfigMap(t *testing.T) {
-	clientset := fake.NewSimpleClientset()
+	clientset := fake.NewClientset()
 	client := NewRealKubeClient(clientset)
 
 	cm := &ConfigMap{
@@ -48,7 +48,7 @@ func TestRealKubeClient_CreateConfigMap(t *testing.T) {
 }
 
 func TestRealKubeClient_GetConfigMap(t *testing.T) {
-	clientset := fake.NewSimpleClientset()
+	clientset := fake.NewClientset()
 	client := NewRealKubeClient(clientset)
 
 	// Create a ConfigMap first
@@ -90,7 +90,7 @@ func TestRealKubeClient_GetConfigMap(t *testing.T) {
 }
 
 func TestRealKubeClient_GetConfigMap_NotFound(t *testing.T) {
-	clientset := fake.NewSimpleClientset()
+	clientset := fake.NewClientset()
 	client := NewRealKubeClient(clientset)
 
 	_, err := client.GetConfigMap(context.Background(), "default", "nonexistent")
@@ -105,7 +105,7 @@ func TestRealKubeClient_GetConfigMap_NotFound(t *testing.T) {
 }
 
 func TestRealKubeClient_ListConfigMaps(t *testing.T) {
-	clientset := fake.NewSimpleClientset()
+	clientset := fake.NewClientset()
 	client := NewRealKubeClient(clientset)
 
 	// Create multiple ConfigMaps
@@ -175,7 +175,7 @@ func TestRealKubeClient_ListConfigMaps(t *testing.T) {
 }
 
 func TestRealKubeClient_ListConfigMaps_Empty(t *testing.T) {
-	clientset := fake.NewSimpleClientset()
+	clientset := fake.NewClientset()
 	client := NewRealKubeClient(clientset)
 
 	labels := map[string]string{
@@ -193,7 +193,7 @@ func TestRealKubeClient_ListConfigMaps_Empty(t *testing.T) {
 }
 
 func TestRealKubeClient_UpdateConfigMap(t *testing.T) {
-	clientset := fake.NewSimpleClientset()
+	clientset := fake.NewClientset()
 	client := NewRealKubeClient(clientset)
 
 	// Create a ConfigMap first
@@ -253,7 +253,7 @@ func TestRealKubeClient_UpdateConfigMap(t *testing.T) {
 }
 
 func TestRealKubeClient_UpdateConfigMap_NotFound(t *testing.T) {
-	clientset := fake.NewSimpleClientset()
+	clientset := fake.NewClientset()
 	client := NewRealKubeClient(clientset)
 
 	cm := &ConfigMap{

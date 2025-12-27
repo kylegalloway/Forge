@@ -20,7 +20,7 @@ func TestGetSecret_Git_SSHKey(t *testing.T) {
 		},
 	}
 
-	client := fake.NewSimpleClientset(secret)
+	client := fake.NewClientset(secret)
 	manager := NewManager(client)
 
 	cred, err := manager.GetSecret(context.Background(), "default", "git-creds", TypeGit)
@@ -48,7 +48,7 @@ func TestGetSecret_Git_Token(t *testing.T) {
 		},
 	}
 
-	client := fake.NewSimpleClientset(secret)
+	client := fake.NewClientset(secret)
 	manager := NewManager(client)
 
 	cred, err := manager.GetSecret(context.Background(), "default", "git-creds", TypeGit)
@@ -72,7 +72,7 @@ func TestGetSecret_Git_Invalid(t *testing.T) {
 		},
 	}
 
-	client := fake.NewSimpleClientset(secret)
+	client := fake.NewClientset(secret)
 	manager := NewManager(client)
 
 	_, err := manager.GetSecret(context.Background(), "default", "git-creds", TypeGit)
@@ -92,12 +92,12 @@ func TestGetSecret_S3_Valid(t *testing.T) {
 			Namespace: "default",
 		},
 		Data: map[string][]byte{
-			"access-key-id":     []byte("AKIAIOSFODNN7EXAMPLE"),
-			"secret-access-key": []byte("wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"),
+			"access-key-id":     []byte("AKIAIOSFODNN7EXAMPLE"),                     // pragma: allowlist secret
+			"secret-access-key": []byte("wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"), // pragma: allowlist secret
 		},
 	}
 
-	client := fake.NewSimpleClientset(secret)
+	client := fake.NewClientset(secret)
 	manager := NewManager(client)
 
 	cred, err := manager.GetSecret(context.Background(), "default", "s3-creds", TypeS3)
@@ -117,11 +117,11 @@ func TestGetSecret_S3_MissingAccessKey(t *testing.T) {
 			Namespace: "default",
 		},
 		Data: map[string][]byte{
-			"secret-access-key": []byte("wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"),
+			"secret-access-key": []byte("wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"), // pragma: allowlist secret
 		},
 	}
 
-	client := fake.NewSimpleClientset(secret)
+	client := fake.NewClientset(secret)
 	manager := NewManager(client)
 
 	_, err := manager.GetSecret(context.Background(), "default", "s3-creds", TypeS3)
@@ -137,11 +137,11 @@ func TestGetSecret_S3_MissingSecretKey(t *testing.T) {
 			Namespace: "default",
 		},
 		Data: map[string][]byte{
-			"access-key-id": []byte("AKIAIOSFODNN7EXAMPLE"),
+			"access-key-id": []byte("AKIAIOSFODNN7EXAMPLE"), // pragma: allowlist secret
 		},
 	}
 
-	client := fake.NewSimpleClientset(secret)
+	client := fake.NewClientset(secret)
 	manager := NewManager(client)
 
 	_, err := manager.GetSecret(context.Background(), "default", "s3-creds", TypeS3)
@@ -162,7 +162,7 @@ func TestGetSecret_OCI_Valid(t *testing.T) {
 		},
 	}
 
-	client := fake.NewSimpleClientset(secret)
+	client := fake.NewClientset(secret)
 	manager := NewManager(client)
 
 	cred, err := manager.GetSecret(context.Background(), "default", "oci-creds", TypeOCI)
@@ -187,7 +187,7 @@ func TestGetSecret_OCI_Missing(t *testing.T) {
 		},
 	}
 
-	client := fake.NewSimpleClientset(secret)
+	client := fake.NewClientset(secret)
 	manager := NewManager(client)
 
 	_, err := manager.GetSecret(context.Background(), "default", "oci-creds", TypeOCI)
@@ -197,7 +197,7 @@ func TestGetSecret_OCI_Missing(t *testing.T) {
 }
 
 func TestGetSecret_NotFound(t *testing.T) {
-	client := fake.NewSimpleClientset()
+	client := fake.NewClientset()
 	manager := NewManager(client)
 
 	_, err := manager.GetSecret(context.Background(), "default", "nonexistent", TypeGit)

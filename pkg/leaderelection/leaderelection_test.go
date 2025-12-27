@@ -100,7 +100,7 @@ func TestCustomConfig(t *testing.T) {
 }
 
 func TestRunWithLeaderElection_NilConfig(t *testing.T) {
-	client := fake.NewSimpleClientset()
+	client := fake.NewClientset()
 	ctx, cancel := context.WithCancel(context.Background())
 
 	// Cancel immediately to prevent the leader election from running indefinitely
@@ -120,7 +120,7 @@ func TestRunWithLeaderElection_NilConfig(t *testing.T) {
 }
 
 func TestRunWithLeaderElection_CustomConfig(t *testing.T) {
-	client := fake.NewSimpleClientset()
+	client := fake.NewClientset()
 	ctx, cancel := context.WithCancel(context.Background())
 
 	// Cancel immediately to prevent running indefinitely
@@ -148,7 +148,7 @@ func TestRunWithLeaderElection_CustomConfig(t *testing.T) {
 func TestRunWithLeaderElection_RunFunctionCalled(t *testing.T) {
 	// This test uses a very short timeout to verify the structure works
 	// In a real scenario, leader election would take longer
-	client := fake.NewSimpleClientset()
+	client := fake.NewClientset()
 	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 	defer cancel()
 

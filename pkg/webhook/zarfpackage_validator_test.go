@@ -12,7 +12,7 @@ import (
 )
 
 func TestNewZarfPackageJobValidator(t *testing.T) {
-	kubeClient := fake.NewSimpleClientset()
+	kubeClient := fake.NewClientset()
 	validator := NewZarfPackageJobValidator(kubeClient)
 	if validator == nil {
 		t.Fatal("NewZarfPackageJobValidator returned nil")
@@ -23,7 +23,7 @@ func TestNewZarfPackageJobValidator(t *testing.T) {
 }
 
 func TestValidateZarfPackageJob_ValidBuild(t *testing.T) {
-	kubeClient := fake.NewSimpleClientset()
+	kubeClient := fake.NewClientset()
 	validator := NewZarfPackageJobValidator(kubeClient)
 
 	// Create ServiceAccount with permissions
@@ -67,7 +67,7 @@ func TestValidateZarfPackageJob_ValidBuild(t *testing.T) {
 }
 
 func TestValidateZarfPackageJob_MissingServiceAccount(t *testing.T) {
-	kubeClient := fake.NewSimpleClientset()
+	kubeClient := fake.NewClientset()
 	validator := NewZarfPackageJobValidator(kubeClient)
 
 	pkg := &zarfv1alpha1.ZarfPackageJob{
@@ -498,7 +498,7 @@ func TestValidatePublish_LocalDestination(t *testing.T) {
 		},
 	}
 
-	client := fake.NewSimpleClientset(sa)
+	client := fake.NewClientset(sa)
 	validator := NewZarfPackageJobValidator(client)
 
 	publish := &zarfv1alpha1.PublishConfig{
@@ -525,7 +525,7 @@ func TestValidatePublish_UnknownDestination(t *testing.T) {
 		},
 	}
 
-	client := fake.NewSimpleClientset(sa)
+	client := fake.NewClientset(sa)
 	validator := NewZarfPackageJobValidator(client)
 
 	publish := &zarfv1alpha1.PublishConfig{
@@ -551,7 +551,7 @@ func TestValidateSource_UnknownType(t *testing.T) {
 		},
 	}
 
-	client := fake.NewSimpleClientset(sa)
+	client := fake.NewClientset(sa)
 	validator := NewZarfPackageJobValidator(client)
 
 	source := &zarfv1alpha1.PackageSource{

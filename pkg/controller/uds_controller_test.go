@@ -21,7 +21,7 @@ import (
 )
 
 func TestNewUDSController(t *testing.T) {
-	kubeClient := fake.NewSimpleClientset()
+	kubeClient := fake.NewClientset()
 	dynamicClient := dynamicfake.NewSimpleDynamicClient(runtime.NewScheme())
 	metrics := mustNewMetrics()
 	tracer := telemetry.NewTracer()
@@ -61,7 +61,7 @@ func TestNewUDSController(t *testing.T) {
 }
 
 func TestUDSHandleEvent(t *testing.T) {
-	kubeClient := fake.NewSimpleClientset()
+	kubeClient := fake.NewClientset()
 	scheme := runtime.NewScheme()
 	if err := udsv1alpha2.AddToScheme(scheme); err != nil {
 		t.Fatalf("Failed to add UDS scheme: %v", err)
@@ -154,7 +154,7 @@ func TestUDSUpdateStatus(t *testing.T) {
 		t.Fatalf("Failed to add UDS scheme: %v", err)
 	}
 	dynamicClient := dynamicfake.NewSimpleDynamicClient(scheme)
-	kubeClient := fake.NewSimpleClientset()
+	kubeClient := fake.NewClientset()
 	ctrl := NewUDSController(kubeClient, dynamicClient, "forge-system", mustNewMetrics(), telemetry.NewTracer())
 
 	bundle := &udsv1alpha2.UDSPackageJob{
@@ -236,7 +236,7 @@ func TestUDSReconcileBundle(t *testing.T) {
 		t.Fatalf("Failed to add UDS scheme: %v", err)
 	}
 	dynamicClient := dynamicfake.NewSimpleDynamicClient(scheme)
-	kubeClient := fake.NewSimpleClientset()
+	kubeClient := fake.NewClientset()
 	ctrl := NewUDSController(kubeClient, dynamicClient, "forge-system", mustNewMetrics(), telemetry.NewTracer())
 
 	tests := []struct {
@@ -338,7 +338,7 @@ func TestUDSProcessJobStatus(t *testing.T) {
 		t.Fatalf("Failed to add UDS scheme: %v", err)
 	}
 	dynamicClient := dynamicfake.NewSimpleDynamicClient(scheme)
-	kubeClient := fake.NewSimpleClientset()
+	kubeClient := fake.NewClientset()
 	ctrl := NewUDSController(kubeClient, dynamicClient, "forge-system", mustNewMetrics(), telemetry.NewTracer())
 
 	// Create a UDSPackageJob first
@@ -514,7 +514,7 @@ func TestUDSCheckJobStatuses(t *testing.T) {
 		t.Fatalf("Failed to add UDS scheme: %v", err)
 	}
 	dynamicClient := dynamicfake.NewSimpleDynamicClient(scheme)
-	kubeClient := fake.NewSimpleClientset()
+	kubeClient := fake.NewClientset()
 	ctrl := NewUDSController(kubeClient, dynamicClient, "forge-system", mustNewMetrics(), telemetry.NewTracer())
 
 	// Create some test Jobs in the fake client
@@ -545,7 +545,7 @@ func TestUDSHandleActionChaining(t *testing.T) {
 		t.Fatalf("Failed to add UDS scheme: %v", err)
 	}
 	dynamicClient := dynamicfake.NewSimpleDynamicClient(scheme)
-	kubeClient := fake.NewSimpleClientset()
+	kubeClient := fake.NewClientset()
 	ctrl := NewUDSController(kubeClient, dynamicClient, "forge-system", mustNewMetrics(), telemetry.NewTracer())
 
 	tests := []struct {
@@ -725,7 +725,7 @@ func TestUDSHandleActionChaining(t *testing.T) {
 }
 
 func TestUDSHealthzHandler(t *testing.T) {
-	kubeClient := fake.NewSimpleClientset()
+	kubeClient := fake.NewClientset()
 	dynamicClient := dynamicfake.NewSimpleDynamicClient(runtime.NewScheme())
 	ctrl := NewUDSController(kubeClient, dynamicClient, "forge-system", mustNewMetrics(), telemetry.NewTracer())
 
@@ -763,7 +763,7 @@ func TestUDSHealthzHandler(t *testing.T) {
 }
 
 func TestUDSReadyzHandler(t *testing.T) {
-	kubeClient := fake.NewSimpleClientset()
+	kubeClient := fake.NewClientset()
 	dynamicClient := dynamicfake.NewSimpleDynamicClient(runtime.NewScheme())
 	ctrl := NewUDSController(kubeClient, dynamicClient, "forge-system", mustNewMetrics(), telemetry.NewTracer())
 
@@ -799,7 +799,7 @@ func TestUDSReadyzHandler(t *testing.T) {
 }
 
 func TestUDSHealthzHandlerResponse(t *testing.T) {
-	kubeClient := fake.NewSimpleClientset()
+	kubeClient := fake.NewClientset()
 	dynamicClient := dynamicfake.NewSimpleDynamicClient(runtime.NewScheme())
 	ctrl := NewUDSController(kubeClient, dynamicClient, "forge-system", mustNewMetrics(), telemetry.NewTracer())
 
@@ -843,7 +843,7 @@ func TestUDSHealthzHandlerResponse(t *testing.T) {
 }
 
 func TestUDSReadyzHandlerResponse(t *testing.T) {
-	kubeClient := fake.NewSimpleClientset()
+	kubeClient := fake.NewClientset()
 	dynamicClient := dynamicfake.NewSimpleDynamicClient(runtime.NewScheme())
 	ctrl := NewUDSController(kubeClient, dynamicClient, "forge-system", mustNewMetrics(), telemetry.NewTracer())
 

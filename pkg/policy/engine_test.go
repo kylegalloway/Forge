@@ -13,7 +13,7 @@ import (
 )
 
 func TestValidate_MissingServiceAccount(t *testing.T) {
-	client := fake.NewSimpleClientset()
+	client := fake.NewClientset()
 	engine := NewEngine(client)
 
 	pkg := &zarfv1alpha1.ZarfPackageJob{
@@ -37,7 +37,7 @@ func TestValidate_MissingServiceAccount(t *testing.T) {
 }
 
 func TestValidate_ServiceAccountNotFound(t *testing.T) {
-	client := fake.NewSimpleClientset()
+	client := fake.NewClientset()
 	engine := NewEngine(client)
 
 	pkg := &zarfv1alpha1.ZarfPackageJob{
@@ -68,7 +68,7 @@ func TestValidate_ActionNotAllowed(t *testing.T) {
 		},
 	}
 
-	client := fake.NewSimpleClientset(sa)
+	client := fake.NewClientset(sa)
 	engine := NewEngine(client)
 
 	pkg := &zarfv1alpha1.ZarfPackageJob{
@@ -110,7 +110,7 @@ func TestValidate_GitSourceAllowed(t *testing.T) {
 		},
 	}
 
-	client := fake.NewSimpleClientset(sa)
+	client := fake.NewClientset(sa)
 	engine := NewEngine(client)
 
 	pkg := &zarfv1alpha1.ZarfPackageJob{
@@ -149,7 +149,7 @@ func TestValidate_GitSourceNotAllowed(t *testing.T) {
 		},
 	}
 
-	client := fake.NewSimpleClientset(sa)
+	client := fake.NewClientset(sa)
 	engine := NewEngine(client)
 
 	pkg := &zarfv1alpha1.ZarfPackageJob{
@@ -188,7 +188,7 @@ func TestValidate_WildcardAllowsAll(t *testing.T) {
 		},
 	}
 
-	client := fake.NewSimpleClientset(sa)
+	client := fake.NewClientset(sa)
 	engine := NewEngine(client)
 
 	pkg := &zarfv1alpha1.ZarfPackageJob{
@@ -227,7 +227,7 @@ func TestValidate_S3Source(t *testing.T) {
 		},
 	}
 
-	client := fake.NewSimpleClientset(sa)
+	client := fake.NewClientset(sa)
 	engine := NewEngine(client)
 
 	pkg := &zarfv1alpha1.ZarfPackageJob{
@@ -266,7 +266,7 @@ func TestValidate_LocalSourceDeniedByDefault(t *testing.T) {
 		},
 	}
 
-	client := fake.NewSimpleClientset(sa)
+	client := fake.NewClientset(sa)
 	engine := NewEngine(client)
 
 	pkg := &zarfv1alpha1.ZarfPackageJob{
@@ -305,7 +305,7 @@ func TestValidate_LocalSourceAllowed(t *testing.T) {
 		},
 	}
 
-	client := fake.NewSimpleClientset(sa)
+	client := fake.NewClientset(sa)
 	engine := NewEngine(client)
 
 	pkg := &zarfv1alpha1.ZarfPackageJob{
@@ -432,7 +432,7 @@ func TestValidate_PublishDestinationS3(t *testing.T) {
 		},
 	}
 
-	client := fake.NewSimpleClientset(sa)
+	client := fake.NewClientset(sa)
 	engine := NewEngine(client)
 
 	pkg := &zarfv1alpha1.ZarfPackageJob{
@@ -482,7 +482,7 @@ func TestValidate_PublishDestinationS3NotAllowed(t *testing.T) {
 		},
 	}
 
-	client := fake.NewSimpleClientset(sa)
+	client := fake.NewClientset(sa)
 	engine := NewEngine(client)
 
 	pkg := &zarfv1alpha1.ZarfPackageJob{
@@ -534,7 +534,7 @@ func TestValidate_PublishDestinationOCI(t *testing.T) {
 		},
 	}
 
-	client := fake.NewSimpleClientset(sa)
+	client := fake.NewClientset(sa)
 	engine := NewEngine(client)
 
 	pkg := &zarfv1alpha1.ZarfPackageJob{
@@ -584,7 +584,7 @@ func TestValidate_PublishDestinationOCINotAllowed(t *testing.T) {
 		},
 	}
 
-	client := fake.NewSimpleClientset(sa)
+	client := fake.NewClientset(sa)
 	engine := NewEngine(client)
 
 	pkg := &zarfv1alpha1.ZarfPackageJob{
@@ -637,7 +637,7 @@ func TestValidate_PublishDestinationOCIWithRepositoryPattern(t *testing.T) {
 		},
 	}
 
-	client := fake.NewSimpleClientset(sa)
+	client := fake.NewClientset(sa)
 	engine := NewEngine(client)
 
 	// Test allowed repository
@@ -725,7 +725,7 @@ func TestValidate_PublishDestinationLocal(t *testing.T) {
 		},
 	}
 
-	client := fake.NewSimpleClientset(sa)
+	client := fake.NewClientset(sa)
 	engine := NewEngine(client)
 
 	pkg := &zarfv1alpha1.ZarfPackageJob{
@@ -773,7 +773,7 @@ func TestValidate_PublishDestinationLocalNotAllowed(t *testing.T) {
 		},
 	}
 
-	client := fake.NewSimpleClientset(sa)
+	client := fake.NewClientset(sa)
 	engine := NewEngine(client)
 
 	pkg := &zarfv1alpha1.ZarfPackageJob{
@@ -824,7 +824,7 @@ func TestValidate_OCISource(t *testing.T) {
 		},
 	}
 
-	client := fake.NewSimpleClientset(sa)
+	client := fake.NewClientset(sa)
 	engine := NewEngine(client)
 
 	pkg := &zarfv1alpha1.ZarfPackageJob{
@@ -867,7 +867,7 @@ func TestValidate_OCISourceNotAllowed(t *testing.T) {
 		},
 	}
 
-	client := fake.NewSimpleClientset(sa)
+	client := fake.NewClientset(sa)
 	engine := NewEngine(client)
 
 	pkg := &zarfv1alpha1.ZarfPackageJob{
@@ -913,7 +913,7 @@ func TestValidate_DeployTargetAllowed(t *testing.T) {
 		},
 	}
 
-	client := fake.NewSimpleClientset(sa)
+	client := fake.NewClientset(sa)
 	engine := NewEngine(client)
 
 	pkg := &zarfv1alpha1.ZarfPackageJob{
@@ -957,7 +957,7 @@ func TestValidate_DeployTargetNotAllowed(t *testing.T) {
 		},
 	}
 
-	client := fake.NewSimpleClientset(sa)
+	client := fake.NewClientset(sa)
 	engine := NewEngine(client)
 
 	pkg := &zarfv1alpha1.ZarfPackageJob{
@@ -1023,7 +1023,7 @@ func containsRec(str, substr string) bool {
 // UDS Bundle Validation Tests
 
 func TestValidateUDSBundle_MissingServiceAccount(t *testing.T) {
-	client := fake.NewSimpleClientset()
+	client := fake.NewClientset()
 	engine := NewEngine(client)
 
 	bundle := &udsv1alpha2.UDSPackageJob{
@@ -1047,7 +1047,7 @@ func TestValidateUDSBundle_MissingServiceAccount(t *testing.T) {
 }
 
 func TestValidateUDSBundle_ServiceAccountNotFound(t *testing.T) {
-	client := fake.NewSimpleClientset()
+	client := fake.NewClientset()
 	engine := NewEngine(client)
 
 	bundle := &udsv1alpha2.UDSPackageJob{
@@ -1078,7 +1078,7 @@ func TestValidateUDSBundle_ActionNotAllowed(t *testing.T) {
 		},
 	}
 
-	client := fake.NewSimpleClientset(sa)
+	client := fake.NewClientset(sa)
 	engine := NewEngine(client)
 
 	bundle := &udsv1alpha2.UDSPackageJob{
@@ -1120,7 +1120,7 @@ func TestValidateUDSBundle_GitSourceAllowed(t *testing.T) {
 		},
 	}
 
-	client := fake.NewSimpleClientset(sa)
+	client := fake.NewClientset(sa)
 	engine := NewEngine(client)
 
 	bundle := &udsv1alpha2.UDSPackageJob{
@@ -1159,7 +1159,7 @@ func TestValidateUDSBundle_GitSourceNotAllowed(t *testing.T) {
 		},
 	}
 
-	client := fake.NewSimpleClientset(sa)
+	client := fake.NewClientset(sa)
 	engine := NewEngine(client)
 
 	bundle := &udsv1alpha2.UDSPackageJob{
@@ -1202,7 +1202,7 @@ func TestValidateUDSBundle_S3SourceAllowed(t *testing.T) {
 		},
 	}
 
-	client := fake.NewSimpleClientset(sa)
+	client := fake.NewClientset(sa)
 	engine := NewEngine(client)
 
 	bundle := &udsv1alpha2.UDSPackageJob{
@@ -1247,7 +1247,7 @@ func TestValidateUDSBundle_OCISourceAllowed(t *testing.T) {
 		},
 	}
 
-	client := fake.NewSimpleClientset(sa)
+	client := fake.NewClientset(sa)
 	engine := NewEngine(client)
 
 	bundle := &udsv1alpha2.UDSPackageJob{
@@ -1290,7 +1290,7 @@ func TestValidateUDSBundle_PublishDestinationOCIAllowed(t *testing.T) {
 		},
 	}
 
-	client := fake.NewSimpleClientset(sa)
+	client := fake.NewClientset(sa)
 	engine := NewEngine(client)
 
 	bundle := &udsv1alpha2.UDSPackageJob{
@@ -1340,7 +1340,7 @@ func TestValidateUDSBundle_PublishDestinationS3Allowed(t *testing.T) {
 		},
 	}
 
-	client := fake.NewSimpleClientset(sa)
+	client := fake.NewClientset(sa)
 	engine := NewEngine(client)
 
 	bundle := &udsv1alpha2.UDSPackageJob{
@@ -1390,7 +1390,7 @@ func TestValidateUDSBundle_DeployTargetAllowed(t *testing.T) {
 		},
 	}
 
-	client := fake.NewSimpleClientset(sa)
+	client := fake.NewClientset(sa)
 	engine := NewEngine(client)
 
 	bundle := &udsv1alpha2.UDSPackageJob{
@@ -1434,7 +1434,7 @@ func TestValidateUDSBundle_DeployTargetNotAllowed(t *testing.T) {
 		},
 	}
 
-	client := fake.NewSimpleClientset(sa)
+	client := fake.NewClientset(sa)
 	engine := NewEngine(client)
 
 	bundle := &udsv1alpha2.UDSPackageJob{
@@ -1481,7 +1481,7 @@ func TestValidateUDSBundle_CompleteWorkflow(t *testing.T) {
 		},
 	}
 
-	client := fake.NewSimpleClientset(sa)
+	client := fake.NewClientset(sa)
 	engine := NewEngine(client)
 
 	bundle := &udsv1alpha2.UDSPackageJob{
@@ -1534,7 +1534,7 @@ func TestValidateUDSBundle_LocalSourceAllowed(t *testing.T) {
 		},
 	}
 
-	client := fake.NewSimpleClientset(sa)
+	client := fake.NewClientset(sa)
 	engine := NewEngine(client)
 
 	bundle := &udsv1alpha2.UDSPackageJob{
@@ -1571,7 +1571,7 @@ func TestValidateUDSBundle_LocalSourceNotAllowed(t *testing.T) {
 		},
 	}
 
-	client := fake.NewSimpleClientset(sa)
+	client := fake.NewClientset(sa)
 	engine := NewEngine(client)
 
 	bundle := &udsv1alpha2.UDSPackageJob{

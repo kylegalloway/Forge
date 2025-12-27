@@ -12,7 +12,7 @@ import (
 )
 
 func TestNewUDSPackageJobValidator(t *testing.T) {
-	kubeClient := fake.NewSimpleClientset()
+	kubeClient := fake.NewClientset()
 	validator := NewUDSPackageJobValidator(kubeClient)
 	if validator == nil {
 		t.Fatal("NewUDSPackageJobValidator returned nil")
@@ -23,7 +23,7 @@ func TestNewUDSPackageJobValidator(t *testing.T) {
 }
 
 func TestValidateUDSPackageJob_ValidCreate(t *testing.T) {
-	kubeClient := fake.NewSimpleClientset()
+	kubeClient := fake.NewClientset()
 	validator := NewUDSPackageJobValidator(kubeClient)
 
 	// Create ServiceAccount with permissions
@@ -67,7 +67,7 @@ func TestValidateUDSPackageJob_ValidCreate(t *testing.T) {
 }
 
 func TestValidateUDSPackageJob_MissingServiceAccount(t *testing.T) {
-	kubeClient := fake.NewSimpleClientset()
+	kubeClient := fake.NewClientset()
 	validator := NewUDSPackageJobValidator(kubeClient)
 
 	bundle := &udsv1alpha2.UDSPackageJob{
@@ -410,7 +410,7 @@ func TestValidateUDSBundlePublish_LocalDestination(t *testing.T) {
 		},
 	}
 
-	client := fake.NewSimpleClientset(sa)
+	client := fake.NewClientset(sa)
 	validator := NewUDSPackageJobValidator(client)
 
 	publish := &udsv1alpha2.PublishConfig{
@@ -433,7 +433,7 @@ func TestValidateUDSBundlePublish_UnknownDestination(t *testing.T) {
 		},
 	}
 
-	client := fake.NewSimpleClientset(sa)
+	client := fake.NewClientset(sa)
 	validator := NewUDSPackageJobValidator(client)
 
 	publish := &udsv1alpha2.PublishConfig{
@@ -459,7 +459,7 @@ func TestValidateUDSPackageSource_UnknownType(t *testing.T) {
 		},
 	}
 
-	client := fake.NewSimpleClientset(sa)
+	client := fake.NewClientset(sa)
 	validator := NewUDSPackageJobValidator(client)
 
 	source := &udsv1alpha2.PackageSource{
@@ -476,7 +476,7 @@ func TestValidateUDSPackageSource_UnknownType(t *testing.T) {
 }
 
 func TestValidateUDSPackageJob_CompleteWorkflow(t *testing.T) {
-	kubeClient := fake.NewSimpleClientset()
+	kubeClient := fake.NewClientset()
 	validator := NewUDSPackageJobValidator(kubeClient)
 
 	// Create ServiceAccount with full permissions

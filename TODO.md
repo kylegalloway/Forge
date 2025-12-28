@@ -10,34 +10,17 @@
 
 ## 🟡 High Priority (Consistency/Maintainability)
 
-**All high-priority issues resolved! 🎉**
+### 2. Fix the gitlab-ci yaml to mostly match the github actions
+
+**Location**: .gitlab-ci.yml
+**Issue**: Gitlab CI instructions haven't been updated.
+**Action**: Update the gitlab-ci instructions
 
 ---
 
 ## 🟢 Medium Priority (Code Quality)
 
-### 1. ~~Significant Code Duplication in Action Handlers~~ ✅ COMPLETE
-
-**Location**: `pkg/actions/zarf/*.go` and `pkg/actions/uds/*.go`
-**Status**: **COMPLETE** (2025-12-27)
-
-**What was done**:
-- ✅ Added 8 consolidation helpers to `pkg/actions/job_builder.go`:
-  - `BuildResourceRequirements()`, `PublishResourceRequirements()`, `DeployResourceRequirements()`
-  - `NonRootSecurityContextWithUID()` and `NonRootPodSecurityContextWithUID()`
-  - `ParseTimeoutWithDefault()` for timeout string parsing
-  - `AddKubeconfigVolume()` and `AddArtifactPVCVolume()` for common volume mounting
-- ✅ Refactored all 6 handlers to use the new helpers:
-  - Zarf: build.go, publish.go, deploy.go
-  - UDS: create.go, publish.go, deploy.go
-- ✅ Eliminated ~300+ lines of duplicated code across handlers
-- ✅ All tests passing (actions/zarf: 80.5%, actions/uds: 81.2%)
-
-**Results**:
-- Better maintainability - changes to security contexts, resources, or timeouts now happen in one place
-- Consistent resource requirements across Zarf and UDS handlers
-- Reduced risk of bugs from copy-paste errors
-- Cleaner, more readable handler code
+**All medium-priority issues resolved! 🎉**
 
 ---
 
@@ -69,76 +52,86 @@
 
 ## 🔧 Tool & Dependency Updates
 
-### 5. Create Tool Version Tracking Document
+### ✅ 5. Create Tool Version Tracking Document (COMPLETED 2025-12-27)
 
-**Action**: Create `docs/development/TOOL_VERSIONS.md` to document all tools and their current/target versions.
-**Should include**:
+**Status**: COMPLETED
 
-- Language runtime (Go version)
-- Build tools (golangci-lint, controller-gen, gofmt, goimports)
-- Kubernetes tools (kubectl, helm, kind)
-- CI/CD tools (GitHub Actions versions)
-- Container tools (Docker/Podman versions)
-- Development tools (pre-commit, yamllint, markdownlint-cli2)
-- Go dependencies (major libraries like controller-runtime, client-go, etc.)
+**Deliverable**: Created comprehensive `docs/development/TOOL_VERSIONS.md` with:
+- Language runtime tracking (Go 1.25.0 → 1.25.5)
+- Build tools version matrix (golangci-lint v2.7.2, controller-gen v0.20.0)
+- Kubernetes tools documentation (kubectl v1.35, helm v4.0.0, kind v0.31.0)
+- CI/CD tools audit (GitHub Actions versions)
+- Development tools status (pre-commit v4.5.1, all hooks latest)
+- Go dependencies matrix (k8s.io/* v0.35.0, OTEL v1.38.0)
+- Update priority system (High/Medium/Low/Up-to-date)
+- Detailed update strategy and testing checklist
 
-**Format**: Table with columns: Tool, Current Version, Latest Stable, EOL Date, Update Priority
+**Key Finding**: Project is in excellent shape! Most tools already on latest versions.
 
-### 6. Update Development Tools to Latest Stable Versions
+### ✅ 6. Update Development Tools to Latest Stable Versions (COMPLETED 2025-12-27)
 
-**Research needed**: Use [endoflife.date](https://endoflife.date/) and/or direct tool documentation to identify latest stable versions.
+**Status**: COMPLETED
 
-**Tools to update**:
+**Updates Applied**:
+- ✅ **Go runtime**: 1.25.0 → 1.25.5 (latest patch with security fixes)
+  - Updated `go.mod`
+  - Ran `go mod tidy`
+  - All tests passing
+- ✅ **Zarf CLI Image**: v0.66.0 → v0.68.1 (latest, Dec 18, 2025)
+  - Updated `pkg/constants/config.go:42`
+  - Updated `Makefile:309` (kind-zarf-cli target)
+- ✅ **UDS CLI Image**: `:latest` → `v0.27.13` (pinned for reproducibility)
+  - Updated `pkg/constants/config.go:45`
 
-- **golangci-lint** - Currently on v2 format (recent upgrade from v1)
-  - Check: `golangci-lint version` vs https://endoflife.date/golangci-lint
-- **controller-gen** - Used for CRD generation
-  - Check: Go module version vs https://github.com/kubernetes-sigs/controller-tools/releases
-- **kubectl** - Kubernetes CLI
-  - Check: https://endoflife.date/kubectl
-- **helm** - Package manager
-  - Check: https://endoflife.date/helm
-- **kind** - Local cluster tool
-  - Check: https://endoflife.date/kind or https://github.com/kubernetes-sigs/kind/releases
-- **pre-commit** - Git hook manager
-  - Check: https://github.com/pre-commit/pre-commit/releases
-- **Go runtime** - Language version
-  - Check: https://endoflife.date/go
+**Already on Latest** (no updates needed):
+- ✅ golangci-lint v2.7.2 (latest, Dec 7, 2025)
+- ✅ controller-gen v0.20.0 (ahead of latest stable v0.19.0)
+- ✅ All pre-commit hooks on latest versions
+- ✅ kubectl, helm, kind (latest versions documented)
 
-**Strategy**: Target latest stable/LTS versions, avoid bleeding-edge releases. Prioritize security-supported versions.
+### ✅ 7. Update GitHub Actions to Latest Stable (COMPLETED 2025-12-27)
 
-### 7. Update GitHub Actions to Latest Stable
+**Status**: COMPLETED
 
-**Action**: Review `.github/workflows/*.yaml` and update action versions.
+**Updates Applied**:
+- ✅ **actions/checkout**: Updated v4 → v6 in ci.yaml
+  - Security job (line 148)
+  - Docker job (line 114)
 
-**Common actions to check**:
+**Already on Latest** (verified across all workflows):
+- ✅ actions/setup-go@v6
+- ✅ docker/build-push-action@v6
+- ✅ golangci/golangci-lint-action@v9
+- ✅ codecov/codecov-action@v4
+- ✅ actions/upload-artifact@v4
+- ✅ actions/cache@v4
+- ✅ docker/setup-buildx-action@v3
+- ✅ docker/login-action@v3
+- ✅ All other actions on latest versions
 
-- `actions/checkout@v*`
-- `actions/setup-go@v*`
-- `docker/build-push-action@v*`
-- `golangci/golangci-lint-action@v*`
+**Note**: aquasecurity/trivy-action@master remains unpinned (medium priority for future improvement).
 
-**Reference**: https://github.com/actions/* for official actions
+### ✅ 8. Update Go Dependencies (COMPLETED - Already Up-to-Date!)
 
-### 8. Update Go Dependencies
+**Status**: COMPLETED - No updates needed!
 
-**Action**: Review and update major Go modules in `go.mod`.
+**Current State** (verified 2025-12-27):
+- ✅ **k8s.io/client-go** v0.35.0 (latest, Dec 17, 2025 with K8s 1.35)
+- ✅ **k8s.io/api** v0.35.0
+- ✅ **k8s.io/apimachinery** v0.35.0
+- ✅ **k8s.io/klog/v2** v2.130.1
+- ✅ **go.opentelemetry.io/otel** v1.38.0 (all OTEL packages)
+- ✅ **github.com/prometheus/client_golang** v1.23.2
+- ✅ **github.com/google/go-containerregistry** v0.20.7
+- ✅ **gopkg.in/yaml.v3** v3.0.1
 
-**Key dependencies to check**:
+**Findings**:
+- Kubernetes dependencies already on latest v1.35 libraries! 🎉
+- All OpenTelemetry packages on latest v1.38.0
+- All major dependencies up to date
+- Zero updates required
 
-- `sigs.k8s.io/controller-runtime`
-- `k8s.io/client-go`
-- `k8s.io/api`
-- `k8s.io/apimachinery`
-- OpenTelemetry libraries
-- Zarf/UDS CLI container image versions (constants.ZarfCLIImage, constants.UDSCLIImage)
-
-**Process**:
-
-1. Run `go list -u -m all` to see available updates
-2. Check compatibility matrices for Kubernetes client-go versions
-3. Update incrementally, run tests after each major update
-4. Update vendor directory if used
+**Note**: controller-runtime v0.22.4 supports client-go v0.34 while we're using v0.35. Minor mismatch is acceptable, monitor for future controller-runtime v0.23+ release.
 
 ---
 

@@ -39,10 +39,10 @@ const (
 	DefaultUDSUID = 65532
 
 	// ZarfCLIImage is the container image for Zarf CLI operations.
-	ZarfCLIImage = "localhost/zarf:v0.66.0"
+	ZarfCLIImage = "localhost/zarf:v0.68.1"
 
 	// UDSCLIImage is the container image for UDS CLI operations.
-	UDSCLIImage = "ghcr.io/defenseunicorns/uds-cli:latest"
+	UDSCLIImage = "ghcr.io/defenseunicorns/uds-cli:v0.27.13"
 
 	// VolumeNameWorkspace is the name of the workspace volume.
 	VolumeNameWorkspace = "workspace"

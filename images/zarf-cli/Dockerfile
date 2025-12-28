@@ -7,7 +7,7 @@
 FROM alpine:3.20
 
 # Zarf version to install
-ARG ZARF_VERSION=v0.66.0
+ARG ZARF_VERSION=v0.68.1
 
 # Install dependencies
 RUN apk add --no-cache \
@@ -15,6 +15,9 @@ RUN apk add --no-cache \
     git \
     curl \
     bash
+
+# Set shell to use pipefail
+SHELL ["/bin/ash", "-eo", "pipefail", "-c"]
 
 # Download and install Zarf CLI
 RUN ARCH=$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/') && \

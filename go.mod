@@ -1,6 +1,6 @@
 module github.com/kylegalloway/forge
 
-go 1.25.0
+go 1.25.5
 
 require (
 	github.com/google/go-containerregistry v0.20.7

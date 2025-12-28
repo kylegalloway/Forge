@@ -1,121 +1,225 @@
 # Tool Version Tracking
 
-This document tracks all tools, dependencies, and their versions used in the Forge project.
+This document tracks all tools, dependencies, and their versions used in the Forge project. It helps identify update opportunities and plan migration strategies.
 
-**Last Updated:** 2025-12-26
+**Last Updated**: 2025-12-27
 
 ---
 
 ## Language Runtime
 
 | Tool | Current Version | Latest Stable | EOL Date | Update Priority | Notes |
-|------|----------------|---------------|----------|-----------------|-------|
-| Go | 1.24.0 | 1.25.5 | 2027-02 (approx) | 🟡 Medium | Go 1.24.11 available with security fixes. Go 1.25.5 is latest major. Both are supported. |
+|------|----------------|---------------|----------|----------------|-------|
+| Go | 1.25.0 | 1.25.5 | Supported | 🟡 Medium | Update to latest patch version (1.25.5) for security fixes |
+
+### Go Version Support
+
+Go follows an N-2 support policy, maintaining the two most recent major versions (currently 1.25 and 1.24). Each version is supported for approximately 14 months. Update to patch versions promptly for security fixes.
+
+**References**:
+- [Go Release History](https://go.dev/doc/devel/release)
+- [Go endoflife.date](https://endoflife.date/go)
 
 ---
 
 ## Build Tools
 
 | Tool | Current Version | Latest Stable | EOL Date | Update Priority | Notes |
-|------|----------------|---------------|----------|-----------------|-------|
-| golangci-lint (CI) | v2.7.2 | v2.7.2 | Active | ✅ Up to date | Latest version |
-| golangci-lint (pre-commit) | v1.64.8 | v2.7.2 | Deprecated | 🔴 High | Update to v2.x in pre-commit config |
-| controller-gen | v0.20.0 | v0.20.0 | Active | ✅ Up to date | Latest version, supports k8s v0.34 |
-| gofmt | (bundled with Go) | (bundled with Go) | - | - | Follows Go version |
-| goimports | (installed via go install) | Latest | - | 🟢 Low | Auto-updated |
+|------|----------------|---------------|----------|----------------|-------|
+| controller-gen | v0.20.0 | v0.19.0 | N/A | ✅ Up to date | Current version is newer than latest stable |
+| golangci-lint (CI) | v2.7.2 | v2.7.2 | N/A | ✅ Up to date | Already on latest version (Dec 7, 2025) |
+| golangci-lint (pre-commit) | v2.7.2 | v2.7.2 | N/A | ✅ Up to date | Matches CI version |
+| gofmt | (Go built-in) | 1.25.5 | Matches Go | 🟡 Medium | Update with Go version |
+| goimports | latest | latest | N/A | ✅ Up to date | Using latest from golang.org/x/tools |
+
+### Build Tool Notes
+
+- **controller-gen**: Using v0.20.0 while latest stable release is v0.19.0 (Aug 28, 2025) - no action needed, ahead of curve
+- **golangci-lint**: Already on latest v2.7.2 (released Dec 7, 2025). Supports same Go versions as official Go team (2 latest minors)
+
+**References**:
+- [controller-tools releases](https://github.com/kubernetes-sigs/controller-tools/releases)
+- [golangci-lint releases](https://github.com/golangci/golangci-lint/releases)
+- [golangci-lint changelog](https://golangci-lint.run/docs/product/changelog/)
 
 ---
 
 ## Kubernetes Tools
 
 | Tool | Current Version | Latest Stable | EOL Date | Update Priority | Notes |
-|------|----------------|---------------|----------|-----------------|-------|
-| k8s.io/api | v0.28.0 | v0.35.x | 2024-10 (v0.28) | 🔴 High | Several versions behind, security risk |
-| k8s.io/client-go | v0.28.0 | v0.35.x | 2024-10 (v0.28) | 🔴 High | Kubernetes v1.28 EOL, must upgrade |
-| k8s.io/apimachinery | v0.28.0 | v0.35.x | 2024-10 (v0.28) | 🔴 High | Must match client-go version |
-| kubectl | (user-installed) | v1.35.x | - | 🟢 Low | User responsibility |
-| helm | (user-installed) | Latest | - | 🟢 Low | User responsibility |
-| kind | (user-installed) | Latest | - | 🟢 Low | User responsibility |
+|------|----------------|---------------|----------|----------------|-------|
+| kubectl | N/A (user-installed) | v1.35.0 | Feb 28, 2026 (v1.32) | 🟢 Low | Consider documenting recommended version |
+| Helm | N/A (user-installed) | v4.0.0 / v3.19.2 | N/A | 🟢 Low | Helm 4 released Nov 2025, v3 still maintained |
+| Kind | N/A (user-installed) | v0.31.0 | N/A | 🟢 Low | Recommend v0.31.0 for CI |
 
-**Note:** Kubernetes v1.28 reached end-of-life in October 2024. Upgrading to v1.35 (released Dec 2025) is critical.
+### Kubernetes Version Compatibility
+
+The project currently uses Kubernetes v1.35 client libraries (**k8s.io/client-go v0.35.0**). Kubernetes follows an N-2 support policy, maintaining the 3 most recent minor versions. Each version is supported for approximately 14 months.
+
+**Current Supported Kubernetes Versions**:
+- v1.35 (latest, released Dec 17, 2025 - "Timbernetes")
+- v1.34
+- v1.33
+
+**Note**: Our project is already on the latest Kubernetes v1.35 libraries! This is excellent for security and feature support.
+
+**References**:
+- [Kubernetes releases](https://kubernetes.io/releases/)
+- [Kubernetes endoflife.date](https://endoflife.date/kubernetes)
+- [Helm releases](https://github.com/helm/helm/releases)
+- [Kind releases](https://github.com/kubernetes-sigs/kind/releases)
 
 ---
 
-## Observability & Telemetry
-
-| Tool | Current Version | Latest Stable | EOL Date | Update Priority | Notes |
-|------|----------------|---------------|----------|-----------------|-------|
-| go.opentelemetry.io/otel | v1.38.0 | v1.38.0 | Active | ✅ Up to date | Latest stable release |
-| go.opentelemetry.io/otel/metric | v1.38.0 | v1.38.0 | Active | ✅ Up to date | Matches core OTEL version |
-| go.opentelemetry.io/otel/sdk | v1.38.0 | v1.38.0 | Active | ✅ Up to date | Matches core OTEL version |
-| go.opentelemetry.io/otel/exporters/prometheus | v0.60.0 | v0.60.0 | Active | ✅ Up to date | Matches OTEL release |
-| go.opentelemetry.io/otel/exporters/otlp/* | v1.38.0 | v1.38.0 | Active | ✅ Up to date | Matches core OTEL version |
-| prometheus/client_golang | v1.23.2 | Latest | - | 🟢 Low | Check for updates periodically |
-
----
-
-## GitHub Actions
+## CI/CD Tools (GitHub Actions)
 
 | Action | Current Version | Latest Stable | Update Priority | Notes |
-|--------|----------------|---------------|-----------------|-------|
-| actions/checkout | v4 | v6 | 🔴 High | 2 major versions behind |
-| actions/setup-go | v5 | v6 | 🔴 High | Requires runner v2.327.1+, supports node24 |
-| actions/upload-artifact | v4 | v4 | ✅ Up to date | Latest version |
-| docker/build-push-action | v6 | v6 | ✅ Up to date | Latest version |
-| docker/setup-buildx-action | v3 | v3 | ✅ Up to date | Check for v4 |
-| docker/setup-qemu-action | v3 | v3 | ✅ Up to date | Check for v4 |
-| docker/login-action | v3 | v3 | ✅ Up to date | Check for v4 |
-| docker/metadata-action | v5 | v5 | ✅ Up to date | Latest version |
-| golangci/golangci-lint-action | v9 | v9 | ✅ Up to date | Using golangci-lint v2.7.2 |
-| codecov/codecov-action | v4 | v4 | ✅ Up to date | Latest version |
-| aquasecurity/trivy-action | master | (unpinned) | 🔴 High | Should pin to specific version |
-| github/codeql-action/upload-sarif | v3, v4 (mixed) | v4 | 🟡 Medium | Standardize to v4 everywhere |
-| securego/gosec | master | (unpinned) | 🔴 High | Should pin to specific version |
-| sigstore/cosign-installer | v3.3.0 | v3.x | 🟢 Low | Check for v3.4+ |
-| anchore/sbom-action/download-syft | v0.15.0 | Latest | 🟢 Low | Check for updates |
-| azure/setup-helm | v4 | v4 | ✅ Up to date | Latest version |
-| softprops/action-gh-release | v2 | v2 | ✅ Up to date | Latest version |
+|--------|----------------|---------------|----------------|-------|
+| actions/checkout | v6, v4 (mixed) | v6.0.0 | 🟡 Medium | Update remaining v4 references to v6 |
+| actions/setup-go | v6 | v6 | ✅ Up to date | Already on latest |
+| actions/upload-artifact | v4 | v4 | ✅ Up to date | Already on latest |
+| actions/cache | v4 | v4 | ✅ Up to date | Already on latest |
+| actions/setup-python | v5 | v5 | ✅ Up to date | Already on latest |
+| docker/build-push-action | v6, v3 (mixed) | v6 | 🔴 High | Update v3 references to v6 (ci.yaml:114, 148) |
+| docker/setup-buildx-action | v3 | v3 | ✅ Up to date | Already on latest |
+| docker/login-action | v3 | v3 | ✅ Up to date | Already on latest |
+| codecov/codecov-action | v4 | v4 | ✅ Up to date | Already on latest |
+| golangci/golangci-lint-action | v9 | v9 | ✅ Up to date | Already on latest |
+| aquasecurity/trivy-action | master | (unpinned) | 🟡 Medium | Consider pinning to specific version tag |
+| github/codeql-action/upload-sarif | v4 | v4 | ✅ Up to date | Already on latest |
+| securego/gosec | v2.21.4 | v2.21.4 | ✅ Up to date | Already on latest (pinned) |
 
-**Security Note:** Using `@master` for security tools (trivy, gosec) is risky. Pin to specific versions for reproducibility.
+### CI/CD Update Notes
 
----
+**High Priority**:
+- Update `docker/build-push-action` from v3 to v6 in security job (ci.yaml:114)
+- Update `actions/checkout` from v4 to v6 in security job (ci.yaml:148)
 
-## Pre-commit Hooks
+**Medium Priority**:
+- Update remaining `actions/checkout@v4` references to v6 throughout workflows
+- Consider pinning `aquasecurity/trivy-action` to specific version instead of `@master`
 
-| Hook | Current Version | Latest Stable | Update Priority | Notes |
-|------|----------------|---------------|-----------------|-------|
-| pre-commit/pre-commit-hooks | v5.0.0 | v5.x | ✅ Up to date | Check for v5.1+ |
-| dnephin/pre-commit-golang | v0.5.1 | v0.5.x | ✅ Up to date | Latest version |
-| golangci/golangci-lint | v1.64.8 | v2.7.2 | 🔴 High | Upgrade to v2.x |
-| Yelp/detect-secrets | v1.5.0 | v1.5.x | ✅ Up to date | Latest stable |
-| DavidAnson/markdownlint-cli2 | v0.19.0 | v0.19.x | ✅ Up to date | Check for updates |
-| adrienverge/yamllint | v1.35.1 | v1.35.x | ✅ Up to date | Latest version |
-| hadolint/hadolint | v2.12.0 | v2.12.x | ✅ Up to date | Check for updates |
-| shellcheck-py/shellcheck-py | v0.10.0.1 | v0.10.x | ✅ Up to date | Latest version |
-| jorisroovers/gitlint | v0.19.1 | v0.19.x | ✅ Up to date | Latest version |
+**References**:
+- [actions/checkout releases](https://github.com/actions/checkout/releases) - v6.0.0 released Nov 20, 2025
+- [actions/setup-go releases](https://github.com/actions/setup-go/releases) - v6 with intelligent caching
+- [docker/build-push-action releases](https://github.com/docker/build-push-action/releases) - v6 latest
 
 ---
 
-## Go Module Dependencies (Critical)
+## Container Tools
 
-| Module | Current Version | Latest Stable | Update Priority | Notes |
-|--------|----------------|---------------|-----------------|-------|
-| github.com/google/go-containerregistry | v0.20.7 | Latest | 🟢 Low | Check for updates |
-| github.com/prometheus/client_golang | v1.23.2 | Latest | 🟢 Low | Check for updates |
-| gopkg.in/yaml.v3 | v3.0.1 | v3.0.x | ✅ Up to date | Latest stable |
-| k8s.io/klog/v2 | v2.100.1 | v2.130.x | 🟡 Medium | Check for updates |
-| sigs.k8s.io/controller-runtime | (not in go.mod) | v0.19.x | 🟡 Medium | Consider adding if needed |
+| Tool | Current Version | Latest Stable | Update Priority | Notes |
+|------|----------------|---------------|----------------|-------|
+| Podman | (user-installed) | Latest | 🟢 Low | Auto-detected by Makefile |
+| Docker | (user-installed) | Latest | 🟢 Low | Auto-detected by Makefile |
+
+### Container Runtime Notes
+
+The project auto-detects the container runtime (podman or docker) via Makefile. No specific version constraints are enforced. Both are actively maintained and users should use recent stable versions.
 
 ---
 
-## Container Images (Runtime Dependencies)
+## Development Tools
+
+| Tool | Current Version | Latest Stable | EOL Date | Update Priority | Notes |
+|------|----------------|---------------|----------|----------------|-------|
+| pre-commit | (pip install) | v4.5.1 | N/A | 🟡 Medium | Update docs to reference v4.5.1 (Dec 16, 2025) |
+| yamllint | v1.35.1 | v1.35.1 | N/A | ✅ Up to date | Already on latest |
+| markdownlint-cli2 | v0.19.0 | v0.19.0 | N/A | ✅ Up to date | Already on latest |
+| hadolint | v2.12.0 | v2.12.0 | N/A | ✅ Up to date | Already on latest |
+| shellcheck-py | v0.10.0.1 | v0.10.0.1 | N/A | ✅ Up to date | Already on latest |
+| detect-secrets | v1.5.0 | v1.5.0 | N/A | ✅ Up to date | Already on latest |
+| gitlint | v0.19.1 | v0.19.1 | N/A | ✅ Up to date | Already on latest |
+| pre-commit-hooks | v5.0.0 | v5.0.0 | N/A | ✅ Up to date | Already on latest |
+| dnephin/pre-commit-golang | v0.5.1 | v0.5.1 | N/A | ✅ Up to date | Already on latest |
+
+### Development Tool Notes
+
+Most development tools are already on latest stable versions. The pre-commit framework itself should be documented as v4.5.1 (latest release Dec 16, 2025).
+
+**References**:
+- [pre-commit releases](https://github.com/pre-commit/pre-commit/releases)
+- [pre-commit.com](https://pre-commit.com/)
+
+---
+
+## Go Dependencies
+
+### Major Direct Dependencies
+
+| Package | Current Version | Latest Stable | Update Priority | Notes |
+|---------|----------------|---------------|----------------|-------|
+| k8s.io/client-go | v0.35.0 | v0.35.0 | ✅ Up to date | Released Dec 17, 2025 with K8s 1.35 |
+| k8s.io/api | v0.35.0 | v0.35.0 | ✅ Up to date | Matches client-go |
+| k8s.io/apimachinery | v0.35.0 | v0.35.0 | ✅ Up to date | Matches client-go |
+| k8s.io/klog/v2 | v2.130.1 | v2.130.1 | ✅ Up to date | Already on latest |
+| sigs.k8s.io/controller-runtime | (not direct) | v0.22.4 | 🟡 Medium | May need to add as direct dependency |
+| sigs.k8s.io/controller-tools | v0.20.0 | v0.19.0 | ✅ Up to date | Ahead of latest stable release |
+| go.opentelemetry.io/otel | v1.38.0 | v1.38.0 | ✅ Up to date | Already on latest |
+| go.opentelemetry.io/otel/metric | v1.38.0 | v1.38.0 | ✅ Up to date | Matches core OTEL |
+| go.opentelemetry.io/otel/sdk | v1.38.0 | v1.38.0 | ✅ Up to date | Matches core OTEL |
+| go.opentelemetry.io/otel/exporters/prometheus | v0.60.0 | v0.60.0 | ✅ Up to date | Matches OTEL SDK |
+| github.com/prometheus/client_golang | v1.23.2 | v1.23.2 | ✅ Up to date | Already on latest |
+| github.com/google/go-containerregistry | v0.20.7 | v0.20.7 | ✅ Up to date | Already on latest |
+| gopkg.in/yaml.v3 | v3.0.1 | v3.0.1 | ✅ Up to date | Already on latest |
+
+### Kubernetes Compatibility Matrix
+
+**Excellent news**: The project is already on Kubernetes v1.35 libraries (latest as of Dec 17, 2025)!
+
+- **k8s.io/client-go v0.35.0** → K8s 1.35 compatible
+- **k8s.io/api v0.35.0** → K8s 1.35 compatible
+- **k8s.io/apimachinery v0.35.0** → K8s 1.35 compatible
+
+**Note**: controller-runtime v0.22.4 (latest) supports client-go v0.34, while we're using v0.35. This minor mismatch is typically fine but should be monitored. Consider testing or waiting for controller-runtime v0.23+ for full v0.35 support.
+
+### Dependency Update Process
+
+1. Run `go list -u -m all` to see available updates
+2. Check Kubernetes compatibility matrices
+3. Update incrementally, starting with patch versions
+4. Run full test suite after each major update
+5. Run `go mod tidy` to clean up
+
+**References**:
+- [controller-runtime releases](https://github.com/kubernetes-sigs/controller-runtime/releases)
+- [client-go releases](https://github.com/kubernetes/client-go/releases)
+- [Kubernetes compatibility matrix](https://github.com/kubernetes/client-go#compatibility-matrix)
+
+---
+
+## Deployment Images
+
+### CLI Container Images
 
 | Image | Current Version | Latest Stable | Update Priority | Notes |
-|-------|----------------|---------------|-----------------|-------|
-| Zarf CLI | localhost/zarf:v0.66.0 | Latest | 🟡 Medium | Check defenseunicorns/zarf releases |
-| UDS CLI | ghcr.io/defenseunicorns/uds-cli:latest | latest (floating) | 🔴 High | Pin to specific version for reproducibility |
+|-------|----------------|---------------|----------------|-------|
+| Zarf CLI | v0.66.0 | v0.68.1 | 🔴 High | Update to v0.68.1 (released Dec 18, 2025) |
+| UDS CLI | latest | v0.27.13+ | 🔴 High | Pin to specific version instead of :latest |
 
-**Security Note:** Using `:latest` tag for UDS CLI is not recommended for production. Pin to specific version.
+### Deployment Image Notes
+
+**High Priority Updates**:
+
+1. **Zarf CLI**: Update from `v0.66.0` to `v0.68.1` (latest, Dec 18, 2025)
+   - Location: `pkg/constants/config.go:42`
+   - Current: `localhost/zarf:v0.66.0`
+   - Target: `localhost/zarf:v0.68.1`
+
+2. **UDS CLI**: Pin to specific version
+   - Location: `pkg/constants/config.go:45`
+   - Current: `ghcr.io/defenseunicorns/uds-cli:latest`
+   - Target: `ghcr.io/defenseunicorns/uds-cli:v0.27.13` (or latest specific version)
+
+**Impact**: Updating these images requires:
+1. Update `pkg/constants/config.go`
+2. Update Makefile reference (line 309: `kind-zarf-cli` target)
+3. Full integration test run
+4. Update documentation referencing these versions
+
+**References**:
+- [Zarf releases](https://github.com/zarf-dev/zarf/releases) - v0.68.1 latest
+- [UDS CLI releases](https://github.com/defenseunicorns/uds-cli/releases) - v0.27.13+
 
 ---
 
@@ -123,63 +227,146 @@ This document tracks all tools, dependencies, and their versions used in the For
 
 ### Priority Levels
 
-- 🔴 **High Priority**: Security risk, EOL software, or multiple versions behind
-- 🟡 **Medium Priority**: Minor versions behind, good to update but not critical
-- 🟢 **Low Priority**: Up to date or user-managed tools
-- ✅ **Up to date**: Already on latest stable version
+- 🔴 **High**: Security fixes, major version updates with important features, known compatibility issues
+- 🟡 **Medium**: Minor version updates, patch releases with bug fixes
+- 🟢 **Low**: Optional updates, non-critical improvements, user-managed tools
+- ✅ **Up to date**: Already on latest version
 
 ### Recommended Update Order
 
-1. **Kubernetes dependencies** (k8s.io/*) - v0.28.0 → v0.35.x
-   - Critical: v0.28 is past EOL
-   - Test compatibility with existing CRDs and controllers
+#### Batch 1: CLI Container Images (High Priority)
 
-2. **GitHub Actions security tools** (trivy, gosec)
-   - Pin specific versions instead of `@master`
+**Risk**: Medium | **Value**: High | **Effort**: Low
 
-3. **GitHub Actions** (checkout, setup-go)
-   - Update to v6 versions
-   - Ensure runner compatibility (v2.327.1+)
+1. Update Zarf CLI from v0.66.0 to v0.68.1
+2. Pin UDS CLI to specific version (v0.27.13+)
+3. Update Makefile `kind-zarf-cli` target
+4. Run integration tests
 
-4. **golangci-lint** in pre-commit config
-   - v1.64.8 → v2.7.2
-   - Update .config/golangci.yaml for v2 format
+#### Batch 2: GitHub Actions (High Priority)
 
-5. **Go runtime** (optional)
-   - 1.24.0 → 1.24.11 (security patches)
-   - Or → 1.25.5 (latest major, requires testing)
+**Risk**: Low | **Value**: High | **Effort**: Low
 
-6. **UDS CLI image**
-   - Pin to specific version instead of `:latest`
+1. Update `docker/build-push-action` from v3 to v6 (ci.yaml:114)
+2. Update `actions/checkout` from v4 to v6 (ci.yaml:148)
+3. Standardize all `actions/checkout` to v6
+4. Run CI pipeline to verify
+
+#### Batch 3: Go Runtime (Medium Priority)
+
+**Risk**: Low | **Value**: Medium | **Effort**: Low
+
+1. Update Go from 1.25.0 to 1.25.5 (security patches)
+2. Update all CI workflows to match
+3. Run full test suite
+4. Update documentation
+
+#### Batch 4: Pre-commit Framework (Low Priority)
+
+**Risk**: Low | **Value**: Low | **Effort**: Low
+
+1. Update documentation to reference pre-commit v4.5.1
+2. Update CI if needed
+3. Test pre-commit hooks locally
+
+### Update Workflow
+
+1. **Prepare**
+   - Review changelogs and release notes
+   - Check for breaking changes
+   - Identify dependencies between updates
+
+2. **Test**
+   - Update in development environment
+   - Run full test suite (`make test`)
+   - Run integration tests (`make integration-test`)
+   - Run E2E tests (`make e2e-test`)
+
+3. **Deploy**
+   - Create feature branch
+   - Update versions
+   - Update documentation
+   - Run pre-commit hooks
+   - Create PR with testing evidence
+
+4. **Monitor**
+   - Watch for issues in CI/CD
+   - Monitor cluster stability
+   - Check metrics and logs
 
 ---
 
-## Testing After Updates
+## Summary of Action Items
 
-After updating dependencies, run:
+### Immediate (This Week)
 
-```bash
-# Unit tests
-make test
+1. ✅ **Complete**: Create this TOOL_VERSIONS.md document
+2. 🔴 **High**: Update Zarf CLI to v0.68.1 in `pkg/constants/config.go`
+3. 🔴 **High**: Pin UDS CLI to v0.27.13 (or latest) in `pkg/constants/config.go`
+4. 🔴 **High**: Update GitHub Actions docker/build-push-action to v6
+5. 🔴 **High**: Update GitHub Actions checkout to v6 consistently
 
-# Linting
-make fmt vet
-pre-commit run --all-files
+### Short-term (This Month)
 
-# Integration tests
-make integration-test-keep
+6. 🟡 **Medium**: Update Go runtime to 1.25.5
+7. 🟡 **Medium**: Update pre-commit documentation to v4.5.1
+8. 🟡 **Medium**: Consider adding controller-runtime as direct dependency
 
-# E2E tests
-make e2e-test-keep
-```
+### Long-term (Next Quarter)
+
+9. 🟢 **Low**: Document recommended kubectl/helm/kind versions
+10. 🟢 **Low**: Review and update Go module dependencies
+11. 🟢 **Low**: Consider Helm 4 compatibility testing
 
 ---
 
-## References
+## Monitoring Version Updates
 
-- [Go Release Policy](https://go.dev/doc/devel/release)
-- [Kubernetes Version Skew Policy](https://kubernetes.io/releases/version-skew-policy/)
-- [OpenTelemetry Go Releases](https://github.com/open-telemetry/opentelemetry-go/releases)
-- [golangci-lint Releases](https://github.com/golangci/golangci-lint/releases)
-- [GitHub Actions Changelog](https://github.blog/changelog/)
-- [EndOfLife.date](https://endoflife.date/) - EOL tracking for various tools
+### Automated Tools
+
+- **Dependabot**: Already enabled for Go dependencies
+- **go list -u -m all**: Check for Go dependency updates
+- **GitHub Actions version updates**: Monitor via Dependabot
+
+### Regular Maintenance Schedule
+
+- **Weekly**: Check for security advisories
+- **Monthly**: Review major dependency updates
+- **Quarterly**: Full dependency audit and update cycle
+- **As needed**: Respond to CVEs and critical patches
+
+### Update This Document
+
+Remember to update this document whenever:
+- Dependency versions change
+- New tools are added to the project
+- EOL dates are announced
+- Major version updates are completed
+
+---
+
+## Version Testing Checklist
+
+Before updating any tool version, ensure:
+
+- [ ] Reviewed changelog and breaking changes
+- [ ] Updated documentation to reflect changes
+- [ ] Run `make fmt vet` successfully
+- [ ] Run `make test` successfully
+- [ ] Run `make integration-test` successfully
+- [ ] Run `make e2e-test` successfully
+- [ ] Tested in Kind cluster locally
+- [ ] Updated this TOOL_VERSIONS.md document
+- [ ] Created tracking issue if update requires multiple PRs
+
+---
+
+## Additional Resources
+
+- [Go releases](https://go.dev/doc/devel/release)
+- [Kubernetes releases](https://kubernetes.io/releases/)
+- [endoflife.date](https://endoflife.date/) - Track EOL dates for many tools
+- [GitHub Actions changelog](https://github.blog/changelog/)
+- [Kubernetes compatibility matrix](https://github.com/kubernetes/client-go#compatibility-matrix)
+- [OpenTelemetry Go releases](https://github.com/open-telemetry/opentelemetry-go/releases)
+- [Prometheus client_golang releases](https://github.com/prometheus/client_golang/releases)

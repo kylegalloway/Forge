@@ -12,7 +12,7 @@ This Dockerfile packages the official Zarf CLI binary into an Alpine-based conta
 
 ```bash
 # Build for your local architecture
-docker build -t localhost/zarf:v0.66.0 images/zarf-cli/
+docker build -t localhost/zarf:v0.68.1 images/zarf-cli/
 
 # Or build for a specific Zarf version
 docker build -t localhost/zarf:v0.42.0 \
@@ -21,7 +21,7 @@ docker build -t localhost/zarf:v0.42.0 \
 
 # Build multi-arch (requires docker buildx)
 docker buildx build --platform linux/amd64,linux/arm64 \
-  -t localhost/zarf:v0.66.0 \
+  -t localhost/zarf:v0.68.1 \
   images/zarf-cli/ --push
 ```
 
@@ -29,10 +29,10 @@ docker buildx build --platform linux/amd64,linux/arm64 \
 
 ```bash
 # Build the image
-docker build -t localhost/zarf:v0.66.0 images/zarf-cli/
+docker build -t localhost/zarf:v0.68.1 images/zarf-cli/
 
 # Load into Kind cluster
-kind load docker-image localhost/zarf:v0.66.0 --name forge-demo
+kind load docker-image localhost/zarf:v0.68.1 --name forge-demo
 ```
 
 ## For Production
@@ -40,9 +40,9 @@ kind load docker-image localhost/zarf:v0.66.0 --name forge-demo
 For production deployments, you should:
 
 1. Build this image and push to your internal container registry
-2. Update `pkg/actions/build.go` to reference your registry:
+2. Update `pkg/constants/config.go` to reference your registry:
    ```go
-   ZarfCLIImage = "your-registry.io/zarf:v0.66.0"
+   ZarfCLIImage = "your-registry.io/zarf:v0.68.1"
    ```
 3. Or use Helm values to override the image (if/when that feature is added)
 
@@ -56,6 +56,6 @@ For production deployments, you should:
 
 ## Notes
 
-- The image tag should match the version in `pkg/actions/build.go`
+- The image tag should match the version in `pkg/constants/config.go`
 - The official Zarf releases are at: https://github.com/zarf-dev/zarf/releases
 - This is a stopgap until Zarf publishes official container images

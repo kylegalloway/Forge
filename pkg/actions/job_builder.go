@@ -3,6 +3,7 @@ package actions
 import (
 	"context"
 	"fmt"
+	"time"
 
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -222,11 +223,18 @@ func (b *JobBuilder) WithEnvVar(name, value string) *JobBuilder {
 	return b
 }
 
-// NonRootSecurityContext returns a standard non-root security context.
+// NonRootSecurityContext returns a standard non-root security context with UID 1000.
+// For custom UIDs, use NonRootSecurityContextWithUID.
 func NonRootSecurityContext() *corev1.SecurityContext {
+	return NonRootSecurityContextWithUID(1000)
+}
+
+// NonRootSecurityContextWithUID returns a non-root security context with specified UID.
+// Used to create secure container contexts for Zarf (UID 1000) and UDS (UID 65532) jobs.
+func NonRootSecurityContextWithUID(uid int64) *corev1.SecurityContext {
 	return &corev1.SecurityContext{
 		RunAsNonRoot:             Ptr(true),
-		RunAsUser:                Ptr(int64(1000)),
+		RunAsUser:                Ptr(uid),
 		AllowPrivilegeEscalation: Ptr(false),
 		Capabilities: &corev1.Capabilities{
 			Drop: []corev1.Capability{"ALL"},
@@ -237,12 +245,19 @@ func NonRootSecurityContext() *corev1.SecurityContext {
 	}
 }
 
-// NonRootPodSecurityContext returns a standard non-root pod security context.
+// NonRootPodSecurityContext returns a standard non-root pod security context with UID 1000.
+// For custom UIDs, use NonRootPodSecurityContextWithUID.
 func NonRootPodSecurityContext() *corev1.PodSecurityContext {
+	return NonRootPodSecurityContextWithUID(1000)
+}
+
+// NonRootPodSecurityContextWithUID returns a non-root pod security context with specified UID.
+// Used to create secure pod contexts for Zarf (UID 1000) and UDS (UID 65532) jobs.
+func NonRootPodSecurityContextWithUID(uid int64) *corev1.PodSecurityContext {
 	return &corev1.PodSecurityContext{
 		RunAsNonRoot: Ptr(true),
-		RunAsUser:    Ptr(int64(1000)),
-		FSGroup:      Ptr(int64(1000)),
+		RunAsUser:    Ptr(uid),
+		FSGroup:      Ptr(uid),
 		SeccompProfile: &corev1.SeccompProfile{
 			Type: corev1.SeccompProfileTypeRuntimeDefault,
 		},
@@ -317,4 +332,138 @@ func DefaultResourceRequirements() corev1.ResourceRequirements {
 			corev1.ResourceMemory: MustParseQuantity("512Mi"),
 		},
 	}
+}
+
+// BuildResourceRequirements returns resource requirements for Build/Create operations.
+// Used by Zarf build and UDS create actions which involve compiling and bundling packages.
+func BuildResourceRequirements() corev1.ResourceRequirements {
+	return corev1.ResourceRequirements{
+		Requests: corev1.ResourceList{
+			corev1.ResourceCPU:    MustParseQuantity("500m"),
+			corev1.ResourceMemory: MustParseQuantity("1Gi"),
+		},
+		Limits: corev1.ResourceList{
+			corev1.ResourceCPU:    MustParseQuantity("2000m"),
+			corev1.ResourceMemory: MustParseQuantity("4Gi"),
+		},
+	}
+}
+
+// PublishResourceRequirements returns resource requirements for Publish operations.
+// Used by both Zarf and UDS publish actions which upload artifacts to registries/S3.
+func PublishResourceRequirements() corev1.ResourceRequirements {
+	return corev1.ResourceRequirements{
+		Requests: corev1.ResourceList{
+			corev1.ResourceCPU:    MustParseQuantity("200m"),
+			corev1.ResourceMemory: MustParseQuantity("512Mi"),
+		},
+		Limits: corev1.ResourceList{
+			corev1.ResourceCPU:    MustParseQuantity("1000m"),
+			corev1.ResourceMemory: MustParseQuantity("2Gi"),
+		},
+	}
+}
+
+// DeployResourceRequirements returns resource requirements for Deploy operations.
+// Used by both Zarf and UDS deploy actions which install packages to clusters.
+func DeployResourceRequirements() corev1.ResourceRequirements {
+	return corev1.ResourceRequirements{
+		Requests: corev1.ResourceList{
+			corev1.ResourceCPU:    MustParseQuantity("500m"),
+			corev1.ResourceMemory: MustParseQuantity("1Gi"),
+		},
+		Limits: corev1.ResourceList{
+			corev1.ResourceCPU:    MustParseQuantity("2000m"),
+			corev1.ResourceMemory: MustParseQuantity("4Gi"),
+		},
+	}
+}
+
+// ParseTimeoutWithDefault parses a timeout string (e.g., "30m", "1h") and returns seconds.
+// If parsing fails or timeout is empty, returns the default value.
+// Used by action handlers to convert timeout strings from specs to Job activeDeadlineSeconds.
+func ParseTimeoutWithDefault(timeoutStr string, defaultSeconds int64) int64 {
+	if timeoutStr == "" {
+		return defaultSeconds
+	}
+
+	timeout, err := time.ParseDuration(timeoutStr)
+	if err != nil {
+		klog.V(4).InfoS("Invalid timeout format, using default",
+			"timeout", timeoutStr,
+			"default", defaultSeconds,
+			"error", err)
+		return defaultSeconds
+	}
+
+	return int64(timeout.Seconds())
+}
+
+// AddKubeconfigVolume adds a kubeconfig secret volume to a Job.
+// Returns early if kubeconfigSecretName is empty or Job has no containers.
+// Used by deploy handlers to mount external cluster kubeconfig into deploy jobs.
+func AddKubeconfigVolume(job *batchv1.Job, kubeconfigSecretName string) {
+	if kubeconfigSecretName == "" {
+		return
+	}
+
+	if len(job.Spec.Template.Spec.Containers) == 0 {
+		klog.ErrorS(nil, "Job has no containers, cannot add kubeconfig volume", "job", job.Name)
+		return
+	}
+
+	// Add volume - mounts entire secret
+	job.Spec.Template.Spec.Volumes = append(job.Spec.Template.Spec.Volumes, corev1.Volume{
+		Name: "kubeconfig",
+		VolumeSource: corev1.VolumeSource{
+			Secret: &corev1.SecretVolumeSource{
+				SecretName: kubeconfigSecretName,
+			},
+		},
+	})
+
+	// Add volume mount
+	job.Spec.Template.Spec.Containers[0].VolumeMounts = append(
+		job.Spec.Template.Spec.Containers[0].VolumeMounts,
+		corev1.VolumeMount{
+			Name:      "kubeconfig",
+			MountPath: "/kubeconfig",
+			ReadOnly:  true,
+		},
+	)
+}
+
+// AddArtifactPVCVolume adds an artifact PVC volume to a Job.
+// Returns early if pvcName is empty or Job has no containers.
+// Used by multi-action jobs to share artifacts between build/publish/deploy phases.
+func AddArtifactPVCVolume(job *batchv1.Job, pvcName string) {
+	if pvcName == "" {
+		return
+	}
+
+	if len(job.Spec.Template.Spec.Containers) == 0 {
+		klog.ErrorS(nil, "Job has no containers, cannot add artifact PVC volume", "job", job.Name)
+		return
+	}
+
+	// Add volume
+	artifactVolume := corev1.Volume{
+		Name: "artifacts",
+		VolumeSource: corev1.VolumeSource{
+			PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+				ClaimName: pvcName,
+			},
+		},
+	}
+	job.Spec.Template.Spec.Volumes = append(job.Spec.Template.Spec.Volumes, artifactVolume)
+
+	// Add volume mount
+	artifactMount := corev1.VolumeMount{
+		Name:      "artifacts",
+		MountPath: "/artifacts",
+	}
+	job.Spec.Template.Spec.Containers[0].VolumeMounts = append(
+		job.Spec.Template.Spec.Containers[0].VolumeMounts,
+		artifactMount,
+	)
 }

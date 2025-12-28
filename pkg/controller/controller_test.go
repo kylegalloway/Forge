@@ -722,6 +722,7 @@ func TestHandleActionChaining(t *testing.T) {
 		pkg             *zarfv1alpha1.ZarfPackageJob
 		completedAction string
 		expectChain     bool
+		expectedNext    string // Expected next action ("publish", "deploy", or empty)
 	}{
 		{
 			name: "BuildPublish chain - build completed",
@@ -735,7 +736,8 @@ func TestHandleActionChaining(t *testing.T) {
 					Namespace: "forge-system",
 				},
 				Spec: zarfv1alpha1.ZarfPackageJobSpec{
-					Action: "BuildPublish",
+					ServiceAccountName: "test-sa",
+					Action:             "BuildPublish",
 					Publish: &zarfv1alpha1.PublishConfig{
 						Destination: zarfv1alpha1.PublishDestination{
 							Type: zarfv1alpha1.DestinationTypeOCI,
@@ -750,6 +752,7 @@ func TestHandleActionChaining(t *testing.T) {
 			},
 			completedAction: "build",
 			expectChain:     true,
+			expectedNext:    "publish",
 		},
 		{
 			name: "BuildDeploy chain - build completed",
@@ -763,7 +766,8 @@ func TestHandleActionChaining(t *testing.T) {
 					Namespace: "forge-system",
 				},
 				Spec: zarfv1alpha1.ZarfPackageJobSpec{
-					Action: "BuildDeploy",
+					ServiceAccountName: "test-sa",
+					Action:             "BuildDeploy",
 					Deploy: &zarfv1alpha1.DeployConfig{
 						Target: zarfv1alpha1.DeployTargetInCluster,
 					},
@@ -771,6 +775,7 @@ func TestHandleActionChaining(t *testing.T) {
 			},
 			completedAction: "build",
 			expectChain:     true,
+			expectedNext:    "deploy",
 		},
 		{
 			name: "PublishDeploy chain - publish completed",
@@ -784,7 +789,8 @@ func TestHandleActionChaining(t *testing.T) {
 					Namespace: "forge-system",
 				},
 				Spec: zarfv1alpha1.ZarfPackageJobSpec{
-					Action: "PublishDeploy",
+					ServiceAccountName: "test-sa",
+					Action:             "PublishDeploy",
 					Deploy: &zarfv1alpha1.DeployConfig{
 						Target: zarfv1alpha1.DeployTargetInCluster,
 					},
@@ -792,6 +798,7 @@ func TestHandleActionChaining(t *testing.T) {
 			},
 			completedAction: "publish",
 			expectChain:     true,
+			expectedNext:    "deploy",
 		},
 		{
 			name: "BuildPublishDeploy chain - build completed",
@@ -805,7 +812,8 @@ func TestHandleActionChaining(t *testing.T) {
 					Namespace: "forge-system",
 				},
 				Spec: zarfv1alpha1.ZarfPackageJobSpec{
-					Action: "BuildPublishDeploy",
+					ServiceAccountName: "test-sa",
+					Action:             "BuildPublishDeploy",
 					Publish: &zarfv1alpha1.PublishConfig{
 						Destination: zarfv1alpha1.PublishDestination{
 							Type: zarfv1alpha1.DestinationTypeOCI,
@@ -816,10 +824,14 @@ func TestHandleActionChaining(t *testing.T) {
 							},
 						},
 					},
+					Deploy: &zarfv1alpha1.DeployConfig{
+						Target: zarfv1alpha1.DeployTargetInCluster,
+					},
 				},
 			},
 			completedAction: "build",
 			expectChain:     true,
+			expectedNext:    "publish",
 		},
 		{
 			name: "BuildPublishDeploy chain - publish completed",
@@ -833,7 +845,8 @@ func TestHandleActionChaining(t *testing.T) {
 					Namespace: "forge-system",
 				},
 				Spec: zarfv1alpha1.ZarfPackageJobSpec{
-					Action: "BuildPublishDeploy",
+					ServiceAccountName: "test-sa",
+					Action:             "BuildPublishDeploy",
 					Deploy: &zarfv1alpha1.DeployConfig{
 						Target: zarfv1alpha1.DeployTargetInCluster,
 					},
@@ -841,6 +854,7 @@ func TestHandleActionChaining(t *testing.T) {
 			},
 			completedAction: "publish",
 			expectChain:     true,
+			expectedNext:    "deploy",
 		},
 		{
 			name: "single Build action - no chaining",
@@ -854,11 +868,13 @@ func TestHandleActionChaining(t *testing.T) {
 					Namespace: "forge-system",
 				},
 				Spec: zarfv1alpha1.ZarfPackageJobSpec{
-					Action: zarfv1alpha1.ActionBuild,
+					ServiceAccountName: "test-sa",
+					Action:             zarfv1alpha1.ActionBuild,
 				},
 			},
 			completedAction: "build",
 			expectChain:     false,
+			expectedNext:    "",
 		},
 	}
 
@@ -883,12 +899,60 @@ func TestHandleActionChaining(t *testing.T) {
 			}
 
 			err = ctrl.handleActionChaining(context.Background(), unstructuredObj, tt.completedAction, "/workspace/package.tar.zst")
-			// We expect errors for chained actions since handlers will fail without real infrastructure
-			// But we verify the function executed without panic
-			if err != nil && !tt.expectChain {
-				t.Errorf("handleActionChaining() unexpected error for non-chained action: %v", err)
+
+			// For chained actions, we expect the handler to attempt execution
+			// The chaining logic itself should work (identify next action, call handler)
+			// The handler may fail to create a Job due to missing source configuration in test fixtures
+			if tt.expectChain {
+				// Verify status was updated (either Running if job created, or Failed if handler errored)
+				updated, getErr := dynamicClient.Resource(constants.ZarfPackageJobGVR).Namespace(tt.pkg.Namespace).Get(
+					context.Background(), tt.pkg.Name, metav1.GetOptions{})
+				if getErr != nil {
+					t.Fatalf("Failed to get updated resource: %v", getErr)
+				}
+
+				status, found, _ := unstructured.NestedMap(updated.Object, "status")
+				if !found {
+					t.Fatal("Status not found after action chaining - chaining logic did not execute")
+				}
+
+				phase, _, _ := unstructured.NestedString(status, "phase")
+				// The chaining should have attempted to execute the next action and updated status
+				// Phase could be Running (job created successfully), Failed (job creation failed),
+				// or even empty string (no status update yet)
+				// The important thing is that the handler was called, indicated by status being set
+				if phase == "" {
+					// Workaround: check message field instead
+					message, _, _ := unstructured.NestedString(status, "message")
+					if message == "" {
+						t.Error("Status has no phase or message after action chaining - handler may not have been called")
+					}
+				}
+
+				// Log what happened for visibility
+				t.Logf("After chaining %s → %s: phase=%q, err=%v", tt.completedAction, tt.expectedNext, phase, err)
+			} else {
+				// For non-chained actions, no error expected and handler should not be called
+				if err != nil {
+					t.Errorf("handleActionChaining() unexpected error for non-chained action: %v", err)
+				}
+
+				// Verify status was not modified (should still be empty)
+				updated, getErr := dynamicClient.Resource(constants.ZarfPackageJobGVR).Namespace(tt.pkg.Namespace).Get(
+					context.Background(), tt.pkg.Name, metav1.GetOptions{})
+				if getErr != nil {
+					t.Fatalf("Failed to get updated resource: %v", getErr)
+				}
+
+				status, found, _ := unstructured.NestedMap(updated.Object, "status")
+				// For non-chained actions, status may not exist or should not have been modified by chaining
+				if found {
+					phase, _, _ := unstructured.NestedString(status, "phase")
+					if phase != "" {
+						t.Errorf("Expected no status update for non-chained action, but got phase %q", phase)
+					}
+				}
 			}
-			// For chained actions, errors are expected (missing infra), just verify no panic
 		})
 	}
 }

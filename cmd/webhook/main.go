@@ -271,9 +271,6 @@ func (ws *WebhookServer) validateUDSPackageJob(ctx context.Context, request *adm
 
 	return &admissionv1.AdmissionResponse{
 		Allowed: true,
-		Warnings: []string{
-			"v1alpha1 UDSPackageJob API is deprecated and will be removed in Forge v0.10.0. Please migrate to v1alpha2 UDSPackageJob. See docs/operations/V1ALPHA2_MIGRATION.md for migration guide.",
-		},
 	}
 }
 

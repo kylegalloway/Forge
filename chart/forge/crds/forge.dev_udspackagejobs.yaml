@@ -4,16 +4,16 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.20.0
-  name: udsbundlejobs.forge.dev
+  name: udspackagejobs.forge.dev
 spec:
   group: forge.dev
   names:
-    kind: UDSBundleJob
-    listKind: UDSBundleJobList
-    plural: udsbundlejobs
+    kind: UDSPackageJob
+    listKind: UDSPackageJobList
+    plural: udspackagejobs
     shortNames:
-    - ubj
-    singular: udsbundlejob
+    - upj
+    singular: udspackagejob
   scope: Namespaced
   versions:
   - additionalPrinterColumns:
@@ -29,13 +29,11 @@ spec:
     - jsonPath: .metadata.creationTimestamp
       name: Age
       type: date
-    deprecated: true
-    deprecationWarning: "v1alpha1 is deprecated. Please migrate to v1alpha2 UDSPackageJob API. See docs/operations/V1ALPHA2_MIGRATION.md"
-    name: v1alpha1
+    name: v1alpha2
     schema:
       openAPIV3Schema:
-        description: UDSBundleJob represents a job to create, publish, or deploy a
-          UDS bundle
+        description: UDSPackageJob represents a job to create, publish, or deploy
+          a UDS bundle
         properties:
           apiVersion:
             description: |-
@@ -56,7 +54,7 @@ spec:
             type: object
           spec:
             description: |-
-              UDSBundleJobSpec defines the desired state of a UDSBundleJob
+              UDSPackageJobSpec defines the desired state of a UDSPackageJob
 
               This is a job specification that tells Forge what operations to perform on UDS bundles.
               It is NOT a UDS bundle definition (which uses uds-bundle.yaml format).
@@ -216,7 +214,7 @@ spec:
                       Claims lists the names of resources, defined in spec.resourceClaims,
                       that are used by this container.
 
-                      This is an alpha field and requires enabling the
+                      This field depends on the
                       DynamicResourceAllocation feature gate.
 
                       This field is immutable. It can only be set for containers.
@@ -228,6 +226,12 @@ spec:
                             Name must match the name of one entry in pod.spec.resourceClaims of
                             the Pod where this field is used. It makes that resource available
                             inside a container.
+                          type: string
+                        request:
+                          description: |-
+                            Request is the name chosen for a request in the referenced claim.
+                            If empty, everything from the claim is made available, otherwise
+                            only the result of this request.
                           type: string
                       required:
                       - name
@@ -390,7 +394,7 @@ spec:
             - source
             type: object
           status:
-            description: UDSBundleJobStatus defines the observed state of a UDSBundleJob
+            description: UDSPackageJobStatus defines the observed state of a UDSPackageJob
             properties:
               createStatus:
                 description: CreateStatus tracks the create operation status

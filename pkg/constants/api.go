@@ -6,7 +6,7 @@
 //   - Webhooks for admission control
 //
 // GroupVersionResource (GVR) values are constructed from these constants and used
-// throughout the codebase to interact with ZarfPackageJob and UDSBundleJob resources
+// throughout the codebase to interact with ZarfPackageJob and UDSPackageJob resources
 // via the Kubernetes dynamic client.
 package constants
 

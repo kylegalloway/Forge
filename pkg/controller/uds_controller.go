@@ -185,9 +185,6 @@ func (ctrl *UDSController) handleWatchEvent(ctx context.Context, event watch.Eve
 
 // reconcile handles the reconciliation logic for a UDSPackageJob
 func (ctrl *UDSController) reconcile(ctx context.Context, bundle *udsv1alpha2.UDSPackageJob) error {
-	// Deprecation warning for v1alpha1 API
-	klog.InfoS("DEPRECATION WARNING: v1alpha1 UDSPackageJob API is deprecated and will be removed in Forge v0.10.0. Please migrate to v1alpha2 UDSPackageJob. See docs/operations/V1ALPHA2_MIGRATION.md for details.", "name", bundle.Name, "namespace", bundle.Namespace)
-
 	klog.V(2).InfoS("Reconciling UDSPackageJob", "name", bundle.Name, "namespace", bundle.Namespace, "action", bundle.Spec.Action)
 
 	// Skip if already completed
@@ -212,8 +209,6 @@ func (ctrl *UDSController) reconcile(ctx context.Context, bundle *udsv1alpha2.UD
 }
 
 // validatePolicy validates the bundle against ServiceAccount policies
-//
-//nolint:staticcheck // SA1019: UDSPackageJob v1alpha1 must be supported until v0.10.0
 func (ctrl *UDSController) validatePolicy(ctx context.Context, bundle *udsv1alpha2.UDSPackageJob) error {
 	return ctrl.policyEngine.ValidateUDSBundle(ctx, bundle)
 }

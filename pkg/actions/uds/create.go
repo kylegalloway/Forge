@@ -155,29 +155,12 @@ func (handler *CreateHandler) createBundleJob(ctx context.Context, bundle *udsv1
 									MountPath: constants.VolumeMountPathOutput,
 								},
 							},
-							SecurityContext: &corev1.SecurityContext{
-								RunAsNonRoot:             actions.Ptr(true),
-								RunAsUser:                actions.Ptr(int64(constants.DefaultUDSUID)),
-								AllowPrivilegeEscalation: actions.Ptr(false),
-								Capabilities: &corev1.Capabilities{
-									Drop: []corev1.Capability{"ALL"},
-								},
-								SeccompProfile: &corev1.SeccompProfile{
-									Type: corev1.SeccompProfileTypeRuntimeDefault,
-								},
-							},
-							Resources: handler.getResources(bundle),
+							SecurityContext: actions.NonRootSecurityContextWithUID(constants.DefaultUDSUID),
+							Resources:       handler.getResources(bundle),
 						},
 					},
-					Volumes: handler.buildVolumes(bundle),
-					SecurityContext: &corev1.PodSecurityContext{
-						RunAsNonRoot: actions.Ptr(true),
-						RunAsUser:    actions.Ptr(int64(constants.DefaultUDSUID)),
-						FSGroup:      actions.Ptr(int64(constants.DefaultUDSUID)),
-						SeccompProfile: &corev1.SeccompProfile{
-							Type: corev1.SeccompProfileTypeRuntimeDefault,
-						},
-					},
+					Volumes:         handler.buildVolumes(bundle),
+					SecurityContext: actions.NonRootPodSecurityContextWithUID(constants.DefaultUDSUID),
 				},
 			},
 		},
@@ -274,15 +257,5 @@ func (handler *CreateHandler) getResources(bundle *udsv1alpha2.UDSPackageJob) co
 
 	// Default resources for UDS bundle creation
 	// Standardized with Zarf Build (both create artifacts)
-	// Higher resources account for bundling multiple packages, compression, and artifact creation
-	return corev1.ResourceRequirements{
-		Requests: corev1.ResourceList{
-			corev1.ResourceCPU:    actions.MustParseQuantity("500m"),
-			corev1.ResourceMemory: actions.MustParseQuantity("1Gi"),
-		},
-		Limits: corev1.ResourceList{
-			corev1.ResourceCPU:    actions.MustParseQuantity("2000m"),
-			corev1.ResourceMemory: actions.MustParseQuantity("4Gi"),
-		},
-	}
+	return actions.BuildResourceRequirements()
 }

@@ -614,14 +614,14 @@ func (metrics *Metrics) RecordBundleJobCreated(ctx context.Context, namespace, b
 		))
 }
 
-// RecordUDSPackageJobCreated increments the UDSPackageJob created and active counters
-func (metrics *Metrics) RecordUDSPackageJobCreated(ctx context.Context, namespace string) {
+// RecordUDSBundleJobCreated increments the UDSBundleJob created and active counters
+func (metrics *Metrics) RecordUDSBundleJobCreated(ctx context.Context, namespace string) {
 	metrics.udsPackageJobsActive.Add(ctx, 1,
 		metric.WithAttributes(attribute.String("namespace", namespace)))
 }
 
-// RecordUDSPackageJobDeleted decrements the active UDSPackageJob counter
-func (metrics *Metrics) RecordUDSPackageJobDeleted(ctx context.Context, namespace string) {
+// RecordUDSBundleJobDeleted decrements the active UDSBundleJob counter
+func (metrics *Metrics) RecordUDSBundleJobDeleted(ctx context.Context, namespace string) {
 	metrics.udsPackageJobsActive.Add(ctx, -1,
 		metric.WithAttributes(attribute.String("namespace", namespace)))
 }

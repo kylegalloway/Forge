@@ -6,7 +6,7 @@ This directory contains the Helm chart for deploying Forge - a Kubernetes contro
 
 The Forge Helm chart deploys:
 
-- **Forge Controller** - Manages ZarfPackageJob and UDSPackageJob resources
+- **Forge Controller** - Manages ZarfPackageJob and UDSBundleJob resources
 - **Forge Webhook** - Validates resources at admission time
 - **Metrics Endpoints** - Exposes metrics for scraping by external Prometheus
 
@@ -75,7 +75,7 @@ chart/forge/
 ├── values.yaml                         # Default values
 ├── crds/                               # Custom Resource Definitions
 │   ├── forge.dev_zarfpackagejobs.yaml
-│   └── forge.dev_udspackagejobs.yaml   # v1alpha2 API
+│   └── forge.dev_udsbundlejobs.yaml   # v1alpha2 API
 └── templates/                          # Kubernetes manifests templates
     ├── _helpers.tpl                    # Template helpers
     ├── NOTES.txt                       # Post-install notes
@@ -186,7 +186,7 @@ helm uninstall forge --namespace forge-system
 **Note:** CRDs are not automatically removed. To remove them:
 
 ```bash
-kubectl delete crd zarfpackagejobs.forge.dev udspackagejobs.forge.dev
+kubectl delete crd zarfpackagejobs.forge.dev udsbundlejobs.forge.dev
 ```
 
 ## Monitoring and Observability

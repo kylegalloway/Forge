@@ -240,7 +240,7 @@ cd /Users/kylegalloway/src/forge
 git tag -s v0.1.0 -m "Release v0.1.0
 
 First stable release of Forge with:
-- ZarfPackageJob and UDSPackageJob controllers
+- ZarfPackageJob and UDSBundleJob controllers
 - Policy enforcement via ServiceAccount annotations
 - SLSA provenance and SBOM generation
 - Multi-arch container images"

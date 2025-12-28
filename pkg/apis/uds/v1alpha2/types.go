@@ -1,14 +1,14 @@
-// Package v1alpha2 defines the v1alpha2 API for UDS package job specifications.
+// Package v1alpha2 defines the v1alpha2 API for UDS bundle job specifications.
 //
-// This package contains type definitions for UDSPackageJob resources that enable
+// This package contains type definitions for UDSBundleJob resources that enable
 // creating, publishing, and deploying UDS bundles in a Kubernetes-native way.
 //
 // v1alpha2 API Changes:
 // - Unified naming with Zarf: BundleAction → Action, PackageSourceType → SourceType, etc.
-// - UDSBundleJob → UDSPackageJob for consistency with ZarfPackageJob
+// - Semantically correct naming: UDSBundleJob (bundles) vs ZarfPackageJob (packages)
 // - Maintains backward compatibility with v1alpha1 via conversion webhook
 //
-// NOTE: UDSPackageJob is a Forge job specification, NOT a UDS bundle definition.
+// NOTE: UDSBundleJob is a Forge job specification, NOT a UDS bundle definition.
 // It describes what operations Forge should perform on UDS bundles.
 package v1alpha2
 
@@ -84,11 +84,11 @@ const (
 	DeployTargetExternalCluster DeployTargetType = "ExternalCluster"
 )
 
-// UDSPackageJobSpec defines the desired state of a UDSPackageJob
+// UDSBundleJobSpec defines the desired state of a UDSBundleJob
 //
 // This is a job specification that tells Forge what operations to perform on UDS bundles.
 // It is NOT a UDS bundle definition (which uses uds-bundle.yaml format).
-type UDSPackageJobSpec struct {
+type UDSBundleJobSpec struct {
 	// ServiceAccountName references the ServiceAccount that defines permissions for this job
 	// The ServiceAccount must have forge.dev/* annotations defining allowed actions
 	// Cluster admins control what users can do by creating ServiceAccounts with appropriate annotations
@@ -306,8 +306,8 @@ type KubeconfigReference struct {
 	Key string `json:"key,omitempty"`
 }
 
-// UDSPackageJobStatus defines the observed state of a UDSPackageJob
-type UDSPackageJobStatus struct {
+// UDSBundleJobStatus defines the observed state of a UDSBundleJob
+type UDSBundleJobStatus struct {
 	// Phase represents the current phase of the job
 	// +optional
 	Phase string `json:"phase,omitempty"`
@@ -360,26 +360,26 @@ type OperationStatus struct {
 	JobName string `json:"jobName,omitempty"`
 }
 
-// UDSPackageJob represents a job to create, publish, or deploy a UDS bundle
+// UDSBundleJob represents a job to create, publish, or deploy a UDS bundle
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
-// +kubebuilder:resource:shortName=upj
+// +kubebuilder:resource:shortName=ubj
 // +kubebuilder:printcolumn:name="Action",type=string,JSONPath=`.spec.action`
 // +kubebuilder:printcolumn:name="Source",type=string,JSONPath=`.spec.source.type`
 // +kubebuilder:printcolumn:name="Phase",type=string,JSONPath=`.status.phase`
 // +kubebuilder:printcolumn:name="Age",type=date,JSONPath=`.metadata.creationTimestamp`
-type UDSPackageJob struct {
+type UDSBundleJob struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   UDSPackageJobSpec   `json:"spec,omitempty"`
-	Status UDSPackageJobStatus `json:"status,omitempty"`
+	Spec   UDSBundleJobSpec   `json:"spec,omitempty"`
+	Status UDSBundleJobStatus `json:"status,omitempty"`
 }
 
-// UDSPackageJobList contains a list of UDSPackageJob
+// UDSBundleJobList contains a list of UDSBundleJob
 // +kubebuilder:object:root=true
-type UDSPackageJobList struct {
+type UDSBundleJobList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []UDSPackageJob `json:"items"`
+	Items           []UDSBundleJob `json:"items"`
 }

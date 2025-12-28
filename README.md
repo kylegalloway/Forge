@@ -51,7 +51,7 @@ spec:
     timeout: 60m
 ```
 
-> **Note**: For UDS bundles, use `UDSPackageJob` with the v1alpha2 API. The v1alpha1 `UDSBundleJob` API has been removed.
+> **Note**: For UDS bundles, use `UDSBundleJob` with the v1alpha2 API. The v1alpha1 `UDSBundleJob` API has been removed.
 
 ## Architecture
 
@@ -364,7 +364,7 @@ forge/
 ├── pkg/
 │   ├── apis/
 │   │   ├── zarf/v1alpha1/       # ZarfPackageJob CRD types
-│   │   └── uds/v1alpha2/        # UDSPackageJob CRD types
+│   │   └── uds/v1alpha2/        # UDSBundleJob CRD types
 │   ├── controller/              # Main controller
 │   ├── actions/
 │   │   ├── common/              # Shared action code (~610 lines)
@@ -387,7 +387,7 @@ forge/
 ├── examples/
 │   └── samples/
 │       ├── zarf/                # ZarfPackageJob examples
-│       └── uds/                 # UDSPackageJob examples
+│       └── uds/                 # UDSBundleJob examples
 ├── docs/                        # Documentation
 └── cmd/                         # Entrypoints (controller, webhook)
 ```

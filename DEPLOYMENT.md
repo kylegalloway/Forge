@@ -72,10 +72,10 @@ See [docs/getting-started/KIND_SETUP.md](docs/getting-started/KIND_SETUP.md) for
 
 When you install Forge, you get:
 
-- ✅ Forge Controller (manages ZarfPackageJob and UDSPackageJob resources)
+- ✅ Forge Controller (manages ZarfPackageJob and UDSBundleJob resources)
 - ✅ Forge Webhook (validates resources at admission time)
 - ✅ Metrics Service (exposes metrics for external Prometheus to scrape)
-- ✅ CRDs (ZarfPackageJob, UDSPackageJob)
+- ✅ CRDs (ZarfPackageJob, UDSBundleJob)
 - ✅ RBAC (ServiceAccount, ClusterRole, ClusterRoleBinding)
 
 Forge **does not** deploy:
@@ -256,7 +256,7 @@ helm uninstall forge --namespace forge-system
 kubectl delete namespace forge-system
 
 # Remove CRDs (will delete all ZarfPackageJob resources!)
-kubectl delete crd zarfpackagejobs.forge.dev udspackagejobs.forge.dev
+kubectl delete crd zarfpackagejobs.forge.dev udsbundlejobs.forge.dev
 ```
 
 ## Security Hardening
@@ -285,7 +285,7 @@ pod-security.kubernetes.io/warn: restricted
 
 The controller uses a dedicated ServiceAccount with minimal permissions:
 
-- Read/write ZarfPackageJob and UDSPackageJob resources
+- Read/write ZarfPackageJob and UDSBundleJob resources
 - Create Jobs
 - Read ServiceAccounts and Secrets (for validation)
 - Create Events

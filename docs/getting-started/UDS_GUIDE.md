@@ -10,7 +10,7 @@ Forge allows you to manage UDS (Unicorn Delivery Service) bundles using Kubernet
 
 ## When to Use UDS vs Zarf
 
-Use **UDS bundles** (`UDSPackageJob`) when:
+Use **UDS bundles** (`UDSBundleJob`) when:
 
 - Deploying multi-package platforms (e.g., UDS Core with Istio + Keycloak + Grafana)
 - Managing complex deployments with interdependencies
@@ -36,7 +36,7 @@ Forge provides two API versions for UDS bundles:
 
 ### v1alpha2 (Recommended)
 
-**Resource**: `UDSPackageJob`
+**Resource**: `UDSBundleJob`
 **Status**: Active, recommended for all new deployments
 **Action Field**: `action` (consistent with ZarfPackageJob)
 **Actions**: `Create`, `Publish`, `Deploy`, `CreatePublish`, `CreateDeploy`, `PublishDeploy`, `CreatePublishDeploy`
@@ -94,7 +94,7 @@ Creates a UDS bundle from a public Git repository containing a `uds-bundle.yaml`
 
 ```yaml
 apiVersion: forge.dev/v1alpha2
-kind: UDSPackageJob
+kind: UDSBundleJob
 metadata:
   name: create-uds-core
   namespace: default
@@ -117,13 +117,13 @@ kubectl apply -f create-uds-core.yaml
 Expected output:
 
 ```text
-udspackagejob.forge.dev/create-uds-core created
+udsbundlejob.forge.dev/create-uds-core created
 ```
 
 Watch progress:
 
 ```bash
-kubectl get udspackagejob create-uds-core -w
+kubectl get udsbundlejob create-uds-core -w
 ```
 
 Expected output:
@@ -141,7 +141,7 @@ Creates a bundle and immediately publishes it to an OCI registry.
 
 ```yaml
 apiVersion: forge.dev/v1alpha2
-kind: UDSPackageJob
+kind: UDSBundleJob
 metadata:
   name: build-publish-bundle
   namespace: default
@@ -173,13 +173,13 @@ kubectl apply -f build-publish-bundle.yaml
 Expected output:
 
 ```text
-udspackagejob.forge.dev/build-publish-bundle created
+udsbundlejob.forge.dev/build-publish-bundle created
 ```
 
 Check status:
 
 ```bash
-kubectl get udspackagejob build-publish-bundle -n default
+kubectl get udsbundlejob build-publish-bundle -n default
 ```
 
 Expected output:
@@ -195,7 +195,7 @@ Deploys an existing UDS bundle from an OCI registry.
 
 ```yaml
 apiVersion: forge.dev/v1alpha2
-kind: UDSPackageJob
+kind: UDSBundleJob
 metadata:
   name: deploy-uds-core
   namespace: default
@@ -221,13 +221,13 @@ kubectl apply -f deploy-uds-core.yaml
 Expected output:
 
 ```text
-udspackagejob.forge.dev/deploy-uds-core created
+udsbundlejob.forge.dev/deploy-uds-core created
 ```
 
 Watch deployment progress:
 
 ```bash
-kubectl get udspackagejob deploy-uds-core -w
+kubectl get udsbundlejob deploy-uds-core -w
 ```
 
 Expected output:
@@ -245,7 +245,7 @@ Deploys a bundle to a different cluster using a kubeconfig Secret.
 
 ```yaml
 apiVersion: forge.dev/v1alpha2
-kind: UDSPackageJob
+kind: UDSBundleJob
 metadata:
   name: deploy-remote
   namespace: default
@@ -276,7 +276,7 @@ Expected output:
 secret/target-cluster-kubeconfig created
 ```
 
-Apply the UDSPackageJob:
+Apply the UDSBundleJob:
 
 ```bash
 kubectl apply -f deploy-remote.yaml
@@ -285,7 +285,7 @@ kubectl apply -f deploy-remote.yaml
 Expected output:
 
 ```text
-udspackagejob.forge.dev/deploy-remote created
+udsbundlejob.forge.dev/deploy-remote created
 ```
 
 ### 5. Publish to S3
@@ -294,7 +294,7 @@ Publishes an existing bundle to an S3 bucket.
 
 ```yaml
 apiVersion: forge.dev/v1alpha2
-kind: UDSPackageJob
+kind: UDSBundleJob
 metadata:
   name: publish-s3
   namespace: default
@@ -341,7 +341,7 @@ kubectl apply -f publish-s3.yaml
 Expected output:
 
 ```text
-udspackagejob.forge.dev/publish-s3 created
+udsbundlejob.forge.dev/publish-s3 created
 ```
 
 ## Policy Configuration
@@ -440,7 +440,7 @@ role.rbac.authorization.k8s.io/uds-bundle-operator-restricted created
 rolebinding.rbac.authorization.k8s.io/uds-bundle-operator-restricted created
 ```
 
-4. Reference in your UDSPackageJob:
+4. Reference in your UDSBundleJob:
 
 ```yaml
 spec:
@@ -461,10 +461,10 @@ For complete policy examples with RBAC configurations and credential Secrets, se
 
 If a bundle creation fails, check the following:
 
-1. **Check the UDSPackageJob status**:
+1. **Check the UDSBundleJob status**:
 
     ```bash
-    kubectl get udspackagejob my-bundle -o yaml
+    kubectl get udsbundlejob my-bundle -o yaml
     ```
 
     Expected output (showing failure):
@@ -503,10 +503,10 @@ If a bundle creation fails, check the following:
 
 ### Policy Validation Failures
 
-If the webhook rejects your UDSPackageJob:
+If the webhook rejects your UDSBundleJob:
 
 ```text
-Error from server: admission webhook "validate.udspackagejob.forge.dev" denied the request:
+Error from server: admission webhook "validate.udsbundlejob.forge.dev" denied the request:
 action "create" not allowed by ServiceAccount annotations
 ```
 
@@ -651,7 +651,7 @@ If the Job pod never starts:
 
 ### Controller Issues
 
-If UDSPackageJobs aren't being processed:
+If UDSBundleJobs aren't being processed:
 
 1. **Check controller is running**:
 
@@ -681,7 +681,7 @@ If UDSPackageJobs aren't being processed:
 
 | Aspect | v1alpha1 (Deprecated) | v1alpha2 (Recommended) |
 |--------|----------------------|------------------------|
-| **Resource Name** | `UDSBundleJob` | `UDSPackageJob` |
+| **Resource Name** | `UDSBundleJob` | `UDSBundleJob` |
 | **Action Field** | `bundleAction` | `action` |
 | **Action Values** | `BundleActionCreate`, `BundleActionPublish`, etc. | `Create`, `Publish`, `Deploy` |
 | **Naming Convention** | Bundle-prefixed actions | Consistent with ZarfPackageJob |
@@ -709,7 +709,7 @@ spec:
 
 ```yaml
 apiVersion: forge.dev/v1alpha2
-kind: UDSPackageJob
+kind: UDSBundleJob
 metadata:
   name: my-bundle
 spec:
@@ -722,7 +722,7 @@ spec:
 
 **Key changes**:
 
-1. `kind: UDSBundleJob` → `kind: UDSPackageJob`
+1. `kind: UDSBundleJob` → `kind: UDSBundleJob`
 2. `apiVersion: forge.dev/v1alpha1` → `apiVersion: forge.dev/v1alpha2`
 3. `bundleAction: BundleActionCreate` → `action: Create`
 
@@ -731,7 +731,7 @@ For a complete migration guide with automated conversion tools, see [V1ALPHA2_MI
 ## Additional Resources
 
 - **Policy Examples**: `examples/policies/uds/` - Complete ServiceAccount templates and RBAC configurations
-- **Sample Jobs**: `examples/samples/uds/` - Ready-to-use UDSPackageJob examples
+- **Sample Jobs**: `examples/samples/uds/` - Ready-to-use UDSBundleJob examples
 - **Migration Guide**: [V1ALPHA2_MIGRATION.md](../operations/V1ALPHA2_MIGRATION.md) - v1alpha1 → v1alpha2 migration
 - **Troubleshooting**: [UDS_TROUBLESHOOTING.md](../operations/UDS_TROUBLESHOOTING.md) - Detailed troubleshooting guide
 - **Zarf Guide**: [USER_GUIDE.md](USER_GUIDE.md) - For single Zarf packages

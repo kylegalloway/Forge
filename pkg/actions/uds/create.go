@@ -1,4 +1,4 @@
-// Package uds provides handlers for UDSPackageJob actions (Create, Publish, Deploy).
+// Package uds provides handlers for UDSBundleJob actions (Create, Publish, Deploy).
 //
 // Each action handler is responsible for executing a specific operation
 // on a UDS bundle.
@@ -21,7 +21,7 @@ import (
 	"github.com/kylegalloway/forge/pkg/telemetry"
 )
 
-// CreateHandler handles Create actions for UDSPackageJob resources
+// CreateHandler handles Create actions for UDSBundleJob resources
 type CreateHandler struct {
 	kubeClient kubernetes.Interface
 	metrics    *telemetry.Metrics
@@ -37,7 +37,7 @@ func NewCreateHandler(kubeClient kubernetes.Interface, metrics *telemetry.Metric
 	}
 }
 
-// Execute performs a Create action for the given UDSPackageJob
+// Execute performs a Create action for the given UDSBundleJob
 //
 // Unlike Zarf handlers, UDS handlers don't accept an artifactPVCName parameter because
 // UDS multi-action jobs (CreatePublish, CreateDeploy, etc.) run each action independently
@@ -48,7 +48,7 @@ func NewCreateHandler(kubeClient kubernetes.Interface, metrics *telemetry.Metric
 //
 // For the rationale behind this signature divergence, see:
 // docs/development/ARCHITECTURE.md#handler-signature-divergence
-func (handler *CreateHandler) Execute(ctx context.Context, bundle *udsv1alpha2.UDSPackageJob) (*actions.ActionResult, error) {
+func (handler *CreateHandler) Execute(ctx context.Context, bundle *udsv1alpha2.UDSBundleJob) (*actions.ActionResult, error) {
 
 	klog.InfoS("Executing UDS Bundle Create action", "name", bundle.Name, "namespace", bundle.Namespace)
 
@@ -85,7 +85,7 @@ func (handler *CreateHandler) Execute(ctx context.Context, bundle *udsv1alpha2.U
 }
 
 // createBundleJob creates a Kubernetes Job to create a UDS bundle
-func (handler *CreateHandler) createBundleJob(ctx context.Context, bundle *udsv1alpha2.UDSPackageJob) (*batchv1.Job, error) {
+func (handler *CreateHandler) createBundleJob(ctx context.Context, bundle *udsv1alpha2.UDSBundleJob) (*batchv1.Job, error) {
 	jobName := fmt.Sprintf("%s-create", bundle.Name)
 	namespace := bundle.Namespace
 
@@ -113,12 +113,12 @@ func (handler *CreateHandler) createBundleJob(ctx context.Context, bundle *udsv1
 			Namespace: namespace,
 			Labels: map[string]string{
 				"app":                  "forge",
-				"resource-type":        "udspackagejob",
+				"resource-type":        "udsbundlejob",
 				constants.LabelPackage: bundle.Name,
 				constants.LabelAction:  "create",
 			},
 			OwnerReferences: []metav1.OwnerReference{
-				*metav1.NewControllerRef(bundle, udsv1alpha2.SchemeGroupVersion.WithKind("UDSPackageJob")),
+				*metav1.NewControllerRef(bundle, udsv1alpha2.SchemeGroupVersion.WithKind("UDSBundleJob")),
 			},
 		},
 		Spec: batchv1.JobSpec{
@@ -129,7 +129,7 @@ func (handler *CreateHandler) createBundleJob(ctx context.Context, bundle *udsv1
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{
 						"app":                  "forge",
-						"resource-type":        "udspackagejob",
+						"resource-type":        "udsbundlejob",
 						constants.LabelPackage: bundle.Name,
 						constants.LabelAction:  "create",
 					},
@@ -184,7 +184,7 @@ func (handler *CreateHandler) createBundleJob(ctx context.Context, bundle *udsv1
 }
 
 // buildUDSCommand builds the UDS CLI command for bundle creation
-func (handler *CreateHandler) buildUDSCommand(_ *udsv1alpha2.UDSPackageJob) (string, string, error) {
+func (handler *CreateHandler) buildUDSCommand(_ *udsv1alpha2.UDSBundleJob) (string, string, error) {
 	workingDir := constants.VolumeMountPathWorkspace
 
 	// UDS bundle create command
@@ -196,8 +196,8 @@ func (handler *CreateHandler) buildUDSCommand(_ *udsv1alpha2.UDSPackageJob) (str
 
 // buildInitContainers creates init containers for source retrieval
 //
-//nolint:staticcheck // SA1019: UDSPackageJob v1alpha1 must be supported until v0.10.0
-func (handler *CreateHandler) buildInitContainers(bundle *udsv1alpha2.UDSPackageJob) ([]corev1.Container, error) {
+//nolint:staticcheck // SA1019: UDSBundleJob v1alpha1 must be supported until v0.10.0
+func (handler *CreateHandler) buildInitContainers(bundle *udsv1alpha2.UDSBundleJob) ([]corev1.Container, error) {
 	// Use shared source handler logic from pkg/sources
 	container, err := sources.GetUDSInitContainer(bundle)
 	if err != nil {
@@ -212,7 +212,7 @@ func (handler *CreateHandler) buildInitContainers(bundle *udsv1alpha2.UDSPackage
 }
 
 // buildVolumes creates volumes for the create job
-func (handler *CreateHandler) buildVolumes(bundle *udsv1alpha2.UDSPackageJob) []corev1.Volume {
+func (handler *CreateHandler) buildVolumes(bundle *udsv1alpha2.UDSBundleJob) []corev1.Volume {
 	volumes := []corev1.Volume{
 		{
 			Name: constants.VolumeNameWorkspace,
@@ -249,7 +249,7 @@ func (handler *CreateHandler) buildVolumes(bundle *udsv1alpha2.UDSPackageJob) []
 }
 
 // getResources returns resource requirements for the bundle create job
-func (handler *CreateHandler) getResources(bundle *udsv1alpha2.UDSPackageJob) corev1.ResourceRequirements {
+func (handler *CreateHandler) getResources(bundle *udsv1alpha2.UDSBundleJob) corev1.ResourceRequirements {
 	// Use user-provided resources if specified
 	if bundle.Spec.Resources != nil {
 		return *bundle.Spec.Resources

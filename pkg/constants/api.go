@@ -6,7 +6,7 @@
 //   - Webhooks for admission control
 //
 // GroupVersionResource (GVR) values are constructed from these constants and used
-// throughout the codebase to interact with ZarfPackageJob and UDSPackageJob resources
+// throughout the codebase to interact with ZarfPackageJob and UDSBundleJob resources
 // via the Kubernetes dynamic client.
 package constants
 
@@ -18,8 +18,8 @@ const (
 
 	// ZarfPackageJobResource is the resource name for ZarfPackageJob
 	ZarfPackageJobResource = "zarfpackagejobs"
-	// UDSPackageJobResource is the resource name for UDSPackageJob
-	UDSPackageJobResource = "udspackagejobs"
+	// UDSBundleJobResource is the resource name for UDSBundleJob
+	UDSBundleJobResource = "udsbundlejobs"
 )
 
 var (
@@ -30,10 +30,10 @@ var (
 		Resource: ZarfPackageJobResource,
 	}
 
-	// UDSPackageJobGVR is the GroupVersionResource for UDSPackageJob
-	UDSPackageJobGVR = schema.GroupVersionResource{
+	// UDSBundleJobGVR is the GroupVersionResource for UDSBundleJob
+	UDSBundleJobGVR = schema.GroupVersionResource{
 		Group:    APIGroup,
 		Version:  "v1alpha2",
-		Resource: UDSPackageJobResource,
+		Resource: UDSBundleJobResource,
 	}
 )

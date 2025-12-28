@@ -1,7 +1,7 @@
 // Package constants defines ServiceAccount annotation keys for policy enforcement.
 //
 // These annotations are applied to ServiceAccounts and validated by:
-//   - Admission webhooks during ZarfPackageJob/UDSPackageJob creation
+//   - Admission webhooks during ZarfPackageJob/UDSBundleJob creation
 //   - Controllers before executing Job operations
 //
 // The policy engine (pkg/policy) uses these annotations to enforce RBAC-like controls:

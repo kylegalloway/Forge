@@ -2,7 +2,7 @@
 
 ## Symptom
 
-When watching ZarfPackageJob or UDSPackageJob resources with `-w`, you observe the status phase bouncing between states like:
+When watching ZarfPackageJob or UDSBundleJob resources with `-w`, you observe the status phase bouncing between states like:
 - Running → Completed → Running → Completed
 - Pending → Running → Pending
 
@@ -43,7 +43,7 @@ When a job completes successfully:
 
 The job monitor runs every 10 seconds (`constants.JobMonitorInterval`):
 - Checks all Jobs with label `app=forge`
-- Updates ZarfPackageJob/UDSPackageJob status based on Job completion
+- Updates ZarfPackageJob/UDSBundleJob status based on Job completion
 - Triggers action chaining if applicable
 
 ## Diagnosis

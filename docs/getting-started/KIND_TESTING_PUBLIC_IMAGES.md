@@ -208,7 +208,7 @@ kubectl get crd | grep forge.dev
 Expected output:
 
 ```text
-udspackagejobs.forge.dev      2025-12-19T10:00:00Z
+udsbundlejobs.forge.dev      2025-12-19T10:00:00Z
 zarfpackagejobs.forge.dev     2025-12-19T10:00:00Z
 ```
 
@@ -468,7 +468,7 @@ Test UDS bundle operations:
 
 ```yaml
 apiVersion: forge.dev/v1alpha1
-kind: UDSPackageJob
+kind: UDSBundleJob
 metadata:
   name: uds-test
   namespace: default

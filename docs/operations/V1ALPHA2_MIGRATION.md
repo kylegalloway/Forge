@@ -2,7 +2,7 @@
 
 ## Overview
 
-The v1alpha1 `UDSBundleJob` API has been **completely removed** from Forge. Only the v1alpha2 `UDSPackageJob` API is supported. This change unifies UDS naming conventions with Zarf for consistency across both package types.
+The v1alpha1 `UDSBundleJob` API has been **completely removed** from Forge. Only the v1alpha2 `UDSBundleJob` API is supported. This change unifies UDS naming conventions with Zarf for consistency across both package types.
 
 **If you were using v1alpha1**: You need to update your resources to v1alpha2. There is no backward compatibility or conversion webhook - v1alpha1 is gone.
 
@@ -17,21 +17,21 @@ kind: UDSBundleJob
 
 # v1alpha2 (ONLY VERSION)
 apiVersion: forge.dev/v1alpha2
-kind: UDSPackageJob
+kind: UDSBundleJob
 ```
 
 ### Resource Names
 
 | v1alpha1 (Removed) | v1alpha2 (Current) |
 |--------------------|-------------------|
-| `udsbundlejobs` | `udspackagejobs` |
+| `udsbundlejobs` | `udsbundlejobs` |
 | Short name: `ubj` | Short name: `upj` |
 
 ### Type Names
 
 | v1alpha1 | v1alpha2 | Reason |
 |----------|----------|--------|
-| `UDSBundleJob` | `UDSPackageJob` | Parallels `ZarfPackageJob` |
+| `UDSBundleJob` | `UDSBundleJob` | Parallels `ZarfPackageJob` |
 | `BundleAction` | `Action` | Matches Zarf action type |
 | `BundleSourceType` | `SourceType` | Consistent naming |
 | `BundleDestinationType` | `DestinationType` | Consistent naming |
@@ -84,7 +84,7 @@ annotations:
 kubectl get udsbundlejobs.v1alpha1.forge.dev --all-namespaces
 
 # Use v1alpha2 instead
-kubectl get udspackagejobs --all-namespaces
+kubectl get udsbundlejobs --all-namespaces
 ```
 
 ### 2. Update Resource Manifests
@@ -107,7 +107,7 @@ spec:
 **After (v1alpha2):**
 ```yaml
 apiVersion: forge.dev/v1alpha2
-kind: UDSPackageJob
+kind: UDSBundleJob
 metadata:
   name: my-bundle
 spec:
@@ -144,7 +144,7 @@ kubectl get udsbundlejobs
 
 # v1alpha2 (current)
 kubectl get upj
-kubectl get udspackagejobs
+kubectl get udsbundlejobs
 ```
 
 ## Examples
@@ -163,16 +163,16 @@ See `examples/samples/uds/` for v1alpha2 examples:
 **Fix**: Update to v1alpha2:
 ```yaml
 apiVersion: forge.dev/v1alpha2
-kind: UDSPackageJob
+kind: UDSBundleJob
 ```
 
 ### "udsbundlejobs" resource not found
 
 **Cause**: Resource name changed
 
-**Fix**: Use `udspackagejobs` instead:
+**Fix**: Use `udsbundlejobs` instead:
 ```bash
-kubectl get udspackagejobs
+kubectl get udsbundlejobs
 ```
 
 ### ServiceAccount permission denied
@@ -199,8 +199,8 @@ forge.dev/allowed-actions: "Create"
 
 | Feature | v1alpha1 (Removed) | v1alpha2 (Current) |
 |---------|-------------------|-------------------|
-| Kind | UDSBundleJob | UDSPackageJob |
-| Resource | udsbundlejobs | udspackagejobs |
+| Kind | UDSBundleJob | UDSBundleJob |
+| Resource | udsbundlejobs | udsbundlejobs |
 | Action Type | BundleAction | Action |
 | Action Values | BundleActionCreate | Create |
 | Shortname | ubj | upj |

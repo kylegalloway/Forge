@@ -36,7 +36,7 @@ func (ctrl *UDSController) startJobMonitoring(ctx context.Context) {
 	}
 }
 
-// checkJobStatuses checks all Jobs labeled with forge-uds labels and updates UDSPackageJob status
+// checkJobStatuses checks all Jobs labeled with forge-uds labels and updates UDSBundleJob status
 func (ctrl *UDSController) checkJobStatuses(ctx context.Context) error {
 	// List all Jobs with forge-uds labels
 	jobs, err := ctrl.kubeClient.BatchV1().Jobs(ctrl.namespace).List(ctx, metav1.ListOptions{
@@ -56,9 +56,9 @@ func (ctrl *UDSController) checkJobStatuses(ctx context.Context) error {
 	return nil
 }
 
-// processJobStatus checks a single Job and updates the corresponding UDSPackageJob status
+// processJobStatus checks a single Job and updates the corresponding UDSBundleJob status
 func (ctrl *UDSController) processJobStatus(ctx context.Context, job *batchv1.Job) error {
-	// Get the UDSPackageJob name from job labels
+	// Get the UDSBundleJob name from job labels
 	bundleName, ok := job.Labels[constants.LabelPackage]
 	if !ok {
 		klog.V(4).InfoS("Job missing bundle label, skipping", "job", job.Name)
@@ -71,18 +71,18 @@ func (ctrl *UDSController) processJobStatus(ctx context.Context, job *batchv1.Jo
 		return nil
 	}
 
-	// Get the UDSPackageJob resource
-	unstructuredBundle, err := ctrl.dynamicClient.Resource(constants.UDSPackageJobGVR).
+	// Get the UDSBundleJob resource
+	unstructuredBundle, err := ctrl.dynamicClient.Resource(constants.UDSBundleJobGVR).
 		Namespace(job.Namespace).
 		Get(ctx, bundleName, metav1.GetOptions{})
 	if err != nil {
-		klog.V(4).InfoS("Failed to get UDSPackageJob, may be deleted", "bundle", bundleName, "error", err)
+		klog.V(4).InfoS("Failed to get UDSBundleJob, may be deleted", "bundle", bundleName, "error", err)
 		return nil
 	}
 
-	bundle := &udsv1alpha2.UDSPackageJob{}
+	bundle := &udsv1alpha2.UDSBundleJob{}
 	if err := runtime.DefaultUnstructuredConverter.FromUnstructured(unstructuredBundle.Object, bundle); err != nil {
-		return fmt.Errorf("failed to convert to UDSPackageJob: %w", err)
+		return fmt.Errorf("failed to convert to UDSBundleJob: %w", err)
 	}
 
 	// Check if job is complete or failed
@@ -179,7 +179,7 @@ func (ctrl *UDSController) processJobStatus(ctx context.Context, job *batchv1.Jo
 }
 
 // handleActionChaining triggers the next action in compound action workflows
-func (ctrl *UDSController) handleActionChaining(ctx context.Context, bundle *udsv1alpha2.UDSPackageJob, completedAction string) error {
+func (ctrl *UDSController) handleActionChaining(ctx context.Context, bundle *udsv1alpha2.UDSBundleJob, completedAction string) error {
 	action := bundle.Spec.Action
 
 	klog.V(2).InfoS("Checking action chaining", "bundle", bundle.Name, "mainAction", action, "completedAction", completedAction)
@@ -232,14 +232,14 @@ func (ctrl *UDSController) handleActionChaining(ctx context.Context, bundle *uds
 	return nil
 }
 
-// markBundleCompleted marks the UDSPackageJob as completed
-func (ctrl *UDSController) markBundleCompleted(ctx context.Context, bundle *udsv1alpha2.UDSPackageJob) error {
-	klog.InfoS("Marking UDSPackageJob as completed", "bundle", bundle.Name, "namespace", bundle.Namespace)
+// markBundleCompleted marks the UDSBundleJob as completed
+func (ctrl *UDSController) markBundleCompleted(ctx context.Context, bundle *udsv1alpha2.UDSBundleJob) error {
+	klog.InfoS("Marking UDSBundleJob as completed", "bundle", bundle.Name, "namespace", bundle.Namespace)
 	return ctrl.updateStatus(ctx, bundle, "Completed", "All actions completed successfully")
 }
 
-// markBundleFailed marks the UDSPackageJob as failed
-func (ctrl *UDSController) markBundleFailed(ctx context.Context, bundle *udsv1alpha2.UDSPackageJob, message string) error {
-	klog.InfoS("Marking UDSPackageJob as failed", "bundle", bundle.Name, "namespace", bundle.Namespace, "message", message)
+// markBundleFailed marks the UDSBundleJob as failed
+func (ctrl *UDSController) markBundleFailed(ctx context.Context, bundle *udsv1alpha2.UDSBundleJob, message string) error {
+	klog.InfoS("Marking UDSBundleJob as failed", "bundle", bundle.Name, "namespace", bundle.Namespace, "message", message)
 	return ctrl.updateStatus(ctx, bundle, "Failed", message)
 }

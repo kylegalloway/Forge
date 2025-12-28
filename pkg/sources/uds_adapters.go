@@ -11,8 +11,8 @@ import (
 // GetUDSInitContainer returns an init container for the given UDS bundle source
 // This adapts UDS bundle sources to use the shared source handler logic
 //
-//nolint:staticcheck // SA1019: UDSPackageJob v1alpha1 must be supported until v0.10.0
-func GetUDSInitContainer(bundle *udsv1alpha2.UDSPackageJob) (*corev1.Container, error) {
+//nolint:staticcheck // SA1019: UDSBundleJob v1alpha1 must be supported until v0.10.0
+func GetUDSInitContainer(bundle *udsv1alpha2.UDSBundleJob) (*corev1.Container, error) {
 	switch bundle.Spec.Source.Type {
 	case udsv1alpha2.SourceTypeGit:
 		gitSource := bundle.Spec.Source.Git

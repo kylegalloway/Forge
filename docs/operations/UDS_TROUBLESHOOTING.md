@@ -6,7 +6,7 @@ Comprehensive troubleshooting guide for UDS bundle operations in Forge. This gui
 
 ## Table of Contents
 
-- [UDSPackageJob Issues](#udspackagejob-issues)
+- [UDSBundleJob Issues](#udsbundlejob-issues)
 - [Bundle Creation Failures](#bundle-creation-failures)
 - [Bundle Deployment Failures](#bundle-deployment-failures)
 - [Policy Validation Failures](#policy-validation-failures)
@@ -20,14 +20,14 @@ Comprehensive troubleshooting guide for UDS bundle operations in Forge. This gui
 
 ---
 
-## UDSPackageJob Issues
+## UDSBundleJob Issues
 
-### UDSPackageJob stays in Pending phase
+### UDSBundleJob stays in Pending phase
 
 **Symptoms:**
 
 ```bash
-kubectl get udspackagejob my-bundle
+kubectl get udsbundlejob my-bundle
 # NAME        PHASE     AGE
 # my-bundle   Pending   5m
 ```
@@ -37,7 +37,7 @@ kubectl get udspackagejob my-bundle
 #### 1. ServiceAccount not found
 
 ```bash
-kubectl describe udspackagejob my-bundle
+kubectl describe udsbundlejob my-bundle
 # Events:
 #   Type     Reason          Message
 #   ----     ------          -------
@@ -79,12 +79,12 @@ Look for errors related to:
 - RBAC permission errors
 - Webhook communication failures
 
-### UDSPackageJob rejected by webhook
+### UDSBundleJob rejected by webhook
 
 **Symptoms:**
 
 ```text
-Error from server: admission webhook "validate.udspackagejob.forge.dev" denied the request:
+Error from server: admission webhook "validate.udsbundlejob.forge.dev" denied the request:
 action "create" not allowed by ServiceAccount annotations
 ```
 
@@ -135,7 +135,7 @@ kubectl logs job/my-bundle-create
 
 ```bash
 # If using Git source
-kubectl get udspackagejob my-bundle -o jsonpath='{.spec.source.git}'
+kubectl get udsbundlejob my-bundle -o jsonpath='{.spec.source.git}'
 
 # Clone and check uds-bundle.yaml
 git clone <repo-url>
@@ -178,7 +178,7 @@ kubectl create secret docker-registry oci-creds \
   --namespace default
 ```
 
-Reference in UDSPackageJob:
+Reference in UDSBundleJob:
 
 ```yaml
 spec:
@@ -251,7 +251,7 @@ packages:
 **Symptoms:**
 
 ```bash
-kubectl get udspackagejob my-bundle
+kubectl get udsbundlejob my-bundle
 # NAME        PHASE    AGE
 # my-bundle   Failed   60m
 
@@ -266,11 +266,11 @@ kubectl describe job my-bundle-create
 
 #### 1. Default timeout too short for large bundles
 
-**Solution:** Increase timeout in UDSPackageJob spec:
+**Solution:** Increase timeout in UDSBundleJob spec:
 
 ```yaml
 apiVersion: forge.dev/v1alpha2
-kind: UDSPackageJob
+kind: UDSBundleJob
 metadata:
   name: large-bundle
 spec:
@@ -335,7 +335,7 @@ kubectl describe nodes | grep -A 5 "Allocated resources"
 
 ```bash
 # View bundle definition
-kubectl get udspackagejob my-bundle -o jsonpath='{.spec.source.git.url}'
+kubectl get udsbundlejob my-bundle -o jsonpath='{.spec.source.git.url}'
 # Clone and check package order in uds-bundle.yaml
 ```
 
@@ -703,7 +703,7 @@ aws s3 ls s3://my-uds-bundles --region us-east-1
 aws s3 mb s3://my-uds-bundles --region us-east-1
 ```
 
-3. **Update UDSPackageJob with correct bucket name**:
+3. **Update UDSBundleJob with correct bucket name**:
 
 ```yaml
 spec:
@@ -730,7 +730,7 @@ aws s3api get-bucket-location --bucket my-uds-bundles
 # Output: {"LocationConstraint": "us-west-2"}
 ```
 
-Update UDSPackageJob with correct region:
+Update UDSBundleJob with correct region:
 
 ```yaml
 spec:
@@ -771,7 +771,7 @@ kubectl create secret generic git-ssh-key \
   --from-file=known_hosts=/path/to/known_hosts
 ```
 
-Reference in UDSPackageJob:
+Reference in UDSBundleJob:
 
 ```yaml
 spec:
@@ -825,7 +825,7 @@ git ls-remote https://github.com/myorg/bundle
 # Look for refs/heads/<branch> or refs/tags/<tag>
 ```
 
-2. **Update UDSPackageJob with correct ref**:
+2. **Update UDSBundleJob with correct ref**:
 
 ```yaml
 spec:
@@ -844,8 +844,8 @@ spec:
 
 **Symptoms:**
 
-- UDSPackageJobs stuck in Pending
-- No Jobs created for UDSPackageJobs
+- UDSBundleJobs stuck in Pending
+- No Jobs created for UDSBundleJobs
 - Events show no activity
 
 **Diagnosis:**
@@ -864,7 +864,7 @@ kubectl logs -n forge-system -l app.kubernetes.io/component=controller --tail=10
 
 **Common errors:**
 
-- `failed to watch UDSPackageJob: forbidden` - RBAC issue
+- `failed to watch UDSBundleJob: forbidden` - RBAC issue
 - `failed to connect to webhook` - Webhook communication issue
 - `panic: runtime error` - Controller bug (report to developers)
 
@@ -926,14 +926,14 @@ Error: the server doesn't have a resource type "udsbundlejobs"
 ```bash
 # Using yq
 yq eval '.apiVersion = "forge.dev/v1alpha2" |
-         .kind = "UDSPackageJob" |
+         .kind = "UDSBundleJob" |
          .spec.action = (.spec.bundleAction | sub("BundleAction", ""))' \
          old-bundle.yaml > new-bundle.yaml
 ```
 
 **Manual conversion**:
 
-1. Change `kind: UDSBundleJob` to `kind: UDSPackageJob`
+1. Change `kind: UDSBundleJob` to `kind: UDSBundleJob`
 2. Change `apiVersion: forge.dev/v1alpha1` to `forge.dev/v1alpha2`
 3. Change `spec.bundleAction: BundleActionCreate` to `spec.action: Create`
 4. Remove `BundleAction` prefix from all actions
@@ -1064,17 +1064,17 @@ packages:
 
 ## Debugging Commands
 
-### Inspect UDSPackageJob Status
+### Inspect UDSBundleJob Status
 
 ```bash
 # Get basic status
-kubectl get udspackagejob <name>
+kubectl get udsbundlejob <name>
 
 # Get full details
-kubectl get udspackagejob <name> -o yaml
+kubectl get udsbundlejob <name> -o yaml
 
 # Watch status changes
-kubectl get udspackagejob <name> -w
+kubectl get udsbundlejob <name> -w
 
 # Get events
 kubectl get events --field-selector involvedObject.name=<name>
@@ -1084,7 +1084,7 @@ kubectl get events --field-selector involvedObject.name=<name>
 
 ```bash
 # List all UDS jobs
-kubectl get jobs -l app=forge,resource-type=udspackagejob
+kubectl get jobs -l app=forge,resource-type=udsbundlejob
 
 # Find jobs for specific bundle
 kubectl get jobs -l forge.forge.dev/package=<bundle-name>
@@ -1170,9 +1170,9 @@ mkdir -p "$OUTPUT_DIR"
 
 echo "Collecting diagnostics for bundle: $BUNDLE_NAME"
 
-# UDSPackageJob details
-kubectl get udspackagejob "$BUNDLE_NAME" -o yaml > "$OUTPUT_DIR/udspackagejob.yaml"
-kubectl describe udspackagejob "$BUNDLE_NAME" > "$OUTPUT_DIR/udspackagejob-describe.txt"
+# UDSBundleJob details
+kubectl get udsbundlejob "$BUNDLE_NAME" -o yaml > "$OUTPUT_DIR/udsbundlejob.yaml"
+kubectl describe udsbundlejob "$BUNDLE_NAME" > "$OUTPUT_DIR/udsbundlejob-describe.txt"
 
 # Job details
 kubectl get jobs -l forge.forge.dev/package="$BUNDLE_NAME" -o yaml > "$OUTPUT_DIR/jobs.yaml"
@@ -1189,7 +1189,7 @@ kubectl get events --field-selector involvedObject.name="$BUNDLE_NAME" > "$OUTPU
 kubectl logs -n forge-system -l app.kubernetes.io/component=controller --tail=200 > "$OUTPUT_DIR/controller.log"
 
 # ServiceAccount details
-SA_NAME=$(kubectl get udspackagejob "$BUNDLE_NAME" -o jsonpath='{.spec.serviceAccountName}')
+SA_NAME=$(kubectl get udsbundlejob "$BUNDLE_NAME" -o jsonpath='{.spec.serviceAccountName}')
 kubectl get sa "$SA_NAME" -o yaml > "$OUTPUT_DIR/serviceaccount.yaml"
 
 echo "Diagnostics saved to: $OUTPUT_DIR"

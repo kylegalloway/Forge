@@ -1,4 +1,4 @@
-// Package policy enforces access control policies for ZarfPackageJob and UDSPackageJob operations based on ServiceAccount permissions.
+// Package policy enforces access control policies for ZarfPackageJob and UDSBundleJob operations based on ServiceAccount permissions.
 package policy
 
 import (
@@ -235,7 +235,7 @@ func matchAny(patterns []string, value string) bool {
 }
 
 // ValidateUDSBundle checks if the UDS bundle operation is allowed based on the ServiceAccount permissions
-func (engine *Engine) ValidateUDSBundle(ctx context.Context, bundle *udsv1alpha2.UDSPackageJob) error {
+func (engine *Engine) ValidateUDSBundle(ctx context.Context, bundle *udsv1alpha2.UDSBundleJob) error {
 	// 1. Fetch ServiceAccount
 	saName := bundle.Spec.ServiceAccountName
 	if saName == "" {

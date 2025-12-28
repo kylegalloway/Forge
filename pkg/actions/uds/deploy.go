@@ -17,7 +17,7 @@ import (
 	"github.com/kylegalloway/forge/pkg/telemetry"
 )
 
-// DeployHandler handles Deploy actions for UDSPackageJob resources
+// DeployHandler handles Deploy actions for UDSBundleJob resources
 type DeployHandler struct {
 	kubeClient kubernetes.Interface
 	metrics    *telemetry.Metrics
@@ -33,8 +33,8 @@ func NewDeployHandler(kubeClient kubernetes.Interface, metrics *telemetry.Metric
 	}
 }
 
-// Execute performs a Deploy action for the given UDSPackageJob
-func (handler *DeployHandler) Execute(ctx context.Context, bundle *udsv1alpha2.UDSPackageJob) (*actions.ActionResult, error) {
+// Execute performs a Deploy action for the given UDSBundleJob
+func (handler *DeployHandler) Execute(ctx context.Context, bundle *udsv1alpha2.UDSBundleJob) (*actions.ActionResult, error) {
 
 	klog.InfoS("Executing UDS Bundle Deploy action", "name", bundle.Name, "namespace", bundle.Namespace)
 
@@ -71,7 +71,7 @@ func (handler *DeployHandler) Execute(ctx context.Context, bundle *udsv1alpha2.U
 }
 
 // createDeployJob creates a Kubernetes Job to deploy a UDS bundle
-func (handler *DeployHandler) createDeployJob(ctx context.Context, bundle *udsv1alpha2.UDSPackageJob) (*batchv1.Job, error) {
+func (handler *DeployHandler) createDeployJob(ctx context.Context, bundle *udsv1alpha2.UDSBundleJob) (*batchv1.Job, error) {
 	jobName := fmt.Sprintf("%s-deploy", bundle.Name)
 	namespace := bundle.Namespace
 
@@ -94,12 +94,12 @@ func (handler *DeployHandler) createDeployJob(ctx context.Context, bundle *udsv1
 			Namespace: namespace,
 			Labels: map[string]string{
 				"app":                  "forge",
-				"resource-type":        "udspackagejob",
+				"resource-type":        "udsbundlejob",
 				constants.LabelPackage: bundle.Name,
 				constants.LabelAction:  "deploy",
 			},
 			OwnerReferences: []metav1.OwnerReference{
-				*metav1.NewControllerRef(bundle, udsv1alpha2.SchemeGroupVersion.WithKind("UDSPackageJob")),
+				*metav1.NewControllerRef(bundle, udsv1alpha2.SchemeGroupVersion.WithKind("UDSBundleJob")),
 			},
 		},
 		Spec: batchv1.JobSpec{
@@ -110,7 +110,7 @@ func (handler *DeployHandler) createDeployJob(ctx context.Context, bundle *udsv1
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{
 						"app":                  "forge",
-						"resource-type":        "udspackagejob",
+						"resource-type":        "udsbundlejob",
 						constants.LabelPackage: bundle.Name,
 						constants.LabelAction:  "deploy",
 					},
@@ -171,7 +171,7 @@ func (handler *DeployHandler) createDeployJob(ctx context.Context, bundle *udsv1
 }
 
 // buildDeployCommand builds the UDS CLI deploy command
-func (handler *DeployHandler) buildDeployCommand(bundle *udsv1alpha2.UDSPackageJob) string {
+func (handler *DeployHandler) buildDeployCommand(bundle *udsv1alpha2.UDSBundleJob) string {
 	deploy := bundle.Spec.Deploy
 
 	// Base command
@@ -202,7 +202,7 @@ func (handler *DeployHandler) buildDeployCommand(bundle *udsv1alpha2.UDSPackageJ
 }
 
 // buildEnvVars builds environment variables for the deploy job
-func (handler *DeployHandler) buildEnvVars(bundle *udsv1alpha2.UDSPackageJob) []corev1.EnvVar {
+func (handler *DeployHandler) buildEnvVars(bundle *udsv1alpha2.UDSBundleJob) []corev1.EnvVar {
 	envVars := []corev1.EnvVar{}
 
 	// Add timeout as env var for UDS CLI
@@ -217,7 +217,7 @@ func (handler *DeployHandler) buildEnvVars(bundle *udsv1alpha2.UDSPackageJob) []
 }
 
 // addKubeconfigVolume adds kubeconfig volume and mount for external cluster deployment
-func (handler *DeployHandler) addKubeconfigVolume(bundle *udsv1alpha2.UDSPackageJob, job *batchv1.Job) {
+func (handler *DeployHandler) addKubeconfigVolume(bundle *udsv1alpha2.UDSBundleJob, job *batchv1.Job) {
 	if bundle.Spec.Deploy.Kubeconfig == nil || bundle.Spec.Deploy.Kubeconfig.SecretRef.Name == "" { // pragma: allowlist secret
 		return
 	}
@@ -261,7 +261,7 @@ func (handler *DeployHandler) addKubeconfigVolume(bundle *udsv1alpha2.UDSPackage
 }
 
 // getResources returns resource requirements for the deploy job
-func (handler *DeployHandler) getResources(bundle *udsv1alpha2.UDSPackageJob) corev1.ResourceRequirements {
+func (handler *DeployHandler) getResources(bundle *udsv1alpha2.UDSBundleJob) corev1.ResourceRequirements {
 	if bundle.Spec.Resources != nil {
 		return *bundle.Spec.Resources
 	}

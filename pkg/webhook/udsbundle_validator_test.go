@@ -11,20 +11,20 @@ import (
 	"k8s.io/client-go/kubernetes/fake"
 )
 
-func TestNewUDSPackageJobValidator(t *testing.T) {
+func TestNewUDSBundleJobValidator(t *testing.T) {
 	kubeClient := fake.NewClientset()
-	validator := NewUDSPackageJobValidator(kubeClient)
+	validator := NewUDSBundleJobValidator(kubeClient)
 	if validator == nil {
-		t.Fatal("NewUDSPackageJobValidator returned nil")
+		t.Fatal("NewUDSBundleJobValidator returned nil")
 	}
 	if validator.kubeClient == nil {
 		t.Error("kubeClient not set")
 	}
 }
 
-func TestValidateUDSPackageJob_ValidCreate(t *testing.T) {
+func TestValidateUDSBundleJob_ValidCreate(t *testing.T) {
 	kubeClient := fake.NewClientset()
-	validator := NewUDSPackageJobValidator(kubeClient)
+	validator := NewUDSBundleJobValidator(kubeClient)
 
 	// Create ServiceAccount with permissions
 	sa := &corev1.ServiceAccount{
@@ -42,12 +42,12 @@ func TestValidateUDSPackageJob_ValidCreate(t *testing.T) {
 		t.Fatalf("Failed to create ServiceAccount: %v", err)
 	}
 
-	bundle := &udsv1alpha2.UDSPackageJob{
+	bundle := &udsv1alpha2.UDSBundleJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-create",
 			Namespace: "default",
 		},
-		Spec: udsv1alpha2.UDSPackageJobSpec{
+		Spec: udsv1alpha2.UDSBundleJobSpec{
 			ServiceAccountName: "test-sa",
 			Action:             udsv1alpha2.ActionCreate,
 			Source: udsv1alpha2.PackageSource{
@@ -60,22 +60,22 @@ func TestValidateUDSPackageJob_ValidCreate(t *testing.T) {
 		},
 	}
 
-	err = validator.ValidateUDSPackageJob(context.Background(), bundle)
+	err = validator.ValidateUDSBundleJob(context.Background(), bundle)
 	if err != nil {
-		t.Errorf("ValidateUDSPackageJob() failed for valid bundle: %v", err)
+		t.Errorf("ValidateUDSBundleJob() failed for valid bundle: %v", err)
 	}
 }
 
-func TestValidateUDSPackageJob_MissingServiceAccount(t *testing.T) {
+func TestValidateUDSBundleJob_MissingServiceAccount(t *testing.T) {
 	kubeClient := fake.NewClientset()
-	validator := NewUDSPackageJobValidator(kubeClient)
+	validator := NewUDSBundleJobValidator(kubeClient)
 
-	bundle := &udsv1alpha2.UDSPackageJob{
+	bundle := &udsv1alpha2.UDSBundleJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-create",
 			Namespace: "default",
 		},
-		Spec: udsv1alpha2.UDSPackageJobSpec{
+		Spec: udsv1alpha2.UDSBundleJobSpec{
 			ServiceAccountName: "nonexistent-sa",
 			Action:             udsv1alpha2.ActionCreate,
 			Source: udsv1alpha2.PackageSource{
@@ -87,14 +87,14 @@ func TestValidateUDSPackageJob_MissingServiceAccount(t *testing.T) {
 		},
 	}
 
-	err := validator.ValidateUDSPackageJob(context.Background(), bundle)
+	err := validator.ValidateUDSBundleJob(context.Background(), bundle)
 	if err == nil {
 		t.Error("Expected error for missing ServiceAccount, got nil")
 	}
 }
 
 func TestValidateUDSAction(t *testing.T) {
-	validator := &UDSPackageJobValidator{}
+	validator := &UDSBundleJobValidator{}
 
 	tests := []struct {
 		name          string
@@ -161,7 +161,7 @@ func TestValidateUDSAction(t *testing.T) {
 }
 
 func TestValidateUDSPackageSource(t *testing.T) {
-	validator := &UDSPackageJobValidator{}
+	validator := &UDSBundleJobValidator{}
 
 	tests := []struct {
 		name          string
@@ -251,7 +251,7 @@ func TestValidateUDSPackageSource(t *testing.T) {
 }
 
 func TestValidateUDSBundlePublish(t *testing.T) {
-	validator := &UDSPackageJobValidator{}
+	validator := &UDSBundleJobValidator{}
 
 	tests := []struct {
 		name          string
@@ -337,7 +337,7 @@ func TestValidateUDSBundlePublish(t *testing.T) {
 }
 
 func TestValidateUDSBundleDeploy(t *testing.T) {
-	validator := &UDSPackageJobValidator{}
+	validator := &UDSBundleJobValidator{}
 
 	tests := []struct {
 		name          string
@@ -411,7 +411,7 @@ func TestValidateUDSBundlePublish_LocalDestination(t *testing.T) {
 	}
 
 	client := fake.NewClientset(sa)
-	validator := NewUDSPackageJobValidator(client)
+	validator := NewUDSBundleJobValidator(client)
 
 	publish := &udsv1alpha2.PublishConfig{
 		Destination: udsv1alpha2.PublishDestination{
@@ -434,7 +434,7 @@ func TestValidateUDSBundlePublish_UnknownDestination(t *testing.T) {
 	}
 
 	client := fake.NewClientset(sa)
-	validator := NewUDSPackageJobValidator(client)
+	validator := NewUDSBundleJobValidator(client)
 
 	publish := &udsv1alpha2.PublishConfig{
 		Destination: udsv1alpha2.PublishDestination{
@@ -460,7 +460,7 @@ func TestValidateUDSPackageSource_UnknownType(t *testing.T) {
 	}
 
 	client := fake.NewClientset(sa)
-	validator := NewUDSPackageJobValidator(client)
+	validator := NewUDSBundleJobValidator(client)
 
 	source := &udsv1alpha2.PackageSource{
 		Type: "UnknownSourceType",
@@ -475,9 +475,9 @@ func TestValidateUDSPackageSource_UnknownType(t *testing.T) {
 	}
 }
 
-func TestValidateUDSPackageJob_CompleteWorkflow(t *testing.T) {
+func TestValidateUDSBundleJob_CompleteWorkflow(t *testing.T) {
 	kubeClient := fake.NewClientset()
-	validator := NewUDSPackageJobValidator(kubeClient)
+	validator := NewUDSBundleJobValidator(kubeClient)
 
 	// Create ServiceAccount with full permissions
 	sa := &corev1.ServiceAccount{
@@ -497,12 +497,12 @@ func TestValidateUDSPackageJob_CompleteWorkflow(t *testing.T) {
 		t.Fatalf("Failed to create ServiceAccount: %v", err)
 	}
 
-	bundle := &udsv1alpha2.UDSPackageJob{
+	bundle := &udsv1alpha2.UDSBundleJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-complete",
 			Namespace: "default",
 		},
-		Spec: udsv1alpha2.UDSPackageJobSpec{
+		Spec: udsv1alpha2.UDSBundleJobSpec{
 			ServiceAccountName: "test-sa",
 			Action:             udsv1alpha2.ActionCreatePublishDeploy,
 			Source: udsv1alpha2.PackageSource{
@@ -529,8 +529,8 @@ func TestValidateUDSPackageJob_CompleteWorkflow(t *testing.T) {
 		},
 	}
 
-	err = validator.ValidateUDSPackageJob(context.Background(), bundle)
+	err = validator.ValidateUDSBundleJob(context.Background(), bundle)
 	if err != nil {
-		t.Errorf("ValidateUDSPackageJob() failed for complete workflow: %v", err)
+		t.Errorf("ValidateUDSBundleJob() failed for complete workflow: %v", err)
 	}
 }

@@ -6,7 +6,7 @@
 //   - Container images for CLI operations
 //
 // Timeout values are used as defaults when users don't specify custom timeouts
-// in their ZarfPackageJob or UDSPackageJob specs. These can be overridden per-job
+// in their ZarfPackageJob or UDSBundleJob specs. These can be overridden per-job
 // via the Build.Timeout, Publish.Timeout, or Deploy.Timeout fields.
 //
 // UID constants ensure Jobs run with predictable non-root users for security:

@@ -35,7 +35,7 @@ data:
 
 ---
 apiVersion: forge.dev/v1alpha2
-kind: UDSPackageJob
+kind: UDSBundleJob
 metadata:
   name: git-to-oci-bundle-example
   namespace: default

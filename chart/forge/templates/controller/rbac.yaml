@@ -24,20 +24,20 @@ rules:
   - get
   - update
   - patch
-# Permissions for UDSPackageJob resources
+# Permissions for UDSBundleJob resources
 - apiGroups:
   - forge.dev
   resources:
-  - udspackagejobs
+  - udsbundlejobs
   verbs:
   - get
   - list
   - watch
-# Permissions to update UDSPackageJob status
+# Permissions to update UDSBundleJob status
 - apiGroups:
   - forge.dev
   resources:
-  - udspackagejobs/status
+  - udsbundlejobs/status
   verbs:
   - get
   - update

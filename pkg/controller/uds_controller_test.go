@@ -69,16 +69,16 @@ func TestUDSHandleEvent(t *testing.T) {
 	dynamicClient := dynamicfake.NewSimpleDynamicClient(scheme)
 	ctrl := NewUDSController(kubeClient, dynamicClient, "forge-system", mustNewMetrics(), telemetry.NewTracer())
 
-	bundle := &udsv1alpha2.UDSPackageJob{
+	bundle := &udsv1alpha2.UDSBundleJob{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "forge.dev/v1alpha1",
-			Kind:       "UDSPackageJob",
+			Kind:       "UDSBundleJob",
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-bundle",
 			Namespace: "forge-system",
 		},
-		Spec: udsv1alpha2.UDSPackageJobSpec{
+		Spec: udsv1alpha2.UDSBundleJobSpec{
 			ServiceAccountName: "test-sa",
 			Action:             udsv1alpha2.ActionCreate,
 			Source: udsv1alpha2.PackageSource{
@@ -100,7 +100,7 @@ func TestUDSHandleEvent(t *testing.T) {
 	unstructuredObj.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "forge.dev",
 		Version: "v1alpha1",
-		Kind:    "UDSPackageJob",
+		Kind:    "UDSBundleJob",
 	})
 
 	tests := []struct {
@@ -157,10 +157,10 @@ func TestUDSUpdateStatus(t *testing.T) {
 	kubeClient := fake.NewClientset()
 	ctrl := NewUDSController(kubeClient, dynamicClient, "forge-system", mustNewMetrics(), telemetry.NewTracer())
 
-	bundle := &udsv1alpha2.UDSPackageJob{
+	bundle := &udsv1alpha2.UDSBundleJob{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "forge.dev/v1alpha1",
-			Kind:       "UDSPackageJob",
+			Kind:       "UDSBundleJob",
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:       "test-bundle",
@@ -177,18 +177,18 @@ func TestUDSUpdateStatus(t *testing.T) {
 	unstructuredObj.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "forge.dev",
 		Version: "v1alpha1",
-		Kind:    "UDSPackageJob",
+		Kind:    "UDSBundleJob",
 	})
 
 	// Create the resource first
-	_, err = dynamicClient.Resource(constants.UDSPackageJobGVR).Namespace("forge-system").Create(
+	_, err = dynamicClient.Resource(constants.UDSBundleJobGVR).Namespace("forge-system").Create(
 		context.Background(), unstructuredObj, metav1.CreateOptions{})
 	if err != nil {
 		t.Fatalf("Failed to create test resource: %v", err)
 	}
 
 	// Convert back to typed object for updateStatus
-	typedBundle := &udsv1alpha2.UDSPackageJob{}
+	typedBundle := &udsv1alpha2.UDSBundleJob{}
 	if convErr := runtime.DefaultUnstructuredConverter.FromUnstructured(unstructuredObj.Object, typedBundle); convErr != nil {
 		t.Fatalf("Failed to convert to typed bundle: %v", convErr)
 	}
@@ -199,7 +199,7 @@ func TestUDSUpdateStatus(t *testing.T) {
 	}
 
 	// Verify status was updated
-	updated, err := dynamicClient.Resource(constants.UDSPackageJobGVR).Namespace("forge-system").Get(
+	updated, err := dynamicClient.Resource(constants.UDSBundleJobGVR).Namespace("forge-system").Get(
 		context.Background(), "test-bundle", metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("Failed to get updated resource: %v", err)
@@ -241,22 +241,22 @@ func TestUDSReconcileBundle(t *testing.T) {
 
 	tests := []struct {
 		name              string
-		bundle            *udsv1alpha2.UDSPackageJob
+		bundle            *udsv1alpha2.UDSBundleJob
 		expectedPhase     string
 		expectStatusError bool
 	}{
 		{
 			name: "create action without service account",
-			bundle: &udsv1alpha2.UDSPackageJob{
+			bundle: &udsv1alpha2.UDSBundleJob{
 				TypeMeta: metav1.TypeMeta{
 					APIVersion: "forge.dev/v1alpha1",
-					Kind:       "UDSPackageJob",
+					Kind:       "UDSBundleJob",
 				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-create",
 					Namespace: "forge-system",
 				},
-				Spec: udsv1alpha2.UDSPackageJobSpec{
+				Spec: udsv1alpha2.UDSBundleJobSpec{
 					ServiceAccountName: "test-sa",
 					Action:             udsv1alpha2.ActionCreate,
 				},
@@ -266,16 +266,16 @@ func TestUDSReconcileBundle(t *testing.T) {
 		},
 		{
 			name: "unknown action",
-			bundle: &udsv1alpha2.UDSPackageJob{
+			bundle: &udsv1alpha2.UDSBundleJob{
 				TypeMeta: metav1.TypeMeta{
 					APIVersion: "forge.dev/v1alpha1",
-					Kind:       "UDSPackageJob",
+					Kind:       "UDSBundleJob",
 				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-unknown",
 					Namespace: "forge-system",
 				},
-				Spec: udsv1alpha2.UDSPackageJobSpec{
+				Spec: udsv1alpha2.UDSBundleJobSpec{
 					ServiceAccountName: "test-sa",
 					Action:             "UnknownAction",
 				},
@@ -295,11 +295,11 @@ func TestUDSReconcileBundle(t *testing.T) {
 			unstructuredObj.SetGroupVersionKind(schema.GroupVersionKind{
 				Group:   "forge.dev",
 				Version: "v1alpha1",
-				Kind:    "UDSPackageJob",
+				Kind:    "UDSBundleJob",
 			})
 
 			// Create the resource
-			_, err = dynamicClient.Resource(constants.UDSPackageJobGVR).Namespace(tt.bundle.Namespace).Create(
+			_, err = dynamicClient.Resource(constants.UDSBundleJobGVR).Namespace(tt.bundle.Namespace).Create(
 				context.Background(), unstructuredObj, metav1.CreateOptions{})
 			if err != nil {
 				t.Fatalf("Failed to create test resource: %v", err)
@@ -315,7 +315,7 @@ func TestUDSReconcileBundle(t *testing.T) {
 			}
 
 			// Verify status was updated
-			updated, getErr := dynamicClient.Resource(constants.UDSPackageJobGVR).Namespace(tt.bundle.Namespace).Get(
+			updated, getErr := dynamicClient.Resource(constants.UDSBundleJobGVR).Namespace(tt.bundle.Namespace).Get(
 				context.Background(), tt.bundle.Name, metav1.GetOptions{})
 			if getErr != nil {
 				t.Fatalf("Failed to get updated resource: %v", getErr)
@@ -341,17 +341,17 @@ func TestUDSProcessJobStatus(t *testing.T) {
 	kubeClient := fake.NewClientset()
 	ctrl := NewUDSController(kubeClient, dynamicClient, "forge-system", mustNewMetrics(), telemetry.NewTracer())
 
-	// Create a UDSPackageJob first
-	bundle := &udsv1alpha2.UDSPackageJob{
+	// Create a UDSBundleJob first
+	bundle := &udsv1alpha2.UDSBundleJob{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "forge.dev/v1alpha1",
-			Kind:       "UDSPackageJob",
+			Kind:       "UDSBundleJob",
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-bundle",
 			Namespace: "forge-system",
 		},
-		Spec: udsv1alpha2.UDSPackageJobSpec{
+		Spec: udsv1alpha2.UDSBundleJobSpec{
 			Action: udsv1alpha2.ActionCreate,
 		},
 	}
@@ -364,13 +364,13 @@ func TestUDSProcessJobStatus(t *testing.T) {
 	unstructuredObj.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "forge.dev",
 		Version: "v1alpha1",
-		Kind:    "UDSPackageJob",
+		Kind:    "UDSBundleJob",
 	})
 
-	_, err = dynamicClient.Resource(constants.UDSPackageJobGVR).Namespace("forge-system").Create(
+	_, err = dynamicClient.Resource(constants.UDSBundleJobGVR).Namespace("forge-system").Create(
 		context.Background(), unstructuredObj, metav1.CreateOptions{})
 	if err != nil {
-		t.Fatalf("Failed to create UDSPackageJob: %v", err)
+		t.Fatalf("Failed to create UDSBundleJob: %v", err)
 	}
 
 	tests := []struct {
@@ -487,11 +487,11 @@ func TestUDSProcessJobStatus(t *testing.T) {
 			}
 
 			if tt.expectUpdate {
-				// Verify the UDSPackageJob status was updated
-				updated, getErr := dynamicClient.Resource(constants.UDSPackageJobGVR).Namespace("forge-system").Get(
+				// Verify the UDSBundleJob status was updated
+				updated, getErr := dynamicClient.Resource(constants.UDSBundleJobGVR).Namespace("forge-system").Get(
 					context.Background(), "test-bundle", metav1.GetOptions{})
 				if getErr != nil {
-					t.Fatalf("Failed to get updated UDSPackageJob: %v", getErr)
+					t.Fatalf("Failed to get updated UDSBundleJob: %v", getErr)
 				}
 
 				status, found, _ := unstructured.NestedMap(updated.Object, "status")
@@ -550,22 +550,22 @@ func TestUDSHandleActionChaining(t *testing.T) {
 
 	tests := []struct {
 		name            string
-		bundle          *udsv1alpha2.UDSPackageJob
+		bundle          *udsv1alpha2.UDSBundleJob
 		completedAction string
 		expectChain     bool
 	}{
 		{
 			name: "CreatePublish chain - create completed",
-			bundle: &udsv1alpha2.UDSPackageJob{
+			bundle: &udsv1alpha2.UDSBundleJob{
 				TypeMeta: metav1.TypeMeta{
 					APIVersion: "forge.dev/v1alpha1",
-					Kind:       "UDSPackageJob",
+					Kind:       "UDSBundleJob",
 				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-createpublish",
 					Namespace: "forge-system",
 				},
-				Spec: udsv1alpha2.UDSPackageJobSpec{
+				Spec: udsv1alpha2.UDSBundleJobSpec{
 					Action: "CreatePublish",
 					Publish: &udsv1alpha2.PublishConfig{
 						Destination: udsv1alpha2.PublishDestination{
@@ -584,16 +584,16 @@ func TestUDSHandleActionChaining(t *testing.T) {
 		},
 		{
 			name: "CreateDeploy chain - create completed",
-			bundle: &udsv1alpha2.UDSPackageJob{
+			bundle: &udsv1alpha2.UDSBundleJob{
 				TypeMeta: metav1.TypeMeta{
 					APIVersion: "forge.dev/v1alpha1",
-					Kind:       "UDSPackageJob",
+					Kind:       "UDSBundleJob",
 				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-createdeploy",
 					Namespace: "forge-system",
 				},
-				Spec: udsv1alpha2.UDSPackageJobSpec{
+				Spec: udsv1alpha2.UDSBundleJobSpec{
 					Action: "CreateDeploy",
 					Deploy: &udsv1alpha2.DeployConfig{
 						Target: udsv1alpha2.DeployTargetInCluster,
@@ -605,16 +605,16 @@ func TestUDSHandleActionChaining(t *testing.T) {
 		},
 		{
 			name: "PublishDeploy chain - publish completed",
-			bundle: &udsv1alpha2.UDSPackageJob{
+			bundle: &udsv1alpha2.UDSBundleJob{
 				TypeMeta: metav1.TypeMeta{
 					APIVersion: "forge.dev/v1alpha1",
-					Kind:       "UDSPackageJob",
+					Kind:       "UDSBundleJob",
 				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-publishdeploy",
 					Namespace: "forge-system",
 				},
-				Spec: udsv1alpha2.UDSPackageJobSpec{
+				Spec: udsv1alpha2.UDSBundleJobSpec{
 					Action: "PublishDeploy",
 					Deploy: &udsv1alpha2.DeployConfig{
 						Target: udsv1alpha2.DeployTargetInCluster,
@@ -626,16 +626,16 @@ func TestUDSHandleActionChaining(t *testing.T) {
 		},
 		{
 			name: "CreatePublishDeploy chain - create completed",
-			bundle: &udsv1alpha2.UDSPackageJob{
+			bundle: &udsv1alpha2.UDSBundleJob{
 				TypeMeta: metav1.TypeMeta{
 					APIVersion: "forge.dev/v1alpha1",
-					Kind:       "UDSPackageJob",
+					Kind:       "UDSBundleJob",
 				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-createpublishdeploy",
 					Namespace: "forge-system",
 				},
-				Spec: udsv1alpha2.UDSPackageJobSpec{
+				Spec: udsv1alpha2.UDSBundleJobSpec{
 					Action: "CreatePublishDeploy",
 					Publish: &udsv1alpha2.PublishConfig{
 						Destination: udsv1alpha2.PublishDestination{
@@ -654,16 +654,16 @@ func TestUDSHandleActionChaining(t *testing.T) {
 		},
 		{
 			name: "CreatePublishDeploy chain - publish completed",
-			bundle: &udsv1alpha2.UDSPackageJob{
+			bundle: &udsv1alpha2.UDSBundleJob{
 				TypeMeta: metav1.TypeMeta{
 					APIVersion: "forge.dev/v1alpha1",
-					Kind:       "UDSPackageJob",
+					Kind:       "UDSBundleJob",
 				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-cpd-publish",
 					Namespace: "forge-system",
 				},
-				Spec: udsv1alpha2.UDSPackageJobSpec{
+				Spec: udsv1alpha2.UDSBundleJobSpec{
 					Action: "CreatePublishDeploy",
 					Deploy: &udsv1alpha2.DeployConfig{
 						Target: udsv1alpha2.DeployTargetInCluster,
@@ -675,16 +675,16 @@ func TestUDSHandleActionChaining(t *testing.T) {
 		},
 		{
 			name: "single Create action - no chaining",
-			bundle: &udsv1alpha2.UDSPackageJob{
+			bundle: &udsv1alpha2.UDSBundleJob{
 				TypeMeta: metav1.TypeMeta{
 					APIVersion: "forge.dev/v1alpha1",
-					Kind:       "UDSPackageJob",
+					Kind:       "UDSBundleJob",
 				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-create-only",
 					Namespace: "forge-system",
 				},
-				Spec: udsv1alpha2.UDSPackageJobSpec{
+				Spec: udsv1alpha2.UDSBundleJobSpec{
 					Action: udsv1alpha2.ActionCreate,
 				},
 			},
@@ -703,11 +703,11 @@ func TestUDSHandleActionChaining(t *testing.T) {
 			unstructuredObj.SetGroupVersionKind(schema.GroupVersionKind{
 				Group:   "forge.dev",
 				Version: "v1alpha1",
-				Kind:    "UDSPackageJob",
+				Kind:    "UDSBundleJob",
 			})
 
 			// Create the resource
-			_, err = dynamicClient.Resource(constants.UDSPackageJobGVR).Namespace(tt.bundle.Namespace).Create(
+			_, err = dynamicClient.Resource(constants.UDSBundleJobGVR).Namespace(tt.bundle.Namespace).Create(
 				context.Background(), unstructuredObj, metav1.CreateOptions{})
 			if err != nil {
 				t.Fatalf("Failed to create test resource: %v", err)

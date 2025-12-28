@@ -112,12 +112,12 @@ Forge supports two deployment modes depending on your cluster permissions and se
 
 The primary resource for defining operations on a single Zarf package.
 
-### UDSPackageJob (v1alpha2)
+### UDSBundleJob (v1alpha2)
 
 For UDS bundles, Forge provides a unified API with consistent naming:
 
 - **v1alpha1** (deprecated): `UDSBundleJob` with `BundleAction` types
-- **v1alpha2** (recommended): `UDSPackageJob` with simplified `Action` types matching Zarf
+- **v1alpha2** (recommended): `UDSBundleJob` with simplified `Action` types matching Zarf
 
 The v1alpha2 API uses the same action names as Zarf (`Create`, `Publish`, `Deploy`) instead of the v1alpha1 prefixed names (`BundleActionCreate`, etc.). This makes the API consistent across both package types.
 
@@ -125,7 +125,7 @@ The v1alpha2 API uses the same action names as Zarf (`Create`, `Publish`, `Deplo
 
 ### Actions
 
-- **Build/Create**: Creates a Zarf/UDS package from source.
+- **Build/Create**: Creates a Zarf/UDS bundle from source.
 - **Publish**: Uploads a package to a registry (OCI or S3).
 - **Deploy**: Installs a package into a cluster.
 - **Composite Actions**: `BuildPublish`, `BuildDeploy`, `PublishDeploy`, `BuildPublishDeploy` (Zarf) or `CreatePublish`, `CreateDeploy`, etc. (UDS).

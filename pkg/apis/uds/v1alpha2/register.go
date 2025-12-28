@@ -6,7 +6,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
-// SchemeGroupVersion is the group version for Forge UDS package job resources
+// SchemeGroupVersion is the group version for Forge UDS bundle job resources
 var SchemeGroupVersion = schema.GroupVersion{
 	Group:   GroupName,
 	Version: Version,
@@ -27,8 +27,8 @@ var (
 // addKnownTypes adds the types to the scheme
 func addKnownTypes(scheme *runtime.Scheme) error {
 	scheme.AddKnownTypes(SchemeGroupVersion,
-		&UDSPackageJob{},
-		&UDSPackageJobList{},
+		&UDSBundleJob{},
+		&UDSBundleJobList{},
 	)
 	metav1.AddToGroupVersion(scheme, SchemeGroupVersion)
 	return nil

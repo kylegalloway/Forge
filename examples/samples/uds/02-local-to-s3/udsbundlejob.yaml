@@ -36,7 +36,7 @@ stringData:
 
 ---
 apiVersion: forge.dev/v1alpha2
-kind: UDSPackageJob
+kind: UDSBundleJob
 metadata:
   name: local-to-s3-bundle-example
   namespace: default

@@ -16,7 +16,7 @@ import (
 	"github.com/kylegalloway/forge/pkg/telemetry"
 )
 
-// PublishHandler handles Publish actions for UDSPackageJob resources
+// PublishHandler handles Publish actions for UDSBundleJob resources
 type PublishHandler struct {
 	kubeClient kubernetes.Interface
 	metrics    *telemetry.Metrics
@@ -32,10 +32,10 @@ func NewPublishHandler(kubeClient kubernetes.Interface, metrics *telemetry.Metri
 	}
 }
 
-// Execute performs a Publish action for the given UDSPackageJob
+// Execute performs a Publish action for the given UDSBundleJob
 //
-//nolint:staticcheck // SA1019: UDSPackageJob v1alpha1 must be supported until v0.10.0
-func (handler *PublishHandler) Execute(ctx context.Context, bundle *udsv1alpha2.UDSPackageJob) (*actions.ActionResult, error) {
+//nolint:staticcheck // SA1019: UDSBundleJob v1alpha1 must be supported until v0.10.0
+func (handler *PublishHandler) Execute(ctx context.Context, bundle *udsv1alpha2.UDSBundleJob) (*actions.ActionResult, error) {
 
 	klog.InfoS("Executing UDS Bundle Publish action", "name", bundle.Name, "namespace", bundle.Namespace)
 
@@ -72,7 +72,7 @@ func (handler *PublishHandler) Execute(ctx context.Context, bundle *udsv1alpha2.
 }
 
 // createPublishJob creates a Kubernetes Job to publish a UDS bundle
-func (handler *PublishHandler) createPublishJob(ctx context.Context, bundle *udsv1alpha2.UDSPackageJob) (*batchv1.Job, error) {
+func (handler *PublishHandler) createPublishJob(ctx context.Context, bundle *udsv1alpha2.UDSBundleJob) (*batchv1.Job, error) {
 	jobName := fmt.Sprintf("%s-publish", bundle.Name)
 	namespace := bundle.Namespace
 
@@ -94,12 +94,12 @@ func (handler *PublishHandler) createPublishJob(ctx context.Context, bundle *uds
 			Namespace: namespace,
 			Labels: map[string]string{
 				"app":                  "forge",
-				"resource-type":        "udspackagejob",
+				"resource-type":        "udsbundlejob",
 				constants.LabelPackage: bundle.Name,
 				constants.LabelAction:  "publish",
 			},
 			OwnerReferences: []metav1.OwnerReference{
-				*metav1.NewControllerRef(bundle, udsv1alpha2.SchemeGroupVersion.WithKind("UDSPackageJob")),
+				*metav1.NewControllerRef(bundle, udsv1alpha2.SchemeGroupVersion.WithKind("UDSBundleJob")),
 			},
 		},
 		Spec: batchv1.JobSpec{
@@ -110,7 +110,7 @@ func (handler *PublishHandler) createPublishJob(ctx context.Context, bundle *uds
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{
 						"app":                  "forge",
-						"resource-type":        "udspackagejob",
+						"resource-type":        "udsbundlejob",
 						constants.LabelPackage: bundle.Name,
 						constants.LabelAction:  "publish",
 					},
@@ -169,7 +169,7 @@ func (handler *PublishHandler) createPublishJob(ctx context.Context, bundle *uds
 }
 
 // buildPublishCommand builds the UDS CLI publish command
-func (handler *PublishHandler) buildPublishCommand(bundle *udsv1alpha2.UDSPackageJob) (string, error) {
+func (handler *PublishHandler) buildPublishCommand(bundle *udsv1alpha2.UDSBundleJob) (string, error) {
 	dest := bundle.Spec.Publish.Destination
 
 	switch dest.Type {
@@ -199,7 +199,7 @@ func (handler *PublishHandler) buildPublishCommand(bundle *udsv1alpha2.UDSPackag
 }
 
 // buildEnvVars builds environment variables for the publish job
-func (handler *PublishHandler) buildEnvVars(bundle *udsv1alpha2.UDSPackageJob) []corev1.EnvVar {
+func (handler *PublishHandler) buildEnvVars(bundle *udsv1alpha2.UDSBundleJob) []corev1.EnvVar {
 	envVars := []corev1.EnvVar{}
 
 	dest := bundle.Spec.Publish.Destination
@@ -252,7 +252,7 @@ func (handler *PublishHandler) buildEnvVars(bundle *udsv1alpha2.UDSPackageJob) [
 }
 
 // addCredentialVolumes adds credential volumes for OCI registries
-func (handler *PublishHandler) addCredentialVolumes(bundle *udsv1alpha2.UDSPackageJob, job *batchv1.Job) {
+func (handler *PublishHandler) addCredentialVolumes(bundle *udsv1alpha2.UDSBundleJob, job *batchv1.Job) {
 	dest := bundle.Spec.Publish.Destination
 
 	// Add docker-config volume for OCI registries
@@ -300,7 +300,7 @@ func (handler *PublishHandler) addCredentialVolumes(bundle *udsv1alpha2.UDSPacka
 }
 
 // getResources returns resource requirements for the publish job
-func (handler *PublishHandler) getResources(bundle *udsv1alpha2.UDSPackageJob) corev1.ResourceRequirements {
+func (handler *PublishHandler) getResources(bundle *udsv1alpha2.UDSBundleJob) corev1.ResourceRequirements {
 	if bundle.Spec.Resources != nil {
 		return *bundle.Spec.Resources
 	}

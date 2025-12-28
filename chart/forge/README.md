@@ -37,10 +37,10 @@ See [values.yaml](values.yaml) for all configuration options.
 
 ## What Gets Deployed
 
-- Forge Controller (manages ZarfPackageJob/UDSPackageJob resources)
+- Forge Controller (manages ZarfPackageJob/UDSBundleJob resources)
 - Forge Webhook (validates resources at admission time)
 - Metrics Service (exposes metrics for external Prometheus)
-- CRDs (ZarfPackageJob, UDSPackageJob)
+- CRDs (ZarfPackageJob, UDSBundleJob)
 - RBAC resources (ServiceAccount, ClusterRole, ClusterRoleBinding)
 
 **What does NOT get deployed:**

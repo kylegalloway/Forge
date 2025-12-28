@@ -1,7 +1,7 @@
 # Example: Create UDS Bundle from Git and Deploy to Cluster (v1alpha2 API)
 #
 # This example demonstrates the NEW v1alpha2 API with unified naming:
-# - UDSBundleJob → UDSPackageJob (matches ZarfPackageJob)
+# - UDSBundleJob → UDSBundleJob (matches ZarfPackageJob)
 # - BundleAction → Action (consistent with Zarf)
 # - Simplified annotation names
 #
@@ -26,7 +26,7 @@ metadata:
 
 ---
 apiVersion: forge.dev/v1alpha2
-kind: UDSPackageJob
+kind: UDSBundleJob
 metadata:
   name: git-build-deploy-bundle-example-v2
   namespace: default

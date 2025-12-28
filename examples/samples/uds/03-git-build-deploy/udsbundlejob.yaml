@@ -24,7 +24,7 @@ metadata:
 
 ---
 apiVersion: forge.dev/v1alpha2
-kind: UDSPackageJob
+kind: UDSBundleJob
 metadata:
   name: git-build-deploy-bundle-example
   namespace: default

@@ -25,9 +25,9 @@ Deploy:  Execute(ctx, pkg *ZarfPackageJob, artifactPath, artifactPVCName string)
 
 **UDS Handlers:**
 ```go
-Create:  Execute(ctx, bundle *UDSPackageJob)
-Publish: Execute(ctx, bundle *UDSPackageJob)
-Deploy:  Execute(ctx, bundle *UDSPackageJob)
+Create:  Execute(ctx, bundle *UDSBundleJob)
+Publish: Execute(ctx, bundle *UDSBundleJob)
+Deploy:  Execute(ctx, bundle *UDSBundleJob)
 ```
 
 ### Rationale
@@ -118,7 +118,7 @@ spec:
 
 ```yaml
 apiVersion: forge.dev/v1alpha2
-kind: UDSPackageJob
+kind: UDSBundleJob
 metadata:
   name: create-publish-deploy
 spec:
@@ -131,7 +131,7 @@ spec:
 2. Execute Publish (re-fetch source) → wait for completion
 3. Execute Deploy (re-fetch source) → wait for completion
 
-**Implementation:** See `pkg/controller/uds_controller.go` - `handleUDSPackageJob()` method dispatches first action. Job monitoring (`pkg/controller/uds_job_monitor.go`) detects completion and triggers next action.
+**Implementation:** See `pkg/controller/uds_controller.go` - `handleUDSBundleJob()` method dispatches first action. Job monitoring (`pkg/controller/uds_job_monitor.go`) detects completion and triggers next action.
 
 ---
 

@@ -169,7 +169,7 @@ kubectl logs -n forge-system job/<bundle-name>-create
 The v1alpha2 API uses the same policy annotations and RBAC model. Only the resource name changes:
 
 - v1alpha1: `UDSBundleJob`
-- v1alpha2: `UDSPackageJob`
+- v1alpha2: `UDSBundleJob`
 
 ServiceAccount configurations remain compatible across both API versions.
 

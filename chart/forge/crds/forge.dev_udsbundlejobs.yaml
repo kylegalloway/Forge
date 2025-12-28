@@ -4,16 +4,16 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.20.0
-  name: udspackagejobs.forge.dev
+  name: udsbundlejobs.forge.dev
 spec:
   group: forge.dev
   names:
-    kind: UDSPackageJob
-    listKind: UDSPackageJobList
-    plural: udspackagejobs
+    kind: UDSBundleJob
+    listKind: UDSBundleJobList
+    plural: udsbundlejobs
     shortNames:
-    - upj
-    singular: udspackagejob
+    - ubj
+    singular: udsbundlejob
   scope: Namespaced
   versions:
   - additionalPrinterColumns:
@@ -32,7 +32,7 @@ spec:
     name: v1alpha2
     schema:
       openAPIV3Schema:
-        description: UDSPackageJob represents a job to create, publish, or deploy
+        description: UDSBundleJob represents a job to create, publish, or deploy
           a UDS bundle
         properties:
           apiVersion:
@@ -54,7 +54,7 @@ spec:
             type: object
           spec:
             description: |-
-              UDSPackageJobSpec defines the desired state of a UDSPackageJob
+              UDSBundleJobSpec defines the desired state of a UDSBundleJob
 
               This is a job specification that tells Forge what operations to perform on UDS bundles.
               It is NOT a UDS bundle definition (which uses uds-bundle.yaml format).
@@ -394,7 +394,7 @@ spec:
             - source
             type: object
           status:
-            description: UDSPackageJobStatus defines the observed state of a UDSPackageJob
+            description: UDSBundleJobStatus defines the observed state of a UDSBundleJob
             properties:
               createStatus:
                 description: CreateStatus tracks the create operation status

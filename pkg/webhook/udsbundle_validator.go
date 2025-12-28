@@ -1,6 +1,6 @@
-// Package webhook implements admission webhook validation for UDSPackageJob resources.
+// Package webhook implements admission webhook validation for UDSBundleJob resources.
 //
-// The webhook validates UDSPackageJob resources against ServiceAccount permissions to ensure:
+// The webhook validates UDSBundleJob resources against ServiceAccount permissions to ensure:
 //   - Users can only perform actions allowed by their ServiceAccount annotations
 //   - Source repositories/registries/buckets match allowed patterns
 //   - Publish destinations match allowed patterns
@@ -29,21 +29,21 @@ import (
 	"k8s.io/klog/v2"
 )
 
-// UDSPackageJobValidator validates UDSPackageJob resources against ServiceAccount permissions
-type UDSPackageJobValidator struct {
+// UDSBundleJobValidator validates UDSBundleJob resources against ServiceAccount permissions
+type UDSBundleJobValidator struct {
 	kubeClient kubernetes.Interface
 }
 
-// NewUDSPackageJobValidator creates a new UDSPackageJob validator
-func NewUDSPackageJobValidator(kubeClient kubernetes.Interface) *UDSPackageJobValidator {
-	return &UDSPackageJobValidator{
+// NewUDSBundleJobValidator creates a new UDSBundleJob validator
+func NewUDSBundleJobValidator(kubeClient kubernetes.Interface) *UDSBundleJobValidator {
+	return &UDSBundleJobValidator{
 		kubeClient: kubeClient,
 	}
 }
 
-// ValidateUDSPackageJob validates a UDSPackageJob resource against ServiceAccount permissions
-func (validator *UDSPackageJobValidator) ValidateUDSPackageJob(ctx context.Context, bundle *udsv1alpha2.UDSPackageJob) error {
-	klog.InfoS("Validating UDSPackageJob", "name", bundle.Name, "namespace", bundle.Namespace)
+// ValidateUDSBundleJob validates a UDSBundleJob resource against ServiceAccount permissions
+func (validator *UDSBundleJobValidator) ValidateUDSBundleJob(ctx context.Context, bundle *udsv1alpha2.UDSBundleJob) error {
+	klog.InfoS("Validating UDSBundleJob", "name", bundle.Name, "namespace", bundle.Namespace)
 
 	// Get the ServiceAccount
 	sa, err := validator.kubeClient.CoreV1().ServiceAccounts(bundle.Namespace).Get(ctx, bundle.Spec.ServiceAccountName, metav1.GetOptions{})
@@ -75,12 +75,12 @@ func (validator *UDSPackageJobValidator) ValidateUDSPackageJob(ctx context.Conte
 		}
 	}
 
-	klog.InfoS("UDSPackageJob validation passed", "name", bundle.Name, "namespace", bundle.Namespace)
+	klog.InfoS("UDSBundleJob validation passed", "name", bundle.Name, "namespace", bundle.Namespace)
 	return nil
 }
 
 // validateAction checks if the action is allowed by the ServiceAccount
-func (validator *UDSPackageJobValidator) validateAction(sa *corev1.ServiceAccount, action udsv1alpha2.Action) error {
+func (validator *UDSBundleJobValidator) validateAction(sa *corev1.ServiceAccount, action udsv1alpha2.Action) error {
 	allowedActions := getAnnotation(sa, constants.AnnotationAllowedActions)
 	if allowedActions == "" {
 		return fmt.Errorf("ServiceAccount %s has no allowed-actions annotation", sa.Name)
@@ -98,7 +98,7 @@ func (validator *UDSPackageJobValidator) validateAction(sa *corev1.ServiceAccoun
 }
 
 // validateSource validates the source configuration
-func (validator *UDSPackageJobValidator) validateSource(sa *corev1.ServiceAccount, source *udsv1alpha2.PackageSource) error {
+func (validator *UDSBundleJobValidator) validateSource(sa *corev1.ServiceAccount, source *udsv1alpha2.PackageSource) error {
 	switch source.Type {
 	case udsv1alpha2.SourceTypeGit:
 		if source.Git == nil {
@@ -129,7 +129,7 @@ func (validator *UDSPackageJobValidator) validateSource(sa *corev1.ServiceAccoun
 }
 
 // validateGitSource validates Git source permissions
-func (validator *UDSPackageJobValidator) validateGitSource(sa *corev1.ServiceAccount, git *udsv1alpha2.GitSource) error {
+func (validator *UDSBundleJobValidator) validateGitSource(sa *corev1.ServiceAccount, git *udsv1alpha2.GitSource) error {
 	allowedRepos := getAnnotation(sa, constants.AnnotationAllowedSourceRepos)
 	if allowedRepos == "" {
 		return fmt.Errorf("ServiceAccount %s has no allowed-source-repos annotation", sa.Name)
@@ -148,7 +148,7 @@ func (validator *UDSPackageJobValidator) validateGitSource(sa *corev1.ServiceAcc
 }
 
 // validateS3Source validates S3 source permissions
-func (validator *UDSPackageJobValidator) validateS3Source(sa *corev1.ServiceAccount, s3 *udsv1alpha2.S3Source) error {
+func (validator *UDSBundleJobValidator) validateS3Source(sa *corev1.ServiceAccount, s3 *udsv1alpha2.S3Source) error {
 	allowedBuckets := getAnnotation(sa, constants.AnnotationAllowedSourceBuckets)
 	if allowedBuckets == "" {
 		return fmt.Errorf("ServiceAccount %s has no allowed-source-buckets annotation", sa.Name)
@@ -167,7 +167,7 @@ func (validator *UDSPackageJobValidator) validateS3Source(sa *corev1.ServiceAcco
 }
 
 // validateOCISource validates OCI source permissions
-func (validator *UDSPackageJobValidator) validateOCISource(sa *corev1.ServiceAccount, oci *udsv1alpha2.OCISource) error {
+func (validator *UDSBundleJobValidator) validateOCISource(sa *corev1.ServiceAccount, oci *udsv1alpha2.OCISource) error {
 	allowedRegistries := getAnnotation(sa, constants.AnnotationAllowedSourceRegistries)
 	if allowedRegistries == "" {
 		return fmt.Errorf("ServiceAccount %s has no allowed-source-registries annotation", sa.Name)
@@ -186,7 +186,7 @@ func (validator *UDSPackageJobValidator) validateOCISource(sa *corev1.ServiceAcc
 }
 
 // validatePublish validates publish destination permissions
-func (validator *UDSPackageJobValidator) validatePublish(sa *corev1.ServiceAccount, publish *udsv1alpha2.PublishConfig) error {
+func (validator *UDSBundleJobValidator) validatePublish(sa *corev1.ServiceAccount, publish *udsv1alpha2.PublishConfig) error {
 	switch publish.Destination.Type {
 	case udsv1alpha2.DestinationTypeS3:
 		if publish.Destination.S3 == nil {
@@ -211,7 +211,7 @@ func (validator *UDSPackageJobValidator) validatePublish(sa *corev1.ServiceAccou
 }
 
 // validateS3Publish validates S3 publish permissions
-func (validator *UDSPackageJobValidator) validateS3Publish(sa *corev1.ServiceAccount, s3 *udsv1alpha2.S3Destination) error {
+func (validator *UDSBundleJobValidator) validateS3Publish(sa *corev1.ServiceAccount, s3 *udsv1alpha2.S3Destination) error {
 	allowedBuckets := getAnnotation(sa, constants.AnnotationAllowedPublishBuckets)
 	if allowedBuckets == "" {
 		return fmt.Errorf("ServiceAccount %s has no allowed-publish-buckets annotation", sa.Name)
@@ -230,7 +230,7 @@ func (validator *UDSPackageJobValidator) validateS3Publish(sa *corev1.ServiceAcc
 }
 
 // validateOCIPublish validates OCI publish permissions
-func (validator *UDSPackageJobValidator) validateOCIPublish(sa *corev1.ServiceAccount, oci *udsv1alpha2.OCIDestination) error {
+func (validator *UDSBundleJobValidator) validateOCIPublish(sa *corev1.ServiceAccount, oci *udsv1alpha2.OCIDestination) error {
 	allowedRegistries := getAnnotation(sa, constants.AnnotationAllowedPublishRegistries)
 	if allowedRegistries == "" {
 		return fmt.Errorf("ServiceAccount %s has no allowed-publish-registries annotation", sa.Name)
@@ -252,7 +252,7 @@ func (validator *UDSPackageJobValidator) validateOCIPublish(sa *corev1.ServiceAc
 }
 
 // validateDeploy validates deploy target permissions
-func (validator *UDSPackageJobValidator) validateDeploy(sa *corev1.ServiceAccount, deploy *udsv1alpha2.DeployConfig) error {
+func (validator *UDSBundleJobValidator) validateDeploy(sa *corev1.ServiceAccount, deploy *udsv1alpha2.DeployConfig) error {
 	allowedTargets := getAnnotation(sa, constants.AnnotationAllowedDeployTargets)
 	if allowedTargets == "" {
 		return fmt.Errorf("ServiceAccount %s has no allowed-deploy-targets annotation", sa.Name)

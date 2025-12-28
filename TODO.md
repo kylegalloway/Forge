@@ -16,25 +16,28 @@
 
 ## 🟢 Medium Priority (Code Quality)
 
-### 1. Significant Code Duplication in Action Handlers
+### 1. ~~Significant Code Duplication in Action Handlers~~ ✅ COMPLETE
 
 **Location**: `pkg/actions/zarf/*.go` and `pkg/actions/uds/*.go`
-**Issue**: ~2000 lines across 6 handlers share only 610 lines via `pkg/actions/`.
-**Status**: **IN PROGRESS** - Consolidation helpers added, handler refactoring pending
+**Status**: **COMPLETE** (2025-12-27)
 
-**Completed** (2025-12-27):
-- ✅ Added `BuildResourceRequirements()`, `PublishResourceRequirements()`, `DeployResourceRequirements()`
-- ✅ Added `NonRootSecurityContextWithUID()` and `NonRootPodSecurityContextWithUID()` for flexible UIDs
-- ✅ Added `ParseTimeoutWithDefault()` for timeout string parsing
-- ✅ Added `AddKubeconfigVolume()` and `AddArtifactPVCVolume()` for common volume mounting
+**What was done**:
+- ✅ Added 8 consolidation helpers to `pkg/actions/job_builder.go`:
+  - `BuildResourceRequirements()`, `PublishResourceRequirements()`, `DeployResourceRequirements()`
+  - `NonRootSecurityContextWithUID()` and `NonRootPodSecurityContextWithUID()`
+  - `ParseTimeoutWithDefault()` for timeout string parsing
+  - `AddKubeconfigVolume()` and `AddArtifactPVCVolume()` for common volume mounting
+- ✅ Refactored all 6 handlers to use the new helpers:
+  - Zarf: build.go, publish.go, deploy.go
+  - UDS: create.go, publish.go, deploy.go
+- ✅ Eliminated ~300+ lines of duplicated code across handlers
+- ✅ All tests passing (actions/zarf: 80.5%, actions/uds: 81.2%)
 
-**Remaining Work**:
-- Update 6 handlers (zarf build/publish/deploy, uds create/publish/deploy) to use new helpers
-- Replace inline Job creation with helper function calls
-- Estimated reduction: ~700 lines of duplicated code eliminated
-- Benefits: Better maintainability, consistent resource requirements, reduced bugs
-
-**Action**: Update handlers to use new consolidation helpers from `pkg/actions/job_builder.go`.
+**Results**:
+- Better maintainability - changes to security contexts, resources, or timeouts now happen in one place
+- Consistent resource requirements across Zarf and UDS handlers
+- Reduced risk of bugs from copy-paste errors
+- Cleaner, more readable handler code
 
 ---
 

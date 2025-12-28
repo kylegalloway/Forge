@@ -3,7 +3,6 @@ package zarf
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/kylegalloway/forge/pkg/actions"
 
@@ -92,15 +91,11 @@ func (handler *DeployHandler) createDeployJob(ctx context.Context, pkg *zarfv1al
 	}
 
 	// Parse timeout (default 30m)
-	activeDeadlineSeconds := int64(1800) // Default 30 minutes
-	if pkg.Spec.Deploy.Timeout != "" {
-		timeout, parseErr := time.ParseDuration(pkg.Spec.Deploy.Timeout)
-		if parseErr != nil {
-			klog.V(4).InfoS("Invalid timeout format, using default", "timeout", pkg.Spec.Deploy.Timeout, "error", parseErr)
-		} else {
-			activeDeadlineSeconds = int64(timeout.Seconds())
-		}
+	timeoutStr := ""
+	if pkg.Spec.Deploy != nil {
+		timeoutStr = pkg.Spec.Deploy.Timeout
 	}
+	activeDeadlineSeconds := actions.ParseTimeoutWithDefault(timeoutStr, constants.DefaultDeployTimeout)
 
 	// Job configuration
 	backoffLimit := int32(0)
@@ -148,19 +143,9 @@ func (handler *DeployHandler) createDeployJob(ctx context.Context, pkg *zarfv1al
 									MountPath: constants.VolumeMountPathWorkspace,
 								},
 							},
-							Env: handler.buildEnvVars(pkg),
-							SecurityContext: &corev1.SecurityContext{
-								RunAsNonRoot:             actions.Ptr(true),
-								RunAsUser:                actions.Ptr(int64(constants.DefaultZarfUID)),
-								AllowPrivilegeEscalation: actions.Ptr(false),
-								Capabilities: &corev1.Capabilities{
-									Drop: []corev1.Capability{"ALL"},
-								},
-								SeccompProfile: &corev1.SeccompProfile{
-									Type: corev1.SeccompProfileTypeRuntimeDefault,
-								},
-							},
-							Resources: handler.getResources(pkg),
+							Env:             handler.buildEnvVars(pkg),
+							SecurityContext: actions.NonRootSecurityContextWithUID(constants.DefaultZarfUID),
+							Resources:       handler.getResources(pkg),
 						},
 					},
 					Volumes: []corev1.Volume{
@@ -171,46 +156,25 @@ func (handler *DeployHandler) createDeployJob(ctx context.Context, pkg *zarfv1al
 							},
 						},
 					},
-					SecurityContext: &corev1.PodSecurityContext{
-						RunAsNonRoot: actions.Ptr(true),
-						RunAsUser:    actions.Ptr(int64(constants.DefaultZarfUID)),
-						FSGroup:      actions.Ptr(int64(constants.DefaultZarfUID)),
-						SeccompProfile: &corev1.SeccompProfile{
-							Type: corev1.SeccompProfileTypeRuntimeDefault,
-						},
-					},
+					SecurityContext: actions.NonRootPodSecurityContextWithUID(constants.DefaultZarfUID),
 				},
 			},
 		},
 	}
 
 	// Add artifact PVC if multi-action job
-	if artifactPVCName != "" {
-		artifactVolume := corev1.Volume{
-			Name: constants.VolumeNameArtifacts,
-			VolumeSource: corev1.VolumeSource{
-				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-					ClaimName: artifactPVCName,
-				},
-			},
-		}
-		artifactMount := corev1.VolumeMount{
-			Name:      constants.VolumeNameArtifacts,
-			MountPath: constants.VolumeMountPathArtifacts,
-		}
-		job.Spec.Template.Spec.Volumes = append(job.Spec.Template.Spec.Volumes, artifactVolume)
-		job.Spec.Template.Spec.Containers[0].VolumeMounts = append(
-			job.Spec.Template.Spec.Containers[0].VolumeMounts,
-			artifactMount,
-		)
-	}
+	actions.AddArtifactPVCVolume(job, artifactPVCName)
 
 	// Add ServiceAccount for in-cluster or external cluster access
 	handler.addServiceAccount(pkg, job)
 
 	// Add kubeconfig volume for external cluster deploys
 	if pkg.Spec.Deploy.Target == zarfv1alpha1.DeployTargetExternalCluster {
-		handler.addKubeconfigVolume(pkg, job)
+		kubeconfigSecretName := ""
+		if pkg.Spec.Deploy.ExternalCluster != nil && pkg.Spec.Deploy.ExternalCluster.KubeconfigSecretRef.Name != "" { // pragma: allowlist secret
+			kubeconfigSecretName = pkg.Spec.Deploy.ExternalCluster.KubeconfigSecretRef.Name // pragma: allowlist secret
+		}
+		actions.AddKubeconfigVolume(job, kubeconfigSecretName)
 	}
 
 	// Add source credential volume if OCI source with credentials
@@ -326,55 +290,11 @@ func (handler *DeployHandler) getResources(pkg *zarfv1alpha1.ZarfPackageJob) cor
 	}
 
 	// Default resources for deploy jobs
-	return corev1.ResourceRequirements{
-		Requests: corev1.ResourceList{
-			corev1.ResourceCPU:    actions.MustParseQuantity("500m"),
-			corev1.ResourceMemory: actions.MustParseQuantity("1Gi"),
-		},
-		Limits: corev1.ResourceList{
-			corev1.ResourceCPU:    actions.MustParseQuantity("2000m"),
-			corev1.ResourceMemory: actions.MustParseQuantity("4Gi"),
-		},
-	}
+	return actions.DeployResourceRequirements()
 }
 
 // addServiceAccount adds the ServiceAccount to the job pod
 func (handler *DeployHandler) addServiceAccount(pkg *zarfv1alpha1.ZarfPackageJob, job *batchv1.Job) {
 	// Use the ZarfPackageJob's ServiceAccount
 	job.Spec.Template.Spec.ServiceAccountName = pkg.Spec.ServiceAccountName
-}
-
-// addKubeconfigVolume adds kubeconfig Secret volume for external cluster deployments
-func (handler *DeployHandler) addKubeconfigVolume(pkg *zarfv1alpha1.ZarfPackageJob, job *batchv1.Job) {
-	if pkg.Spec.Deploy.ExternalCluster == nil || pkg.Spec.Deploy.ExternalCluster.KubeconfigSecretRef.Name == "" {
-		return
-	}
-
-	// Ensure the job has at least one container before accessing Containers[0]
-	if len(job.Spec.Template.Spec.Containers) == 0 {
-		klog.ErrorS(nil, "Job has no containers, cannot add kubeconfig volume", "job", job.Name)
-		return
-	}
-
-	secretName := pkg.Spec.Deploy.ExternalCluster.KubeconfigSecretRef.Name // pragma: allowlist secret
-
-	// Add volume
-	job.Spec.Template.Spec.Volumes = append(job.Spec.Template.Spec.Volumes, corev1.Volume{
-		Name: "kubeconfig",
-		VolumeSource: corev1.VolumeSource{
-			Secret: &corev1.SecretVolumeSource{
-				SecretName: secretName,
-			},
-		},
-	})
-
-	// Add volume mount
-	job.Spec.Template.Spec.Containers[0].VolumeMounts = append(
-		job.Spec.Template.Spec.Containers[0].VolumeMounts,
-		corev1.VolumeMount{
-			Name:      "kubeconfig",
-			MountPath: "/kubeconfig",
-			ReadOnly:  true,
-		},
-	)
 }

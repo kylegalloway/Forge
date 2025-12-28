@@ -15,6 +15,7 @@ New to Forge? Start here to get up and running quickly.
 Contributing to Forge or extending its functionality? These guides cover development workflows and architecture.
 
 - [Architecture](development/ARCHITECTURE.md) - System design and component overview
+- [Zarf vs UDS Unification](development/ZARF_UDS_UNIFICATION.md) - Analysis and plan for reducing code duplication
 - [Testing Guide](development/TESTING.md) - Running tests, coverage, and CI workflows
 - [KIND Setup](development/KIND_SETUP.md) - Local development environment setup
 - [KIND Testing with Public Images](development/KIND_TESTING_PUBLIC_IMAGES.md) - Testing workflows

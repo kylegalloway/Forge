@@ -183,23 +183,51 @@ func (ctrl *UDSController) handleWatchEvent(ctx context.Context, event watch.Eve
 	}
 }
 
-// reconcile handles the reconciliation logic for a UDSPackageJob
+// reconcile handles the reconciliation logic for a UDSPackageJob.
+//
+// Control Flow:
+// 1. Early exit: Skip if job already reached terminal state (Completed/Failed)
+// 2. Policy validation: Checks ServiceAccount annotations against requested operations
+// 3. Action dispatch: Routes to appropriate handler based on action type
+// 4. Status update: Records operation state in status subresource
+//
+// Compound Actions (CreatePublish, CreateDeploy, etc.):
+// - Reconciliation only starts the FIRST action in the chain
+// - Job monitor (see uds_job_monitor.go) watches for Job completion
+// - Monitor updates UDSPackageJob status with next action in chain
+// - Status update triggers re-reconciliation, which executes next action
+// - Chain continues until all actions complete or one fails
+//
+// State Transitions:
+// - "" (empty) → "Running" (first action started)
+// - "Running" → "Running" (subsequent actions in chain, managed by job monitor)
+// - "Running" → "Completed" (final action succeeds)
+// - any → "Failed" (any action fails or policy violation)
+//
+// Idempotency:
+// - executeCreate/Publish/Deploy check if action already started via status fields
+// - Re-reconciliation of same action is safe - handler skips if already running
 func (ctrl *UDSController) reconcile(ctx context.Context, bundle *udsv1alpha2.UDSPackageJob) error {
 	klog.V(2).InfoS("Reconciling UDSPackageJob", "name", bundle.Name, "namespace", bundle.Namespace, "action", bundle.Spec.Action)
 
-	// Skip if already completed
+	// Early Exit: Skip terminal states to avoid re-processing completed/failed jobs
+	// Terminal states set by: action handlers (on completion) or status updates (on failure)
 	if bundle.Status.Phase == "Completed" || bundle.Status.Phase == "Failed" {
 		klog.V(2).InfoS("Skipping completed/failed bundle", "name", bundle.Name, "phase", bundle.Status.Phase)
 		return nil
 	}
 
-	// Validate policy (ServiceAccount annotations)
+	// Policy Validation: Verify ServiceAccount has required permissions via annotations
+	// Example annotations: forge.dev/allowed-actions, forge.dev/allowed-source-repos
+	// Validation happens BEFORE any Job creation to fail fast on permission issues
 	if err := ctrl.validatePolicy(ctx, bundle); err != nil {
 		klog.ErrorS(err, "Policy validation failed", "name", bundle.Name)
 		return ctrl.updateStatus(ctx, bundle, "Failed", fmt.Sprintf("Policy validation failed: %v", err))
 	}
 
-	// Dispatch to appropriate handler based on action
+	// Action Dispatch: Route to appropriate handler and start first action in chain
+	// Handlers create Kubernetes Jobs that execute UDS CLI commands
+	// Job monitor handles chaining for compound actions (see dispatchAction for details)
 	if err := ctrl.dispatchAction(ctx, bundle); err != nil {
 		klog.ErrorS(err, "Action dispatch failed", "name", bundle.Name, "action", bundle.Spec.Action)
 		return ctrl.updateStatus(ctx, bundle, "Failed", fmt.Sprintf("Action failed: %v", err))
@@ -213,36 +241,71 @@ func (ctrl *UDSController) validatePolicy(ctx context.Context, bundle *udsv1alph
 	return ctrl.policyEngine.ValidateUDSBundle(ctx, bundle)
 }
 
-// dispatchAction routes the bundle to the appropriate action handler
+// dispatchAction routes the bundle to the appropriate action handler.
+//
+// Single Actions (Create, Publish, Deploy):
+// - Execute the requested action and return
+// - No follow-up actions, job completes when action finishes
+// - Status update marks job as Completed or Failed
+//
+// Compound Actions (CreatePublish, CreateDeploy, PublishDeploy, CreatePublishDeploy):
+// - Reconciliation executes ONLY the first action
+// - Job monitor (uds_job_monitor.go) detects Job completion
+// - Monitor updates UDSPackageJob status fields (createStatus, publishStatus, deployStatus)
+// - Status update triggers re-reconciliation via Kubernetes watch
+// - Next action in chain starts based on updated status
+// - Chain continues until all actions complete or one fails
+//
+// Example CreatePublishDeploy flow:
+// 1. dispatchAction → executeCreate (creates uds create Job)
+// 2. Job monitor detects Job completion → updates status.createStatus
+// 3. Watch event triggers reconcile again
+// 4. dispatchAction → executePublish (creates uds publish Job, reads bundle from shared storage)
+// 5. Job monitor detects Job completion → updates status.publishStatus
+// 6. Watch event triggers reconcile again
+// 7. dispatchAction → executeDeploy (creates uds deploy Job, reads bundle from shared storage)
+// 8. Job monitor detects Job completion → marks phase="Completed"
 func (ctrl *UDSController) dispatchAction(ctx context.Context, bundle *udsv1alpha2.UDSPackageJob) error {
 	action := bundle.Spec.Action
 
-	// Handle compound actions by dispatching the first action
-	// Job monitoring will handle chaining
 	switch action {
 	case udsv1alpha2.ActionCreate:
+		// Single Create: Build UDS bundle from uds-bundle.yaml definition
+		// Output: Bundle tarball written to shared workspace
 		return ctrl.executeCreate(ctx, bundle)
 
 	case udsv1alpha2.ActionPublish:
+		// Single Publish: Upload bundle artifact to OCI registry or S3
+		// Requires: Bundle pre-staged at /workspace/ (from source.type: OCI, S3, or Local)
 		return ctrl.executePublish(ctx, bundle)
 
 	case udsv1alpha2.ActionDeploy:
+		// Single Deploy: Install UDS bundle into target Kubernetes cluster
+		// Requires: Bundle pre-staged at /workspace/ (from source.type: OCI, S3, or Local)
 		return ctrl.executeDeploy(ctx, bundle)
 
 	case udsv1alpha2.ActionCreatePublish:
-		// Start with Create, monitoring will trigger Publish
+		// Compound: Create → Publish
+		// Reconcile: Starts Create (writes bundle to workspace)
+		// Monitor: Detects Create complete → updates createStatus → triggers Publish
 		return ctrl.executeCreate(ctx, bundle)
 
 	case udsv1alpha2.ActionCreateDeploy:
-		// Start with Create, monitoring will trigger Deploy
+		// Compound: Create → Deploy
+		// Reconcile: Starts Create (writes bundle to workspace)
+		// Monitor: Detects Create complete → updates createStatus → triggers Deploy
 		return ctrl.executeCreate(ctx, bundle)
 
 	case udsv1alpha2.ActionPublishDeploy:
-		// Start with Publish, monitoring will trigger Deploy
+		// Compound: Publish → Deploy
+		// Reconcile: Starts Publish (bundle from source → registry/S3)
+		// Monitor: Detects Publish complete → updates publishStatus → triggers Deploy
 		return ctrl.executePublish(ctx, bundle)
 
 	case udsv1alpha2.ActionCreatePublishDeploy:
-		// Start with Create, monitoring will chain through all
+		// Compound: Create → Publish → Deploy
+		// Reconcile: Starts Create (builds bundle)
+		// Monitor chain: Create done → Publish (upload) → Deploy (install to cluster)
 		return ctrl.executeCreate(ctx, bundle)
 
 	default:

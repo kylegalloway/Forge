@@ -19,15 +19,22 @@
 ### 1. Significant Code Duplication in Action Handlers
 
 **Location**: `pkg/actions/zarf/*.go` and `pkg/actions/uds/*.go`
-**Issue**: ~2000 lines across 6 handlers share only 610 lines via `pkg/actions/common/`.
-**Duplicated patterns**:
+**Issue**: ~2000 lines across 6 handlers share only 610 lines via `pkg/actions/`.
+**Status**: **IN PROGRESS** - Consolidation helpers added, handler refactoring pending
 
-- Job creation boilerplate
-- Init container building
-- Resource requirement defaults
-- Volume mounting logic
+**Completed** (2025-12-27):
+- ✅ Added `BuildResourceRequirements()`, `PublishResourceRequirements()`, `DeployResourceRequirements()`
+- ✅ Added `NonRootSecurityContextWithUID()` and `NonRootPodSecurityContextWithUID()` for flexible UIDs
+- ✅ Added `ParseTimeoutWithDefault()` for timeout string parsing
+- ✅ Added `AddKubeconfigVolume()` and `AddArtifactPVCVolume()` for common volume mounting
 
-**Action**: Consolidate Job building logic - expand JobBuilder pattern to reduce duplication.
+**Remaining Work**:
+- Update 6 handlers (zarf build/publish/deploy, uds create/publish/deploy) to use new helpers
+- Replace inline Job creation with helper function calls
+- Estimated reduction: ~700 lines of duplicated code eliminated
+- Benefits: Better maintainability, consistent resource requirements, reduced bugs
+
+**Action**: Update handlers to use new consolidation helpers from `pkg/actions/job_builder.go`.
 
 ---
 

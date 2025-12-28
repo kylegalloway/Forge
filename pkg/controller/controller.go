@@ -193,7 +193,24 @@ func (ctrl *Controller) handleZarfPackageJob(ctx context.Context, unstrObj *unst
 	return ctrl.reconcilePackage(ctx, unstrObj, pkg)
 }
 
-// reconcilePackage performs the actual reconciliation logic
+// reconcilePackage performs the actual reconciliation logic.
+//
+// Control Flow:
+// 1. Policy validation: Checks ServiceAccount annotations against requested operations
+// 2. PVC creation: For multi-action jobs, creates shared storage for artifact passing
+// 3. Action dispatch: Routes to appropriate handler based on action type
+// 4. Status update: Records operation state and metrics
+//
+// Compound Actions (BuildPublish, BuildDeploy, etc.):
+// - Reconciliation only starts the FIRST action in the chain
+// - Job monitor watches for Job completion and triggers subsequent actions
+// - Example: BuildPublish → reconcile starts Build → monitor triggers Publish when Build completes
+//
+// State Transitions:
+// - "" (empty) → "Running" (first action started)
+// - "Running" → "Running" (subsequent actions in chain, managed by job monitor)
+// - "Running" → "Completed" (final action succeeds)
+// - any → "Failed" (any action fails or policy violation)
 func (ctrl *Controller) reconcilePackage(ctx context.Context, unstrObj *unstructured.Unstructured, pkg *zarfv1alpha1.ZarfPackageJob) error {
 	startTime := time.Now()
 	name := pkg.Name
@@ -201,14 +218,18 @@ func (ctrl *Controller) reconcilePackage(ctx context.Context, unstrObj *unstruct
 
 	klog.InfoS("Processing ZarfPackageJob action", "name", name, "namespace", namespace, "action", pkg.Spec.Action)
 
-	// Validate policy
+	// Policy Validation: Verify ServiceAccount has required permissions via annotations
+	// Example annotations: forge.dev/allowed-actions, forge.dev/allowed-git-repos
+	// Validation happens BEFORE any Job creation to fail fast on permission issues
 	if err := ctrl.policyEngine.Validate(ctx, pkg); err != nil {
 		klog.ErrorS(err, "Policy validation failed", "name", name, "namespace", namespace)
 		ctrl.metrics.RecordReconcileError(ctx, "policy_violation")
 		return ctrl.updateStatus(ctx, unstrObj, "Failed", fmt.Sprintf("Policy violation: %v", err), nil)
 	}
 
-	// Create shared artifact PVC if this is a multi-action job
+	// PVC Creation: Multi-action jobs need shared storage to pass artifacts between actions
+	// Example: BuildPublish needs Build to write package.tar.zst, Publish to read it
+	// PVC is owned by the ZarfPackageJob and automatically cleaned up when the job is deleted
 	var artifactPVCName string
 	if isMultiActionZarfJob(pkg.Spec.Action) {
 		ownerRef := *metav1.NewControllerRef(pkg, zarfv1alpha1.SchemeGroupVersion.WithKind("ZarfPackageJob"))
@@ -222,36 +243,63 @@ func (ctrl *Controller) reconcilePackage(ctx context.Context, unstrObj *unstruct
 		klog.InfoS("Using shared artifact PVC", "name", name, "pvc", artifactPVCName)
 	}
 
-	// Dispatch to appropriate action handler
+	// Action Dispatch: Route to handler based on action type
+	//
+	// Single Actions (Build, Publish, Deploy):
+	// - Execute the requested action and return
+	// - No follow-up actions, job completes when action finishes
+	//
+	// Compound Actions (BuildPublish, BuildDeploy, PublishDeploy, BuildPublishDeploy):
+	// - Reconciliation executes ONLY the first action
+	// - Job monitor (see job_monitor.go) detects Job completion
+	// - Monitor updates ZarfPackageJob status with next action in chain
+	// - Status update triggers re-reconciliation, which executes next action
+	// - Chain continues until all actions complete or one fails
+	//
+	// Artifact Passing:
+	// - Multi-action jobs write artifacts to shared PVC at /artifacts/package.tar.zst
+	// - Subsequent actions read from PVC instead of source
+	// - PVC ensures artifact consistency across the entire chain
 	var result *actions.ActionResult
 	var err error
 
 	switch pkg.Spec.Action {
 	case zarfv1alpha1.ActionBuild:
+		// Single Build: Create package from source, output to /workspace or PVC
 		result, err = ctrl.buildHandler.Execute(ctx, pkg, artifactPVCName)
 
 	case zarfv1alpha1.ActionPublish:
-		// Standalone publish: artifact must be pre-staged at /workspace/package.tar.zst
+		// Single Publish: Upload artifact from /workspace/package.tar.zst to destination
+		// Requires artifact to be pre-staged (e.g., via source.type: OCI, S3, or Local)
 		result, err = ctrl.publishHandler.Execute(ctx, pkg, "/workspace/package.tar.zst", artifactPVCName)
 
 	case zarfv1alpha1.ActionDeploy:
-		// Standalone deploy: artifact must be pre-staged at /workspace/package.tar.zst
+		// Single Deploy: Install package from /workspace/package.tar.zst to cluster
+		// Requires artifact to be pre-staged (e.g., via source.type: OCI, S3, or Local)
 		result, err = ctrl.deployHandler.Execute(ctx, pkg, "/workspace/package.tar.zst", artifactPVCName)
 
 	case zarfv1alpha1.ActionBuildPublish:
-		// Execute build first, job monitor will trigger publish when build completes
+		// Compound: Build → Publish
+		// Reconcile: Starts Build (writes to PVC)
+		// Monitor: Detects Build complete → updates status → triggers Publish (reads from PVC)
 		result, err = ctrl.buildHandler.Execute(ctx, pkg, artifactPVCName)
 
 	case zarfv1alpha1.ActionBuildDeploy:
-		// Execute build first, job monitor will trigger deploy when build completes
+		// Compound: Build → Deploy
+		// Reconcile: Starts Build (writes to PVC)
+		// Monitor: Detects Build complete → updates status → triggers Deploy (reads from PVC)
 		result, err = ctrl.buildHandler.Execute(ctx, pkg, artifactPVCName)
 
 	case zarfv1alpha1.ActionPublishDeploy:
-		// Execute publish first, job monitor will trigger deploy when publish completes
+		// Compound: Publish → Deploy
+		// Reconcile: Starts Publish (artifact from source, writes to PVC)
+		// Monitor: Detects Publish complete → updates status → triggers Deploy (reads from PVC)
 		result, err = ctrl.publishHandler.Execute(ctx, pkg, "/workspace/package.tar.zst", artifactPVCName)
 
 	case zarfv1alpha1.ActionBuildPublishDeploy:
-		// Execute build first, job monitor will chain publish → deploy
+		// Compound: Build → Publish → Deploy
+		// Reconcile: Starts Build (writes to PVC)
+		// Monitor chain: Build done → Publish (PVC → destination) → Deploy (PVC → cluster)
 		result, err = ctrl.buildHandler.Execute(ctx, pkg, artifactPVCName)
 
 	default:

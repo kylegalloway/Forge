@@ -103,16 +103,15 @@ kubectl get sa -n forge-system uds-bundle-operator -o yaml | grep -A 10 annotati
 
 Verify the annotations include the required permissions. See [Policy Validation Failures](#policy-validation-failures).
 
-### UDSBundleJob (v1alpha1) deprecated warning
+### UDSBundleJob (v1alpha1) no longer supported
 
 **Symptoms:**
 
 ```text
-Warning: UDSBundleJob is deprecated. Use UDSPackageJob (v1alpha2) instead.
-Support for v1alpha1 will be removed in Forge v0.10.0.
+Error: no matches for kind "UDSBundleJob" in version "forge.dev/v1alpha1"
 ```
 
-**Solution:** Migrate to v1alpha2 API. See [API Version Migration Issues](#api-version-migration-issues) and [V1ALPHA2_MIGRATION.md](V1ALPHA2_MIGRATION.md).
+**Solution:** The v1alpha1 API has been completely removed. Migrate to v1alpha2 API. See [API Version Migration Issues](#api-version-migration-issues) and [V1ALPHA2_MIGRATION.md](V1ALPHA2_MIGRATION.md).
 
 ---
 
@@ -916,11 +915,11 @@ helm upgrade forge forge/forge \
 **Symptoms:**
 
 ```text
-Error: resource type "UDSBundleJob" is no longer supported in Forge v0.10.0+
-Please migrate to UDSPackageJob (v1alpha2)
+Error: no matches for kind "UDSBundleJob" in version "forge.dev/v1alpha1"
+Error: the server doesn't have a resource type "udsbundlejobs"
 ```
 
-**Solution:** Migrate to v1alpha2 API.
+**Solution:** The v1alpha1 API was completely removed in Forge v0.6.0. Migrate to v1alpha2 API.
 
 **Automated conversion**:
 

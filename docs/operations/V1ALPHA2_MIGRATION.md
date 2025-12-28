@@ -1,22 +1,31 @@
-# Migrating from v1alpha1 to v1alpha2 UDS API
+# v1alpha1 UDS API Removed - v1alpha2 is the Only Supported Version
 
 ## Overview
 
-The v1alpha2 API unifies UDS naming conventions with Zarf for consistency across both package types. This guide helps you migrate your existing UDSBundleJob resources to the new UDSPackageJob API.
+The v1alpha1 `UDSBundleJob` API has been **completely removed** from Forge. Only the v1alpha2 `UDSPackageJob` API is supported. This change unifies UDS naming conventions with Zarf for consistency across both package types.
+
+**If you were using v1alpha1**: You need to update your resources to v1alpha2. There is no backward compatibility or conversion webhook - v1alpha1 is gone.
 
 ## What Changed?
 
-### API Version
+### API Version and Kind
 
 ```yaml
-# v1alpha1
+# v1alpha1 (REMOVED)
 apiVersion: forge.dev/v1alpha1
 kind: UDSBundleJob
 
-# v1alpha2
+# v1alpha2 (ONLY VERSION)
 apiVersion: forge.dev/v1alpha2
 kind: UDSPackageJob
 ```
+
+### Resource Names
+
+| v1alpha1 (Removed) | v1alpha2 (Current) |
+|--------------------|-------------------|
+| `udsbundlejobs` | `udspackagejobs` |
+| Short name: `ubj` | Short name: `upj` |
 
 ### Type Names
 
@@ -31,14 +40,12 @@ kind: UDSPackageJob
 ### Action Constants
 
 ```yaml
-# v1alpha1
+# v1alpha1 (removed)
 action: BundleActionCreate
 action: BundleActionPublish
 action: BundleActionDeploy
-action: BundleActionCreatePublish
-action: BundleActionCreateDeploy
 
-# v1alpha2 - Simplified
+# v1alpha2 (simplified)
 action: Create
 action: Publish
 action: Deploy
@@ -51,64 +58,36 @@ action: CreateDeploy
 v1alpha2 uses the same annotation keys as Zarf (no "bundle" prefix):
 
 ```yaml
-# v1alpha1
+# v1alpha1 (removed)
 annotations:
   forge.dev/allowed-bundle-actions: "Create,Deploy"
   forge.dev/allowed-bundle-source-repos: "https://github.com/*"
-  forge.dev/allowed-bundle-deploy-namespaces: "default"
 
-# v1alpha2 - Unified with Zarf
+# v1alpha2 (current)
 annotations:
   forge.dev/allowed-actions: "Create,Deploy"
   forge.dev/allowed-source-repos: "https://github.com/*"
-  forge.dev/allowed-deploy-namespaces: "default"
-```
-
-### Field Names
-
-Most field names remain the same, but some struct names changed:
-
-```yaml
-# v1alpha1
-spec:
-  source:
-    type: Git  # BundleSourceType
-  publish:
-    destination:
-      type: S3  # BundleDestinationType
-  deploy:
-    target: InCluster  # BundleDeployTargetType
-
-# v1alpha2 - Same field names, different type names
-spec:
-  source:
-    type: Git  # SourceType
-  publish:
-    destination:
-      type: S3  # DestinationType
-  deploy:
-    target: InCluster  # DeployTargetType
 ```
 
 ## Migration Timeline
 
-- **v1alpha1**: Supported until Forge v0.10.0 (estimated 6 months)
-- **v1alpha1**: Deprecated as of Forge v0.5.0
-- **v1alpha2**: Recommended for all new workloads
-- **Conversion Webhook**: Automatic conversion between versions (future)
+- **v0.5.0**: v1alpha1 marked as deprecated
+- **v0.6.0**: v1alpha1 completely removed
+- **Current**: Only v1alpha2 is supported
 
-## Migration Steps
+## How to Update Your Resources
 
-### 1. Review Your Current Resources
+### 1. Check for v1alpha1 Resources
 
 ```bash
-# List all v1alpha1 UDSBundleJob resources
+# This will fail if v1alpha1 is no longer in the cluster
 kubectl get udsbundlejobs.v1alpha1.forge.dev --all-namespaces
+
+# Use v1alpha2 instead
+kubectl get udspackagejobs --all-namespaces
 ```
 
-### 2. Create v1alpha2 Versions
-
-For each UDSBundleJob, create a v1alpha2 equivalent:
+### 2. Update Resource Manifests
 
 **Before (v1alpha1):**
 ```yaml
@@ -130,7 +109,7 @@ spec:
 apiVersion: forge.dev/v1alpha2
 kind: UDSPackageJob
 metadata:
-  name: my-bundle-v2
+  name: my-bundle
 spec:
   serviceAccountName: my-sa-v2
   action: CreateDeploy
@@ -142,7 +121,7 @@ spec:
 
 ### 3. Update ServiceAccounts
 
-Update annotation keys to remove "bundle" prefix:
+Remove "bundle" prefix from annotation keys:
 
 ```yaml
 apiVersion: v1
@@ -151,78 +130,62 @@ metadata:
   name: my-sa-v2
   annotations:
     # Remove "bundle" from annotation keys
-    forge.dev/allowed-actions: "Create,Deploy"  # was allowed-bundle-actions
-    forge.dev/allowed-source-repos: "https://github.com/*"  # was allowed-bundle-source-repos
+    forge.dev/allowed-actions: "Create,Deploy"
+    forge.dev/allowed-source-repos: "https://github.com/*"
+    forge.dev/allowed-deploy-namespaces: "default"
 ```
 
-### 4. Test in Non-Production
+### 4. Update kubectl Commands
 
 ```bash
-# Apply v1alpha2 resources to test cluster
-kubectl apply -f my-bundle-v2.yaml
+# v1alpha1 (no longer works)
+kubectl get ubj
+kubectl get udsbundlejobs
 
-# Verify it works
-kubectl get udspackagejobs my-bundle-v2 -o yaml
-kubectl describe udspackagejob my-bundle-v2
-```
-
-### 5. Migrate Production
-
-Once tested:
-1. Apply v1alpha2 resources to production
-2. Monitor for any issues
-3. Delete old v1alpha1 resources after verification
-
-```bash
-# Apply new version
-kubectl apply -f my-bundle-v2.yaml
-
-# Verify it's running
-kubectl get udspackagejob my-bundle-v2
-
-# Delete old version (after verification)
-kubectl delete udsbundlejob my-bundle
+# v1alpha2 (current)
+kubectl get upj
+kubectl get udspackagejobs
 ```
 
 ## Examples
 
 See `examples/samples/uds/` for v1alpha2 examples:
-- `03-git-build-deploy/udspackagejob-v1alpha2.yaml` - Create and deploy from Git
+- `01-git-to-oci/` - Create bundle from Git and publish to OCI
+- `02-local-to-s3/` - Create from local source and publish to S3
+- `03-git-build-deploy/` - Complete Git → Create → Deploy workflow
 
-## Automated Migration (Future)
+## Common Issues
 
-Future versions of Forge will include:
-- **Conversion Webhook**: Automatic conversion between v1alpha1 and v1alpha2
-- **Migration Tool**: `kubectl convert` support for batch migrations
+### "no matches for kind UDSBundleJob"
 
-## Troubleshooting
+**Cause**: Trying to use removed v1alpha1 API
 
-### "Invalid API version" error
-
-**Cause**: Forge CRD doesn't include v1alpha2 schema
-
-**Fix**: Upgrade Forge Helm chart to v0.5.0+
-```bash
-helm upgrade forge chart/forge
+**Fix**: Update to v1alpha2:
+```yaml
+apiVersion: forge.dev/v1alpha2
+kind: UDSPackageJob
 ```
 
-### ServiceAccount permissions denied
+### "udsbundlejobs" resource not found
 
-**Cause**: Using old annotation keys with v1alpha2
+**Cause**: Resource name changed
 
-**Fix**: Update ServiceAccount to use new annotation keys (without "bundle" prefix)
-
-### Can't find UDSPackageJob resources
-
-**Cause**: Using wrong kubectl command
-
-**Fix**: Use the correct shortname
+**Fix**: Use `udspackagejobs` instead:
 ```bash
-# v1alpha1
-kubectl get ubj  # UDSBundleJob
+kubectl get udspackagejobs
+```
 
-# v1alpha2
-kubectl get upj  # UDSPackageJob
+### ServiceAccount permission denied
+
+**Cause**: Using old annotation keys with "bundle" prefix
+
+**Fix**: Update ServiceAccount annotations to remove "bundle":
+```yaml
+# Old (doesn't work with v1alpha2)
+forge.dev/allowed-bundle-actions: "Create"
+
+# New (correct)
+forge.dev/allowed-actions: "Create"
 ```
 
 ## Benefits of v1alpha2
@@ -230,22 +193,22 @@ kubectl get upj  # UDSPackageJob
 1. **Consistency**: Same naming as Zarf makes learning curve easier
 2. **Simplicity**: Shorter action names (`Create` vs `BundleActionCreate`)
 3. **Unified Annotations**: Same ServiceAccount annotations for both package types
-4. **Future-Proof**: Foundation for merging Zarf and UDS into unified package system
-
-## Getting Help
-
-- Documentation: `docs/getting-started/USER_GUIDE.md`
-- Examples: `examples/samples/uds/`
-- Issues: https://github.com/kylegalloway/forge/issues
+4. **Cleaner CRDs**: No need to support multiple versions
 
 ## Comparison Table
 
-| Feature | v1alpha1 | v1alpha2 |
-|---------|----------|----------|
+| Feature | v1alpha1 (Removed) | v1alpha2 (Current) |
+|---------|-------------------|-------------------|
 | Kind | UDSBundleJob | UDSPackageJob |
+| Resource | udsbundlejobs | udspackagejobs |
 | Action Type | BundleAction | Action |
 | Action Values | BundleActionCreate | Create |
 | Shortname | ubj | upj |
 | Annotations | forge.dev/allowed-bundle-* | forge.dev/allowed-* |
-| Status | Deprecated | Recommended |
-| Support Until | v0.10.0 | Current + future |
+| Status | ❌ Removed | ✅ Supported |
+
+## Getting Help
+
+- Documentation: `docs/getting-started/UDS_GUIDE.md`
+- Examples: `examples/samples/uds/`
+- Issues: https://github.com/kylegalloway/forge/issues

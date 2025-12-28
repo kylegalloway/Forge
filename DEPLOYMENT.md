@@ -39,15 +39,15 @@ helm repo update
 
 ```bash
 helm install forge forge/forge \
-  --version 0.1.1 \
+  --version 0.4.2 \
   --namespace forge-system \
   --create-namespace
 ```
 
 **Container Images Used**:
 
-- `ghcr.io/kylegalloway/forge/forge-controller:v0.1.1`
-- `ghcr.io/kylegalloway/forge/forge-webhook:v0.1.1`
+- `ghcr.io/kylegalloway/forge/forge-controller:v0.4.2`
+- `ghcr.io/kylegalloway/forge/forge-webhook:v0.4.2`
 
 ---
 
@@ -100,7 +100,7 @@ Override values using `--set`:
 
 ```bash
 helm install forge forge/forge \
-  --version 0.1.1 \
+  --version 0.4.2 \
   --namespace forge-system \
   --create-namespace \
   --set controller.replicaCount=2 \
@@ -114,7 +114,7 @@ For production environments:
 
 ```bash
 helm install forge forge/forge \
-  --version 0.1.1 \
+  --version 0.4.2 \
   --namespace forge-system \
   --create-namespace \
   --set controller.replicaCount=3 \
@@ -128,7 +128,7 @@ For enhanced security:
 
 ```bash
 helm install forge forge/forge \
-  --version 0.1.1 \
+  --version 0.4.2 \
   --namespace forge-system \
   --create-namespace \
   --set networkPolicies.enabled=true
@@ -229,7 +229,7 @@ Create dashboards in your existing Grafana instance to visualize Forge metrics:
 
 ```bash
 helm upgrade forge forge/forge \
-  --version 0.2.0 \
+  --version 0.4.2 \
   --namespace forge-system
 ```
 
@@ -256,7 +256,7 @@ helm uninstall forge --namespace forge-system
 kubectl delete namespace forge-system
 
 # Remove CRDs (will delete all ZarfPackageJob resources!)
-kubectl delete crd zarfpackagejobs.forge.dev udsbundlejobs.forge.dev
+kubectl delete crd zarfpackagejobs.forge.dev udspackagejobs.forge.dev
 ```
 
 ## Security Hardening

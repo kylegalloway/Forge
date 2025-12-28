@@ -141,7 +141,7 @@ helm install forge forge/forge \
 
 ```bash
 helm install forge forge/forge \
-  --version 0.1.1 \
+  --version 0.4.2 \
   --namespace forge-system \
   --create-namespace \
   --set controller.replicaCount=2 \

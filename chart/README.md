@@ -37,15 +37,15 @@ helm install forge forge/forge \
 
 # Or install specific version
 helm install forge forge/forge \
-  --version 0.1.1 \
+  --version 0.4.2 \
   --namespace forge-system \
   --create-namespace
 ```
 
 **Available Images**:
 
-- Controller: `ghcr.io/kylegalloway/forge/forge-controller:v0.1.1`
-- Webhook: `ghcr.io/kylegalloway/forge/forge-webhook:v0.1.1`
+- Controller: `ghcr.io/kylegalloway/forge/forge-controller:v0.4.2`
+- Webhook: `ghcr.io/kylegalloway/forge/forge-webhook:v0.4.2`
 
 ### For Developers (Local Chart)
 
@@ -75,7 +75,6 @@ chart/forge/
 ├── values.yaml                         # Default values
 ├── crds/                               # Custom Resource Definitions
 │   ├── forge.dev_zarfpackagejobs.yaml
-│   ├── forge.dev_udsbundlejobs.yaml
 │   └── forge.dev_udspackagejobs.yaml   # v1alpha2 API
 └── templates/                          # Kubernetes manifests templates
     ├── _helpers.tpl                    # Template helpers
@@ -105,7 +104,7 @@ controller:
   replicaCount: 1              # Number of controller replicas
   image:
     repository: ghcr.io/kylegalloway/forge/forge-controller
-    tag: "v0.1.1"
+    tag: "v0.4.2"
   resources:
     limits:
       cpu: 500m
@@ -123,7 +122,7 @@ webhook:
   replicaCount: 2              # Number of webhook replicas (recommend 2+ for HA)
   image:
     repository: ghcr.io/kylegalloway/forge/forge-webhook
-    tag: "v0.1.1"
+    tag: "v0.4.2"
   tls:
     autoGenerate: true         # Auto-generate self-signed certs
 ```
@@ -187,7 +186,7 @@ helm uninstall forge --namespace forge-system
 **Note:** CRDs are not automatically removed. To remove them:
 
 ```bash
-kubectl delete crd zarfpackagejobs.forge.dev udsbundlejobs.forge.dev
+kubectl delete crd zarfpackagejobs.forge.dev udspackagejobs.forge.dev
 ```
 
 ## Monitoring and Observability

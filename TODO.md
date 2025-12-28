@@ -10,13 +10,13 @@
 
 ## 🟡 High Priority (Consistency/Maintainability)
 
-**All high-priority issues resolved! 🎉**
+### UDS bundles shouldn't be called UDS packages. Update this naming across the board
 
 ---
 
 ## 🟢 Medium Priority (Code Quality)
 
-**All medium-priority issues resolved! 🎉**
+### Documentation has too many outdated/unused docs at the top level and in docs/*. Clean them up/consolidate
 
 ---
 
@@ -56,15 +56,28 @@ See `docs/development/TOOL_VERSIONS.md` for comprehensive version tracking and u
 
 ## Architecture Observations (For Consideration)
 
-### Controller Complexity Growing (Optional Refactor)
+### Controller Implementation Divergence (Optional Refactor)
 
 **Current state**:
 
-- Zarf Controller: 356 lines with 5 handler methods + job monitoring
-- UDS Controller: 417 lines with different structure (watch in separate function)
+- Zarf Controller: 416 lines, 11 methods
+  - Event handling: `handleEvent` → `handleObject` → `handleZarfPackageJob` → `reconcilePackage`
+  - Job monitoring integrated into `reconcilePackage`
+- UDS Controller: 470 lines, 14 methods
+  - Event handling: `handleWatchEvent` → `reconcile` → `validatePolicy`/`dispatchAction`
+  - Separate methods: `executeCreate`, `executePublish`, `executeDeploy`
 
-**Issue**: Different approaches make consistency harder to maintain.
-**Consideration**: Create unified base controller class to share common patterns.
+**Issue**: Inconsistent patterns for similar functionality increases maintenance burden and makes it harder to apply fixes consistently across both controllers.
+
+**Shared patterns that could be extracted**:
+- Health check handlers (identical implementations)
+- Status update logic (similar patterns)
+- Watch loop setup and error handling
+- Policy validation flow
+
+**Consideration**: Extract common controller behaviors into a shared base struct or interface to reduce duplication and ensure consistent behavior. This is non-critical but would improve long-term maintainability.
+
+**Priority**: Low - Both controllers are stable and well-tested. Only pursue if making significant changes to controller logic.
 
 ---
 

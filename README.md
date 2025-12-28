@@ -51,7 +51,7 @@ spec:
     timeout: 60m
 ```
 
-> **Note**: For UDS bundles, use `UDSPackageJob` with the v1alpha2 API for unified naming conventions. See [V1ALPHA2_MIGRATION.md](docs/operations/V1ALPHA2_MIGRATION.md) for details.
+> **Note**: For UDS bundles, use `UDSPackageJob` with the v1alpha2 API. The v1alpha1 `UDSBundleJob` API has been removed.
 
 ## Architecture
 
@@ -364,9 +364,7 @@ forge/
 ├── pkg/
 │   ├── apis/
 │   │   ├── zarf/v1alpha1/       # ZarfPackageJob CRD types
-│   │   └── uds/
-│   │       ├── v1alpha1/        # UDSBundleJob (deprecated)
-│   │       └── v1alpha2/        # UDSPackageJob (recommended)
+│   │   └── uds/v1alpha2/        # UDSPackageJob CRD types
 │   ├── controller/              # Main controller
 │   ├── actions/
 │   │   ├── common/              # Shared action code (~610 lines)

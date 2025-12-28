@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"strings"
-	"time"
 
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -80,15 +79,11 @@ func (handler *DeployHandler) createDeployJob(ctx context.Context, bundle *udsv1
 	udsCmd := handler.buildDeployCommand(bundle)
 
 	// Determine timeout - use Deploy.Timeout if specified, otherwise use default
-	activeDeadlineSeconds := int64(constants.DefaultDeployTimeout)
-	if bundle.Spec.Deploy.Timeout != "" {
-		timeout, parseErr := time.ParseDuration(bundle.Spec.Deploy.Timeout)
-		if parseErr != nil {
-			klog.V(4).InfoS("Invalid deploy timeout format, using default", "timeout", bundle.Spec.Deploy.Timeout, "error", parseErr)
-		} else {
-			activeDeadlineSeconds = int64(timeout.Seconds())
-		}
+	timeoutStr := ""
+	if bundle.Spec.Deploy != nil {
+		timeoutStr = bundle.Spec.Deploy.Timeout
 	}
+	activeDeadlineSeconds := actions.ParseTimeoutWithDefault(timeoutStr, constants.DefaultDeployTimeout)
 
 	// Job configuration
 	backoffLimit := int32(0) // Don't retry failed deploys
@@ -135,19 +130,9 @@ func (handler *DeployHandler) createDeployJob(ctx context.Context, bundle *udsv1
 									MountPath: constants.VolumeMountPathWorkspace,
 								},
 							},
-							SecurityContext: &corev1.SecurityContext{
-								RunAsNonRoot:             actions.Ptr(true),
-								RunAsUser:                actions.Ptr(int64(constants.DefaultUDSUID)),
-								AllowPrivilegeEscalation: actions.Ptr(false),
-								Capabilities: &corev1.Capabilities{
-									Drop: []corev1.Capability{"ALL"},
-								},
-								SeccompProfile: &corev1.SeccompProfile{
-									Type: corev1.SeccompProfileTypeRuntimeDefault,
-								},
-							},
-							Resources: handler.getResources(bundle),
-							Env:       handler.buildEnvVars(bundle),
+							SecurityContext: actions.NonRootSecurityContextWithUID(constants.DefaultUDSUID),
+							Resources:       handler.getResources(bundle),
+							Env:             handler.buildEnvVars(bundle),
 						},
 					},
 					Volumes: []corev1.Volume{
@@ -158,14 +143,7 @@ func (handler *DeployHandler) createDeployJob(ctx context.Context, bundle *udsv1
 							},
 						},
 					},
-					SecurityContext: &corev1.PodSecurityContext{
-						RunAsNonRoot: actions.Ptr(true),
-						RunAsUser:    actions.Ptr(int64(constants.DefaultUDSUID)),
-						FSGroup:      actions.Ptr(int64(constants.DefaultUDSUID)),
-						SeccompProfile: &corev1.SeccompProfile{
-							Type: corev1.SeccompProfileTypeRuntimeDefault,
-						},
-					},
+					SecurityContext: actions.NonRootPodSecurityContextWithUID(constants.DefaultUDSUID),
 				},
 			},
 		},
@@ -290,15 +268,5 @@ func (handler *DeployHandler) getResources(bundle *udsv1alpha2.UDSPackageJob) co
 
 	// Default resources for deploy jobs
 	// Standardized with Zarf Deploy (both deploy packages to clusters)
-	// Higher resources account for unpacking, kubectl operations, and cluster interactions
-	return corev1.ResourceRequirements{
-		Requests: corev1.ResourceList{
-			corev1.ResourceCPU:    actions.MustParseQuantity("500m"),
-			corev1.ResourceMemory: actions.MustParseQuantity("1Gi"),
-		},
-		Limits: corev1.ResourceList{
-			corev1.ResourceCPU:    actions.MustParseQuantity("2000m"),
-			corev1.ResourceMemory: actions.MustParseQuantity("4Gi"),
-		},
-	}
+	return actions.DeployResourceRequirements()
 }

@@ -7,7 +7,6 @@ package zarf
 import (
 	"context"
 	"fmt"
-	"time"
 
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -100,15 +99,11 @@ func (handler *BuildHandler) createBuildJob(ctx context.Context, pkg *zarfv1alph
 	}
 
 	// Determine timeout - use Build.Timeout if specified, otherwise use default
-	activeDeadlineSeconds := int64(constants.DefaultBuildTimeout)
-	if pkg.Spec.Build != nil && pkg.Spec.Build.Timeout != "" {
-		timeout, parseErr := time.ParseDuration(pkg.Spec.Build.Timeout)
-		if parseErr != nil {
-			klog.V(4).InfoS("Invalid build timeout format, using default", "timeout", pkg.Spec.Build.Timeout, "error", parseErr)
-		} else {
-			activeDeadlineSeconds = int64(timeout.Seconds())
-		}
+	timeoutStr := ""
+	if pkg.Spec.Build != nil {
+		timeoutStr = pkg.Spec.Build.Timeout
 	}
+	activeDeadlineSeconds := actions.ParseTimeoutWithDefault(timeoutStr, constants.DefaultBuildTimeout)
 
 	// Job configuration
 	backoffLimit := int32(0) // Don't retry failed builds
@@ -161,18 +156,8 @@ func (handler *BuildHandler) createBuildJob(ctx context.Context, pkg *zarfv1alph
 									MountPath: constants.VolumeMountPathOutput,
 								},
 							},
-							SecurityContext: &corev1.SecurityContext{
-								RunAsNonRoot:             actions.Ptr(true),
-								RunAsUser:                actions.Ptr(int64(constants.DefaultZarfUID)),
-								AllowPrivilegeEscalation: actions.Ptr(false),
-								Capabilities: &corev1.Capabilities{
-									Drop: []corev1.Capability{"ALL"},
-								},
-								SeccompProfile: &corev1.SeccompProfile{
-									Type: corev1.SeccompProfileTypeRuntimeDefault,
-								},
-							},
-							Resources: handler.getResources(pkg),
+							SecurityContext: actions.NonRootSecurityContextWithUID(constants.DefaultZarfUID),
+							Resources:       handler.getResources(pkg),
 						},
 					},
 					Volumes: []corev1.Volume{
@@ -189,43 +174,14 @@ func (handler *BuildHandler) createBuildJob(ctx context.Context, pkg *zarfv1alph
 							},
 						},
 					},
-					SecurityContext: &corev1.PodSecurityContext{
-						RunAsNonRoot: actions.Ptr(true),
-						RunAsUser:    actions.Ptr(int64(constants.DefaultZarfUID)),
-						FSGroup:      actions.Ptr(int64(constants.DefaultZarfUID)),
-						SeccompProfile: &corev1.SeccompProfile{
-							Type: corev1.SeccompProfileTypeRuntimeDefault,
-						},
-					},
+					SecurityContext: actions.NonRootPodSecurityContextWithUID(constants.DefaultZarfUID),
 				},
 			},
 		},
 	}
 
 	// Add artifact PVC if multi-action job
-	if artifactPVCName != "" {
-		// Ensure the job has at least one container before accessing Containers[0]
-		if len(job.Spec.Template.Spec.Containers) == 0 {
-			return nil, fmt.Errorf("job has no containers, cannot add artifact PVC volume")
-		}
-		artifactVolume := corev1.Volume{
-			Name: constants.VolumeNameArtifacts,
-			VolumeSource: corev1.VolumeSource{
-				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-					ClaimName: artifactPVCName,
-				},
-			},
-		}
-		artifactMount := corev1.VolumeMount{
-			Name:      constants.VolumeNameArtifacts,
-			MountPath: constants.VolumeMountPathArtifacts,
-		}
-		job.Spec.Template.Spec.Volumes = append(job.Spec.Template.Spec.Volumes, artifactVolume)
-		job.Spec.Template.Spec.Containers[0].VolumeMounts = append(
-			job.Spec.Template.Spec.Containers[0].VolumeMounts,
-			artifactMount,
-		)
-	}
+	actions.AddArtifactPVCVolume(job, artifactPVCName)
 
 	// Add docker-config volume if OCI source with credentials
 	if pkg.Spec.Source.Type == zarfv1alpha1.SourceTypeOCI && pkg.Spec.Source.OCI != nil && pkg.Spec.Source.OCI.CredentialsSecretRef != nil { // pragma: allowlist secret

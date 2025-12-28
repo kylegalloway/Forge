@@ -130,19 +130,9 @@ func (handler *PublishHandler) createPublishJob(ctx context.Context, bundle *uds
 									MountPath: constants.VolumeMountPathWorkspace,
 								},
 							},
-							SecurityContext: &corev1.SecurityContext{
-								RunAsNonRoot:             actions.Ptr(true),
-								RunAsUser:                actions.Ptr(int64(constants.DefaultUDSUID)),
-								AllowPrivilegeEscalation: actions.Ptr(false),
-								Capabilities: &corev1.Capabilities{
-									Drop: []corev1.Capability{"ALL"},
-								},
-								SeccompProfile: &corev1.SeccompProfile{
-									Type: corev1.SeccompProfileTypeRuntimeDefault,
-								},
-							},
-							Resources: handler.getResources(bundle),
-							Env:       handler.buildEnvVars(bundle),
+							SecurityContext: actions.NonRootSecurityContextWithUID(constants.DefaultUDSUID),
+							Resources:       handler.getResources(bundle),
+							Env:             handler.buildEnvVars(bundle),
 						},
 					},
 					Volumes: []corev1.Volume{
@@ -153,14 +143,7 @@ func (handler *PublishHandler) createPublishJob(ctx context.Context, bundle *uds
 							},
 						},
 					},
-					SecurityContext: &corev1.PodSecurityContext{
-						RunAsNonRoot: actions.Ptr(true),
-						RunAsUser:    actions.Ptr(int64(constants.DefaultUDSUID)),
-						FSGroup:      actions.Ptr(int64(constants.DefaultUDSUID)),
-						SeccompProfile: &corev1.SeccompProfile{
-							Type: corev1.SeccompProfileTypeRuntimeDefault,
-						},
-					},
+					SecurityContext: actions.NonRootPodSecurityContextWithUID(constants.DefaultUDSUID),
 				},
 			},
 		},
@@ -324,15 +307,5 @@ func (handler *PublishHandler) getResources(bundle *udsv1alpha2.UDSPackageJob) c
 
 	// Default resources for publish jobs
 	// Standardized with Zarf Publish (both upload artifacts to registries/storage)
-	// Lower than Create/Deploy since primarily network I/O with minimal processing
-	return corev1.ResourceRequirements{
-		Requests: corev1.ResourceList{
-			corev1.ResourceCPU:    actions.MustParseQuantity("200m"),
-			corev1.ResourceMemory: actions.MustParseQuantity("512Mi"),
-		},
-		Limits: corev1.ResourceList{
-			corev1.ResourceCPU:    actions.MustParseQuantity("1000m"),
-			corev1.ResourceMemory: actions.MustParseQuantity("2Gi"),
-		},
-	}
+	return actions.PublishResourceRequirements()
 }

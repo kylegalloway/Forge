@@ -14,7 +14,6 @@ Comprehensive troubleshooting guide for UDS bundle operations in Forge. This gui
 - [S3 Storage Issues](#s3-storage-issues)
 - [Git Source Issues](#git-source-issues)
 - [Controller Issues](#controller-issues)
-- [API Version Migration Issues](#api-version-migration-issues)
 - [Common Error Messages](#common-error-messages)
 - [Debugging Commands](#debugging-commands)
 
@@ -908,62 +907,6 @@ helm upgrade forge forge/forge \
 
 ---
 
-## API Version Migration Issues
-
-### v1alpha1 UDSBundleJob no longer supported
-
-**Symptoms:**
-
-```text
-Error: no matches for kind "UDSBundleJob" in version "forge.dev/v1alpha1"
-Error: the server doesn't have a resource type "udsbundlejobs"
-```
-
-**Solution:** The v1alpha1 API was completely removed in Forge v0.6.0. Migrate to v1alpha2 API.
-
-**Automated conversion**:
-
-```bash
-# Using yq
-yq eval '.apiVersion = "forge.dev/v1alpha2" |
-         .kind = "UDSBundleJob" |
-         .spec.action = (.spec.bundleAction | sub("BundleAction", ""))' \
-         old-bundle.yaml > new-bundle.yaml
-```
-
-**Manual conversion**:
-
-1. Change `kind: UDSBundleJob` to `kind: UDSBundleJob`
-2. Change `apiVersion: forge.dev/v1alpha1` to `forge.dev/v1alpha2`
-3. Change `spec.bundleAction: BundleActionCreate` to `spec.action: Create`
-4. Remove `BundleAction` prefix from all actions
-
-See [V1ALPHA2_MIGRATION.md](V1ALPHA2_MIGRATION.md) for complete guide.
-
-### Mixed v1alpha1 and v1alpha2 resources
-
-**Symptoms:**
-
-- Some bundles working, others failing
-- Inconsistent behavior across cluster
-
-**Solution:**
-
-List all UDS resources and migrate v1alpha1:
-
-```bash
-# Find v1alpha1 resources
-kubectl get udsbundlejobs -A
-
-# Migrate each one
-kubectl get udsbundlejob <name> -o yaml > old.yaml
-# Convert to v1alpha2
-kubectl delete udsbundlejob <name>
-kubectl apply -f new.yaml
-```
-
----
-
 ## Common Error Messages
 
 ### Error: uds-bundle.yaml not found
@@ -1210,7 +1153,6 @@ chmod +x collect-uds-diagnostics.sh
 
 - **User Guide**: [UDS_GUIDE.md](../getting-started/UDS_GUIDE.md) - Complete UDS bundle guide
 - **Policy Examples**: `examples/policies/uds/` - ServiceAccount templates and RBAC
-- **Migration Guide**: [V1ALPHA2_MIGRATION.md](V1ALPHA2_MIGRATION.md) - v1alpha1 to v1alpha2
 - **General Troubleshooting**: [TROUBLESHOOTING.md](TROUBLESHOOTING.md) - Zarf package issues
 - **Runbook**: [RUNBOOK.md](RUNBOOK.md) - Operational procedures
 

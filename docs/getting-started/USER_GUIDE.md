@@ -84,7 +84,7 @@ kubectl get pods -n forge-system
 # forge-webhook-<hash>                 1/1     Running   0          1m
 ```
 
-For additional deployment options and configurations, see [DEPLOYMENT.md](../../DEPLOYMENT.md).
+For additional deployment options and configurations, see [DEPLOYMENT.md](DEPLOYMENT.md).
 
 ### Deployment Modes
 

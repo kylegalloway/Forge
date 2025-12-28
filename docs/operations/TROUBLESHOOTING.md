@@ -4,7 +4,8 @@ Common issues and their solutions when running Forge.
 
 ## Table of Contents
 
-- [ZarfPackageJob Issues](#ZarfPackageJob-issues)
+- [ZarfPackageJob Issues](#zarfpackagejob-issues)
+- [Job Status Bouncing (Multi-Action Workflows)](#job-status-bouncing-multi-action-workflows)
 - [Policy & Permission Issues](#policy--permission-issues)
 - [Job Failures](#job-failures)
 - [Webhook Issues](#webhook-issues)
@@ -65,6 +66,96 @@ Check the webhook validation error message for specific policy violation. Common
 - Action not in allowed-actions annotation
 - Source repository not in allowed-source-repos
 - Missing required ServiceAccount annotations
+
+---
+
+## Job Status Bouncing (Multi-Action Workflows)
+
+### Symptom
+
+When watching ZarfPackageJob or UDSBundleJob resources with `-w`, you observe the status phase bouncing between states like:
+- Running → Completed → Running → Completed
+- Pending → Running → Pending
+
+This is especially noticeable with multi-action workflows (BuildPublish, BuildDeploy, CreatePublishDeploy, etc.).
+
+### Root Cause: Expected Behavior
+
+For jobs with chained actions (e.g., `BuildPublish`), the controller intentionally updates the status multiple times:
+
+1. **Build phase starts**: Status set to "Running" with action "build"
+2. **Build completes**: Status set to "Completed", build artifacts available
+3. **Publish phase starts**: Status changes to "Running" with action "publish" (THIS LOOKS LIKE BOUNCING)
+4. **Publish completes**: Status set to "Completed"
+
+This is **expected behavior** and indicates that action chaining is working correctly.
+
+### Diagnosis
+
+**Check if Multi-Action Workflow:**
+
+```bash
+# Get the action from the resource
+kubectl get zarfpackagejob <name> -o jsonpath='{.spec.action}'
+
+# Multi-action workflows:
+# - BuildPublish, BuildDeploy, PublishDeploy, BuildPublishDeploy
+# - CreatePublish (UDS), CreateDeploy (UDS), CreatePublishDeploy (UDS)
+```
+
+If the action contains multiple steps, status bouncing is **expected**.
+
+**Watch Detailed Status:**
+
+```bash
+# Watch with detailed fields
+kubectl get zarfpackagejob <name> -o custom-columns=\
+NAME:.metadata.name,\
+ACTION:.spec.action,\
+PHASE:.status.phase,\
+BUILD:.status.buildStatus.state,\
+PUBLISH:.status.publishStatus.state,\
+DEPLOY:.status.deployStatus.state \
+-w
+```
+
+**Check Job History:**
+
+```bash
+# List all Jobs for this package
+kubectl get jobs -l forge.dev/package=<name>
+
+# For multi-action workflows, you should see multiple jobs:
+# <name>-build
+# <name>-publish
+# <name>-deploy
+```
+
+### When It's a Real Problem
+
+Status bouncing is **NOT normal** when:
+
+1. **Single-action workflow bounces** (e.g., `action: Build` bounces between Running/Completed)
+2. **Bounces back to earlier action** (e.g., BuildPublish goes Build → Publish → Build again)
+3. **Bounces without Job changes** (Jobs are not completing but status still bounces)
+
+**Debugging Real Problems:**
+
+```bash
+# 1. Check if Jobs are actually completing
+kubectl get jobs -l forge.dev/package=<name> -o wide
+
+# 2. Check for controller errors
+kubectl logs -n forge-system -l app=forge-controller --tail=100 | grep -i error
+
+# 3. Check for reconciliation loops
+kubectl logs -n forge-system -l app=forge-controller | grep "Reconciling\|reconcilePackage" | tail -20
+
+# 4. Check resource versions (should increment)
+kubectl get zarfpackagejob <name> -o jsonpath='{.metadata.resourceVersion}' -w
+```
+
+**TL;DR**: If you're using multi-action workflows (BuildPublish, CreateDeploy, etc.), seeing status bounce between "Running" and "Completed" is **normal and expected**. Each action in the chain causes the status to update.
 
 ---
 

@@ -150,7 +150,7 @@ helm install forge forge/forge \
 ```
 
 📖 **User Guide**: See [docs/getting-started/USER_GUIDE.md](docs/getting-started/USER_GUIDE.md) for complete usage examples
-📖 **Deployment Guide**: See [DEPLOYMENT.md](DEPLOYMENT.md) for deployment scenarios and configurations
+📖 **Deployment Guide**: See [docs/getting-started/DEPLOYMENT.md](docs/getting-started/DEPLOYMENT.md) for deployment scenarios and configurations
 📖 **Helm Chart Docs**: See [chart/README.md](chart/README.md) for all configuration options
 
 ### For Testing
@@ -173,7 +173,7 @@ kind load image-archive /tmp/zarf-cli.tar --name forge-test
 rm /tmp/zarf-cli.tar
 ```
 
-📖 **Testing Guide**: See [docs/getting-started/KIND_TESTING_PUBLIC_IMAGES.md](docs/getting-started/KIND_TESTING_PUBLIC_IMAGES.md) for complete testing setup
+📖 **Testing Guide**: See [docs/development/KIND_TESTING_PUBLIC_IMAGES.md](docs/development/KIND_TESTING_PUBLIC_IMAGES.md) for complete testing setup
 
 ### For Developers
 
@@ -214,7 +214,7 @@ make test
 make kind-delete
 ```
 
-📖 **Developer Guide**: See [docs/getting-started/KIND_SETUP.md](docs/getting-started/KIND_SETUP.md) for complete local development setup
+📖 **Developer Guide**: See [docs/development/KIND_SETUP.md](docs/development/KIND_SETUP.md) for complete local development setup
 📖 **Contributing**: See [CONTRIBUTING.md](CONTRIBUTING.md) for development workflow and testing
 
 ## Observability

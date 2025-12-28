@@ -3,7 +3,6 @@ package zarf
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/kylegalloway/forge/pkg/actions"
 
@@ -102,15 +101,11 @@ func (handler *PublishHandler) createPublishJob(ctx context.Context, pkg *zarfv1
 	}
 
 	// Determine timeout - use Publish.Timeout if specified, otherwise use default
-	activeDeadlineSeconds := int64(constants.DefaultPublishTimeout)
-	if pkg.Spec.Publish.Timeout != "" {
-		timeout, parseErr := time.ParseDuration(pkg.Spec.Publish.Timeout)
-		if parseErr != nil {
-			klog.V(4).InfoS("Invalid publish timeout format, using default", "timeout", pkg.Spec.Publish.Timeout, "error", parseErr)
-		} else {
-			activeDeadlineSeconds = int64(timeout.Seconds())
-		}
+	timeoutStr := ""
+	if pkg.Spec.Publish != nil {
+		timeoutStr = pkg.Spec.Publish.Timeout
 	}
+	activeDeadlineSeconds := actions.ParseTimeoutWithDefault(timeoutStr, constants.DefaultPublishTimeout)
 
 	// Job configuration
 	backoffLimit := int32(0)
@@ -159,18 +154,8 @@ func (handler *PublishHandler) createPublishJob(ctx context.Context, pkg *zarfv1
 									MountPath: constants.VolumeMountPathWorkspace,
 								},
 							},
-							SecurityContext: &corev1.SecurityContext{
-								RunAsNonRoot:             actions.Ptr(true),
-								RunAsUser:                actions.Ptr(int64(constants.DefaultZarfUID)),
-								AllowPrivilegeEscalation: actions.Ptr(false),
-								Capabilities: &corev1.Capabilities{
-									Drop: []corev1.Capability{"ALL"},
-								},
-								SeccompProfile: &corev1.SeccompProfile{
-									Type: corev1.SeccompProfileTypeRuntimeDefault,
-								},
-							},
-							Resources: handler.getResources(pkg),
+							SecurityContext: actions.NonRootSecurityContextWithUID(constants.DefaultZarfUID),
+							Resources:       handler.getResources(pkg),
 						},
 					},
 					Volumes: []corev1.Volume{
@@ -181,39 +166,14 @@ func (handler *PublishHandler) createPublishJob(ctx context.Context, pkg *zarfv1
 							},
 						},
 					},
-					SecurityContext: &corev1.PodSecurityContext{
-						RunAsNonRoot: actions.Ptr(true),
-						RunAsUser:    actions.Ptr(int64(constants.DefaultZarfUID)),
-						FSGroup:      actions.Ptr(int64(constants.DefaultZarfUID)),
-						SeccompProfile: &corev1.SeccompProfile{
-							Type: corev1.SeccompProfileTypeRuntimeDefault,
-						},
-					},
+					SecurityContext: actions.NonRootPodSecurityContextWithUID(constants.DefaultZarfUID),
 				},
 			},
 		},
 	}
 
 	// Add artifact PVC if multi-action job
-	if artifactPVCName != "" {
-		artifactVolume := corev1.Volume{
-			Name: constants.VolumeNameArtifacts,
-			VolumeSource: corev1.VolumeSource{
-				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-					ClaimName: artifactPVCName,
-				},
-			},
-		}
-		artifactMount := corev1.VolumeMount{
-			Name:      constants.VolumeNameArtifacts,
-			MountPath: constants.VolumeMountPathArtifacts,
-		}
-		job.Spec.Template.Spec.Volumes = append(job.Spec.Template.Spec.Volumes, artifactVolume)
-		job.Spec.Template.Spec.Containers[0].VolumeMounts = append(
-			job.Spec.Template.Spec.Containers[0].VolumeMounts,
-			artifactMount,
-		)
-	}
+	actions.AddArtifactPVCVolume(job, artifactPVCName)
 
 	// Apply destination-specific configuration (volumes, env vars, etc.)
 	jobConfig, err := destHandler.GetJobConfiguration(pkg)
@@ -296,15 +256,5 @@ func (handler *PublishHandler) getResources(pkg *zarfv1alpha1.ZarfPackageJob) co
 
 	// Default resources for publish jobs
 	// Standardized with UDS Publish (both upload artifacts to registries/storage)
-	// Lower than Build/Deploy since primarily network I/O with minimal processing
-	return corev1.ResourceRequirements{
-		Requests: corev1.ResourceList{
-			corev1.ResourceCPU:    actions.MustParseQuantity("200m"),
-			corev1.ResourceMemory: actions.MustParseQuantity("512Mi"),
-		},
-		Limits: corev1.ResourceList{
-			corev1.ResourceCPU:    actions.MustParseQuantity("1000m"),
-			corev1.ResourceMemory: actions.MustParseQuantity("2Gi"),
-		},
-	}
+	return actions.PublishResourceRequirements()
 }

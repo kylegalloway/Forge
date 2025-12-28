@@ -12,6 +12,20 @@
 
 **All high-priority issues resolved! 🎉**
 
+### Recently Completed
+
+1. **✅ v1alpha1 → v1alpha2 Migration Completed** (Completed: 2025-12-27)
+   - Completely removed v1alpha1 `UDSBundleJob` API
+   - Generated v1alpha2 `UDSPackageJob` CRD as the only supported version
+   - Updated all code references, RBAC, Makefile, and documentation
+   - No backward compatibility or conversion webhook - clean removal
+
+2. **✅ Reconciliation Methods Documented** (Completed: 2025-12-27)
+   - Added comprehensive inline comments to Zarf reconciliation method (controller.go)
+   - Added comprehensive inline comments to UDS reconciliation method (uds_controller.go)
+   - Documented compound action handling, job monitor chain orchestration, and state transitions
+   - Both controllers now have parallel documentation structure for consistency
+
 ---
 
 ## 🟢 Medium Priority (Code Quality)
@@ -28,17 +42,6 @@
 - Volume mounting logic
 
 **Action**: Consolidate Job building logic - expand JobBuilder pattern to reduce duplication.
-
-### 2. Reconciliation Methods Lack Inline Comments
-
-**Location**: `pkg/controller/controller.go:183-277`, `pkg/controller/uds_controller.go:186-260`
-**Issue**: 95-line reconciliation methods with minimal documentation explaining:
-
-- Compound action handling (BuildPublish, BuildDeploy)
-- Job monitoring chain orchestration
-- Status update structure
-
-**Action**: Add inline comments documenting control flow and state transitions.
 
 ---
 

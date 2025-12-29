@@ -287,7 +287,7 @@ func createTestUnstructuredZarfJob(name, namespace string) *unstructured.Unstruc
 
 type mockSuccessHandler struct{}
 
-func (m *mockSuccessHandler) Execute(_ context.Context, resource *zarfv1alpha1.ZarfPackageJob, opts common.ExecuteOptions) (*actions.ActionResult, error) {
+func (m *mockSuccessHandler) Execute(_ context.Context, _ *zarfv1alpha1.ZarfPackageJob, _ common.ExecuteOptions) (*actions.ActionResult, error) {
 	return &actions.ActionResult{
 		JobName: "test-job",
 		Phase:   "Running",
@@ -298,29 +298,29 @@ type mockFailingHandler struct {
 	err error
 }
 
-func (m *mockFailingHandler) Execute(_ context.Context, resource *zarfv1alpha1.ZarfPackageJob, opts common.ExecuteOptions) (*actions.ActionResult, error) {
+func (m *mockFailingHandler) Execute(_ context.Context, _ *zarfv1alpha1.ZarfPackageJob, _ common.ExecuteOptions) (*actions.ActionResult, error) {
 	return nil, m.err
 }
 
 type mockMetricsRecorder struct{}
 
-func (m *mockMetricsRecorder) RecordPrimaryActionStarted(_ context.Context, namespace, name string) {
+func (m *mockMetricsRecorder) RecordPrimaryActionStarted(_ context.Context, _, _ string) {
 }
-func (m *mockMetricsRecorder) RecordPrimaryActionCompleted(_ context.Context, namespace, name string) {
+func (m *mockMetricsRecorder) RecordPrimaryActionCompleted(_ context.Context, _, _ string) {
 }
-func (m *mockMetricsRecorder) RecordPrimaryActionFailed(_ context.Context, namespace, name string) {
+func (m *mockMetricsRecorder) RecordPrimaryActionFailed(_ context.Context, _, _ string) {
 }
-func (m *mockMetricsRecorder) RecordPublishStarted(_ context.Context, namespace, name string)     {}
-func (m *mockMetricsRecorder) RecordPublishCompleted(_ context.Context, namespace, name string)   {}
-func (m *mockMetricsRecorder) RecordPublishFailed(_ context.Context, namespace, name string)      {}
-func (m *mockMetricsRecorder) RecordDeployStarted(_ context.Context, namespace, name string)      {}
-func (m *mockMetricsRecorder) RecordDeployCompleted(_ context.Context, namespace, name string)    {}
-func (m *mockMetricsRecorder) RecordDeployFailed(_ context.Context, namespace, name string)       {}
-func (m *mockMetricsRecorder) RecordJobCreated(_ context.Context, namespace, name, action string) {}
-func (m *mockMetricsRecorder) RecordJobCompleted(_ context.Context, namespace, name, action string) {
+func (m *mockMetricsRecorder) RecordPublishStarted(_ context.Context, _, _ string)   {}
+func (m *mockMetricsRecorder) RecordPublishCompleted(_ context.Context, _, _ string) {}
+func (m *mockMetricsRecorder) RecordPublishFailed(_ context.Context, _, _ string)    {}
+func (m *mockMetricsRecorder) RecordDeployStarted(_ context.Context, _, _ string)    {}
+func (m *mockMetricsRecorder) RecordDeployCompleted(_ context.Context, _, _ string)  {}
+func (m *mockMetricsRecorder) RecordDeployFailed(_ context.Context, _, _ string)     {}
+func (m *mockMetricsRecorder) RecordJobCreated(_ context.Context, _, _, _ string)    {}
+func (m *mockMetricsRecorder) RecordJobCompleted(_ context.Context, _, _, _ string) {
 }
-func (m *mockMetricsRecorder) RecordJobFailed(_ context.Context, namespace, name, action string) {}
-func (m *mockMetricsRecorder) RecordActionDuration(_ context.Context, namespace, name, action string, duration float64, status string) {
+func (m *mockMetricsRecorder) RecordJobFailed(_ context.Context, _, _, _ string) {}
+func (m *mockMetricsRecorder) RecordActionDuration(_ context.Context, _, _, _ string, _ float64, _ string) {
 }
 
 // Compile-time check that mockMetricsRecorder implements MetricsRecorder

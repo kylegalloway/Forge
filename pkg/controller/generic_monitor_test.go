@@ -80,7 +80,7 @@ func TestProcessJobStatus_RunningJob(t *testing.T) {
 	}
 
 	updateCalled := false
-	statusUpdater := func(_ context.Context, obj *unstructured.Unstructured, phase, message string, opStatus map[string]interface{}) error {
+	statusUpdater := func(_ context.Context, _ *unstructured.Unstructured, _, _ string, _ map[string]interface{}) error {
 		updateCalled = true
 		return nil
 	}
@@ -149,7 +149,7 @@ func TestProcessJobStatus_CompletedJob(t *testing.T) {
 
 	updateCalled := false
 	var capturedPhase string
-	statusUpdater := func(_ context.Context, obj *unstructured.Unstructured, phase, message string, opStatus map[string]interface{}) error {
+	statusUpdater := func(_ context.Context, _ *unstructured.Unstructured, phase, _ string, _ map[string]interface{}) error {
 		updateCalled = true
 		capturedPhase = phase
 		return nil
@@ -232,7 +232,7 @@ func TestProcessJobStatus_FailedJob(t *testing.T) {
 
 	updateCalled := false
 	var capturedPhase string
-	statusUpdater := func(_ context.Context, obj *unstructured.Unstructured, phase, message string, opStatus map[string]interface{}) error {
+	statusUpdater := func(_ context.Context, _ *unstructured.Unstructured, phase, _ string, _ map[string]interface{}) error {
 		updateCalled = true
 		capturedPhase = phase
 		return nil
@@ -324,7 +324,7 @@ func TestProcessJobStatus_ResourceNotFound(t *testing.T) {
 		&mockSuccessHandler{},
 		&mockSuccessHandler{},
 		&mockSuccessHandler{},
-		func(_ context.Context, obj *unstructured.Unstructured, phase, message string, opStatus map[string]interface{}) error {
+		func(_ context.Context, _ *unstructured.Unstructured, _, _ string, _ map[string]interface{}) error {
 			return nil
 		},
 	)
@@ -376,7 +376,7 @@ func TestProcessJobStatus_StatusUpdateError(t *testing.T) {
 	}
 
 	// Status updater that always fails
-	statusUpdater := func(_ context.Context, obj *unstructured.Unstructured, phase, message string, opStatus map[string]interface{}) error {
+	statusUpdater := func(_ context.Context, _ *unstructured.Unstructured, _, _ string, _ map[string]interface{}) error {
 		return errors.New("status update failed: conflict")
 	}
 
@@ -447,7 +447,7 @@ func TestProcessJobStatus_MultipleCompletedJobs(t *testing.T) {
 	}
 
 	updateCount := 0
-	statusUpdater := func(_ context.Context, obj *unstructured.Unstructured, phase, message string, opStatus map[string]interface{}) error {
+	statusUpdater := func(_ context.Context, _ *unstructured.Unstructured, _, _ string, _ map[string]interface{}) error {
 		updateCount++
 		return nil
 	}
@@ -561,7 +561,7 @@ func createTestMonitor(t *testing.T) *GenericJobMonitor[*zarfv1alpha1.ZarfPackag
 		&mockSuccessHandler{},
 		&mockSuccessHandler{},
 		&mockSuccessHandler{},
-		func(_ context.Context, obj *unstructured.Unstructured, phase, message string, opStatus map[string]interface{}) error {
+		func(_ context.Context, _ *unstructured.Unstructured, _, _ string, _ map[string]interface{}) error {
 			return nil
 		},
 	)

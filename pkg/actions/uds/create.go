@@ -39,18 +39,14 @@ func NewCreateHandler(kubeClient kubernetes.Interface, metrics *telemetry.Metric
 
 // Execute performs a Create action for the given UDSBundleJob
 //
-// Unlike Zarf handlers, UDS handlers don't accept an artifactPVCName parameter because
-// UDS multi-action jobs (CreatePublish, CreateDeploy, etc.) run each action independently
-// without artifact sharing. Each action re-fetches source and rebuilds in isolation.
+// The artifactPVCName parameter enables multi-action job support (CreatePublish, CreateDeploy, etc.)
+// by providing a shared PersistentVolumeClaim for artifacts. When set, create outputs are stored
+// in the PVC so subsequent actions (Publish/Deploy) can access them without re-creating.
 //
-// This is an intentional architectural decision that trades performance for simplicity:
-// no PVC management, no shared state, cleaner Job lifecycle, better idempotency.
-//
-// For the rationale behind this signature divergence, see:
-// docs/development/ARCHITECTURE.md#handler-signature-divergence
-func (handler *CreateHandler) Execute(ctx context.Context, bundle *udsv1alpha2.UDSBundleJob) (*actions.ActionResult, error) {
+// This matches the Zarf Build handler pattern and enables efficient action chaining.
+func (handler *CreateHandler) Execute(ctx context.Context, bundle *udsv1alpha2.UDSBundleJob, artifactPVCName string) (*actions.ActionResult, error) {
 
-	klog.InfoS("Executing UDS Bundle Create action", "name", bundle.Name, "namespace", bundle.Namespace)
+	klog.InfoS("Executing UDS Bundle Create action", "name", bundle.Name, "namespace", bundle.Namespace, "artifactPVC", artifactPVCName)
 
 	// Record create started
 	handler.metrics.RecordBundleCreateStarted(ctx, bundle.Namespace, bundle.Name)
@@ -62,7 +58,7 @@ func (handler *CreateHandler) Execute(ctx context.Context, bundle *udsv1alpha2.U
 	}
 
 	// Create Kubernetes Job to create the bundle
-	job, err := handler.createBundleJob(ctx, bundle)
+	job, err := handler.createBundleJob(ctx, bundle, artifactPVCName)
 	if err != nil {
 		handler.metrics.RecordBundleCreateFailed(ctx, bundle.Namespace, bundle.Name)
 		return nil, fmt.Errorf("failed to create bundle job: %w", err)
@@ -85,15 +81,11 @@ func (handler *CreateHandler) Execute(ctx context.Context, bundle *udsv1alpha2.U
 }
 
 // createBundleJob creates a Kubernetes Job to create a UDS bundle
-func (handler *CreateHandler) createBundleJob(ctx context.Context, bundle *udsv1alpha2.UDSBundleJob) (*batchv1.Job, error) {
+func (handler *CreateHandler) createBundleJob(ctx context.Context, bundle *udsv1alpha2.UDSBundleJob, artifactPVCName string) (*batchv1.Job, error) {
 	jobName := fmt.Sprintf("%s-create", bundle.Name)
-	namespace := bundle.Namespace
 
 	// Build UDS CLI command
-	udsCmd, workingDir, err := handler.buildUDSCommand(bundle)
-	if err != nil {
-		return nil, err
-	}
+	udsCmd, workingDir := handler.buildUDSCommand(bundle, artifactPVCName)
 
 	// Build init containers for source retrieval
 	initContainers, err := handler.buildInitContainers(bundle)
@@ -104,94 +96,74 @@ func (handler *CreateHandler) createBundleJob(ctx context.Context, bundle *udsv1
 	// Use default timeout for create operations
 	activeDeadlineSeconds := int64(constants.DefaultCreateTimeout)
 
-	// Job configuration
-	backoffLimit := int32(0) // Don't retry failed creates
+	// Build Job using JobBuilder
+	builder := actions.NewJobBuilder(jobName, bundle.Namespace).
+		WithKubeClient(handler.kubeClient).
+		WithOwnerReference(bundle, udsv1alpha2.SchemeGroupVersion.WithKind("UDSBundleJob")).
+		WithLabels(map[string]string{
+			"app":                  "forge",
+			"resource-type":        "udsbundlejob",
+			constants.LabelPackage: bundle.Name,
+			constants.LabelAction:  "create",
+		}).
+		WithContainerImage(constants.UDSCLIImage).
+		WithContainerName(constants.ContainerNameUDSCreate).
+		WithCommand([]string{"/bin/sh", "-c"}).
+		WithArgs([]string{udsCmd}).
+		WithWorkingDir(workingDir).
+		WithResources(handler.getResources(bundle)).
+		WithBackoffLimit(0).
+		WithActiveDeadlineSeconds(activeDeadlineSeconds).
+		WithTTLSecondsAfterFinished(3600).
+		WithInitContainers(initContainers).
+		WithWorkspaceVolume().
+		WithArtifactPVC(artifactPVCName)
 
-	job := &batchv1.Job{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      jobName,
-			Namespace: namespace,
-			Labels: map[string]string{
-				"app":                  "forge",
-				"resource-type":        "udsbundlejob",
-				constants.LabelPackage: bundle.Name,
-				constants.LabelAction:  "create",
-			},
-			OwnerReferences: []metav1.OwnerReference{
-				*metav1.NewControllerRef(bundle, udsv1alpha2.SchemeGroupVersion.WithKind("UDSBundleJob")),
-			},
-		},
-		Spec: batchv1.JobSpec{
-			BackoffLimit:            &backoffLimit,
-			ActiveDeadlineSeconds:   &activeDeadlineSeconds,
-			TTLSecondsAfterFinished: actions.Ptr(int32(3600)), // Clean up after 1 hour
-			Template: corev1.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{
-					Labels: map[string]string{
-						"app":                  "forge",
-						"resource-type":        "udsbundlejob",
-						constants.LabelPackage: bundle.Name,
-						constants.LabelAction:  "create",
-					},
-				},
-				Spec: corev1.PodSpec{
-					RestartPolicy:      corev1.RestartPolicyNever,
-					ServiceAccountName: bundle.Spec.ServiceAccountName,
-					InitContainers:     initContainers,
-					Containers: []corev1.Container{
-						{
-							Name:       constants.ContainerNameUDSCreate,
-							Image:      constants.UDSCLIImage,
-							Command:    []string{"/bin/sh", "-c"},
-							Args:       []string{udsCmd},
-							WorkingDir: workingDir,
-							VolumeMounts: []corev1.VolumeMount{
-								{
-									Name:      constants.VolumeNameWorkspace,
-									MountPath: constants.VolumeMountPathWorkspace,
-								},
-								{
-									Name:      constants.VolumeNameOutput,
-									MountPath: constants.VolumeMountPathOutput,
-								},
-							},
-							SecurityContext: actions.NonRootSecurityContextWithUID(constants.DefaultUDSUID),
-							Resources:       handler.getResources(bundle),
-						},
-					},
-					Volumes:         handler.buildVolumes(bundle),
-					SecurityContext: actions.NonRootPodSecurityContextWithUID(constants.DefaultUDSUID),
+	// Add git credentials volume if needed
+	if bundle.Spec.Source.Type == udsv1alpha2.SourceTypeGit &&
+		bundle.Spec.Source.Git != nil &&
+		bundle.Spec.Source.Git.CredentialsSecretRef != nil && // pragma: allowlist secret
+		!bundle.Spec.Source.Git.DisableCloneCredentials {
+
+		secretName := bundle.Spec.Source.Git.CredentialsSecretRef.Name // pragma: allowlist secret
+		builder.WithCustomVolume(corev1.Volume{
+			Name: "git-creds",
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: secretName,
 				},
 			},
-		},
+		})
 	}
 
-	// Check if job already exists
-	existingJob, err := handler.kubeClient.BatchV1().Jobs(namespace).Get(ctx, jobName, metav1.GetOptions{})
-	if err == nil {
-		// Job already exists, return it
-		klog.V(2).InfoS("Job already exists, reusing", "name", bundle.Name, "job", jobName)
-		return existingJob, nil
-	}
-
-	// Create the job
-	createdJob, err := handler.kubeClient.BatchV1().Jobs(namespace).Create(ctx, job, metav1.CreateOptions{})
+	// Create or get the job
+	job, err := builder.CreateOrGet(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create job: %w", err)
 	}
 
-	return createdJob, nil
+	return job, nil
 }
 
 // buildUDSCommand builds the UDS CLI command for bundle creation
-func (handler *CreateHandler) buildUDSCommand(_ *udsv1alpha2.UDSBundleJob) (string, string, error) {
+func (handler *CreateHandler) buildUDSCommand(_ *udsv1alpha2.UDSBundleJob, artifactPVCName string) (string, string) {
 	workingDir := constants.VolumeMountPathWorkspace
+
+	// Determine output directory based on whether we're using a PVC for multi-action workflows
+	var outputDir string
+	if artifactPVCName != "" {
+		// Multi-action job: output to shared PVC directory for subsequent actions
+		outputDir = constants.VolumeMountPathArtifacts
+	} else {
+		// Standalone create: output to EmptyDir volume
+		outputDir = constants.VolumeMountPathOutput
+	}
 
 	// UDS bundle create command
 	// Assumes uds-bundle.yaml is in the workspace root
-	cmd := "uds create . --confirm --output-directory " + constants.VolumeMountPathOutput
+	cmd := "uds create . --confirm --output-directory " + outputDir
 
-	return cmd, workingDir, nil
+	return cmd, workingDir
 }
 
 // buildInitContainers creates init containers for source retrieval

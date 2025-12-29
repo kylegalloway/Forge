@@ -12,22 +12,14 @@ import (
 
 	"github.com/kylegalloway/forge/pkg/actions"
 	udsv1alpha2 "github.com/kylegalloway/forge/pkg/apis/uds/v1alpha2"
+	testhelpers "github.com/kylegalloway/forge/pkg/controller/testing"
 	"github.com/kylegalloway/forge/pkg/telemetry"
 )
-
-// mustNewMetrics creates metrics instance for testing
-func mustNewMetrics() *telemetry.Metrics {
-	m, err := telemetry.NewMetrics()
-	if err != nil {
-		panic(err)
-	}
-	return m
-}
 
 // TestNewCreateHandler tests CreateHandler initialization
 func TestNewCreateHandler(t *testing.T) {
 	kubeClient := fake.NewClientset()
-	metrics := mustNewMetrics()
+	metrics := testhelpers.MustNewMetrics()
 	tracer := telemetry.NewTracer()
 
 	handler := NewCreateHandler(kubeClient, metrics, tracer)
@@ -48,7 +40,7 @@ func TestNewCreateHandler(t *testing.T) {
 // TestNewPublishHandler tests PublishHandler initialization
 func TestNewPublishHandler(t *testing.T) {
 	kubeClient := fake.NewClientset()
-	metrics := mustNewMetrics()
+	metrics := testhelpers.MustNewMetrics()
 	tracer := telemetry.NewTracer()
 
 	handler := NewPublishHandler(kubeClient, metrics, tracer)
@@ -69,7 +61,7 @@ func TestNewPublishHandler(t *testing.T) {
 // TestNewDeployHandler tests DeployHandler initialization
 func TestNewDeployHandler(t *testing.T) {
 	kubeClient := fake.NewClientset()
-	metrics := mustNewMetrics()
+	metrics := testhelpers.MustNewMetrics()
 	tracer := telemetry.NewTracer()
 
 	handler := NewDeployHandler(kubeClient, metrics, tracer)
@@ -90,7 +82,7 @@ func TestNewDeployHandler(t *testing.T) {
 // TestCreateHandlerExecute tests CreateHandler.Execute
 func TestCreateHandlerExecute(t *testing.T) {
 	kubeClient := fake.NewClientset()
-	handler := NewCreateHandler(kubeClient, mustNewMetrics(), telemetry.NewTracer())
+	handler := NewCreateHandler(kubeClient, testhelpers.MustNewMetrics(), telemetry.NewTracer())
 
 	tests := []struct {
 		name    string
@@ -177,7 +169,8 @@ func TestCreateHandlerExecute(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := handler.Execute(context.Background(), tt.bundle)
+			// Test without PVC (standalone create)
+			result, err := handler.Execute(context.Background(), tt.bundle, "")
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Execute() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -204,7 +197,7 @@ func TestCreateHandlerExecute(t *testing.T) {
 // TestPublishHandlerExecute tests PublishHandler.Execute
 func TestPublishHandlerExecute(t *testing.T) {
 	kubeClient := fake.NewClientset()
-	handler := NewPublishHandler(kubeClient, mustNewMetrics(), telemetry.NewTracer())
+	handler := NewPublishHandler(kubeClient, testhelpers.MustNewMetrics(), telemetry.NewTracer())
 
 	tests := []struct {
 		name    string
@@ -295,7 +288,8 @@ func TestPublishHandlerExecute(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := handler.Execute(context.Background(), tt.bundle)
+			// Test without PVC (standalone publish)
+			result, err := handler.Execute(context.Background(), tt.bundle, "", "")
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Execute() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -316,7 +310,7 @@ func TestPublishHandlerExecute(t *testing.T) {
 // TestDeployHandlerExecute tests DeployHandler.Execute
 func TestDeployHandlerExecute(t *testing.T) {
 	kubeClient := fake.NewClientset()
-	handler := NewDeployHandler(kubeClient, mustNewMetrics(), telemetry.NewTracer())
+	handler := NewDeployHandler(kubeClient, testhelpers.MustNewMetrics(), telemetry.NewTracer())
 
 	tests := []struct {
 		name    string
@@ -394,7 +388,8 @@ func TestDeployHandlerExecute(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := handler.Execute(context.Background(), tt.bundle)
+			// Test without PVC (standalone deploy)
+			result, err := handler.Execute(context.Background(), tt.bundle, "", "")
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Execute() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -476,24 +471,19 @@ func TestCreateHandlerBuildUDSCommand(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cmd, workingDir, err := handler.buildUDSCommand(tt.bundle)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("buildUDSCommand() error = %v, wantErr %v", err, tt.wantErr)
+			// Test without PVC (standalone create)
+			cmd, workingDir := handler.buildUDSCommand(tt.bundle, "")
+			if workingDir != tt.wantDir {
+				t.Errorf("buildUDSCommand() workingDir = %v, want %v", workingDir, tt.wantDir)
+			}
+			if cmd == "" {
+				t.Error("buildUDSCommand() returned empty command")
 				return
 			}
-			if !tt.wantErr {
-				if workingDir != tt.wantDir {
-					t.Errorf("buildUDSCommand() workingDir = %v, want %v", workingDir, tt.wantDir)
-				}
-				if cmd == "" {
-					t.Error("buildUDSCommand() returned empty command")
-					return
-				}
-				// Check for expected flags
-				for _, flag := range tt.checkFlags {
-					if !strings.Contains(cmd, flag) {
-						t.Errorf("buildUDSCommand() command %v missing flag %v", cmd, flag)
-					}
+			// Check for expected flags
+			for _, flag := range tt.checkFlags {
+				if !strings.Contains(cmd, flag) {
+					t.Errorf("buildUDSCommand() command %v missing flag %v", cmd, flag)
 				}
 			}
 		})
@@ -707,7 +697,7 @@ func TestAddCredentialVolumes(t *testing.T) {
 func TestBuildInitContainers(t *testing.T) {
 	handler := &CreateHandler{
 		kubeClient: fake.NewClientset(),
-		metrics:    mustNewMetrics(),
+		metrics:    testhelpers.MustNewMetrics(),
 		tracer:     telemetry.NewTracer(),
 	}
 
@@ -842,7 +832,7 @@ func TestBuildInitContainers(t *testing.T) {
 func TestBuildVolumes(t *testing.T) {
 	handler := &CreateHandler{
 		kubeClient: fake.NewClientset(),
-		metrics:    mustNewMetrics(),
+		metrics:    testhelpers.MustNewMetrics(),
 		tracer:     telemetry.NewTracer(),
 	}
 

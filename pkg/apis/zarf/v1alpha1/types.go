@@ -491,3 +491,23 @@ type ZarfPackageJobList struct {
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []ZarfPackageJob `json:"items"`
 }
+
+// GetName implements the PackageResource interface
+func (z *ZarfPackageJob) GetName() string {
+	return z.Name
+}
+
+// GetNamespace implements the PackageResource interface
+func (z *ZarfPackageJob) GetNamespace() string {
+	return z.Namespace
+}
+
+// GetServiceAccountName implements the PackageResource interface
+func (z *ZarfPackageJob) GetServiceAccountName() string {
+	return z.Spec.ServiceAccountName
+}
+
+// GetAction implements the PackageResource interface
+func (z *ZarfPackageJob) GetAction() string {
+	return string(z.Spec.Action)
+}

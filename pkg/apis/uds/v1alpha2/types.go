@@ -383,3 +383,23 @@ type UDSBundleJobList struct {
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []UDSBundleJob `json:"items"`
 }
+
+// GetName implements the PackageResource interface
+func (u *UDSBundleJob) GetName() string {
+	return u.Name
+}
+
+// GetNamespace implements the PackageResource interface
+func (u *UDSBundleJob) GetNamespace() string {
+	return u.Namespace
+}
+
+// GetServiceAccountName implements the PackageResource interface
+func (u *UDSBundleJob) GetServiceAccountName() string {
+	return u.Spec.ServiceAccountName
+}
+
+// GetAction implements the PackageResource interface
+func (u *UDSBundleJob) GetAction() string {
+	return string(u.Spec.Action)
+}

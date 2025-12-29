@@ -34,9 +34,13 @@ func NewDeployHandler(kubeClient kubernetes.Interface, metrics *telemetry.Metric
 }
 
 // Execute performs a Deploy action for the given UDSBundleJob
-func (handler *DeployHandler) Execute(ctx context.Context, bundle *udsv1alpha2.UDSBundleJob) (*actions.ActionResult, error) {
+//
+// The artifactPath and artifactPVCName parameters enable multi-action job support (CreateDeploy, etc.)
+// When artifactPVCName is set, the PVC is mounted and artifactPath specifies where to find the bundle.
+// When empty, assumes standalone deploy with bundle source in workspace or from spec.
+func (handler *DeployHandler) Execute(ctx context.Context, bundle *udsv1alpha2.UDSBundleJob, artifactPath, artifactPVCName string) (*actions.ActionResult, error) {
 
-	klog.InfoS("Executing UDS Bundle Deploy action", "name", bundle.Name, "namespace", bundle.Namespace)
+	klog.InfoS("Executing UDS Bundle Deploy action", "name", bundle.Name, "namespace", bundle.Namespace, "artifactPath", artifactPath, "artifactPVC", artifactPVCName)
 
 	// Record deploy started
 	handler.metrics.RecordBundleDeployStarted(ctx, bundle.Namespace, bundle.Name)
@@ -48,7 +52,7 @@ func (handler *DeployHandler) Execute(ctx context.Context, bundle *udsv1alpha2.U
 	}
 
 	// Create Kubernetes Job to deploy the bundle
-	job, err := handler.createDeployJob(ctx, bundle)
+	job, err := handler.createDeployJob(ctx, bundle, artifactPath, artifactPVCName)
 	if err != nil {
 		handler.metrics.RecordBundleDeployFailed(ctx, bundle.Namespace, bundle.Name)
 		return nil, fmt.Errorf("failed to create deploy job: %w", err)
@@ -71,12 +75,14 @@ func (handler *DeployHandler) Execute(ctx context.Context, bundle *udsv1alpha2.U
 }
 
 // createDeployJob creates a Kubernetes Job to deploy a UDS bundle
-func (handler *DeployHandler) createDeployJob(ctx context.Context, bundle *udsv1alpha2.UDSBundleJob) (*batchv1.Job, error) {
+func (handler *DeployHandler) createDeployJob(ctx context.Context, bundle *udsv1alpha2.UDSBundleJob, artifactPath, artifactPVCName string) (*batchv1.Job, error) {
 	jobName := fmt.Sprintf("%s-deploy", bundle.Name)
-	namespace := bundle.Namespace
 
 	// Build UDS CLI deploy command
-	udsCmd := handler.buildDeployCommand(bundle)
+	udsCmd := handler.buildDeployCommand(bundle, artifactPath)
+
+	// Build env vars
+	envVars := handler.buildEnvVars(bundle)
 
 	// Determine timeout - use Deploy.Timeout if specified, otherwise use default
 	timeoutStr := ""
@@ -85,68 +91,41 @@ func (handler *DeployHandler) createDeployJob(ctx context.Context, bundle *udsv1
 	}
 	activeDeadlineSeconds := actions.ParseTimeoutWithDefault(timeoutStr, constants.DefaultDeployTimeout)
 
-	// Job configuration
-	backoffLimit := int32(0) // Don't retry failed deploys
+	// Build Job using JobBuilder
+	builder := actions.NewJobBuilder(jobName, bundle.Namespace).
+		WithKubeClient(handler.kubeClient).
+		WithOwnerReference(bundle, udsv1alpha2.SchemeGroupVersion.WithKind("UDSBundleJob")).
+		WithLabels(map[string]string{
+			"app":                  "forge",
+			"resource-type":        "udsbundlejob",
+			constants.LabelPackage: bundle.Name,
+			constants.LabelAction:  "deploy",
+		}).
+		WithContainerImage(constants.UDSCLIImage).
+		WithContainerName(constants.ContainerNameUDSDeploy).
+		WithCommand([]string{"/bin/sh", "-c"}).
+		WithArgs([]string{udsCmd}).
+		WithWorkingDir(constants.VolumeMountPathWorkspace).
+		WithResources(handler.getResources(bundle)).
+		WithBackoffLimit(0).
+		WithActiveDeadlineSeconds(activeDeadlineSeconds).
+		WithTTLSecondsAfterFinished(3600).
+		WithWorkspaceVolume().
+		WithArtifactPVC(artifactPVCName)
 
-	job := &batchv1.Job{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      jobName,
-			Namespace: namespace,
-			Labels: map[string]string{
-				"app":                  "forge",
-				"resource-type":        "udsbundlejob",
-				constants.LabelPackage: bundle.Name,
-				constants.LabelAction:  "deploy",
-			},
-			OwnerReferences: []metav1.OwnerReference{
-				*metav1.NewControllerRef(bundle, udsv1alpha2.SchemeGroupVersion.WithKind("UDSBundleJob")),
-			},
-		},
-		Spec: batchv1.JobSpec{
-			BackoffLimit:            &backoffLimit,
-			ActiveDeadlineSeconds:   &activeDeadlineSeconds,
-			TTLSecondsAfterFinished: actions.Ptr(int32(3600)),
-			Template: corev1.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{
-					Labels: map[string]string{
-						"app":                  "forge",
-						"resource-type":        "udsbundlejob",
-						constants.LabelPackage: bundle.Name,
-						constants.LabelAction:  "deploy",
-					},
-				},
-				Spec: corev1.PodSpec{
-					RestartPolicy:      corev1.RestartPolicyNever,
-					ServiceAccountName: bundle.Spec.ServiceAccountName,
-					Containers: []corev1.Container{
-						{
-							Name:    constants.ContainerNameUDSDeploy,
-							Image:   constants.UDSCLIImage,
-							Command: []string{"/bin/sh", "-c"},
-							Args:    []string{udsCmd},
-							VolumeMounts: []corev1.VolumeMount{
-								{
-									Name:      constants.VolumeNameWorkspace,
-									MountPath: constants.VolumeMountPathWorkspace,
-								},
-							},
-							SecurityContext: actions.NonRootSecurityContextWithUID(constants.DefaultUDSUID),
-							Resources:       handler.getResources(bundle),
-							Env:             handler.buildEnvVars(bundle),
-						},
-					},
-					Volumes: []corev1.Volume{
-						{
-							Name: constants.VolumeNameWorkspace,
-							VolumeSource: corev1.VolumeSource{
-								EmptyDir: &corev1.EmptyDirVolumeSource{},
-							},
-						},
-					},
-					SecurityContext: actions.NonRootPodSecurityContextWithUID(constants.DefaultUDSUID),
-				},
-			},
-		},
+	// Add env vars
+	for _, envVar := range envVars {
+		builder.WithEnvVar(envVar.Name, envVar.Value)
+	}
+
+	// Build the job spec
+	job := builder.Build()
+
+	// Set ServiceAccount and SecurityContexts
+	job.Spec.Template.Spec.ServiceAccountName = bundle.Spec.ServiceAccountName
+	job.Spec.Template.Spec.SecurityContext = actions.NonRootPodSecurityContextWithUID(constants.DefaultUDSUID)
+	if len(job.Spec.Template.Spec.Containers) > 0 {
+		job.Spec.Template.Spec.Containers[0].SecurityContext = actions.NonRootSecurityContextWithUID(constants.DefaultUDSUID)
 	}
 
 	// Add kubeconfig volume for external cluster deployment
@@ -155,14 +134,14 @@ func (handler *DeployHandler) createDeployJob(ctx context.Context, bundle *udsv1
 	}
 
 	// Check if job already exists
-	existingJob, err := handler.kubeClient.BatchV1().Jobs(namespace).Get(ctx, jobName, metav1.GetOptions{})
+	existingJob, err := handler.kubeClient.BatchV1().Jobs(bundle.Namespace).Get(ctx, jobName, metav1.GetOptions{})
 	if err == nil {
 		klog.V(2).InfoS("Job already exists, reusing", "name", bundle.Name, "job", jobName)
 		return existingJob, nil
 	}
 
 	// Create the job
-	createdJob, err := handler.kubeClient.BatchV1().Jobs(namespace).Create(ctx, job, metav1.CreateOptions{})
+	createdJob, err := handler.kubeClient.BatchV1().Jobs(bundle.Namespace).Create(ctx, job, metav1.CreateOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create job: %w", err)
 	}
@@ -171,11 +150,20 @@ func (handler *DeployHandler) createDeployJob(ctx context.Context, bundle *udsv1
 }
 
 // buildDeployCommand builds the UDS CLI deploy command
-func (handler *DeployHandler) buildDeployCommand(bundle *udsv1alpha2.UDSBundleJob) string {
+func (handler *DeployHandler) buildDeployCommand(bundle *udsv1alpha2.UDSBundleJob, artifactPath string) string {
 	deploy := bundle.Spec.Deploy
 
+	// Determine bundle path - use artifactPath if provided (multi-action workflow),
+	// otherwise search workspace for bundle (standalone deploy)
+	var bundlePath string
+	if artifactPath != "" {
+		bundlePath = artifactPath
+	} else {
+		bundlePath = constants.VolumeMountPathWorkspace + "/uds-bundle-*.tar.zst"
+	}
+
 	// Base command
-	cmd := "uds deploy " + constants.VolumeMountPathWorkspace + "/uds-bundle-*.tar.zst --confirm"
+	cmd := "uds deploy " + bundlePath + " --confirm"
 
 	// Add namespace if specified
 	if deploy.Namespace != "" {

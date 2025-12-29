@@ -34,10 +34,14 @@ func NewPublishHandler(kubeClient kubernetes.Interface, metrics *telemetry.Metri
 
 // Execute performs a Publish action for the given UDSBundleJob
 //
+// The artifactPath and artifactPVCName parameters enable multi-action job support (CreatePublish, etc.)
+// When artifactPVCName is set, the PVC is mounted and artifactPath specifies where to find the bundle.
+// When empty, assumes standalone publish with bundle source in workspace or from spec.
+//
 //nolint:staticcheck // SA1019: UDSBundleJob v1alpha1 must be supported until v0.10.0
-func (handler *PublishHandler) Execute(ctx context.Context, bundle *udsv1alpha2.UDSBundleJob) (*actions.ActionResult, error) {
+func (handler *PublishHandler) Execute(ctx context.Context, bundle *udsv1alpha2.UDSBundleJob, artifactPath, artifactPVCName string) (*actions.ActionResult, error) {
 
-	klog.InfoS("Executing UDS Bundle Publish action", "name", bundle.Name, "namespace", bundle.Namespace)
+	klog.InfoS("Executing UDS Bundle Publish action", "name", bundle.Name, "namespace", bundle.Namespace, "artifactPath", artifactPath, "artifactPVC", artifactPVCName)
 
 	// Record publish started
 	handler.metrics.RecordBundlePublishStarted(ctx, bundle.Namespace, bundle.Name)
@@ -49,7 +53,7 @@ func (handler *PublishHandler) Execute(ctx context.Context, bundle *udsv1alpha2.
 	}
 
 	// Create Kubernetes Job to publish the bundle
-	job, err := handler.createPublishJob(ctx, bundle)
+	job, err := handler.createPublishJob(ctx, bundle, artifactPath, artifactPVCName)
 	if err != nil {
 		handler.metrics.RecordBundlePublishFailed(ctx, bundle.Namespace, bundle.Name)
 		return nil, fmt.Errorf("failed to create publish job: %w", err)
@@ -72,95 +76,67 @@ func (handler *PublishHandler) Execute(ctx context.Context, bundle *udsv1alpha2.
 }
 
 // createPublishJob creates a Kubernetes Job to publish a UDS bundle
-func (handler *PublishHandler) createPublishJob(ctx context.Context, bundle *udsv1alpha2.UDSBundleJob) (*batchv1.Job, error) {
+func (handler *PublishHandler) createPublishJob(ctx context.Context, bundle *udsv1alpha2.UDSBundleJob, artifactPath, artifactPVCName string) (*batchv1.Job, error) {
 	jobName := fmt.Sprintf("%s-publish", bundle.Name)
-	namespace := bundle.Namespace
 
 	// Build UDS CLI publish command
-	udsCmd, err := handler.buildPublishCommand(bundle)
+	udsCmd, err := handler.buildPublishCommand(bundle, artifactPath)
 	if err != nil {
 		return nil, err
 	}
 
+	// Build env vars
+	envVars := handler.buildEnvVars(bundle)
+
 	// Use default timeout for publish operations
 	activeDeadlineSeconds := int64(constants.DefaultPublishTimeout)
 
-	// Job configuration
-	backoffLimit := int32(0) // Don't retry failed publishes
+	// Build Job using JobBuilder
+	builder := actions.NewJobBuilder(jobName, bundle.Namespace).
+		WithKubeClient(handler.kubeClient).
+		WithOwnerReference(bundle, udsv1alpha2.SchemeGroupVersion.WithKind("UDSBundleJob")).
+		WithLabels(map[string]string{
+			"app":                  "forge",
+			"resource-type":        "udsbundlejob",
+			constants.LabelPackage: bundle.Name,
+			constants.LabelAction:  "publish",
+		}).
+		WithContainerImage(constants.UDSCLIImage).
+		WithContainerName(constants.ContainerNameUDSPublish).
+		WithCommand([]string{"/bin/sh", "-c"}).
+		WithArgs([]string{udsCmd}).
+		WithWorkingDir(constants.VolumeMountPathWorkspace).
+		WithResources(handler.getResources(bundle)).
+		WithBackoffLimit(0).
+		WithActiveDeadlineSeconds(activeDeadlineSeconds).
+		WithTTLSecondsAfterFinished(3600).
+		WithWorkspaceVolume().
+		WithArtifactPVC(artifactPVCName)
 
-	job := &batchv1.Job{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      jobName,
-			Namespace: namespace,
-			Labels: map[string]string{
-				"app":                  "forge",
-				"resource-type":        "udsbundlejob",
-				constants.LabelPackage: bundle.Name,
-				constants.LabelAction:  "publish",
-			},
-			OwnerReferences: []metav1.OwnerReference{
-				*metav1.NewControllerRef(bundle, udsv1alpha2.SchemeGroupVersion.WithKind("UDSBundleJob")),
-			},
-		},
-		Spec: batchv1.JobSpec{
-			BackoffLimit:            &backoffLimit,
-			ActiveDeadlineSeconds:   &activeDeadlineSeconds,
-			TTLSecondsAfterFinished: actions.Ptr(int32(3600)),
-			Template: corev1.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{
-					Labels: map[string]string{
-						"app":                  "forge",
-						"resource-type":        "udsbundlejob",
-						constants.LabelPackage: bundle.Name,
-						constants.LabelAction:  "publish",
-					},
-				},
-				Spec: corev1.PodSpec{
-					RestartPolicy:      corev1.RestartPolicyNever,
-					ServiceAccountName: bundle.Spec.ServiceAccountName,
-					Containers: []corev1.Container{
-						{
-							Name:    constants.ContainerNameUDSPublish,
-							Image:   constants.UDSCLIImage,
-							Command: []string{"/bin/sh", "-c"},
-							Args:    []string{udsCmd},
-							VolumeMounts: []corev1.VolumeMount{
-								{
-									Name:      constants.VolumeNameWorkspace,
-									MountPath: constants.VolumeMountPathWorkspace,
-								},
-							},
-							SecurityContext: actions.NonRootSecurityContextWithUID(constants.DefaultUDSUID),
-							Resources:       handler.getResources(bundle),
-							Env:             handler.buildEnvVars(bundle),
-						},
-					},
-					Volumes: []corev1.Volume{
-						{
-							Name: constants.VolumeNameWorkspace,
-							VolumeSource: corev1.VolumeSource{
-								EmptyDir: &corev1.EmptyDirVolumeSource{},
-							},
-						},
-					},
-					SecurityContext: actions.NonRootPodSecurityContextWithUID(constants.DefaultUDSUID),
-				},
-			},
-		},
+	// Build the job spec
+	job := builder.Build()
+
+	// Set ServiceAccount and SecurityContexts
+	job.Spec.Template.Spec.ServiceAccountName = bundle.Spec.ServiceAccountName
+	job.Spec.Template.Spec.SecurityContext = actions.NonRootPodSecurityContextWithUID(constants.DefaultUDSUID)
+	if len(job.Spec.Template.Spec.Containers) > 0 {
+		job.Spec.Template.Spec.Containers[0].SecurityContext = actions.NonRootSecurityContextWithUID(constants.DefaultUDSUID)
+		// Set env vars (including those with ValueFrom for secrets)
+		job.Spec.Template.Spec.Containers[0].Env = envVars
 	}
 
 	// Add credential volumes if needed
 	handler.addCredentialVolumes(bundle, job)
 
 	// Check if job already exists
-	existingJob, err := handler.kubeClient.BatchV1().Jobs(namespace).Get(ctx, jobName, metav1.GetOptions{})
+	existingJob, err := handler.kubeClient.BatchV1().Jobs(bundle.Namespace).Get(ctx, jobName, metav1.GetOptions{})
 	if err == nil {
 		klog.V(2).InfoS("Job already exists, reusing", "name", bundle.Name, "job", jobName)
 		return existingJob, nil
 	}
 
 	// Create the job
-	createdJob, err := handler.kubeClient.BatchV1().Jobs(namespace).Create(ctx, job, metav1.CreateOptions{})
+	createdJob, err := handler.kubeClient.BatchV1().Jobs(bundle.Namespace).Create(ctx, job, metav1.CreateOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create job: %w", err)
 	}
@@ -169,8 +145,17 @@ func (handler *PublishHandler) createPublishJob(ctx context.Context, bundle *uds
 }
 
 // buildPublishCommand builds the UDS CLI publish command
-func (handler *PublishHandler) buildPublishCommand(bundle *udsv1alpha2.UDSBundleJob) (string, error) {
+func (handler *PublishHandler) buildPublishCommand(bundle *udsv1alpha2.UDSBundleJob, artifactPath string) (string, error) {
 	dest := bundle.Spec.Publish.Destination
+
+	// Determine bundle path - use artifactPath if provided (multi-action workflow),
+	// otherwise search workspace for bundle (standalone publish)
+	var bundlePath string
+	if artifactPath != "" {
+		bundlePath = artifactPath
+	} else {
+		bundlePath = constants.VolumeMountPathWorkspace + "/uds-bundle-*.tar.zst"
+	}
 
 	switch dest.Type {
 	case udsv1alpha2.DestinationTypeOCI:
@@ -179,7 +164,7 @@ func (handler *PublishHandler) buildPublishCommand(bundle *udsv1alpha2.UDSBundle
 		}
 		// UDS publish command for OCI registry
 		ociRef := fmt.Sprintf("%s/%s:%s", dest.OCI.Registry, dest.OCI.Repository, dest.OCI.Tag)
-		return fmt.Sprintf("uds publish "+constants.VolumeMountPathWorkspace+"/uds-bundle-*.tar.zst %s", ociRef), nil
+		return fmt.Sprintf("uds publish %s %s", bundlePath, ociRef), nil
 
 	case udsv1alpha2.DestinationTypeS3:
 		if dest.S3 == nil {
@@ -187,11 +172,11 @@ func (handler *PublishHandler) buildPublishCommand(bundle *udsv1alpha2.UDSBundle
 		}
 		// For S3, we'll use AWS CLI to upload
 		s3Path := fmt.Sprintf("s3://%s/%s", dest.S3.Bucket, dest.S3.Key)
-		return fmt.Sprintf("aws s3 cp "+constants.VolumeMountPathWorkspace+"/uds-bundle-*.tar.zst %s", s3Path), nil
+		return fmt.Sprintf("aws s3 cp %s %s", bundlePath, s3Path), nil
 
 	case udsv1alpha2.DestinationTypeLocal:
 		// Local destination - just echo success
-		return "echo 'Bundle artifact stored locally in " + constants.VolumeMountPathWorkspace + "'", nil
+		return fmt.Sprintf("echo 'Bundle artifact stored locally at %s'", bundlePath), nil
 
 	default:
 		return "", fmt.Errorf("unsupported destination type: %s", dest.Type)

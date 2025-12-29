@@ -73,11 +73,9 @@ func (handler *DeployHandler) Execute(ctx context.Context, pkg *zarfv1alpha1.Zar
 // createDeployJob creates a Kubernetes Job to deploy a Zarf package
 func (handler *DeployHandler) createDeployJob(ctx context.Context, pkg *zarfv1alpha1.ZarfPackageJob, artifactPath string, artifactPVCName string) (*batchv1.Job, error) {
 	jobName := fmt.Sprintf("%s-deploy", pkg.Name)
-	namespace := pkg.Namespace
 
 	// If multi-action job, update artifactPath to use glob pattern for PVC location
 	if artifactPVCName != "" {
-		// Use glob pattern to find the zarf package created by build job
 		artifactPath = constants.VolumeMountPathArtifacts + "/*.tar.zst"
 	}
 
@@ -90,80 +88,50 @@ func (handler *DeployHandler) createDeployJob(ctx context.Context, pkg *zarfv1al
 		return nil, fmt.Errorf("failed to build init containers: %w", err)
 	}
 
-	// Parse timeout (default 30m)
+	// Parse timeout
 	timeoutStr := ""
 	if pkg.Spec.Deploy != nil {
 		timeoutStr = pkg.Spec.Deploy.Timeout
 	}
 	activeDeadlineSeconds := actions.ParseTimeoutWithDefault(timeoutStr, constants.DefaultDeployTimeout)
 
-	// Job configuration
-	backoffLimit := int32(0)
+	// Build env vars
+	envVars := handler.buildEnvVars(pkg)
 
-	job := &batchv1.Job{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      jobName,
-			Namespace: namespace,
-			Labels: map[string]string{
-				"app":                  "forge",
-				"resource-type":        "zarfpackagejob",
-				constants.LabelPackage: pkg.Name,
-				constants.LabelAction:  "deploy",
-			},
-			OwnerReferences: []metav1.OwnerReference{
-				*metav1.NewControllerRef(pkg, zarfv1alpha1.SchemeGroupVersion.WithKind("ZarfPackageJob")),
-			},
-		},
-		Spec: batchv1.JobSpec{
-			BackoffLimit:            &backoffLimit,
-			ActiveDeadlineSeconds:   &activeDeadlineSeconds,
-			TTLSecondsAfterFinished: actions.Ptr(int32(3600)),
-			Template: corev1.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{
-					Labels: map[string]string{
-						"app":                  "forge",
-						"resource-type":        "zarfpackagejob",
-						constants.LabelPackage: pkg.Name,
-						constants.LabelAction:  "deploy",
-					},
-				},
-				Spec: corev1.PodSpec{
-					RestartPolicy:  corev1.RestartPolicyNever,
-					InitContainers: initContainers,
-					Containers: []corev1.Container{
-						{
-							Name:       constants.ContainerNameZarfDeploy,
-							Image:      constants.ZarfCLIImage,
-							Command:    []string{"/bin/sh", "-c"},
-							Args:       []string{deployCmd},
-							WorkingDir: constants.VolumeMountPathWorkspace,
-							VolumeMounts: []corev1.VolumeMount{
-								{
-									Name:      constants.VolumeNameWorkspace,
-									MountPath: constants.VolumeMountPathWorkspace,
-								},
-							},
-							Env:             handler.buildEnvVars(pkg),
-							SecurityContext: actions.NonRootSecurityContextWithUID(constants.DefaultZarfUID),
-							Resources:       handler.getResources(pkg),
-						},
-					},
-					Volumes: []corev1.Volume{
-						{
-							Name: constants.VolumeNameWorkspace,
-							VolumeSource: corev1.VolumeSource{
-								EmptyDir: &corev1.EmptyDirVolumeSource{},
-							},
-						},
-					},
-					SecurityContext: actions.NonRootPodSecurityContextWithUID(constants.DefaultZarfUID),
-				},
-			},
-		},
+	// Build Job using JobBuilder
+	builder := actions.NewJobBuilder(jobName, pkg.Namespace).
+		WithOwnerReference(pkg, zarfv1alpha1.SchemeGroupVersion.WithKind("ZarfPackageJob")).
+		WithLabels(map[string]string{
+			"app":                  "forge",
+			"resource-type":        "zarfpackagejob",
+			constants.LabelPackage: pkg.Name,
+			constants.LabelAction:  "deploy",
+		}).
+		WithContainerImage(constants.ZarfCLIImage).
+		WithContainerName(constants.ContainerNameZarfDeploy).
+		WithCommand([]string{"/bin/sh", "-c"}).
+		WithArgs([]string{deployCmd}).
+		WithWorkingDir(constants.VolumeMountPathWorkspace).
+		WithResources(handler.getResources(pkg)).
+		WithBackoffLimit(0).
+		WithActiveDeadlineSeconds(activeDeadlineSeconds).
+		WithTTLSecondsAfterFinished(3600).
+		WithInitContainers(initContainers).
+		WithWorkspaceVolume().
+		WithArtifactPVC(artifactPVCName)
+
+	// Add env vars
+	for _, envVar := range envVars {
+		builder.WithEnvVar(envVar.Name, envVar.Value)
 	}
 
-	// Add artifact PVC if multi-action job
-	actions.AddArtifactPVCVolume(job, artifactPVCName)
+	// Add source credential volume if OCI source with credentials
+	if pkg.Spec.Source.Type == zarfv1alpha1.SourceTypeOCI && pkg.Spec.Source.OCI != nil && pkg.Spec.Source.OCI.CredentialsSecretRef != nil { // pragma: allowlist secret
+		builder.WithDockerConfigSecret(pkg.Spec.Source.OCI.CredentialsSecretRef.Name) // pragma: allowlist secret
+	}
+
+	// Build the job spec so we can apply additional configuration
+	job := builder.Build()
 
 	// Add ServiceAccount for in-cluster or external cluster access
 	handler.addServiceAccount(pkg, job)
@@ -177,34 +145,15 @@ func (handler *DeployHandler) createDeployJob(ctx context.Context, pkg *zarfv1al
 		actions.AddKubeconfigVolume(job, kubeconfigSecretName)
 	}
 
-	// Add source credential volume if OCI source with credentials
-	if pkg.Spec.Source.Type == zarfv1alpha1.SourceTypeOCI && pkg.Spec.Source.OCI != nil && pkg.Spec.Source.OCI.CredentialsSecretRef != nil { // pragma: allowlist secret
-		job.Spec.Template.Spec.Volumes = append(job.Spec.Template.Spec.Volumes, corev1.Volume{
-			Name: "source-docker-config",
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{ // pragma: allowlist secret
-					SecretName: pkg.Spec.Source.OCI.CredentialsSecretRef.Name, // pragma: allowlist secret
-					Items: []corev1.KeyToPath{
-						{
-							Key:  ".dockerconfigjson",
-							Path: "config.json",
-						},
-					},
-				},
-			},
-		})
-	}
-
 	// Check if job already exists
-	existingJob, err := handler.kubeClient.BatchV1().Jobs(namespace).Get(ctx, jobName, metav1.GetOptions{})
+	existingJob, err := handler.kubeClient.BatchV1().Jobs(pkg.Namespace).Get(ctx, jobName, metav1.GetOptions{})
 	if err == nil {
-		// Job already exists, return it
 		klog.V(2).InfoS("Job already exists, reusing", "name", pkg.Name, "job", jobName)
 		return existingJob, nil
 	}
 
 	// Create the job
-	createdJob, err := handler.kubeClient.BatchV1().Jobs(namespace).Create(ctx, job, metav1.CreateOptions{})
+	createdJob, err := handler.kubeClient.BatchV1().Jobs(pkg.Namespace).Create(ctx, job, metav1.CreateOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create job: %w", err)
 	}

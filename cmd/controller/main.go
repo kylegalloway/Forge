@@ -45,9 +45,9 @@ func main() {
 
 	metrics, tracer := initializeTelemetry()
 
-	// Create both Zarf and UDS controllers
-	zarfCtrl := controller.NewController(kubeClient, dynamicClient, watchNamespace, metrics, tracer)
-	udsCtrl := controller.NewUDSController(kubeClient, dynamicClient, watchNamespace, metrics, tracer)
+	// Create both Zarf and UDS controllers using generic controller pattern
+	zarfCtrl := controller.NewGenericZarfController(kubeClient, dynamicClient, watchNamespace, metrics, tracer)
+	udsCtrl := controller.NewGenericUDSController(kubeClient, dynamicClient, watchNamespace, metrics, tracer)
 
 	healthServer := startHealthServer(zarfCtrl, udsCtrl)
 	meterProvider, metricsServer := startMetricsServer(ctx)
@@ -123,7 +123,10 @@ func initializeTelemetry() (*telemetry.Metrics, *telemetry.Tracer) {
 	return metrics, tracer
 }
 
-func startHealthServer(zarfCtrl *controller.Controller, udsCtrl *controller.UDSController) *http.Server {
+func startHealthServer(zarfCtrl, udsCtrl interface {
+	Healthy() bool
+	Ready() bool
+}) *http.Server {
 	healthMux := http.NewServeMux()
 	healthMux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) {
 		// Both controllers must be healthy
@@ -208,7 +211,7 @@ func shutdownMeterProvider(ctx context.Context, meterProvider *sdkmetric.MeterPr
 	}
 }
 
-func runControllers(ctx context.Context, zarfCtrl *controller.Controller, udsCtrl *controller.UDSController, kubeClient *kubernetes.Clientset) {
+func runControllers(ctx context.Context, zarfCtrl, udsCtrl interface{ Run(context.Context) error }, kubeClient *kubernetes.Clientset) {
 	klog.Info("Starting Forge controllers (Zarf + UDS)")
 
 	if enableLeaderElection {

@@ -15,7 +15,6 @@ New to Forge? Start here to get up and running quickly.
 Contributing to Forge or extending its functionality? These guides cover development workflows and architecture.
 
 - [Architecture](development/ARCHITECTURE.md) - System design and component overview
-- [Zarf vs UDS Unification](development/ZARF_UDS_UNIFICATION.md) - Analysis and plan for reducing code duplication
 - [Testing Guide](development/TESTING.md) - Running tests, coverage, and CI workflows
 - [KIND Setup](development/KIND_SETUP.md) - Local development environment setup
 - [KIND Testing with Public Images](development/KIND_TESTING_PUBLIC_IMAGES.md) - Testing workflows
@@ -30,8 +29,7 @@ Contributing to Forge or extending its functionality? These guides cover develop
 
 Running Forge in production? These guides cover deployment, hosting, and operational concerns.
 
-- [Hosting](operations/HOSTING.md) - Production hosting strategy (container registries, Helm charts)
-- [Hosting Setup](operations/HOSTING_SETUP.md) - Step-by-step hosting configuration
+- [Hosting Setup](operations/HOSTING_SETUP.md) - Container registry and Helm chart hosting (GHCR, GitHub Releases)
 - [Namespace-Scoped Deployment](operations/NAMESPACE_SCOPED_DEPLOYMENT.md) - Cluster-wide vs namespace-scoped RBAC
 - [Production Checklist](operations/PRODUCTION_CHECKLIST.md) - Pre-deployment verification checklist
 - [Runbook](operations/RUNBOOK.md) - Operational procedures and common tasks

@@ -25,6 +25,11 @@ import (
 	"github.com/kylegalloway/forge/pkg/telemetry"
 )
 
+const (
+	// DefaultArtifactStorageSize is the default size for artifact PVCs
+	DefaultArtifactStorageSize = "10Gi"
+)
+
 // ControllerConfig holds configuration for the generic controller
 type ControllerConfig struct {
 	// ResourceType is the kind name (e.g., "ZarfPackageJob" or "UDSBundleJob")
@@ -444,8 +449,7 @@ func (ctrl *GenericController[T]) ReadyzHandler() http.HandlerFunc {
 
 // EnsureArtifactPVC creates or ensures a PVC for artifact sharing exists
 func EnsureArtifactPVC(ctx context.Context, kubeClient kubernetes.Interface, namespace, pvcName string, _ apiscommon.PackageResource) error {
-	// PVC creation logic is in pvc.go
-	// For now, just check if it exists and create if needed
+	// Check if it exists and create if needed
 	_, err := kubeClient.CoreV1().PersistentVolumeClaims(namespace).Get(ctx, pvcName, metav1.GetOptions{})
 	if err == nil {
 		klog.V(2).InfoS("Artifact PVC already exists", "pvc", pvcName, "namespace", namespace)
@@ -456,8 +460,7 @@ func EnsureArtifactPVC(ctx context.Context, kubeClient kubernetes.Interface, nam
 		return fmt.Errorf("failed to check for existing PVC: %w", err)
 	}
 
-	// Create PVC - simplified version without owner reference for now
-	// TODO: Add owner reference support in Phase 4
+	// Create PVC
 	pvc := &corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      pvcName,

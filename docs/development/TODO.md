@@ -2,22 +2,6 @@
 
 ---
 
-## 📊 Testing Gaps
-
-### Error Path Coverage
-
-**Location**: `pkg/actions/zarf/*_test.go`, `pkg/actions/uds/*_test.go`
-**Current state**: Handler validation errors are tested, but K8s API interaction failures are not.
-**Missing tests**:
-- Job creation failures (K8s API errors)
-- Status update failures
-- Race conditions in job monitoring
-- Multiple completed jobs edge cases
-
-**Action**: Add test cases for controller-level error scenarios and edge cases.
-
----
-
 ## Future Enhancements (Long-term)
 
 ### High Value

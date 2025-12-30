@@ -192,8 +192,8 @@ print_step "Step 2: Updating documentation"
 DOC_FILES=(
     "README.md"
     "docs/getting-started/USER_GUIDE.md"
-    "docs/getting-started/KIND_TESTING_PUBLIC_IMAGES.md"
-    "docs/getting-started/KIND_SETUP.md"
+    "docs/development/KIND_TESTING_PUBLIC_IMAGES.md"
+    "docs/development/KIND_SETUP.md"
 )
 
 for file in "${DOC_FILES[@]}"; do

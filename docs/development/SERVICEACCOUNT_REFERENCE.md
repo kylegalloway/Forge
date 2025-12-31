@@ -77,7 +77,7 @@ action Deploy is not allowed (allowed actions: [Build,Publish]) for ServiceAccou
 ```yaml
 # Single repository
 annotations:
-  forge.dev/allowed-source-repos: "https://github.com/defenseunicorns/zarf"
+  forge.dev/allowed-source-repos: "https://github.com/stefanprodan/podinfo"
 
 # Organization-wide
 annotations:

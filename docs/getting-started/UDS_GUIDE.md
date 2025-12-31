@@ -398,7 +398,7 @@ metadata:
   namespace: forge-system
   annotations:
     forge.forge.dev/allowed-actions: "create,deploy"
-    forge.forge.dev/allowed-git-repos: "github.com/defenseunicorns/*,github.com/myorg/*"
+    forge.forge.dev/allowed-git-repos: "github.com/cncf/*,github.com/myorg/*"
     forge.forge.dev/allowed-deploy-namespaces: "uds-dev,uds-staging"
     # No OCI or S3 access (internal builds only)
 ```

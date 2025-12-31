@@ -16,7 +16,7 @@ A permissive ServiceAccount configured for local development and testing:
 
 - **Namespace:** default
 - **Actions:** Build, Publish
-- **Repositories:** forge repo and defenseunicorns/zarf-public-test
+- **Repositories:** forge repo and stefanprodan/podinfo
 - **Registries:** ghcr.io/* (wildcard for testing)
 - **Deploy Targets:** InCluster
 - **Special:** Allows local sources (non-production feature)

@@ -294,9 +294,9 @@ spec:
   source:
     type: Git
     git:
-      url: https://github.com/defenseunicorns/zarf
-      ref: v0.32.0
-      path: examples/dos-games
+      url: https://github.com/stefanprodan/podinfo
+      ref: 6.7.0
+      path: charts/podinfo
 EOF
 ```
 
@@ -399,9 +399,9 @@ spec:
   action: build
   source:
     git:
-      url: https://github.com/defenseunicorns/zarf
-      ref: v0.32.0
-      path: examples/dos-games
+      url: https://github.com/stefanprodan/podinfo
+      ref: 6.7.0
+      path: charts/podinfo
   buildOptions:
     output: /workspace/output
 ```
@@ -421,9 +421,9 @@ spec:
   action: build-and-publish
   source:
     git:
-      url: https://github.com/defenseunicorns/zarf
-      ref: v0.32.0
-      path: examples/dos-games
+      url: https://github.com/stefanprodan/podinfo
+      ref: 6.7.0
+      path: charts/podinfo
   destination:
     oci:
       registry: ghcr.io
@@ -477,8 +477,8 @@ spec:
   action: create
   source:
     git:
-      url: https://github.com/defenseunicorns/uds-bundle-software-factory
-      ref: main
+      url: https://github.com/prometheus/prometheus
+      ref: v2.45.0
   createOptions:
     output: /workspace/output
 ```

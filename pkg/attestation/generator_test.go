@@ -35,10 +35,10 @@ func TestGenerateForBuild(t *testing.T) {
 			Source: &SourceInfo{
 				Type: "Git",
 				Git: &GitSourceInfo{
-					URL:       "https://github.com/defenseunicorns/zarf",
+					URL:       "https://github.com/stefanprodan/podinfo",
 					Ref:       "main",
 					CommitSHA: "abc123def456", // pragma: allowlist secret
-					Path:      "examples/dos-games",
+					Path:      "charts/podinfo",
 				},
 			},
 			StartTime:    startTime,

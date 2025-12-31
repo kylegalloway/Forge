@@ -40,9 +40,9 @@ spec:
   source:
     type: Git
     git:
-      url: https://github.com/defenseunicorns/zarf
-      ref: v0.66.0
-      path: examples/big-bang
+      url: https://github.com/stefanprodan/podinfo
+      ref: 6.7.0
+      path: charts/podinfo
 
   # Where to deploy it
   deploy:

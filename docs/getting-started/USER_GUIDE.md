@@ -148,9 +148,9 @@ spec:
   source:
     type: Git
     git:
-      url: https://github.com/defenseunicorns/zarf-public-test.git
-      ref: main
-      path: packages/dos-games
+      url: https://github.com/stefanprodan/podinfo.git
+      ref: 6.7.0
+      path: charts/podinfo
 ```
 
 Apply with:
@@ -196,9 +196,9 @@ spec:
   source:
     type: Git
     git:
-      url: https://github.com/defenseunicorns/zarf-public-test.git
-      ref: main
-      path: packages/dos-games
+      url: https://github.com/stefanprodan/podinfo.git
+      ref: 6.7.0
+      path: charts/podinfo
   publish:
     destination:
       type: OCI

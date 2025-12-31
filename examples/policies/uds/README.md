@@ -27,7 +27,7 @@ Forge enforces UDS bundle policies through ServiceAccount annotations. The admis
 
 **Permissions**:
 - ✅ Actions: create, deploy only (no external publishing)
-- ✅ Git repositories: `github.com/defenseunicorns/*`, `github.com/myorg/*`
+- ✅ Git repositories: `github.com/cncf/*`, `github.com/myorg/*`
 - ❌ OCI registries: None (internal builds only)
 - ❌ S3 buckets: None (local storage only)
 - ✅ Deploy namespaces: `uds-dev`, `uds-staging` only
@@ -93,8 +93,8 @@ Glob patterns support wildcards:
      source:
        type: git
        git:
-         url: https://github.com/defenseunicorns/uds-bundle-example
-         ref: main
+         url: https://github.com/grafana/grafana
+         ref: v10.0.0
    ```
 
 ## RBAC Requirements

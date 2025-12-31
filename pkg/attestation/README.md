@@ -57,8 +57,8 @@ opts := attestation.BuildAttestationOptions{
         Source: &attestation.SourceInfo{
             Type: "Git",
             Git: &attestation.GitSourceInfo{
-                URL:       "https://github.com/defenseunicorns/zarf",
-                Ref:       "main",
+                URL:       "https://github.com/stefanprodan/podinfo",
+                Ref:       "6.7.0",
                 CommitSHA: "abc123",
             },
         },

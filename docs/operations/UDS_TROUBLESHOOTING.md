@@ -1160,5 +1160,4 @@ chmod +x collect-uds-diagnostics.sh
 
 1. Check this troubleshooting guide
 2. Review [UDS_GUIDE.md](../getting-started/UDS_GUIDE.md) for usage examples
-3. Check GitHub Issues: https://github.com/defenseunicorns/forge/issues
-4. Ask in Defense Unicorns Slack: #uds-bundle-support
+3. Check GitHub Issues: https://github.com/kylegalloway/forge/issues

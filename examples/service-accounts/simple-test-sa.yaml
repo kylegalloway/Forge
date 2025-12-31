@@ -10,8 +10,8 @@ metadata:
     # Allow Build and Publish actions
     forge.dev/allowed-actions: "Build,Publish"
 
-    # Allow test repositories (hello-forge test + zarf-public-test for dos-games)
-    forge.dev/allowed-source-repos: "https://github.com/defenseunicorns/zarf-public-test,https://github.com/kylegalloway/forge"
+    # Allow test repositories
+    forge.dev/allowed-source-repos: "https://github.com/stefanprodan/podinfo,https://github.com/kylegalloway/forge"
 
     # Allow publishing to test registries
     forge.dev/allowed-publish-registries: "ghcr.io/*"

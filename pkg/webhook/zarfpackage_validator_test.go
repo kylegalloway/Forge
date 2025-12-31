@@ -459,8 +459,8 @@ func TestMatchesGlob(t *testing.T) {
 		{"empty pattern", "anything", "", false},
 		{"complex wildcard", "ghcr.io/myorg/prod/package", "ghcr.io/myorg/*/package", true},
 		{"asterisk matches all", "anything", "*", true},
-		{"multi-segment URL match", "https://github.com/defenseunicorns/zarf", "https://github.com/*", true},
-		{"multi-segment URL with path", "https://github.com/defenseunicorns/zarf/examples/dos-games", "https://github.com/*", true},
+		{"multi-segment URL match", "https://github.com/stefanprodan/podinfo", "https://github.com/*", true},
+		{"multi-segment URL with path", "https://github.com/stefanprodan/podinfo/charts/podinfo", "https://github.com/*", true},
 		{"multi-segment registry match", "ghcr.io/myorg/team/package", "ghcr.io/*", true},
 	}
 

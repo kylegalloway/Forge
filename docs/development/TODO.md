@@ -1,12 +1,5 @@
 # TODO
 
-## Defense Unicorns mentions
-
-* Remove defenseunicorns refs unless they are specifically for zarf and/or uds-cli
-  * Any package examples/samples/etc should be custom or based on widely known CNCF projects that are FOSS
-
----
-
 ## Future Enhancements (Long-term)
 
 ### Medium Value

@@ -270,12 +270,48 @@ type LocalSource struct {
 	DevMode bool `json:"devMode"`
 }
 
+// RetryPolicy defines retry behavior for transient failures
+type RetryPolicy struct {
+	// MaxRetries is the maximum number of retry attempts
+	// +optional
+	// +kubebuilder:default=3
+	// +kubebuilder:validation:Minimum=0
+	// +kubebuilder:validation:Maximum=10
+	MaxRetries *int32 `json:"maxRetries,omitempty"`
+
+	// InitialBackoff is the delay before first retry (e.g., "30s", "1m")
+	// +optional
+	// +kubebuilder:default="30s"
+	InitialBackoff string `json:"initialBackoff,omitempty"`
+
+	// MaxBackoff is the maximum delay between retries
+	// +optional
+	// +kubebuilder:default="5m"
+	MaxBackoff string `json:"maxBackoff,omitempty"`
+
+	// BackoffMultiplier for exponential backoff
+	// +optional
+	// +kubebuilder:default=2.0
+	// +kubebuilder:validation:Type=number
+	BackoffMultiplier *float64 `json:"backoffMultiplier,omitempty"`
+
+	// RetryableErrors defines which error patterns should trigger retries
+	// Supports glob patterns (e.g., "*timeout*", "*throttle*")
+	// If empty, all failures are retryable
+	// +optional
+	RetryableErrors []string `json:"retryableErrors,omitempty"`
+}
+
 // BuildConfig defines configuration for package building
 type BuildConfig struct {
 	// Timeout for the build operation
 	// +optional
 	// +kubebuilder:default="1h"
 	Timeout string `json:"timeout,omitempty"`
+
+	// Retry policy for build failures
+	// +optional
+	Retry *RetryPolicy `json:"retry,omitempty"`
 }
 
 // PublishConfig defines where and how to publish packages
@@ -288,6 +324,10 @@ type PublishConfig struct {
 	// +optional
 	// +kubebuilder:default="30m"
 	Timeout string `json:"timeout,omitempty"`
+
+	// Retry policy for publish failures
+	// +optional
+	Retry *RetryPolicy `json:"retry,omitempty"`
 }
 
 // PublishDestination defines the publish target
@@ -385,6 +425,57 @@ type DeployConfig struct {
 	// ExternalCluster configuration (required if target=ExternalCluster)
 	// +optional
 	ExternalCluster *ExternalClusterConfig `json:"externalCluster,omitempty"`
+
+	// Retry policy for deploy failures
+	// +optional
+	Retry *RetryPolicy `json:"retry,omitempty"`
+
+	// AdoptionPolicy defines how to handle existing resources
+	// +optional
+	// +kubebuilder:default="Error"
+	// +kubebuilder:validation:Enum=Adopt;Skip;Error
+	AdoptionPolicy *AdoptionPolicy `json:"adoptionPolicy,omitempty"`
+
+	// ResourceSelector specifies how to discover existing resources to adopt
+	// Only used when AdoptionPolicy is "Adopt"
+	// +optional
+	ResourceSelector *ResourceSelector `json:"resourceSelector,omitempty"`
+}
+
+// AdoptionPolicy defines how deploy actions handle existing resources
+// +kubebuilder:validation:Enum=Adopt;Skip;Error
+type AdoptionPolicy string
+
+const (
+	// AdoptionPolicyAdopt takes ownership of existing resources by adding OwnerReferences
+	AdoptionPolicyAdopt AdoptionPolicy = "Adopt"
+
+	// AdoptionPolicySkip ignores existing resources and only creates missing ones
+	AdoptionPolicySkip AdoptionPolicy = "Skip"
+
+	// AdoptionPolicyError fails deployment if any expected resources already exist (default)
+	AdoptionPolicyError AdoptionPolicy = "Error"
+)
+
+// ResourceSelector defines how to discover existing resources
+type ResourceSelector struct {
+	// MatchLabels selects resources with all specified labels
+	// +optional
+	MatchLabels map[string]string `json:"matchLabels,omitempty"`
+
+	// MatchNames selects resources by exact name match
+	// Supports glob patterns (e.g., "app-*", "service-?-prod")
+	// +optional
+	MatchNames []string `json:"matchNames,omitempty"`
+
+	// Namespaces to search in (defaults to deploy.namespace)
+	// +optional
+	Namespaces []string `json:"namespaces,omitempty"`
+
+	// ValidateOwnership ensures resources don't already have other owners
+	// +optional
+	// +kubebuilder:default=true
+	ValidateOwnership *bool `json:"validateOwnership,omitempty"`
 }
 
 // ExternalClusterConfig defines connection to an external cluster
@@ -442,7 +533,7 @@ type ZarfPackageJobStatus struct {
 
 // OperationStatus represents the status of a single operation
 type OperationStatus struct {
-	// State is the current state (Pending, Running, Completed, Failed)
+	// State is the current state (Pending, Running, Completed, Failed, Retrying)
 	State string `json:"state"`
 
 	// StartTime when the operation started
@@ -460,6 +551,18 @@ type OperationStatus struct {
 	// ArtifactLocation where the artifact was stored (for build/publish)
 	// +optional
 	ArtifactLocation string `json:"artifactLocation,omitempty"`
+
+	// RetryCount tracks number of retry attempts
+	// +optional
+	RetryCount int32 `json:"retryCount,omitempty"`
+
+	// NextRetryTime when next retry will be attempted
+	// +optional
+	NextRetryTime *metav1.Time `json:"nextRetryTime,omitempty"`
+
+	// LastFailureReason from most recent failure
+	// +optional
+	LastFailureReason string `json:"lastFailureReason,omitempty"`
 }
 
 // +genclient

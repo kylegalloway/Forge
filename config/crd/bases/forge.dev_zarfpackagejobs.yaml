@@ -1,0 +1,799 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.20.0
+  name: zarfpackagejobs.forge.dev
+spec:
+  group: forge.dev
+  names:
+    kind: ZarfPackageJob
+    listKind: ZarfPackageJobList
+    plural: zarfpackagejobs
+    shortNames:
+    - zpj
+    singular: zarfpackagejob
+  scope: Namespaced
+  versions:
+  - additionalPrinterColumns:
+    - jsonPath: .spec.action
+      name: Action
+      type: string
+    - jsonPath: .spec.source.type
+      name: Source
+      type: string
+    - jsonPath: .status.phase
+      name: Phase
+      type: string
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: |-
+          ZarfPackageJob is a Forge job specification for Zarf package operations.
+          This is NOT a Zarf package definition - it's a job spec telling Forge what to do.
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: |-
+              ZarfPackageJobSpec defines the desired state of a ZarfPackageJob
+
+              This is a job specification that tells Forge what operations to perform on Zarf packages.
+              It is NOT a Zarf package definition (which uses zarf.yaml format).
+            properties:
+              action:
+                description: Action specifies what operation(s) to perform
+                enum:
+                - Build
+                - Publish
+                - Deploy
+                - BuildPublish
+                - BuildDeploy
+                - PublishDeploy
+                - BuildPublishDeploy
+                type: string
+              build:
+                description: Build defines configuration for building the package
+                  (optional)
+                properties:
+                  retry:
+                    description: Retry policy for build failures
+                    properties:
+                      backoffMultiplier:
+                        default: 2
+                        description: BackoffMultiplier for exponential backoff
+                        type: number
+                      initialBackoff:
+                        default: 30s
+                        description: InitialBackoff is the delay before first retry
+                          (e.g., "30s", "1m")
+                        type: string
+                      maxBackoff:
+                        default: 5m
+                        description: MaxBackoff is the maximum delay between retries
+                        type: string
+                      maxRetries:
+                        default: 3
+                        description: MaxRetries is the maximum number of retry attempts
+                        format: int32
+                        maximum: 10
+                        minimum: 0
+                        type: integer
+                      retryableErrors:
+                        description: |-
+                          RetryableErrors defines which error patterns should trigger retries
+                          Supports glob patterns (e.g., "*timeout*", "*throttle*")
+                          If empty, all failures are retryable
+                        items:
+                          type: string
+                        type: array
+                    type: object
+                  timeout:
+                    default: 1h
+                    description: Timeout for the build operation
+                    type: string
+                type: object
+              deploy:
+                description: Deploy defines how to deploy the package (required if
+                  action includes Deploy)
+                properties:
+                  adoptionPolicy:
+                    allOf:
+                    - enum:
+                      - Adopt
+                      - Skip
+                      - Error
+                    - enum:
+                      - Adopt
+                      - Skip
+                      - Error
+                    default: Error
+                    description: AdoptionPolicy defines how to handle existing resources
+                    type: string
+                  components:
+                    description: Components to deploy (if not specified, deploys all)
+                    items:
+                      type: string
+                    type: array
+                  externalCluster:
+                    description: ExternalCluster configuration (required if target=ExternalCluster)
+                    properties:
+                      context:
+                        description: Context is the kubeconfig context to use
+                        type: string
+                      kubeconfigSecretRef:
+                        description: KubeconfigSecretRef references a Secret containing
+                          the kubeconfig
+                        properties:
+                          name:
+                            description: Name of the secret
+                            type: string
+                          namespace:
+                            description: Namespace of the secret (defaults to resource
+                              namespace)
+                            type: string
+                        required:
+                        - name
+                        type: object
+                    required:
+                    - kubeconfigSecretRef
+                    type: object
+                  namespace:
+                    default: default
+                    description: Namespace to deploy into
+                    type: string
+                  resourceSelector:
+                    description: |-
+                      ResourceSelector specifies how to discover existing resources to adopt
+                      Only used when AdoptionPolicy is "Adopt"
+                    properties:
+                      matchLabels:
+                        additionalProperties:
+                          type: string
+                        description: MatchLabels selects resources with all specified
+                          labels
+                        type: object
+                      matchNames:
+                        description: |-
+                          MatchNames selects resources by exact name match
+                          Supports glob patterns (e.g., "app-*", "service-?-prod")
+                        items:
+                          type: string
+                        type: array
+                      namespaces:
+                        description: Namespaces to search in (defaults to deploy.namespace)
+                        items:
+                          type: string
+                        type: array
+                      validateOwnership:
+                        default: true
+                        description: ValidateOwnership ensures resources don't already
+                          have other owners
+                        type: boolean
+                    type: object
+                  retry:
+                    description: Retry policy for deploy failures
+                    properties:
+                      backoffMultiplier:
+                        default: 2
+                        description: BackoffMultiplier for exponential backoff
+                        type: number
+                      initialBackoff:
+                        default: 30s
+                        description: InitialBackoff is the delay before first retry
+                          (e.g., "30s", "1m")
+                        type: string
+                      maxBackoff:
+                        default: 5m
+                        description: MaxBackoff is the maximum delay between retries
+                        type: string
+                      maxRetries:
+                        default: 3
+                        description: MaxRetries is the maximum number of retry attempts
+                        format: int32
+                        maximum: 10
+                        minimum: 0
+                        type: integer
+                      retryableErrors:
+                        description: |-
+                          RetryableErrors defines which error patterns should trigger retries
+                          Supports glob patterns (e.g., "*timeout*", "*throttle*")
+                          If empty, all failures are retryable
+                        items:
+                          type: string
+                        type: array
+                    type: object
+                  setVariables:
+                    additionalProperties:
+                      type: string
+                    description: SetVariables are Zarf variables to set during deployment
+                    type: object
+                  target:
+                    description: Target specifies where to deploy
+                    enum:
+                    - InCluster
+                    - ExternalCluster
+                    type: string
+                  timeout:
+                    default: 30m
+                    description: Timeout for the deployment
+                    type: string
+                required:
+                - target
+                type: object
+              publish:
+                description: Publish defines where to publish the built package (required
+                  if action includes Publish)
+                properties:
+                  destination:
+                    description: Destination specifies where to publish
+                    properties:
+                      local:
+                        description: Local destination configuration (required if
+                          type=Local, dev/testing only)
+                        properties:
+                          devMode:
+                            description: DevMode must be explicitly set to true
+                            type: boolean
+                          path:
+                            description: Path to write the artifact
+                            type: string
+                        required:
+                        - devMode
+                        - path
+                        type: object
+                      oci:
+                        description: OCI destination configuration (required if type=OCI)
+                        properties:
+                          credentialsSecretRef:
+                            description: CredentialsSecretRef references a Secret
+                              with registry credentials
+                            properties:
+                              name:
+                                description: Name of the secret
+                                type: string
+                              namespace:
+                                description: Namespace of the secret (defaults to
+                                  resource namespace)
+                                type: string
+                            required:
+                            - name
+                            type: object
+                          registry:
+                            description: Registry is the OCI registry URL
+                            type: string
+                          repository:
+                            description: Repository within the registry
+                            type: string
+                          tag:
+                            description: Tag for the published artifact (supports
+                              templating)
+                            type: string
+                        required:
+                        - registry
+                        - repository
+                        - tag
+                        type: object
+                      s3:
+                        description: S3 destination configuration (required if type=S3)
+                        properties:
+                          bucket:
+                            description: Bucket name
+                            type: string
+                          credentialsSecretRef:
+                            description: CredentialsSecretRef references a Secret
+                              with AWS credentials
+                            properties:
+                              name:
+                                description: Name of the secret
+                                type: string
+                              namespace:
+                                description: Namespace of the secret (defaults to
+                                  resource namespace)
+                                type: string
+                            required:
+                            - name
+                            type: object
+                          keyPrefix:
+                            description: KeyPrefix for the uploaded artifact
+                            type: string
+                          region:
+                            description: Region is the AWS region
+                            type: string
+                        required:
+                        - bucket
+                        - region
+                        type: object
+                      type:
+                        description: Type specifies the destination type
+                        enum:
+                        - S3
+                        - OCI
+                        - Local
+                        type: string
+                    required:
+                    - type
+                    type: object
+                  retry:
+                    description: Retry policy for publish failures
+                    properties:
+                      backoffMultiplier:
+                        default: 2
+                        description: BackoffMultiplier for exponential backoff
+                        type: number
+                      initialBackoff:
+                        default: 30s
+                        description: InitialBackoff is the delay before first retry
+                          (e.g., "30s", "1m")
+                        type: string
+                      maxBackoff:
+                        default: 5m
+                        description: MaxBackoff is the maximum delay between retries
+                        type: string
+                      maxRetries:
+                        default: 3
+                        description: MaxRetries is the maximum number of retry attempts
+                        format: int32
+                        maximum: 10
+                        minimum: 0
+                        type: integer
+                      retryableErrors:
+                        description: |-
+                          RetryableErrors defines which error patterns should trigger retries
+                          Supports glob patterns (e.g., "*timeout*", "*throttle*")
+                          If empty, all failures are retryable
+                        items:
+                          type: string
+                        type: array
+                    type: object
+                  timeout:
+                    default: 30m
+                    description: Timeout for the publish operation
+                    type: string
+                required:
+                - destination
+                type: object
+              rbacPolicy:
+                description: RBACPolicy defines policy restrictions for this resource
+                properties:
+                  allowedActions:
+                    description: AllowedActions specifies which actions are permitted
+                    items:
+                      description: Action represents an operation to perform on a
+                        Zarf package
+                      enum:
+                      - Build
+                      - Publish
+                      - Deploy
+                      - BuildPublish
+                      - BuildDeploy
+                      - PublishDeploy
+                      - BuildPublishDeploy
+                      type: string
+                    type: array
+                  allowedDeployTargets:
+                    description: AllowedDeployTargets specifies which deploy targets
+                      are permitted
+                    items:
+                      description: DeployTargetType represents where packages are
+                        deployed
+                      enum:
+                      - InCluster
+                      - ExternalCluster
+                      type: string
+                    type: array
+                  allowedDestinations:
+                    description: AllowedDestinations specifies which destination types/patterns
+                      are permitted
+                    items:
+                      description: AllowedDestination defines a permitted destination
+                        pattern
+                      properties:
+                        buckets:
+                          description: Buckets allowed (glob pattern) for S3
+                          items:
+                            type: string
+                          type: array
+                        registries:
+                          description: Registries allowed (glob pattern) for OCI
+                          items:
+                            type: string
+                          type: array
+                        type:
+                          description: Type of destination allowed
+                          enum:
+                          - S3
+                          - OCI
+                          - Local
+                          type: string
+                      required:
+                      - type
+                      type: object
+                    type: array
+                  allowedSources:
+                    description: AllowedSources specifies which source types/patterns
+                      are permitted
+                    items:
+                      description: AllowedSource defines a permitted source pattern
+                      properties:
+                        buckets:
+                          description: Buckets allowed (glob pattern) for S3
+                          items:
+                            type: string
+                          type: array
+                        images:
+                          description: Images allowed (glob pattern) for OCI
+                          items:
+                            type: string
+                          type: array
+                        repos:
+                          description: Repos allowed (glob pattern) for Git
+                          items:
+                            type: string
+                          type: array
+                        type:
+                          description: Type of source allowed
+                          enum:
+                          - Git
+                          - S3
+                          - OCI
+                          - Local
+                          type: string
+                      required:
+                      - type
+                      type: object
+                    type: array
+                  allowedUsers:
+                    description: AllowedUsers specifies which users can use this resource
+                    items:
+                      type: string
+                    type: array
+                type: object
+              resources:
+                description: |-
+                  Resources defines resource requirements for job pods
+                  If not specified, defaults to 200m CPU / 512Mi memory requests, 1 CPU / 2Gi limits
+                properties:
+                  claims:
+                    description: |-
+                      Claims lists the names of resources, defined in spec.resourceClaims,
+                      that are used by this container.
+
+                      This field depends on the
+                      DynamicResourceAllocation feature gate.
+
+                      This field is immutable. It can only be set for containers.
+                    items:
+                      description: ResourceClaim references one entry in PodSpec.ResourceClaims.
+                      properties:
+                        name:
+                          description: |-
+                            Name must match the name of one entry in pod.spec.resourceClaims of
+                            the Pod where this field is used. It makes that resource available
+                            inside a container.
+                          type: string
+                        request:
+                          description: |-
+                            Request is the name chosen for a request in the referenced claim.
+                            If empty, everything from the claim is made available, otherwise
+                            only the result of this request.
+                          type: string
+                      required:
+                      - name
+                      type: object
+                    type: array
+                    x-kubernetes-list-map-keys:
+                    - name
+                    x-kubernetes-list-type: map
+                  limits:
+                    additionalProperties:
+                      anyOf:
+                      - type: integer
+                      - type: string
+                      pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                      x-kubernetes-int-or-string: true
+                    description: |-
+                      Limits describes the maximum amount of compute resources allowed.
+                      More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+                    type: object
+                  requests:
+                    additionalProperties:
+                      anyOf:
+                      - type: integer
+                      - type: string
+                      pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                      x-kubernetes-int-or-string: true
+                    description: |-
+                      Requests describes the minimum amount of compute resources required.
+                      If Requests is omitted for a container, it defaults to Limits if that is explicitly specified,
+                      otherwise to an implementation-defined value. Requests cannot exceed Limits.
+                      More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+                    type: object
+                type: object
+              serviceAccountName:
+                description: |-
+                  ServiceAccountName references the ServiceAccount that defines permissions for this job
+                  The ServiceAccount must have forge.dev/* annotations defining allowed actions
+                  Cluster admins control what users can do by creating ServiceAccounts with appropriate annotations
+                type: string
+              source:
+                description: Source defines where the package definition or artifact
+                  comes from
+                properties:
+                  git:
+                    description: Git source configuration (required if type=Git)
+                    properties:
+                      credentialsSecretRef:
+                        description: |-
+                          CredentialsSecretRef references a Secret with Git credentials
+                          Secret should contain 'ssh-key' or 'token' key
+                        properties:
+                          name:
+                            description: Name of the secret
+                            type: string
+                          namespace:
+                            description: Namespace of the secret (defaults to resource
+                              namespace)
+                            type: string
+                        required:
+                        - name
+                        type: object
+                      disableCloneCredentials:
+                        default: false
+                        description: DisableCloneCredentials prevents using the credentials
+                          for clone operations
+                        type: boolean
+                      path:
+                        default: .
+                        description: Path to the zarf.yaml within the repository
+                        type: string
+                      ref:
+                        description: Ref is the branch, tag, or commit to checkout
+                        type: string
+                      url:
+                        description: URL of the Git repository
+                        pattern: ^https://.*
+                        type: string
+                    required:
+                    - ref
+                    - url
+                    type: object
+                  local:
+                    description: Local source configuration (required if type=Local,
+                      dev/testing only)
+                    properties:
+                      devMode:
+                        description: DevMode must be explicitly set to true for local
+                          sources
+                        type: boolean
+                      path:
+                        description: Path to the local directory or file
+                        type: string
+                    required:
+                    - devMode
+                    - path
+                    type: object
+                  oci:
+                    description: OCI source configuration (required if type=OCI)
+                    properties:
+                      credentialsSecretRef:
+                        description: |-
+                          CredentialsSecretRef references a Secret with registry credentials
+                          Secret should be type kubernetes.io/dockerconfigjson
+                        properties:
+                          name:
+                            description: Name of the secret
+                            type: string
+                          namespace:
+                            description: Namespace of the secret (defaults to resource
+                              namespace)
+                            type: string
+                        required:
+                        - name
+                        type: object
+                      image:
+                        description: Image is the full OCI image reference (registry/repo:tag
+                          or @digest)
+                        type: string
+                    required:
+                    - image
+                    type: object
+                  s3:
+                    description: S3 source configuration (required if type=S3)
+                    properties:
+                      bucket:
+                        description: Bucket name
+                        type: string
+                      credentialsSecretRef:
+                        description: |-
+                          CredentialsSecretRef references a Secret with AWS credentials
+                          Secret should contain 'access-key-id' and 'secret-access-key'
+                        properties:
+                          name:
+                            description: Name of the secret
+                            type: string
+                          namespace:
+                            description: Namespace of the secret (defaults to resource
+                              namespace)
+                            type: string
+                        required:
+                        - name
+                        type: object
+                      key:
+                        description: Key is the object key (path) in the bucket
+                        type: string
+                      region:
+                        description: Region is the AWS region
+                        type: string
+                    required:
+                    - bucket
+                    - key
+                    - region
+                    type: object
+                  type:
+                    description: Type specifies the source type
+                    enum:
+                    - Git
+                    - S3
+                    - OCI
+                    - Local
+                    type: string
+                required:
+                - type
+                type: object
+            required:
+            - action
+            - serviceAccountName
+            - source
+            type: object
+          status:
+            description: ZarfPackageJobStatus defines the observed state of ZarfPackageJob
+            properties:
+              buildStatus:
+                description: BuildStatus contains build operation status
+                properties:
+                  artifactLocation:
+                    description: ArtifactLocation where the artifact was stored (for
+                      build/publish)
+                    type: string
+                  completionTime:
+                    description: CompletionTime when the operation completed
+                    format: date-time
+                    type: string
+                  lastFailureReason:
+                    description: LastFailureReason from most recent failure
+                    type: string
+                  message:
+                    description: Message provides details about the operation
+                    type: string
+                  nextRetryTime:
+                    description: NextRetryTime when next retry will be attempted
+                    format: date-time
+                    type: string
+                  retryCount:
+                    description: RetryCount tracks number of retry attempts
+                    format: int32
+                    type: integer
+                  startTime:
+                    description: StartTime when the operation started
+                    format: date-time
+                    type: string
+                  state:
+                    description: State is the current state (Pending, Running, Completed,
+                      Failed, Retrying)
+                    type: string
+                required:
+                - state
+                type: object
+              deployStatus:
+                description: DeployStatus contains deploy operation status
+                properties:
+                  artifactLocation:
+                    description: ArtifactLocation where the artifact was stored (for
+                      build/publish)
+                    type: string
+                  completionTime:
+                    description: CompletionTime when the operation completed
+                    format: date-time
+                    type: string
+                  lastFailureReason:
+                    description: LastFailureReason from most recent failure
+                    type: string
+                  message:
+                    description: Message provides details about the operation
+                    type: string
+                  nextRetryTime:
+                    description: NextRetryTime when next retry will be attempted
+                    format: date-time
+                    type: string
+                  retryCount:
+                    description: RetryCount tracks number of retry attempts
+                    format: int32
+                    type: integer
+                  startTime:
+                    description: StartTime when the operation started
+                    format: date-time
+                    type: string
+                  state:
+                    description: State is the current state (Pending, Running, Completed,
+                      Failed, Retrying)
+                    type: string
+                required:
+                - state
+                type: object
+              lastUpdateTime:
+                description: LastUpdateTime is the last time the status was updated
+                format: date-time
+                type: string
+              message:
+                description: Message provides human-readable status information
+                type: string
+              observedGeneration:
+                description: ObservedGeneration is the generation observed by the
+                  controller
+                format: int64
+                type: integer
+              phase:
+                description: Phase represents the current phase of the operation
+                type: string
+              publishStatus:
+                description: PublishStatus contains publish operation status
+                properties:
+                  artifactLocation:
+                    description: ArtifactLocation where the artifact was stored (for
+                      build/publish)
+                    type: string
+                  completionTime:
+                    description: CompletionTime when the operation completed
+                    format: date-time
+                    type: string
+                  lastFailureReason:
+                    description: LastFailureReason from most recent failure
+                    type: string
+                  message:
+                    description: Message provides details about the operation
+                    type: string
+                  nextRetryTime:
+                    description: NextRetryTime when next retry will be attempted
+                    format: date-time
+                    type: string
+                  retryCount:
+                    description: RetryCount tracks number of retry attempts
+                    format: int32
+                    type: integer
+                  startTime:
+                    description: StartTime when the operation started
+                    format: date-time
+                    type: string
+                  state:
+                    description: State is the current state (Pending, Running, Completed,
+                      Failed, Retrying)
+                    type: string
+                required:
+                - state
+                type: object
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}

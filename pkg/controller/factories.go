@@ -24,7 +24,7 @@ func NewGenericZarfController(
 	// Create action handlers
 	buildHandler := zarf.NewBuildHandler(kubeClient, metrics, tracer)
 	publishHandler := zarf.NewPublishHandler(kubeClient, metrics, tracer)
-	deployHandler := zarf.NewDeployHandler(kubeClient, metrics, tracer)
+	deployHandler := zarf.NewDeployHandler(kubeClient, dynamicClient, metrics, tracer)
 
 	// Create handler adapters
 	primaryAdapter := NewZarfBuildHandlerAdapter(buildHandler)
@@ -69,7 +69,7 @@ func NewGenericUDSController(
 	// Create action handlers
 	createHandler := uds.NewCreateHandler(kubeClient, metrics, tracer)
 	publishHandler := uds.NewPublishHandler(kubeClient, metrics, tracer)
-	deployHandler := uds.NewDeployHandler(kubeClient, metrics, tracer)
+	deployHandler := uds.NewDeployHandler(kubeClient, dynamicClient, metrics, tracer)
 
 	// Create handler adapters
 	primaryAdapter := NewUDSCreateHandlerAdapter(createHandler)

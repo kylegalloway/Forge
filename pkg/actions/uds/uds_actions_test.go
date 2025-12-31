@@ -8,7 +8,9 @@ import (
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes/fake"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/dynamic/fake"
+	kubefake "k8s.io/client-go/kubernetes/fake"
 
 	"github.com/kylegalloway/forge/pkg/actions"
 	udsv1alpha2 "github.com/kylegalloway/forge/pkg/apis/uds/v1alpha2"
@@ -18,7 +20,7 @@ import (
 
 // TestNewCreateHandler tests CreateHandler initialization
 func TestNewCreateHandler(t *testing.T) {
-	kubeClient := fake.NewClientset()
+	kubeClient := kubefake.NewClientset()
 	metrics := testhelpers.MustNewMetrics()
 	tracer := telemetry.NewTracer()
 
@@ -39,7 +41,7 @@ func TestNewCreateHandler(t *testing.T) {
 
 // TestNewPublishHandler tests PublishHandler initialization
 func TestNewPublishHandler(t *testing.T) {
-	kubeClient := fake.NewClientset()
+	kubeClient := kubefake.NewClientset()
 	metrics := testhelpers.MustNewMetrics()
 	tracer := telemetry.NewTracer()
 
@@ -60,16 +62,20 @@ func TestNewPublishHandler(t *testing.T) {
 
 // TestNewDeployHandler tests DeployHandler initialization
 func TestNewDeployHandler(t *testing.T) {
-	kubeClient := fake.NewClientset()
+	kubeClient := kubefake.NewClientset()
+	dynamicClient := fake.NewSimpleDynamicClient(runtime.NewScheme())
 	metrics := testhelpers.MustNewMetrics()
 	tracer := telemetry.NewTracer()
 
-	handler := NewDeployHandler(kubeClient, metrics, tracer)
+	handler := NewDeployHandler(kubeClient, dynamicClient, metrics, tracer)
 	if handler == nil {
 		t.Fatal("NewDeployHandler returned nil")
 	}
 	if handler.kubeClient == nil {
 		t.Error("kubeClient not set")
+	}
+	if handler.dynamicClient == nil {
+		t.Error("dynamicClient not set")
 	}
 	if handler.metrics == nil {
 		t.Error("metrics not set")
@@ -81,7 +87,7 @@ func TestNewDeployHandler(t *testing.T) {
 
 // TestCreateHandlerExecute tests CreateHandler.Execute
 func TestCreateHandlerExecute(t *testing.T) {
-	kubeClient := fake.NewClientset()
+	kubeClient := kubefake.NewClientset()
 	handler := NewCreateHandler(kubeClient, testhelpers.MustNewMetrics(), telemetry.NewTracer())
 
 	tests := []struct {
@@ -196,7 +202,7 @@ func TestCreateHandlerExecute(t *testing.T) {
 
 // TestPublishHandlerExecute tests PublishHandler.Execute
 func TestPublishHandlerExecute(t *testing.T) {
-	kubeClient := fake.NewClientset()
+	kubeClient := kubefake.NewClientset()
 	handler := NewPublishHandler(kubeClient, testhelpers.MustNewMetrics(), telemetry.NewTracer())
 
 	tests := []struct {
@@ -309,8 +315,9 @@ func TestPublishHandlerExecute(t *testing.T) {
 
 // TestDeployHandlerExecute tests DeployHandler.Execute
 func TestDeployHandlerExecute(t *testing.T) {
-	kubeClient := fake.NewClientset()
-	handler := NewDeployHandler(kubeClient, testhelpers.MustNewMetrics(), telemetry.NewTracer())
+	kubeClient := kubefake.NewClientset()
+	dynamicClient := fake.NewSimpleDynamicClient(runtime.NewScheme())
+	handler := NewDeployHandler(kubeClient, dynamicClient, testhelpers.MustNewMetrics(), telemetry.NewTracer())
 
 	tests := []struct {
 		name    string
@@ -696,7 +703,7 @@ func TestAddCredentialVolumes(t *testing.T) {
 // TestBuildInitContainers tests init container generation
 func TestBuildInitContainers(t *testing.T) {
 	handler := &CreateHandler{
-		kubeClient: fake.NewClientset(),
+		kubeClient: kubefake.NewClientset(),
 		metrics:    testhelpers.MustNewMetrics(),
 		tracer:     telemetry.NewTracer(),
 	}
@@ -831,7 +838,7 @@ func TestBuildInitContainers(t *testing.T) {
 // TestBuildVolumes tests volume generation
 func TestBuildVolumes(t *testing.T) {
 	handler := &CreateHandler{
-		kubeClient: fake.NewClientset(),
+		kubeClient: kubefake.NewClientset(),
 		metrics:    testhelpers.MustNewMetrics(),
 		tracer:     telemetry.NewTracer(),
 	}

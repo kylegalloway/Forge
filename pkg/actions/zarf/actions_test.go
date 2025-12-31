@@ -5,7 +5,9 @@ import (
 	"testing"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes/fake"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/dynamic/fake"
+	kubefake "k8s.io/client-go/kubernetes/fake"
 
 	zarfv1alpha1 "github.com/kylegalloway/forge/pkg/apis/zarf/v1alpha1"
 	testhelpers "github.com/kylegalloway/forge/pkg/controller/testing"
@@ -13,7 +15,7 @@ import (
 )
 
 func TestNewBuildHandler(t *testing.T) {
-	kubeClient := fake.NewClientset()
+	kubeClient := kubefake.NewClientset()
 	metrics := testhelpers.MustNewMetrics()
 	tracer := telemetry.NewTracer()
 
@@ -33,7 +35,7 @@ func TestNewBuildHandler(t *testing.T) {
 }
 
 func TestNewPublishHandler(t *testing.T) {
-	kubeClient := fake.NewClientset()
+	kubeClient := kubefake.NewClientset()
 	metrics := testhelpers.MustNewMetrics()
 	tracer := telemetry.NewTracer()
 
@@ -47,21 +49,25 @@ func TestNewPublishHandler(t *testing.T) {
 }
 
 func TestNewDeployHandler(t *testing.T) {
-	kubeClient := fake.NewClientset()
+	kubeClient := kubefake.NewClientset()
+	dynamicClient := fake.NewSimpleDynamicClient(runtime.NewScheme())
 	metrics := testhelpers.MustNewMetrics()
 	tracer := telemetry.NewTracer()
 
-	handler := NewDeployHandler(kubeClient, metrics, tracer)
+	handler := NewDeployHandler(kubeClient, dynamicClient, metrics, tracer)
 	if handler == nil {
 		t.Fatal("NewDeployHandler returned nil")
 	}
 	if handler.kubeClient == nil {
 		t.Error("kubeClient not set")
 	}
+	if handler.dynamicClient == nil {
+		t.Error("dynamicClient not set")
+	}
 }
 
 func TestBuildHandlerExecute(t *testing.T) {
-	kubeClient := fake.NewClientset()
+	kubeClient := kubefake.NewClientset()
 	handler := NewBuildHandler(kubeClient, testhelpers.MustNewMetrics(), telemetry.NewTracer())
 
 	tests := []struct {
@@ -117,7 +123,7 @@ func TestBuildHandlerExecute(t *testing.T) {
 }
 
 func TestPublishHandlerExecute(t *testing.T) {
-	kubeClient := fake.NewClientset()
+	kubeClient := kubefake.NewClientset()
 	handler := NewPublishHandler(kubeClient, testhelpers.MustNewMetrics(), telemetry.NewTracer())
 
 	tests := []struct {
@@ -188,8 +194,9 @@ func TestPublishHandlerExecute(t *testing.T) {
 }
 
 func TestDeployHandlerExecute(t *testing.T) {
-	kubeClient := fake.NewClientset()
-	handler := NewDeployHandler(kubeClient, testhelpers.MustNewMetrics(), telemetry.NewTracer())
+	kubeClient := kubefake.NewClientset()
+	dynamicClient := fake.NewSimpleDynamicClient(runtime.NewScheme())
+	handler := NewDeployHandler(kubeClient, dynamicClient, testhelpers.MustNewMetrics(), telemetry.NewTracer())
 
 	tests := []struct {
 		name    string
@@ -253,8 +260,9 @@ func TestDeployHandlerExecute(t *testing.T) {
 }
 
 func TestDeployHandlerExecute_ExternalCluster(t *testing.T) {
-	client := fake.NewClientset()
-	handler := NewDeployHandler(client, testhelpers.MustNewMetrics(), telemetry.NewTracer())
+	client := kubefake.NewClientset()
+	dynamicClient := fake.NewSimpleDynamicClient(runtime.NewScheme())
+	handler := NewDeployHandler(client, dynamicClient, testhelpers.MustNewMetrics(), telemetry.NewTracer())
 
 	pkg := &zarfv1alpha1.ZarfPackageJob{
 		ObjectMeta: metav1.ObjectMeta{
@@ -330,8 +338,9 @@ func TestDeployHandlerExecute_ExternalCluster(t *testing.T) {
 }
 
 func TestDeployHandlerExecute_MissingDeployConfig(t *testing.T) {
-	client := fake.NewClientset()
-	handler := NewDeployHandler(client, testhelpers.MustNewMetrics(), telemetry.NewTracer())
+	client := kubefake.NewClientset()
+	dynamicClient := fake.NewSimpleDynamicClient(runtime.NewScheme())
+	handler := NewDeployHandler(client, dynamicClient, testhelpers.MustNewMetrics(), telemetry.NewTracer())
 
 	pkg := &zarfv1alpha1.ZarfPackageJob{
 		ObjectMeta: metav1.ObjectMeta{
@@ -355,7 +364,7 @@ func TestDeployHandlerExecute_MissingDeployConfig(t *testing.T) {
 }
 
 func TestPublishHandlerExecute_MissingPublishConfig(t *testing.T) {
-	client := fake.NewClientset()
+	client := kubefake.NewClientset()
 	handler := NewPublishHandler(client, testhelpers.MustNewMetrics(), telemetry.NewTracer())
 
 	pkg := &zarfv1alpha1.ZarfPackageJob{
@@ -380,7 +389,7 @@ func TestPublishHandlerExecute_MissingPublishConfig(t *testing.T) {
 }
 
 func TestBuildHandlerExecute_LocalSource(t *testing.T) {
-	kubeClient := fake.NewClientset()
+	kubeClient := kubefake.NewClientset()
 	handler := NewBuildHandler(kubeClient, testhelpers.MustNewMetrics(), telemetry.NewTracer())
 
 	pkg := &zarfv1alpha1.ZarfPackageJob{
@@ -426,7 +435,7 @@ func TestBuildHandlerExecute_LocalSource(t *testing.T) {
 }
 
 func TestPublishHandlerExecute_LocalSource(t *testing.T) {
-	kubeClient := fake.NewClientset()
+	kubeClient := kubefake.NewClientset()
 	handler := NewPublishHandler(kubeClient, testhelpers.MustNewMetrics(), telemetry.NewTracer())
 
 	pkg := &zarfv1alpha1.ZarfPackageJob{
@@ -482,8 +491,9 @@ func TestPublishHandlerExecute_LocalSource(t *testing.T) {
 }
 
 func TestDeployHandlerExecute_LocalSource(t *testing.T) {
-	kubeClient := fake.NewClientset()
-	handler := NewDeployHandler(kubeClient, testhelpers.MustNewMetrics(), telemetry.NewTracer())
+	kubeClient := kubefake.NewClientset()
+	dynamicClient := fake.NewSimpleDynamicClient(runtime.NewScheme())
+	handler := NewDeployHandler(kubeClient, dynamicClient, testhelpers.MustNewMetrics(), telemetry.NewTracer())
 
 	pkg := &zarfv1alpha1.ZarfPackageJob{
 		ObjectMeta: metav1.ObjectMeta{
@@ -532,8 +542,9 @@ func TestDeployHandlerExecute_LocalSource(t *testing.T) {
 }
 
 func TestDeployHandlerExecute_WithComponentsAndVariables(t *testing.T) {
-	kubeClient := fake.NewClientset()
-	handler := NewDeployHandler(kubeClient, testhelpers.MustNewMetrics(), telemetry.NewTracer())
+	kubeClient := kubefake.NewClientset()
+	dynamicClient := fake.NewSimpleDynamicClient(runtime.NewScheme())
+	handler := NewDeployHandler(kubeClient, dynamicClient, testhelpers.MustNewMetrics(), telemetry.NewTracer())
 
 	pkg := &zarfv1alpha1.ZarfPackageJob{
 		ObjectMeta: metav1.ObjectMeta{
@@ -595,8 +606,9 @@ func TestDeployHandlerExecute_WithComponentsAndVariables(t *testing.T) {
 }
 
 func TestDeployHandlerExecute_ExternalClusterWithContext(t *testing.T) {
-	kubeClient := fake.NewClientset()
-	handler := NewDeployHandler(kubeClient, testhelpers.MustNewMetrics(), telemetry.NewTracer())
+	kubeClient := kubefake.NewClientset()
+	dynamicClient := fake.NewSimpleDynamicClient(runtime.NewScheme())
+	handler := NewDeployHandler(kubeClient, dynamicClient, testhelpers.MustNewMetrics(), telemetry.NewTracer())
 
 	pkg := &zarfv1alpha1.ZarfPackageJob{
 		ObjectMeta: metav1.ObjectMeta{

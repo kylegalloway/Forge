@@ -5,10 +5,12 @@ import (
 	"fmt"
 
 	"github.com/kylegalloway/forge/pkg/actions"
+	"github.com/kylegalloway/forge/pkg/resources"
 
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog/v2"
 
@@ -20,17 +22,19 @@ import (
 
 // DeployHandler handles Deploy actions for ZarfPackageJob resources
 type DeployHandler struct {
-	kubeClient kubernetes.Interface
-	metrics    *telemetry.Metrics
-	tracer     *telemetry.Tracer
+	kubeClient    kubernetes.Interface
+	dynamicClient dynamic.Interface
+	metrics       *telemetry.Metrics
+	tracer        *telemetry.Tracer
 }
 
 // NewDeployHandler creates a new DeployHandler
-func NewDeployHandler(kubeClient kubernetes.Interface, metrics *telemetry.Metrics, tracer *telemetry.Tracer) *DeployHandler {
+func NewDeployHandler(kubeClient kubernetes.Interface, dynamicClient dynamic.Interface, metrics *telemetry.Metrics, tracer *telemetry.Tracer) *DeployHandler {
 	return &DeployHandler{
-		kubeClient: kubeClient,
-		metrics:    metrics,
-		tracer:     tracer,
+		kubeClient:    kubeClient,
+		dynamicClient: dynamicClient,
+		metrics:       metrics,
+		tracer:        tracer,
 	}
 }
 
@@ -45,6 +49,12 @@ func (handler *DeployHandler) Execute(ctx context.Context, pkg *zarfv1alpha1.Zar
 	if pkg.Spec.Deploy == nil {
 		handler.metrics.RecordPackageDeployFailed(ctx, pkg.Namespace, pkg.Name)
 		return nil, fmt.Errorf("deploy configuration is required for Deploy action")
+	}
+
+	// Validate and handle resource adoption configuration
+	if err := handler.validateAdoptionConfig(ctx, pkg); err != nil {
+		handler.metrics.RecordPackageDeployFailed(ctx, pkg.Namespace, pkg.Name)
+		return nil, fmt.Errorf("adoption configuration validation failed: %w", err)
 	}
 
 	// Create Kubernetes Job to deploy the package
@@ -88,10 +98,12 @@ func (handler *DeployHandler) createDeployJob(ctx context.Context, pkg *zarfv1al
 		return nil, fmt.Errorf("failed to build init containers: %w", err)
 	}
 
-	// Parse timeout
+	// Parse timeout and retry policy
 	timeoutStr := ""
+	var retryPolicy *zarfv1alpha1.RetryPolicy
 	if pkg.Spec.Deploy != nil {
 		timeoutStr = pkg.Spec.Deploy.Timeout
+		retryPolicy = pkg.Spec.Deploy.Retry
 	}
 	activeDeadlineSeconds := actions.ParseTimeoutWithDefault(timeoutStr, constants.DefaultDeployTimeout)
 
@@ -113,7 +125,7 @@ func (handler *DeployHandler) createDeployJob(ctx context.Context, pkg *zarfv1al
 		WithArgs([]string{deployCmd}).
 		WithWorkingDir(constants.VolumeMountPathWorkspace).
 		WithResources(handler.getResources(pkg)).
-		WithBackoffLimit(0).
+		WithZarfRetryPolicy(retryPolicy).
 		WithActiveDeadlineSeconds(activeDeadlineSeconds).
 		WithTTLSecondsAfterFinished(3600).
 		WithInitContainers(initContainers).
@@ -246,4 +258,60 @@ func (handler *DeployHandler) getResources(pkg *zarfv1alpha1.ZarfPackageJob) cor
 func (handler *DeployHandler) addServiceAccount(pkg *zarfv1alpha1.ZarfPackageJob, job *batchv1.Job) {
 	// Use the ZarfPackageJob's ServiceAccount
 	job.Spec.Template.Spec.ServiceAccountName = pkg.Spec.ServiceAccountName
+}
+
+// validateAdoptionConfig validates resource adoption configuration
+func (handler *DeployHandler) validateAdoptionConfig(ctx context.Context, pkg *zarfv1alpha1.ZarfPackageJob) error {
+	// If no adoption policy specified, nothing to validate
+	if pkg.Spec.Deploy.AdoptionPolicy == nil {
+		return nil
+	}
+
+	adoptionPolicy := *pkg.Spec.Deploy.AdoptionPolicy
+
+	klog.V(4).InfoS("Validating adoption configuration", "policy", adoptionPolicy, "package", pkg.Name)
+
+	// If policy is "Adopt", ResourceSelector must be provided
+	if adoptionPolicy == zarfv1alpha1.AdoptionPolicyAdopt {
+		if pkg.Spec.Deploy.ResourceSelector == nil {
+			return fmt.Errorf("resourceSelector is required when adoptionPolicy is 'Adopt'")
+		}
+
+		// Validate that at least one selector criterion is provided
+		selector := pkg.Spec.Deploy.ResourceSelector
+		if len(selector.MatchLabels) == 0 && len(selector.MatchNames) == 0 {
+			return fmt.Errorf("resourceSelector must specify at least one of matchLabels or matchNames")
+		}
+
+		// Pre-deployment validation: Check for conflicting owners
+		namespaces := selector.Namespaces
+		if len(namespaces) == 0 {
+			// Default to package namespace if not specified
+			namespaces = []string{pkg.Spec.Deploy.Namespace}
+		}
+
+		// Discover existing resources to validate ownership
+		discoverer := resources.NewDiscoverer(handler.dynamicClient)
+		discovered, err := discoverer.DiscoverZarfResources(ctx, selector, namespaces)
+		if err != nil {
+			return fmt.Errorf("failed to discover resources: %w", err)
+		}
+
+		// Validate no conflicting owners
+		validateOwnership := true
+		if selector.ValidateOwnership != nil {
+			validateOwnership = *selector.ValidateOwnership
+		}
+
+		if validateOwnership && len(discovered) > 0 {
+			adopter := resources.NewAdopter(handler.dynamicClient)
+			if err := adopter.ValidateNoConflictingOwners(discovered); err != nil {
+				return fmt.Errorf("pre-deployment ownership validation failed: %w", err)
+			}
+		}
+
+		klog.InfoS("Resource adoption validation passed", "package", pkg.Name, "resourcesFound", len(discovered))
+	}
+
+	return nil
 }

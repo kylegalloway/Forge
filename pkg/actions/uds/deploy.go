@@ -8,28 +8,32 @@ import (
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog/v2"
 
 	"github.com/kylegalloway/forge/pkg/actions"
 	udsv1alpha2 "github.com/kylegalloway/forge/pkg/apis/uds/v1alpha2"
 	"github.com/kylegalloway/forge/pkg/constants"
+	"github.com/kylegalloway/forge/pkg/resources"
 	"github.com/kylegalloway/forge/pkg/telemetry"
 )
 
 // DeployHandler handles Deploy actions for UDSBundleJob resources
 type DeployHandler struct {
-	kubeClient kubernetes.Interface
-	metrics    *telemetry.Metrics
-	tracer     *telemetry.Tracer
+	kubeClient    kubernetes.Interface
+	dynamicClient dynamic.Interface
+	metrics       *telemetry.Metrics
+	tracer        *telemetry.Tracer
 }
 
 // NewDeployHandler creates a new DeployHandler
-func NewDeployHandler(kubeClient kubernetes.Interface, metrics *telemetry.Metrics, tracer *telemetry.Tracer) *DeployHandler {
+func NewDeployHandler(kubeClient kubernetes.Interface, dynamicClient dynamic.Interface, metrics *telemetry.Metrics, tracer *telemetry.Tracer) *DeployHandler {
 	return &DeployHandler{
-		kubeClient: kubeClient,
-		metrics:    metrics,
-		tracer:     tracer,
+		kubeClient:    kubeClient,
+		dynamicClient: dynamicClient,
+		metrics:       metrics,
+		tracer:        tracer,
 	}
 }
 
@@ -49,6 +53,12 @@ func (handler *DeployHandler) Execute(ctx context.Context, bundle *udsv1alpha2.U
 	if bundle.Spec.Deploy == nil || bundle.Spec.Deploy.Target == "" {
 		handler.metrics.RecordBundleDeployFailed(ctx, bundle.Namespace, bundle.Name)
 		return nil, fmt.Errorf("deploy target is required for Deploy action")
+	}
+
+	// Validate and handle resource adoption configuration
+	if err := handler.validateAdoptionConfig(ctx, bundle); err != nil {
+		handler.metrics.RecordBundleDeployFailed(ctx, bundle.Namespace, bundle.Name)
+		return nil, fmt.Errorf("adoption configuration validation failed: %w", err)
 	}
 
 	// Create Kubernetes Job to deploy the bundle
@@ -84,10 +94,12 @@ func (handler *DeployHandler) createDeployJob(ctx context.Context, bundle *udsv1
 	// Build env vars
 	envVars := handler.buildEnvVars(bundle)
 
-	// Determine timeout - use Deploy.Timeout if specified, otherwise use default
+	// Determine timeout and retry policy - use Deploy config if specified
 	timeoutStr := ""
+	var retryPolicy *udsv1alpha2.RetryPolicy
 	if bundle.Spec.Deploy != nil {
 		timeoutStr = bundle.Spec.Deploy.Timeout
+		retryPolicy = bundle.Spec.Deploy.Retry
 	}
 	activeDeadlineSeconds := actions.ParseTimeoutWithDefault(timeoutStr, constants.DefaultDeployTimeout)
 
@@ -107,7 +119,7 @@ func (handler *DeployHandler) createDeployJob(ctx context.Context, bundle *udsv1
 		WithArgs([]string{udsCmd}).
 		WithWorkingDir(constants.VolumeMountPathWorkspace).
 		WithResources(handler.getResources(bundle)).
-		WithBackoffLimit(0).
+		WithUDSRetryPolicy(retryPolicy).
 		WithActiveDeadlineSeconds(activeDeadlineSeconds).
 		WithTTLSecondsAfterFinished(3600).
 		WithWorkspaceVolume().
@@ -257,4 +269,60 @@ func (handler *DeployHandler) getResources(bundle *udsv1alpha2.UDSBundleJob) cor
 	// Default resources for deploy jobs
 	// Standardized with Zarf Deploy (both deploy packages to clusters)
 	return actions.DeployResourceRequirements()
+}
+
+// validateAdoptionConfig validates resource adoption configuration
+func (handler *DeployHandler) validateAdoptionConfig(ctx context.Context, bundle *udsv1alpha2.UDSBundleJob) error {
+	// If no adoption policy specified, nothing to validate
+	if bundle.Spec.Deploy.AdoptionPolicy == nil {
+		return nil
+	}
+
+	adoptionPolicy := *bundle.Spec.Deploy.AdoptionPolicy
+
+	klog.V(4).InfoS("Validating adoption configuration", "policy", adoptionPolicy, "bundle", bundle.Name)
+
+	// If policy is "Adopt", ResourceSelector must be provided
+	if adoptionPolicy == udsv1alpha2.AdoptionPolicyAdopt {
+		if bundle.Spec.Deploy.ResourceSelector == nil {
+			return fmt.Errorf("resourceSelector is required when adoptionPolicy is 'Adopt'")
+		}
+
+		// Validate that at least one selector criterion is provided
+		selector := bundle.Spec.Deploy.ResourceSelector
+		if len(selector.MatchLabels) == 0 && len(selector.MatchNames) == 0 {
+			return fmt.Errorf("resourceSelector must specify at least one of matchLabels or matchNames")
+		}
+
+		// Pre-deployment validation: Check for conflicting owners
+		namespaces := selector.Namespaces
+		if len(namespaces) == 0 {
+			// Default to bundle namespace if not specified
+			namespaces = []string{bundle.Spec.Deploy.Namespace}
+		}
+
+		// Discover existing resources to validate ownership
+		discoverer := resources.NewDiscoverer(handler.dynamicClient)
+		discovered, err := discoverer.DiscoverUDSResources(ctx, selector, namespaces)
+		if err != nil {
+			return fmt.Errorf("failed to discover resources: %w", err)
+		}
+
+		// Validate no conflicting owners
+		validateOwnership := true
+		if selector.ValidateOwnership != nil {
+			validateOwnership = *selector.ValidateOwnership
+		}
+
+		if validateOwnership && len(discovered) > 0 {
+			adopter := resources.NewAdopter(handler.dynamicClient)
+			if err := adopter.ValidateNoConflictingOwners(discovered); err != nil {
+				return fmt.Errorf("pre-deployment ownership validation failed: %w", err)
+			}
+		}
+
+		klog.InfoS("Resource adoption validation passed", "bundle", bundle.Name, "resourcesFound", len(discovered))
+	}
+
+	return nil
 }

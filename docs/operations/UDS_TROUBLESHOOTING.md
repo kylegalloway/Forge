@@ -122,8 +122,8 @@ Error: no matches for kind "UDSBundleJob" in version "forge.dev/v1alpha1"
 
 ```bash
 kubectl logs job/my-bundle-create
-# Error: package "istio" not found in bundle definition
-# Failed to pull package from oci://ghcr.io/defenseunicorns/packages/uds/istio:0.5.0
+# Error: package "myapp" not found in bundle definition
+# Failed to pull package from oci://ghcr.io/myorg/packages/myapp:1.0.0
 ```
 
 **Possible causes:**
@@ -145,18 +145,18 @@ Look for incorrect OCI references in package list:
 
 ```yaml
 packages:
-  - name: istio
-    repository: ghcr.io/defenseunicorns/packages/uds/istio  # Missing tag
-    ref: 0.5.0  # Should be part of repository or use 'tag' field
+  - name: myapp
+    repository: ghcr.io/myorg/packages/myapp  # Missing tag
+    ref: 1.0.0  # Should be part of repository or use 'tag' field
 ```
 
 **Solution:** Fix the package reference in `uds-bundle.yaml`:
 
 ```yaml
 packages:
-  - name: istio
-    repository: ghcr.io/defenseunicorns/packages/uds/istio
-    ref: 0.5.0
+  - name: myapp
+    repository: ghcr.io/myorg/packages/myapp
+    ref: 1.0.0
 ```
 
 #### 2. Missing OCI credentials
@@ -193,7 +193,7 @@ spec:
 **Verify package exists**:
 
 ```bash
-docker pull ghcr.io/defenseunicorns/packages/uds/istio:0.5.0
+docker pull ghcr.io/myorg/packages/myapp:1.0.0
 ```
 
 If pull fails, check:
@@ -237,12 +237,12 @@ yamllint uds-bundle.yaml
 
 ```yaml
 packages:
-  - name: metrics-server
-    repository: ghcr.io/defenseunicorns/packages/uds/metrics-server
-    ref: 3.11.0
+  - name: monitoring
+    repository: ghcr.io/myorg/packages/monitoring
+    ref: 1.0.0
     # Add any required overrides
     overrides:
-      namespace: metrics-server
+      namespace: monitoring
 ```
 
 ### Bundle creation timeout
@@ -964,7 +964,7 @@ Got:      sha256:def456...
 
 ```bash
 # If using OCI
-docker pull ghcr.io/defenseunicorns/packages/uds/istio:0.5.0
+docker pull ghcr.io/myorg/packages/myapp:1.0.0
 
 # Verify checksum matches bundle definition
 ```

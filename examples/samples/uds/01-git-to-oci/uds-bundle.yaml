@@ -5,10 +5,10 @@ metadata:
   version: 1.0.0
 
 packages:
-  - name: hello-app
-    repository: ghcr.io/defenseunicorns/packages/init
-    ref: v0.38.2
+  - name: podinfo
+    repository: ghcr.io/stefanprodan/podinfo
+    ref: 6.7.0
 
-  - name: local-hello
+  - name: local-app
     path: ./zarf-package
     ref: 1.0.0

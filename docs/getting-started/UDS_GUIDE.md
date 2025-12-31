@@ -96,7 +96,7 @@ Creates a UDS bundle from a public Git repository containing a `uds-bundle.yaml`
 apiVersion: forge.dev/v1alpha2
 kind: UDSBundleJob
 metadata:
-  name: create-uds-core
+  name: create-bundle
   namespace: default
 spec:
   serviceAccountName: uds-bundle-operator
@@ -104,35 +104,35 @@ spec:
   source:
     type: Git
     git:
-      url: https://github.com/defenseunicorns/uds-core
-      ref: v0.25.0
+      url: https://github.com/prometheus/prometheus
+      ref: v2.45.0
 ```
 
 Apply with:
 
 ```bash
-kubectl apply -f create-uds-core.yaml
+kubectl apply -f create-bundle.yaml
 ```
 
 Expected output:
 
 ```text
-udsbundlejob.forge.dev/create-uds-core created
+udsbundlejob.forge.dev/create-bundle created
 ```
 
 Watch progress:
 
 ```bash
-kubectl get udsbundlejob create-uds-core -w
+kubectl get udsbundlejob create-bundle -w
 ```
 
 Expected output:
 
 ```text
-NAME               PHASE      AGE
-create-uds-core    Pending    2s
-create-uds-core    Running    10s
-create-uds-core    Succeeded  3m45s
+NAME             PHASE      AGE
+create-bundle    Pending    2s
+create-bundle    Running    10s
+create-bundle    Succeeded  3m45s
 ```
 
 ### 2. Create and Publish to OCI
@@ -197,7 +197,7 @@ Deploys an existing UDS bundle from an OCI registry.
 apiVersion: forge.dev/v1alpha2
 kind: UDSBundleJob
 metadata:
-  name: deploy-uds-core
+  name: deploy-bundle
   namespace: default
 spec:
   serviceAccountName: uds-bundle-operator
@@ -205,7 +205,7 @@ spec:
   source:
     type: OCI
     oci:
-      ref: ghcr.io/defenseunicorns/packages/uds/bundles/core:0.25.0
+      ref: ghcr.io/myorg/bundles/app-bundle:1.0.0
       credentialsSecretRef:
         name: oci-registry-creds
   deploy:
@@ -215,28 +215,28 @@ spec:
 Apply with:
 
 ```bash
-kubectl apply -f deploy-uds-core.yaml
+kubectl apply -f deploy-bundle.yaml
 ```
 
 Expected output:
 
 ```text
-udsbundlejob.forge.dev/deploy-uds-core created
+udsbundlejob.forge.dev/deploy-bundle created
 ```
 
 Watch deployment progress:
 
 ```bash
-kubectl get udsbundlejob deploy-uds-core -w
+kubectl get udsbundlejob deploy-bundle -w
 ```
 
 Expected output:
 
 ```text
-NAME              PHASE      AGE
-deploy-uds-core   Pending    2s
-deploy-uds-core   Running    15s
-deploy-uds-core   Succeeded  8m30s
+NAME            PHASE      AGE
+deploy-bundle   Pending    2s
+deploy-bundle   Running    15s
+deploy-bundle   Succeeded  8m30s
 ```
 
 ### 4. Deploy to Remote Cluster

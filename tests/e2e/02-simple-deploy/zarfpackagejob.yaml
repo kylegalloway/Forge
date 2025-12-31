@@ -14,8 +14,8 @@ spec:
     # For now, using Git source + devMode for testing
     type: Git
     git:
-      url: https://github.com/defenseunicorns/zarf-hello-world
-      ref: main
+      url: https://github.com/stefanprodan/podinfo
+      ref: 6.7.0
   deploy:
     target: InCluster
     # Store temporary build artifacts locally

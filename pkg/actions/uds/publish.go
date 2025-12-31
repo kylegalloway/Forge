@@ -88,6 +88,12 @@ func (handler *PublishHandler) createPublishJob(ctx context.Context, bundle *uds
 	// Build env vars
 	envVars := handler.buildEnvVars(bundle)
 
+	// Get retry policy from publish config
+	var retryPolicy *udsv1alpha2.RetryPolicy
+	if bundle.Spec.Publish != nil {
+		retryPolicy = bundle.Spec.Publish.Retry
+	}
+
 	// Use default timeout for publish operations
 	activeDeadlineSeconds := int64(constants.DefaultPublishTimeout)
 
@@ -107,7 +113,7 @@ func (handler *PublishHandler) createPublishJob(ctx context.Context, bundle *uds
 		WithArgs([]string{udsCmd}).
 		WithWorkingDir(constants.VolumeMountPathWorkspace).
 		WithResources(handler.getResources(bundle)).
-		WithBackoffLimit(0).
+		WithUDSRetryPolicy(retryPolicy).
 		WithActiveDeadlineSeconds(activeDeadlineSeconds).
 		WithTTLSecondsAfterFinished(3600).
 		WithWorkspaceVolume().

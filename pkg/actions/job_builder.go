@@ -11,6 +11,9 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog/v2"
+
+	udsv1alpha2 "github.com/kylegalloway/forge/pkg/apis/uds/v1alpha2"
+	zarfv1alpha1 "github.com/kylegalloway/forge/pkg/apis/zarf/v1alpha1"
 )
 
 // JobBuilder provides a fluent interface for building Kubernetes Jobs
@@ -109,6 +112,36 @@ func (b *JobBuilder) WithResources(resources corev1.ResourceRequirements) *JobBu
 // WithBackoffLimit sets the Job backoff limit.
 func (b *JobBuilder) WithBackoffLimit(limit int32) *JobBuilder {
 	b.job.Spec.BackoffLimit = &limit
+	return b
+}
+
+// WithZarfRetryPolicy configures retry behavior for Zarf actions.
+// If policy is nil or MaxRetries is nil, defaults to BackoffLimit=0 (no retries).
+func (b *JobBuilder) WithZarfRetryPolicy(policy *zarfv1alpha1.RetryPolicy) *JobBuilder {
+	if policy == nil || policy.MaxRetries == nil {
+		// Default behavior: no retries
+		limit := int32(0)
+		b.job.Spec.BackoffLimit = &limit
+		return b
+	}
+
+	// Set Kubernetes BackoffLimit to MaxRetries
+	b.job.Spec.BackoffLimit = policy.MaxRetries
+	return b
+}
+
+// WithUDSRetryPolicy configures retry behavior for UDS actions.
+// If policy is nil or MaxRetries is nil, defaults to BackoffLimit=0 (no retries).
+func (b *JobBuilder) WithUDSRetryPolicy(policy *udsv1alpha2.RetryPolicy) *JobBuilder {
+	if policy == nil || policy.MaxRetries == nil {
+		// Default behavior: no retries
+		limit := int32(0)
+		b.job.Spec.BackoffLimit = &limit
+		return b
+	}
+
+	// Set Kubernetes BackoffLimit to MaxRetries
+	b.job.Spec.BackoffLimit = policy.MaxRetries
 	return b
 }
 

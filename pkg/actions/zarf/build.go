@@ -97,10 +97,12 @@ func (handler *BuildHandler) createBuildJob(ctx context.Context, pkg *zarfv1alph
 		return nil, fmt.Errorf("failed to build init containers: %w", err)
 	}
 
-	// Determine timeout
+	// Determine timeout and retry policy
 	timeoutStr := ""
+	var retryPolicy *zarfv1alpha1.RetryPolicy
 	if pkg.Spec.Build != nil {
 		timeoutStr = pkg.Spec.Build.Timeout
+		retryPolicy = pkg.Spec.Build.Retry
 	}
 	activeDeadlineSeconds := actions.ParseTimeoutWithDefault(timeoutStr, constants.DefaultBuildTimeout)
 
@@ -120,7 +122,7 @@ func (handler *BuildHandler) createBuildJob(ctx context.Context, pkg *zarfv1alph
 		WithArgs([]string{zarfCmd}).
 		WithWorkingDir(workingDir).
 		WithResources(handler.getResources(pkg)).
-		WithBackoffLimit(0).
+		WithZarfRetryPolicy(retryPolicy).
 		WithActiveDeadlineSeconds(activeDeadlineSeconds).
 		WithTTLSecondsAfterFinished(3600).
 		WithInitContainers(initContainers).

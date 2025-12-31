@@ -98,10 +98,12 @@ func (handler *PublishHandler) createPublishJob(ctx context.Context, pkg *zarfv1
 		return nil, fmt.Errorf("failed to build init containers: %w", err)
 	}
 
-	// Determine timeout
+	// Determine timeout and retry policy
 	timeoutStr := ""
+	var retryPolicy *zarfv1alpha1.RetryPolicy
 	if pkg.Spec.Publish != nil {
 		timeoutStr = pkg.Spec.Publish.Timeout
+		retryPolicy = pkg.Spec.Publish.Retry
 	}
 	activeDeadlineSeconds := actions.ParseTimeoutWithDefault(timeoutStr, constants.DefaultPublishTimeout)
 
@@ -120,7 +122,7 @@ func (handler *PublishHandler) createPublishJob(ctx context.Context, pkg *zarfv1
 		WithArgs([]string{publishCmd}).
 		WithWorkingDir(constants.VolumeMountPathWorkspace).
 		WithResources(handler.getResources(pkg)).
-		WithBackoffLimit(0).
+		WithZarfRetryPolicy(retryPolicy).
 		WithActiveDeadlineSeconds(activeDeadlineSeconds).
 		WithTTLSecondsAfterFinished(3600).
 		WithInitContainers(initContainers).

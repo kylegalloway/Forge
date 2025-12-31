@@ -93,7 +93,8 @@ func (handler *CreateHandler) createBundleJob(ctx context.Context, bundle *udsv1
 		return nil, fmt.Errorf("failed to build init containers: %w", err)
 	}
 
-	// Use default timeout for create operations
+	// Use default timeout and no retry policy for create operations
+	// (create doesn't have a config section in UDSBundleJobSpec)
 	activeDeadlineSeconds := int64(constants.DefaultCreateTimeout)
 
 	// Build Job using JobBuilder
@@ -112,7 +113,7 @@ func (handler *CreateHandler) createBundleJob(ctx context.Context, bundle *udsv1
 		WithArgs([]string{udsCmd}).
 		WithWorkingDir(workingDir).
 		WithResources(handler.getResources(bundle)).
-		WithBackoffLimit(0).
+		WithUDSRetryPolicy(nil).
 		WithActiveDeadlineSeconds(activeDeadlineSeconds).
 		WithTTLSecondsAfterFinished(3600).
 		WithInitContainers(initContainers).

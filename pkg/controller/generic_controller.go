@@ -241,14 +241,26 @@ func (ctrl *GenericController[T]) handleObject(ctx context.Context, obj interfac
 		return err
 	}
 
-	// Check if resource is already completed
+	// Check if resource is in retry state
 	status, hasStatus := unstrObj.Object["status"].(map[string]interface{})
 	if hasStatus {
 		phase, hasPhase := status["phase"].(string)
 		if !hasPhase {
 			return nil
 		}
-		if phase == "Completed" || phase == "Failed" {
+
+		// Handle retry scheduling
+		switch phase {
+		case "Retrying":
+			if ctrl.shouldRetryNow(status) {
+				klog.InfoS("Retry time reached, dispatching action", "name", name)
+				// Fall through to dispatch action
+			} else {
+				klog.V(4).InfoS("Retry scheduled but not due yet", "name", name)
+				return nil
+			}
+		case "Completed", "Failed":
+			// Resource in terminal state, skip
 			klog.V(4).InfoS("Resource already in terminal state, skipping", "name", name, "phase", phase)
 			return nil
 		}
@@ -490,4 +502,44 @@ func EnsureArtifactPVC(ctx context.Context, kubeClient kubernetes.Interface, nam
 
 	klog.InfoS("Created artifact PVC", "pvc", pvcName, "namespace", namespace, "size", DefaultArtifactStorageSize)
 	return nil
+}
+
+// shouldRetryNow checks if the retry time has been reached for any operation in retry state
+func (ctrl *GenericController[T]) shouldRetryNow(status map[string]interface{}) bool {
+	// Check each operation status field for retry timing
+	statusFields := []string{"buildStatus", "createStatus", "publishStatus", "deployStatus"}
+
+	for _, field := range statusFields {
+		opStatus, ok := status[field].(map[string]interface{})
+		if !ok {
+			continue
+		}
+
+		// Check if this operation is in retrying state
+		state, ok := opStatus["state"].(string)
+		if !ok || state != "Retrying" {
+			continue
+		}
+
+		// Get next retry time
+		nextRetryTimeStr, ok := opStatus["nextRetryTime"].(string)
+		if !ok {
+			// No specific time set, retry immediately
+			return true
+		}
+
+		// Parse the retry time
+		nextRetryTime, err := time.Parse(time.RFC3339, nextRetryTimeStr)
+		if err != nil {
+			klog.V(4).InfoS("Failed to parse nextRetryTime, retrying immediately", "field", field, "time", nextRetryTimeStr)
+			return true
+		}
+
+		// Check if retry time has passed
+		if time.Now().After(nextRetryTime) {
+			return true
+		}
+	}
+
+	return false
 }

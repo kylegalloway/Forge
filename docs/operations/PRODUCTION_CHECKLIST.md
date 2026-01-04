@@ -2,7 +2,7 @@
 
 Production readiness checklist for deploying Forge - the Kubernetes-native Zarf package operations controller.
 
-**Current Status**: Foundation complete, ready for production hardening.
+**Current Status**: Core functionality complete (95%), package attestation integration in progress.
 
 ## Status Legend
 
@@ -20,10 +20,10 @@ Production readiness checklist for deploying Forge - the Kubernetes-native Zarf 
 
 ### API & CRD
 
-- [x] ✅ ZarfPackageJob CRD with comprehensive validation
+- [x] ✅ ZarfPackageJob and UDSBundleJob CRDs with comprehensive validation
 - [x] ✅ Status subresources
 - [x] ✅ OpenAPI v3 schema validation
-- [x] ✅ Short name configured (zpj)
+- [x] ✅ Short names configured (zpj, ubj)
 
 ### Controller Security
 
@@ -38,7 +38,7 @@ Production readiness checklist for deploying Forge - the Kubernetes-native Zarf 
 
 - [x] ✅ ServiceAccount for controller
 - [x] ✅ ClusterRole with minimal permissions
-- [x] ✅ ZarfPackageJob read/status permissions
+- [x] ✅ ZarfPackageJob and UDSBundleJob read/status permissions
 - [x] ✅ ServiceAccount read permissions (for policy validation)
 - [x] ✅ Secret read permissions (for credentials)
 - [x] ✅ Job create/read permissions (no delete)
@@ -79,7 +79,7 @@ Production readiness checklist for deploying Forge - the Kubernetes-native Zarf 
 
 - [x] ✅ Validating webhook deployed
 - [x] ✅ TLS certificate management (cert-manager ready)
-- [x] ✅ ZarfPackageJob validation
+- [x] ✅ ZarfPackageJob and UDSBundleJob validation
 - [x] ✅ Policy enforcement at admission time
 - [x] ✅ Fail-closed configuration
 - [x] ✅ Health endpoints (/healthz, /readyz)
@@ -243,7 +243,7 @@ Production readiness checklist for deploying Forge - the Kubernetes-native Zarf 
 
 ## Phase 7: Supply Chain Security & Attestation (IN PROGRESS 🚧)
 
-*Status: 15/25 items complete (60%)*
+*Status: 15/23 items complete (65%)*
 
 ### Forge Self-Attestation (Controller/Webhook Images) ✅ COMPLETE
 
@@ -287,8 +287,6 @@ Production readiness checklist for deploying Forge - the Kubernetes-native Zarf 
 ### Supply Chain Tracking
 
 - [x] ✅ SBOM generation for Forge images (automated)
-- [ ] ⏸️ SBOM generation for Zarf packages
-- [ ] ⏸️ Supply chain policy enforcement
 
 **Rationale**: Supply chain security is critical for production deployments. Attestations provide cryptographic proof of provenance, enabling auditability and compliance. SLSA framework provides industry-standard approach to supply chain integrity.
 

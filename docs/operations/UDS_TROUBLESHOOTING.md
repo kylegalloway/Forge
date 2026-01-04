@@ -1151,7 +1151,7 @@ chmod +x collect-uds-diagnostics.sh
 
 ## Additional Resources
 
-- **User Guide**: [UDS_GUIDE.md](../getting-started/UDS_GUIDE.md) - Complete UDS bundle guide
+- **User Guide**: [USER_GUIDE.md](../getting-started/USER_GUIDE.md) - Complete Zarf and UDS bundle guide
 - **Policy Examples**: `examples/policies/uds/` - ServiceAccount templates and RBAC
 - **General Troubleshooting**: [TROUBLESHOOTING.md](TROUBLESHOOTING.md) - Zarf package issues
 - **Runbook**: [RUNBOOK.md](RUNBOOK.md) - Operational procedures
@@ -1159,5 +1159,5 @@ chmod +x collect-uds-diagnostics.sh
 **Getting Help**:
 
 1. Check this troubleshooting guide
-2. Review [UDS_GUIDE.md](../getting-started/UDS_GUIDE.md) for usage examples
+2. Review [USER_GUIDE.md](../getting-started/USER_GUIDE.md) for usage examples
 3. Check GitHub Issues: https://github.com/kylegalloway/forge/issues

@@ -6,8 +6,7 @@ Welcome to the Forge documentation. This guide will help you navigate through th
 
 New to Forge? Start here to get up and running quickly.
 
-- [User Guide](getting-started/USER_GUIDE.md) - Complete guide to using Forge for Zarf package operations
-- [UDS Guide](getting-started/UDS_GUIDE.md) - Complete guide to using Forge for UDS bundle operations
+- [User Guide](getting-started/USER_GUIDE.md) - Complete guide to using Forge for Zarf packages and UDS bundles
 - [Deployment Guide](getting-started/DEPLOYMENT.md) - Deployment scenarios and configurations
 
 ## Development

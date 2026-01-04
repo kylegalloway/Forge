@@ -337,6 +337,7 @@ func (ctrl *GenericController[T]) isPrimaryAction(action string) bool {
 		ctrl.config.PrimaryAction + "Publish",
 		ctrl.config.PrimaryAction + "Deploy",
 		ctrl.config.PrimaryAction + "PublishDeploy",
+		"Build", "Create", // Standalone primary actions (capitalized API types)
 		"BuildPublish", "BuildDeploy", "BuildPublishDeploy", // Zarf
 		"CreatePublish", "CreateDeploy", "CreatePublishDeploy", // UDS
 	}

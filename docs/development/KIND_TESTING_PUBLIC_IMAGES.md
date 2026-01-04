@@ -396,8 +396,9 @@ metadata:
   namespace: default
 spec:
   serviceAccountName: test-builder
-  action: build
+  action: Build
   source:
+    type: Git
     git:
       url: https://github.com/stefanprodan/podinfo
       ref: 6.7.0
@@ -418,17 +419,22 @@ metadata:
   namespace: default
 spec:
   serviceAccountName: test-builder
-  action: build-and-publish
+  action: BuildPublish
   source:
+    type: Git
     git:
       url: https://github.com/stefanprodan/podinfo
       ref: 6.7.0
       path: charts/podinfo
-  destination:
-    oci:
-      registry: ghcr.io
-      repository: myorg/packages
-      credentialsSecret: registry-creds  # pragma: allowlist secret
+  publish:
+    destination:
+      type: OCI
+      oci:
+        registry: ghcr.io
+        repository: myorg/packages
+        tag: latest
+        credentialsSecretRef:
+          name: registry-creds
 ```
 
 **Note**: You'll need to create a Secret with registry credentials:
@@ -452,35 +458,34 @@ metadata:
   namespace: default
 spec:
   serviceAccountName: test-builder
-  action: deploy
+  action: Deploy
   source:
+    type: OCI
     oci:
-      registry: ghcr.io
-      repository: myorg/packages
-      tag: latest
-  deployOptions:
+      ref: ghcr.io/myorg/packages:latest
+  deploy:
+    target: InCluster
     namespace: default
 ```
 
-### UDS Package Job
+### UDS Bundle Job
 
 Test UDS bundle operations:
 
 ```yaml
-apiVersion: forge.dev/v1alpha1
+apiVersion: forge.dev/v1alpha2
 kind: UDSBundleJob
 metadata:
   name: uds-test
   namespace: default
 spec:
   serviceAccountName: test-builder
-  action: create
+  action: Create
   source:
+    type: Git
     git:
       url: https://github.com/prometheus/prometheus
       ref: v2.45.0
-  createOptions:
-    output: /workspace/output
 ```
 
 ## Configuration Options

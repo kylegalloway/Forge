@@ -6,20 +6,14 @@
 
 ## What is Forge?
 
-Forge is a Kubernetes controller that brings Zarf package operations into the declarative Kubernetes world. Instead of running arbitrary scripts (security nightmare), Forge provides purpose-built operations with fine-grained RBAC controls.
+Forge is a Kubernetes controller that brings Zarf package and UDS bundle operations into the declarative Kubernetes world. Instead of running arbitrary scripts (security nightmare), Forge provides purpose-built operations with fine-grained RBAC controls.
 
 ### What it does
 
-- **Build** Zarf packages from Git repos, S3, or OCI registries
+- **Build** Zarf packages or UDS bundles from Git repos, S3, or OCI registries
 - **Publish** artifacts to S3 or OCI registries
-- **Deploy** packages to in-cluster or external Kubernetes clusters
+- **Deploy** packages/bundles to in-cluster or external Kubernetes clusters
 - **Enforce policies** on who can do what with which resources
-
-### What it doesn't do
-
-- Run arbitrary scripts (use a CronJob for that)
-- Give you root access disguised as "flexibility"
-- Trust users by default
 
 ## Quick Example
 
@@ -433,21 +427,13 @@ See [PRODUCTION_CHECKLIST.md](docs/operations/PRODUCTION_CHECKLIST.md) for detai
 - [x] Image signing support
 - [x] Coverage reporting (Codecov)
 
-**Phase 8-9: Audit & Launch** (Pending ⏸️)
+**Current Status**: 103/127 items complete (81%)
 
-- [ ] Security audit
-- [ ] Compliance documentation
-- [ ] Production deployment verification
-
-**Current Status**: 103/130 items complete (79%)
-
-**Note**: Overall percentage decreased due to addition of Phase 7 (Supply Chain Security & Attestation) with 15 new items focused on SLSA provenance, signing, and SBOM generation.
+**Note**: Phase 7 (Supply Chain Security & Attestation) added SLSA provenance, signing, and SBOM generation for Forge images. Package attestation framework implemented and ready for integration.
 
 ## Why "Forge"?
 
 Because packages aren't "run" - they're **forged** through multiple operations (build, publish, deploy). Like a blacksmith's forge where raw materials become finished products through controlled, repeatable processes.
-
-Also, "ScriptRunner" sounded like a toy. Forge sounds like where serious ops get done.
 
 ## License
 

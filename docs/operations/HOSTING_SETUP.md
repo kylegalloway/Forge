@@ -1,257 +1,77 @@
 # Forge Hosting Setup Guide
 
-This guide provides step-by-step instructions for setting up container image
-hosting (GHCR) and Helm chart distribution for Forge.
+This guide documents the current hosting setup for Forge's container images and Helm charts.
 
-## Current Status
+## Current Status: ✅ Fully Automated
 
-### ✅ Already Automated
+**Good news:** Everything is already set up and working! The repository has complete automation for building, publishing, signing, and distributing Forge.
 
-The repository already has comprehensive automation in place:
+### What's Already Working
 
-1. **Container Image Building & Publishing** (`.github/workflows/attest.yaml`)
-   - Multi-arch builds (linux/amd64, linux/arm64)
-   - Pushes to GHCR automatically on every push to main
-   - Image names:
-     - `ghcr.io/kylegalloway/forge/forge-controller`
-     - `ghcr.io/kylegalloway/forge/forge-webhook`
-   - Tagging strategy:
-     - `latest` (on main branch)
-     - `main` (on main branch)
-     - `main-<sha>` (git commit SHA)
-     - `v1.2.3` (on version tags)
-     - `1.2` (on version tags)
+#### 1. Container Image Publishing
 
-2. **SLSA Build Provenance** (`.github/workflows/attest.yaml`)
-   - Automatic SLSA provenance generation
-   - **SLSA Build Level 3** compliance
-   - Signed with GitHub OIDC (keyless Cosign)
+**Workflow**: `.github/workflows/release.yaml` and `.github/workflows/attest.yaml`
 
-3. **SBOM Generation** (`.github/workflows/attest.yaml`)
-   - SPDX format
-   - CycloneDX format
-   - Attached to images as attestations
+**Images Published**:
+- `ghcr.io/kylegalloway/forge/forge-controller`
+- `ghcr.io/kylegalloway/forge/forge-webhook`
 
-4. **Image Signing** (`.github/workflows/attest.yaml`)
-   - Cosign signatures (keyless with GitHub OIDC)
-   - Signatures stored in Rekor transparency log
+**Platforms**:
+- `linux/amd64`
+- `linux/arm64`
 
-5. **Vulnerability Scanning** (`.github/workflows/attest.yaml`)
-   - Trivy scans on every build
-   - Results uploaded to GitHub Security tab
+**Tagging Strategy**:
+- On version tags (e.g., `v0.4.3`):
+  - `0.4.3` (semver full version)
+  - `0.4` (semver major.minor)
+  - `0` (semver major)
+  - `sha-<commit>` (git commit)
+- On main branch pushes:
+  - `latest`
+  - `main`
+  - `main-<sha>`
 
-### ⏸️ Needs Manual Setup
+#### 2. Security Attestations
 
-1. **Repository Settings**
-   - Enable GitHub Container Registry package access
-   - Configure package visibility (public/private)
+**SLSA Build Level 3**:
+- ✅ Isolated builds in GitHub Actions
+- ✅ Signed provenance attached to images
+- ✅ Non-falsifiable (GitHub OIDC tokens)
+- ✅ Hermetic builds (reproducible)
 
-2. **Helm Chart Distribution**
-   - Create Helm chart release workflow
-   - Set up GitHub Pages for chart repository
+**Image Signing**:
+- ✅ Cosign signatures (keyless with GitHub OIDC)
+- ✅ Signatures stored in Rekor transparency log
+- ✅ Verifiable with standard Sigstore tools
 
-3. **Optional: Artifact Hub**
-   - Submit chart to Artifact Hub for discoverability
+**SBOM Generation**:
+- ✅ SPDX format (attached as attestations)
+- ✅ CycloneDX format (in release artifacts)
+- ✅ Generated with Syft
 
-## Manual Setup Instructions
+**Vulnerability Scanning**:
+- ✅ Trivy scans on every build
+- ✅ Results uploaded to GitHub Security tab
+- ✅ SARIF format for integration
 
-### Step 1: Enable GHCR Package Access
+#### 3. Helm Chart Distribution
 
-The attest.yaml workflow uses `secrets.GITHUB_TOKEN` which automatically has
-the necessary permissions. However, you need to ensure packages are accessible:
+**GitHub Pages**: `https://kylegalloway.github.io/Forge/`
+- ✅ Helm repository index published
+- ✅ Chart tarballs hosted
+- ✅ Automatic updates on releases
 
-1. Go to `https://github.com/kylegalloway/Forge/settings/actions`
-2. Under "Workflow permissions", ensure:
-   - ✅ "Read and write permissions" is selected
-   - ✅ "Allow GitHub Actions to create and approve pull requests" is checked (optional)
+**GitHub Releases**:
+- ✅ Chart tarball attached to each release
+- ✅ Binaries for multiple platforms
+- ✅ SBOMs attached
+- ✅ Auto-generated release notes
 
-3. Verify package visibility:
-   - After the next push to main, go to `https://github.com/kylegalloway?tab=packages`
-   - Find the `forge/forge-controller` and `forge/forge-webhook` packages
-   - Click on each package → "Package settings"
-   - Under "Danger Zone", you can change visibility:
-     - **Public**: Anyone can pull (recommended for open source)
-     - **Private**: Only you and collaborators can pull
+**Latest Release**: v0.4.3
 
-### Step 2: Verify Attest Workflow Success
+## Using the Published Artifacts
 
-The workflow should now succeed with the lowercase registry fix. Monitor the
-next run:
-
-```bash
-# Watch the latest workflow run
-gh run watch --repo kylegalloway/Forge
-
-# Or check status manually
-gh run list --repo kylegalloway/Forge --workflow=attest.yaml --limit 1
-```
-
-**Expected Success Indicators:**
-
-- ✅ Multi-arch images built and pushed
-- ✅ Images signed with Cosign
-- ✅ SBOM attestations attached
-- ✅ Trivy scans completed
-- ✅ Results in GitHub Security tab
-
-### Step 3: Pull and Verify Images
-
-Once the workflow succeeds, verify you can pull the images:
-
-```bash
-# Pull controller image (latest)
-docker pull ghcr.io/kylegalloway/forge/forge-controller:latest
-
-# Pull webhook image
-docker pull ghcr.io/kylegalloway/forge/forge-webhook:latest
-
-# Verify signature (requires cosign)
-cosign verify \
-  --certificate-identity-regexp="https://github.com/kylegalloway/Forge" \
-  --certificate-oidc-issuer="https://token.actions.githubusercontent.com" \
-  ghcr.io/kylegalloway/forge/forge-controller:latest
-
-# Download and view SBOM
-cosign download sbom ghcr.io/kylegalloway/forge/forge-controller:latest | jq .
-```
-
-### Step 4: Create Helm Chart Release Workflow
-
-Create `.github/workflows/helm-release.yaml`:
-
-```yaml
-name: Release Helm Chart
-
-on:
-  push:
-    tags:
-      - 'v*'
-
-permissions:
-  contents: write
-
-jobs:
-  release:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Configure Git
-        run: |
-          git config user.name "$GITHUB_ACTOR"
-          git config user.email "$GITHUB_ACTOR@users.noreply.github.com"
-
-      - name: Install Helm
-        uses: azure/setup-helm@v3
-        with:
-          version: 'latest'
-
-      - name: Package Helm chart
-        run: |
-          # Extract version from tag (remove 'v' prefix)
-          VERSION="${GITHUB_REF_NAME#v}"
-
-          # Update Chart.yaml with version and appVersion
-          sed -i "s/^version:.*/version: $VERSION/" chart/forge/Chart.yaml
-          sed -i "s/^appVersion:.*/appVersion: $VERSION/" chart/forge/Chart.yaml
-
-          # Package the chart
-          helm package chart/forge --destination .helm-releases/
-
-          # Create or update index
-          BASE_URL="https://github.com/kylegalloway/Forge/releases"
-          RELEASE_URL="${BASE_URL}/download/${GITHUB_REF_NAME}"
-
-          if [ -f index.yaml ]; then
-            helm repo index .helm-releases/ \
-              --url "$RELEASE_URL" \
-              --merge index.yaml
-          else
-            helm repo index .helm-releases/ --url "$RELEASE_URL"
-          fi
-
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          files: |
-            .helm-releases/*.tgz
-            .helm-releases/index.yaml
-          generate_release_notes: true
-          draft: false
-          prerelease: false
-
-      - name: Checkout gh-pages branch
-        uses: actions/checkout@v4
-        with:
-          ref: gh-pages
-          path: gh-pages
-
-      - name: Update GitHub Pages
-        run: |
-          # Copy index to gh-pages
-          mkdir -p gh-pages
-          cp .helm-releases/index.yaml gh-pages/
-
-          cd gh-pages
-          git add index.yaml
-          git commit -m "Update Helm chart index for $GITHUB_REF_NAME" || \
-            echo "No changes to commit"
-          git push origin gh-pages || echo "No changes to push"
-```
-
-### Step 5: Set Up GitHub Pages (One-Time)
-
-1. Create the `gh-pages` branch:
-
-   ```bash
-   cd /Users/kylegalloway/src/forge
-
-   # Create orphan branch
-   git checkout --orphan gh-pages
-   git reset --hard
-   git commit --allow-empty -m "Initialize gh-pages"
-   git push origin gh-pages
-
-   # Return to main
-   git checkout main
-   ```
-
-2. Enable GitHub Pages:
-   - Go to `https://github.com/kylegalloway/Forge/settings/pages`
-   - Source: Deploy from a branch
-   - Branch: `gh-pages` / `/ (root)`
-   - Click "Save"
-
-3. Verify GitHub Pages is active:
-   - Visit `https://kylegalloway.github.io/Forge/`
-   - Should see a blank page or 404 (normal until first chart is published)
-
-### Step 6: Create Your First Release
-
-When you're ready to publish v0.1.0 (or any version):
-
-```bash
-cd /Users/kylegalloway/src/forge
-
-# Tag the release
-git tag -s v0.1.0 -m "Release v0.1.0
-
-First stable release of Forge with:
-- ZarfPackageJob and UDSBundleJob controllers
-- Policy enforcement via ServiceAccount annotations
-- SLSA provenance and SBOM generation
-- Multi-arch container images"
-
-# Push the tag (triggers helm-release.yaml and attest.yaml)
-git push origin v0.1.0
-```
-
-### Step 7: Using the Published Helm Chart
-
-After the release workflow completes, users can install Forge with:
+### Install Forge via Helm
 
 ```bash
 # Add the Helm repository
@@ -262,149 +82,441 @@ helm repo update
 helm install forge forge/forge \
   --namespace forge-system \
   --create-namespace \
-  --wait
+  --version 0.4.3
 
-# Or with custom values
+# Or install latest version
 helm install forge forge/forge \
   --namespace forge-system \
-  --create-namespace \
-  -f my-values.yaml \
-  --wait
+  --create-namespace
 ```
 
-### Step 8: (Optional) Submit to Artifact Hub
+### Pull Container Images
 
-For better discoverability, submit your chart to Artifact Hub:
+```bash
+# Pull controller image
+docker pull ghcr.io/kylegalloway/forge/forge-controller:0.4.3
 
-1. Create `chart/forge/artifacthub-repo.yml`:
+# Pull webhook image
+docker pull ghcr.io/kylegalloway/forge/forge-webhook:0.4.3
 
-   ```yaml
-   repositoryID: <your-repo-id>
-   owners:
-     - name: Kyle Galloway
-       email: kyle@example.com
+# Pull latest
+docker pull ghcr.io/kylegalloway/forge/forge-controller:latest
+```
+
+### Verify Image Signatures
+
+```bash
+# Install cosign (if not already installed)
+# macOS: brew install cosign
+# Linux: See https://docs.sigstore.dev/cosign/installation/
+
+# Verify controller image signature
+cosign verify \
+  --certificate-identity-regexp="https://github.com/kylegalloway/Forge" \
+  --certificate-oidc-issuer="https://token.actions.githubusercontent.com" \
+  ghcr.io/kylegalloway/forge/forge-controller:0.4.3
+
+# Verify webhook image signature
+cosign verify \
+  --certificate-identity-regexp="https://github.com/kylegalloway/Forge" \
+  --certificate-oidc-issuer="https://token.actions.githubusercontent.com" \
+  ghcr.io/kylegalloway/forge/forge-webhook:0.4.3
+```
+
+### Download and Inspect SBOM
+
+```bash
+# Download SBOM for controller
+cosign download sbom ghcr.io/kylegalloway/forge/forge-controller:0.4.3 > controller-sbom.json
+
+# View SBOM with jq
+cat controller-sbom.json | jq .
+
+# Verify SBOM attestation
+cosign verify-attestation \
+  --certificate-identity-regexp="https://github.com/kylegalloway/Forge" \
+  --certificate-oidc-issuer="https://token.actions.githubusercontent.com" \
+  --type spdx \
+  ghcr.io/kylegalloway/forge/forge-controller:0.4.3
+```
+
+## How Releases Work
+
+### Automated Release Process
+
+1. **Tag a Release**:
+   ```bash
+   git tag -s v0.5.0 -m "Release v0.5.0"
+   git push origin v0.5.0
    ```
 
-2. Visit <https://artifacthub.io/>
-3. Sign in with GitHub
-4. Click "Add Repository"
-5. Fill in:
+2. **Workflow Triggers**:
+   - `.github/workflows/release.yaml` is triggered
+   - Runs tests
+   - Builds multi-arch binaries
+   - Generates SBOMs
+   - Builds and pushes container images
+   - Signs images with Cosign
+   - Attaches SBOM attestations
+   - Scans images with Trivy
+   - Packages Helm chart
+   - Creates GitHub release
+   - Updates GitHub Pages
+
+3. **Artifacts Published**:
+   - Container images pushed to GHCR
+   - Helm chart pushed to GitHub Pages
+   - Release created with:
+     - Binaries (Linux, macOS, multiple architectures)
+     - SBOMs (SPDX and CycloneDX)
+     - Helm chart tarball
+     - Helm repository index
+     - Auto-generated release notes
+
+4. **Users Can**:
+   - Pull images from GHCR
+   - Install Helm chart from GitHub Pages
+   - Download binaries from GitHub Releases
+   - Verify signatures with Cosign
+   - Inspect SBOMs
+
+### Main Branch Builds
+
+On every push to `main` branch:
+- `.github/workflows/attest.yaml` runs
+- Builds and pushes images with tags:
+  - `latest`
+  - `main`
+  - `main-<sha>`
+- Signs images
+- Attaches attestations
+- Scans for vulnerabilities
+
+## Repository Configuration
+
+### Required Settings
+
+All necessary settings are already configured:
+
+✅ **GitHub Actions Permissions**:
+- Repository Settings → Actions → General → Workflow permissions
+- "Read and write permissions" enabled
+- "Allow GitHub Actions to create and approve pull requests" enabled
+
+✅ **GitHub Pages**:
+- Repository Settings → Pages
+- Source: Deploy from branch `gh-pages`
+- Serving at: `https://kylegalloway.github.io/Forge/`
+
+✅ **Package Visibility**:
+- Packages are public (recommended for open source)
+- Accessible at: `https://github.com/kylegalloway?tab=packages`
+
+### Secrets
+
+No custom secrets required! Everything uses the built-in `GITHUB_TOKEN` with OIDC for keyless signing.
+
+## Optional: Artifact Hub Submission
+
+The only thing NOT automated is Artifact Hub submission (optional, improves discoverability).
+
+### Submit to Artifact Hub
+
+1. Visit [Artifact Hub](https://artifacthub.io/)
+2. Sign in with GitHub
+3. Click "Add Repository"
+4. Fill in:
    - **Repository Type**: Helm charts
    - **Name**: Forge
    - **URL**: `https://kylegalloway.github.io/Forge`
-   - **Description**: Kubernetes controller for declarative Zarf package operations
-6. Submit
+   - **Description**: Kubernetes controller for declarative Zarf package and UDS bundle operations
+5. Submit
 
-Artifact Hub will automatically sync your index.yaml every few hours.
+Artifact Hub will automatically sync your `index.yaml` every few hours.
+
+### Add Artifact Hub Metadata (Optional)
+
+Create `chart/forge/artifacthub-repo.yml`:
+
+```yaml
+repositoryID: <your-repo-id-from-artifact-hub>
+owners:
+  - name: Kyle Galloway
+    email: kyle@example.com
+```
+
+This provides additional metadata for Artifact Hub listings.
 
 ## Verification Checklist
 
-After completing setup, verify everything works:
+Use this checklist to verify everything is working after a release:
 
-- [ ] **GHCR Images Published**
-  - `ghcr.io/kylegalloway/forge/forge-controller:latest` pulls successfully
-  - `ghcr.io/kylegalloway/forge/forge-webhook:latest` pulls successfully
+### After Creating a Release (e.g., v0.5.0)
+
+- [ ] **Workflow Succeeded**
+  ```bash
+  gh run list --repo kylegalloway/Forge --workflow=release.yaml --limit 1
+  ```
+
+- [ ] **Images Published to GHCR**
+  ```bash
+  docker pull ghcr.io/kylegalloway/forge/forge-controller:0.5.0
+  docker pull ghcr.io/kylegalloway/forge/forge-webhook:0.5.0
+  ```
 
 - [ ] **Images Signed**
-  - `cosign verify` succeeds with GitHub OIDC identity
-  - Signatures visible in Rekor transparency log
+  ```bash
+  cosign verify \
+    --certificate-identity-regexp="https://github.com/kylegalloway/Forge" \
+    --certificate-oidc-issuer="https://token.actions.githubusercontent.com" \
+    ghcr.io/kylegalloway/forge/forge-controller:0.5.0
+  ```
 
 - [ ] **SBOM Attached**
-  - `cosign download sbom` returns valid SPDX JSON
-  - SBOM contains accurate dependency information
-
-- [ ] **Vulnerability Scans**
-  - Trivy results visible in GitHub Security tab
-  - No critical vulnerabilities (or acknowledged if present)
-
-- [ ] **Helm Chart Available**
-  - `helm repo add forge https://kylegalloway.github.io/Forge` succeeds
-  - `helm search repo forge` shows chart
-  - `helm install` works in test cluster
+  ```bash
+  cosign download sbom ghcr.io/kylegalloway/forge/forge-controller:0.5.0 | jq .
+  ```
 
 - [ ] **GitHub Release Created**
-  - Release page shows chart tarballs
-  - Release notes auto-generated
-  - Chart index.yaml accessible
+  ```bash
+  gh release view v0.5.0 --repo kylegalloway/Forge
+  ```
+
+- [ ] **Helm Chart Available**
+  ```bash
+  helm repo add forge https://kylegalloway.github.io/Forge
+  helm repo update
+  helm search repo forge --versions | grep 0.5.0
+  ```
+
+- [ ] **Helm Chart Installable**
+  ```bash
+  # In a test cluster
+  helm install forge-test forge/forge \
+    --version 0.5.0 \
+    --namespace forge-test \
+    --create-namespace \
+    --dry-run
+  ```
+
+- [ ] **Security Scans Completed**
+  - Check GitHub Security tab for Trivy results
+  - Review any vulnerabilities found
 
 ## Troubleshooting
 
-### Attest Workflow Fails with "parsing reference" Error
+### Workflow Failures
 
-**Symptom**: `Error: signing [...]: parsing reference: could not parse reference`
+**Check workflow logs**:
+```bash
+# List recent workflow runs
+gh run list --repo kylegalloway/Forge --workflow=release.yaml --limit 5
 
-**Cause**: Uppercase letters in repository name (OCI registries require lowercase)
+# View specific run
+gh run view <run-id> --repo kylegalloway/Forge --log
 
-**Fix**: Already applied in this commit - workflow now lowercases repository names
+# Watch live
+gh run watch --repo kylegalloway/Forge
+```
 
-### Images Not Visible in Package Registry
+### Image Pull Failures
 
-**Symptom**: Workflow succeeds but packages don't appear
+**Issue**: `Error response from daemon: manifest unknown`
 
-**Cause**: Package visibility restrictions or workflow permissions
-
-**Fix**:
-
-1. Check workflow permissions in repository settings
-2. Visit `https://github.com/kylegalloway?tab=packages`
-3. If package exists but is private, change visibility to public
-
-### Helm Chart Not Found After Release
-
-**Symptom**: `helm repo add` succeeds but `helm search` finds nothing
-
-**Cause**: index.yaml not updated or GitHub Pages not serving correctly
+**Cause**: Image tag doesn't exist or package is private
 
 **Fix**:
+1. Verify tag exists: `gh release list --repo kylegalloway/Forge`
+2. Check package visibility at `https://github.com/kylegalloway?tab=packages`
+3. If private, authenticate: `docker login ghcr.io -u kylegalloway`
 
-1. Verify `gh-pages` branch exists and has index.yaml
-2. Check GitHub Pages is enabled and serving
-3. Visit `https://kylegalloway.github.io/Forge/index.yaml` directly
-4. Re-run helm-release workflow if needed
+### Cosign Verification Failures
 
-### Cosign Verification Fails
+**Issue**: `Error: no matching signatures`
 
-**Symptom**: `cosign verify` fails with certificate identity mismatch
-
-**Cause**: Image built outside GitHub Actions or with different identity
+**Causes**:
+- Image not signed (only release tags are signed)
+- Using wrong certificate identity
+- Image built outside GitHub Actions
 
 **Fix**:
+```bash
+# Verify you're checking a released version
+cosign verify \
+  --certificate-identity-regexp="https://github.com/kylegalloway/Forge" \
+  --certificate-oidc-issuer="https://token.actions.githubusercontent.com" \
+  ghcr.io/kylegalloway/forge/forge-controller:0.4.3  # Use specific version tag
+```
 
-- Only verify images from official releases
-- Check certificate identity matches: `https://github.com/kylegalloway/Forge/.github/workflows/attest.yaml@refs/heads/main`
-- Use `cosign verify --certificate-identity-regexp` for flexibility
+### Helm Chart Not Found
+
+**Issue**: `helm search repo forge` returns nothing
+
+**Causes**:
+- Helm repository not added
+- Repository cache stale
+- Chart not published yet
+
+**Fix**:
+```bash
+# Add repository (if not already added)
+helm repo add forge https://kylegalloway.github.io/Forge
+
+# Force update
+helm repo update
+
+# Verify index is accessible
+curl -sL https://kylegalloway.github.io/Forge/index.yaml | head -20
+
+# Search for chart
+helm search repo forge --versions
+```
+
+### gh-pages Update Failures
+
+**Issue**: Chart not appearing on GitHub Pages after release
+
+**Causes**:
+- gh-pages branch push failed
+- GitHub Pages not enabled
+- Cache not refreshed
+
+**Fix**:
+```bash
+# Check gh-pages branch
+git fetch origin gh-pages
+git log origin/gh-pages --oneline -5
+
+# Verify index.yaml in gh-pages
+git show gh-pages:index.yaml | head -20
+
+# Check GitHub Pages settings
+# Go to: https://github.com/kylegalloway/Forge/settings/pages
+
+# Manually trigger Pages rebuild (visit any gh-pages file and edit/save)
+```
+
+## Monitoring and Maintenance
+
+### Regular Checks
+
+**Weekly**:
+- [ ] Check GitHub Security tab for new vulnerabilities
+- [ ] Review Trivy scan results for latest images
+- [ ] Verify Helm charts are installable
+
+**Monthly**:
+- [ ] Review dependency updates (Dependabot PRs)
+- [ ] Check Cosign signatures are still valid
+- [ ] Audit SBOM contents for accuracy
+
+**Per Release**:
+- [ ] Run verification checklist
+- [ ] Test Helm chart installation in clean cluster
+- [ ] Verify image signatures
+- [ ] Review release notes
+
+### Updating Dependencies
+
+When updating Go dependencies, controller code, or Dockerfile:
+
+1. **Update dependencies**:
+   ```bash
+   go get -u ./...
+   go mod tidy
+   ```
+
+2. **Run tests**:
+   ```bash
+   make test
+   ```
+
+3. **Commit and push to main**:
+   - Workflow builds and publishes `latest` tag
+   - Scans for vulnerabilities
+   - Signs images
+
+4. **Create release when ready**:
+   ```bash
+   git tag -s v0.5.0 -m "Release v0.5.0"
+   git push origin v0.5.0
+   ```
 
 ## Cost Summary
 
-Current recommended setup costs: **$0/month**
+**Current hosting costs: $0/month**
 
-- GitHub Actions: 2,000 minutes/month free (current usage ~5 min/push)
-- GHCR: Unlimited storage and bandwidth for public packages
-- GitHub Pages: Free for public repositories
-- Rekor/Fulcio (Sigstore): Free public good infrastructure
+- ✅ **GitHub Actions**: 2,000 minutes/month free (current usage ~10-15 min/release)
+- ✅ **GHCR**: Unlimited storage and bandwidth for public packages
+- ✅ **GitHub Pages**: Free for public repositories
+- ✅ **Rekor/Fulcio (Sigstore)**: Free public good infrastructure
+- ✅ **GitHub Releases**: Free for public repositories
 
-**Scaling Considerations:**
-
+**Scaling Considerations**:
 - If you exceed 2,000 Actions minutes/month: ~$0.008/minute
-- Private packages have different storage limits
-- Enterprise features available for additional cost
+- Private packages have storage limits (500 MB free, then $0.008/GB/day)
+- Enterprise features available at additional cost
 
-## Next Steps
+## Architecture Overview
 
-1. **Monitor First Workflow Run**: Watch the attest workflow with the lowercase fix
-2. **Create First Release**: Tag v0.1.0 when ready (triggers Helm chart release)
-3. **Test Installation**: Install Forge in a test cluster using Helm chart
-4. **Update Documentation**: Add installation instructions to README.md
-5. **Consider Artifact Hub**: Submit for better discoverability
+```text
+┌─────────────────────────────────────────────────────────────────┐
+│                         GitHub Repository                        │
+│                    github.com/kylegalloway/Forge                │
+└────────────┬─────────────────────────────────┬──────────────────┘
+             │                                 │
+    ┌────────▼────────┐               ┌────────▼────────┐
+    │   Push to main  │               │  Push tag (v*)  │
+    │  Trigger: attest│               │ Trigger: release│
+    └────────┬────────┘               └────────┬────────┘
+             │                                 │
+    ┌────────▼────────┐               ┌────────▼────────────────┐
+    │ attest.yaml     │               │ release.yaml            │
+    │ • Build images  │               │ • Run tests             │
+    │ • Tag: latest   │               │ • Build binaries        │
+    │ • Sign & attest │               │ • Build images          │
+    │ • Scan (Trivy)  │               │ • Sign & attest         │
+    └────────┬────────┘               │ • Scan (Trivy)          │
+             │                        │ • Package Helm chart    │
+             ├────────────────────────┤ • Create GitHub Release │
+             │                        │ • Update gh-pages       │
+             │                        └────────┬────────────────┘
+             │                                 │
+    ┌────────▼─────────────────────────────────▼────────┐
+    │         GitHub Container Registry (GHCR)          │
+    │   • ghcr.io/kylegalloway/forge/forge-controller  │
+    │   • ghcr.io/kylegalloway/forge/forge-webhook     │
+    │   • Multi-arch (amd64, arm64)                     │
+    │   • Signed with Cosign (OIDC)                     │
+    │   • SBOM + SLSA attestations attached             │
+    └───────────────────────────────────────────────────┘
+                              │
+                   ┌──────────┴──────────┐
+                   │                     │
+          ┌────────▼────────┐   ┌────────▼────────┐
+          │  GitHub Pages   │   │ GitHub Releases │
+          │  (gh-pages)     │   │ • Binaries      │
+          │  • index.yaml   │   │ • SBOMs         │
+          │  • Chart .tgz   │   │ • Chart .tgz    │
+          └────────┬────────┘   └─────────────────┘
+                   │
+          ┌────────▼────────┐
+          │  Helm Repository│
+          │  kylegalloway.  │
+          │  github.io/     │
+          │  Forge          │
+          └─────────────────┘
+```
 
 ## Additional Resources
 
 - [GitHub Container Registry Documentation](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-container-registry)
 - [Cosign Documentation](https://docs.sigstore.dev/cosign/overview/)
+- [SLSA Framework](https://slsa.dev/)
 - [Helm Chart Repository Guide](https://helm.sh/docs/topics/chart_repository/)
 - [Artifact Hub](https://artifacthub.io/)
-- [SLSA Framework](https://slsa.dev/)
+- [Trivy Documentation](https://aquasecurity.github.io/trivy/)
 
 ---
 
-**Last Updated:** 2025-12-17
+**Last Updated:** 2026-01-04

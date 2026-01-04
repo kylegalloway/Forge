@@ -4,7 +4,7 @@ Complete reference for Forge ServiceAccount policy annotations.
 
 ## Overview
 
-Forge uses ServiceAccount annotations to define fine-grained permissions for ZarfPackageJob operations. This enables cluster administrators to control what actions users can perform and which resources they can access.
+Forge uses ServiceAccount annotations to define fine-grained permissions for both ZarfPackageJob and UDSBundleJob operations. This enables cluster administrators to control what actions users can perform and which resources they can access.
 
 ## Security Model
 
@@ -23,6 +23,7 @@ Forge uses ServiceAccount annotations to define fine-grained permissions for Zar
 
 **Valid Values:**
 
+**For ZarfPackageJob:**
 - `Build` - Build Zarf packages from source
 - `Publish` - Publish built packages to registries/buckets
 - `Deploy` - Deploy packages to clusters
@@ -30,33 +31,52 @@ Forge uses ServiceAccount annotations to define fine-grained permissions for Zar
 - `BuildDeploy` - Chain Build + Deploy
 - `PublishDeploy` - Chain Publish + Deploy
 - `BuildPublishDeploy` - Chain all three
+
+**For UDSBundleJob:**
+- `Create` - Create UDS bundles from source
+- `Publish` - Publish built bundles to registries/buckets
+- `Deploy` - Deploy bundles to clusters
+- `CreatePublish` - Chain Create + Publish
+- `CreateDeploy` - Chain Create + Deploy
+- `PublishDeploy` - Chain Publish + Deploy
+- `CreatePublishDeploy` - Chain all three
+
+**Universal:**
 - `*` - Allow all actions (use with caution)
 
 **Examples:**
 
 ```yaml
-# Development team - can only build
+# Development team - can only build Zarf packages
 annotations:
   forge.dev/allowed-actions: "Build"
 
-# CI/CD pipeline - can build and publish
+# Development team - can only create UDS bundles
 annotations:
-  forge.dev/allowed-actions: "Build,Publish"
+  forge.dev/allowed-actions: "Create"
 
-# Production deployer - can only deploy pre-built packages
+# CI/CD pipeline - can build/create and publish (works for both job types)
+annotations:
+  forge.dev/allowed-actions: "Build,Publish,Create"
+
+# Production deployer - can only deploy pre-built packages/bundles
 annotations:
   forge.dev/allowed-actions: "Deploy"
 
 # Platform team - full permissions
 annotations:
   forge.dev/allowed-actions: "*"
-```text
+```
 
-**Error Example:**
+**Error Examples:**
 
 ```text
+# ZarfPackageJob error
 action Deploy is not allowed (allowed actions: [Build,Publish]) for ServiceAccount dev-sa
-```text
+
+# UDSBundleJob error
+action Deploy is not allowed (allowed actions: [Create,Publish]) for ServiceAccount dev-sa
+```
 
 ---
 
@@ -90,7 +110,7 @@ annotations:
 # Private GitLab
 annotations:
   forge.dev/allowed-source-repos: "https://gitlab.company.com/infra/*"
-```text
+```
 
 **Required For:** `source.type: Git`
 
@@ -98,7 +118,7 @@ annotations:
 
 ```text
 Git repo https://github.com/other/repo is not allowed (allowed repos: [https://github.com/myorg/*])
-```text
+```
 
 ---
 
@@ -128,7 +148,7 @@ annotations:
 # All buckets with prefix
 annotations:
   forge.dev/allowed-source-buckets: "zarf-*"
-```text
+```
 
 **Required For:** `source.type: S3`
 
@@ -136,7 +156,7 @@ annotations:
 
 ```text
 S3 bucket prod-bucket is not allowed (allowed buckets: [dev-*,staging-*])
-```text
+```
 
 ---
 
@@ -170,7 +190,7 @@ annotations:
 # Docker Hub
 annotations:
   forge.dev/allowed-source-registries: "docker.io/myorg/*"
-```text
+```
 
 **Required For:** `source.type: OCI`
 
@@ -178,7 +198,7 @@ annotations:
 
 ```text
 OCI image ghcr.io/other/package is not allowed (allowed registries: [ghcr.io/myorg/*])
-```text
+```
 
 ---
 
@@ -202,7 +222,7 @@ annotations:
 # Customer-specific
 annotations:
   forge.dev/allowed-publish-buckets: "customer-*-packages"
-```text
+```
 
 **Required For:** `publish.destination.type: S3`
 
@@ -210,7 +230,7 @@ annotations:
 
 ```text
 S3 bucket wrong-bucket is not allowed for publishing (allowed buckets: [artifacts-*])
-```text
+```
 
 ---
 
@@ -234,7 +254,7 @@ annotations:
 # Environment-specific
 annotations:
   forge.dev/allowed-publish-registries: "registry.company.com/dev/*,registry.company.com/staging/*"
-```text
+```
 
 **Required For:** `publish.destination.type: OCI`
 
@@ -242,7 +262,7 @@ annotations:
 
 ```text
 OCI registry ghcr.io/other/* is not allowed for publishing (allowed registries: [ghcr.io/myorg/*])
-```text
+```
 
 ---
 
@@ -272,7 +292,7 @@ annotations:
 # Both
 annotations:
   forge.dev/allowed-deploy-targets: "InCluster,ExternalCluster"
-```text
+```
 
 **Required For:** `deploy.target: InCluster` or `ExternalCluster`
 
@@ -280,7 +300,7 @@ annotations:
 
 ```text
 deploy target ExternalCluster is not allowed (allowed targets: [InCluster])
-```text
+```
 
 ---
 
@@ -302,7 +322,7 @@ annotations:
 # Explicitly deny (default behavior)
 annotations:
   forge.dev/allow-local-sources: "false"
-```text
+```
 
 **Required For:** `source.type: Local` or `publish.destination.type: Local`
 
@@ -310,11 +330,13 @@ annotations:
 
 ```text
 local sources are not allowed (set annotation forge.dev/allow-local-sources: true for dev mode)
-```text
+```
 
 ---
 
 ## Common Patterns
+
+**Note:** These patterns apply to both ZarfPackageJob and UDSBundleJob resources. The annotations work identically for both job types.
 
 ### Developer ServiceAccount
 
@@ -325,8 +347,8 @@ metadata:
   name: developer-sa
   namespace: dev-team
   annotations:
-    # Can only build packages
-    forge.dev/allowed-actions: "Build"
+    # Can build Zarf packages and create UDS bundles
+    forge.dev/allowed-actions: "Build,Create"
 
     # Can use team repositories
     forge.dev/allowed-source-repos: "https://github.com/myorg/*"
@@ -335,7 +357,7 @@ metadata:
     forge.dev/allowed-publish-registries: "ghcr.io/myorg/dev/*"
 
     # No deployment permissions
-```text
+```
 
 ### CI/CD Pipeline ServiceAccount
 
@@ -346,8 +368,8 @@ metadata:
   name: cicd-pipeline-sa
   namespace: cicd
   annotations:
-    # Build and publish
-    forge.dev/allowed-actions: "BuildPublish"
+    # Build Zarf packages and create UDS bundles, then publish
+    forge.dev/allowed-actions: "BuildPublish,CreatePublish"
 
     # Organization repos
     forge.dev/allowed-source-repos: "https://github.com/myorg/*"
@@ -357,7 +379,7 @@ metadata:
 
     # Publish to staging bucket
     forge.dev/allowed-publish-buckets: "staging-artifacts"
-```text
+```
 
 ### Production Deployer ServiceAccount
 
@@ -368,15 +390,15 @@ metadata:
   name: prod-deployer-sa
   namespace: production
   annotations:
-    # Only deploy, no build
+    # Only deploy, no build/create
     forge.dev/allowed-actions: "Deploy"
 
-    # Only from production registry
+    # Only from production registry (for both Zarf packages and UDS bundles)
     forge.dev/allowed-source-registries: "ghcr.io/myorg/prod/*"
 
     # Only to external clusters
     forge.dev/allowed-deploy-targets: "ExternalCluster"
-```text
+```
 
 ### Platform Team ServiceAccount
 
@@ -395,7 +417,7 @@ metadata:
     forge.dev/allowed-publish-buckets: "*"
     forge.dev/allowed-publish-registries: "*"
     forge.dev/allowed-deploy-targets: "*"
-```text
+```
 
 ### Testing/Development ServiceAccount
 
@@ -406,8 +428,8 @@ metadata:
   name: dev-testing-sa
   namespace: dev
   annotations:
-    # All actions
-    forge.dev/allowed-actions: "Build,Publish,Deploy"
+    # All actions for both Zarf packages and UDS bundles
+    forge.dev/allowed-actions: "Build,Create,Publish,Deploy"
 
     # Any repository (development)
     forge.dev/allowed-source-repos: "*"
@@ -420,13 +442,13 @@ metadata:
 
     # In-cluster deployments
     forge.dev/allowed-deploy-targets: "InCluster"
-```text
+```
 
 ---
 
 ## Validation Workflow
 
-1. **User creates ZarfPackageJob** with `spec.serviceAccountName: my-sa`
+1. **User creates ZarfPackageJob or UDSBundleJob** with `spec.serviceAccountName: my-sa`
 
 2. **Webhook validates** (admission time):
    - ServiceAccount exists
@@ -472,7 +494,7 @@ forge.dev/allowed-publish-buckets: "dev-artifacts-*,staging-artifacts-*"
 
 # Team-scoped
 forge.dev/allowed-source-registries: "ghcr.io/myorg/team-platform/*"
-```text
+```
 
 **Avoid:**
 
@@ -483,7 +505,7 @@ forge.dev/allowed-source-repos: "https://*/*"
 
 # Overly specific (limits flexibility)
 forge.dev/allowed-source-repos: "https://github.com/myorg/one-specific-repo"
-```text
+```
 
 ### Multi-Environment Strategy
 

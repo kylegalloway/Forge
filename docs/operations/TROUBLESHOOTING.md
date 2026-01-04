@@ -4,7 +4,7 @@ Common issues and their solutions when running Forge.
 
 ## Table of Contents
 
-- [ZarfPackageJob Issues](#zarfpackagejob-issues)
+- [Job Resource Issues](#job-resource-issues)
 - [Job Status Bouncing (Multi-Action Workflows)](#job-status-bouncing-multi-action-workflows)
 - [Policy & Permission Issues](#policy--permission-issues)
 - [Job Failures](#job-failures)
@@ -14,16 +14,18 @@ Common issues and their solutions when running Forge.
 
 ---
 
-## ZarfPackageJob Issues
+## Job Resource Issues
 
-### ZarfPackageJob stays in Pending phase
+**Note:** This section applies to both ZarfPackageJob and UDSBundleJob resources. Examples show ZarfPackageJob, but the same troubleshooting steps apply to UDSBundleJob.
+
+### Job stays in Pending phase
 
 **Symptoms:**
 
 ```bash
 kubectl get ZarfPackageJob my-package
 # STATUS shows "Pending" for extended period
-```text
+```
 
 **Possible causes:**
 
@@ -52,13 +54,13 @@ kubectl get ZarfPackageJob my-package
 
    **Solution:** Check controller logs and ensure deployment is healthy
 
-### ZarfPackageJob was denied by webhook
+### Job was denied by webhook
 
 **Symptoms:**
 
 ```text
 Error from server: admission webhook "validate.forge.dev" denied the request
-```text
+```
 
 **Solution:**
 Check the webhook validation error message for specific policy violation. Common issues:
@@ -167,7 +169,7 @@ kubectl get zarfpackagejob <name> -o jsonpath='{.metadata.resourceVersion}' -w
 
 ```text
 action Deploy is not allowed (allowed actions: [Build,Publish]) for ServiceAccount dev-sa
-```text
+```
 
 **Solution:**
 Update ServiceAccount annotations to include the action:
@@ -179,7 +181,7 @@ metadata:
   name: dev-sa
   annotations:
     forge.dev/allowed-actions: "Build,Publish,Deploy"  # Add Deploy
-```text
+```
 
 ### Git repository not allowed
 
@@ -187,7 +189,7 @@ metadata:
 
 ```text
 Git repo https://github.com/myorg/repo is not allowed (allowed repos: [github.com/other/*])
-```text
+```
 
 **Solution:**
 Update ServiceAccount to allow the repository pattern:
@@ -195,7 +197,7 @@ Update ServiceAccount to allow the repository pattern:
 ```yaml
 annotations:
   forge.dev/allowed-source-repos: "https://github.com/myorg/*,https://github.com/other/*"
-```text
+```
 
 **Note:** Patterns use glob matching. Use `*` for wildcard, e.g., `https://github.com/myorg/*` matches all repos under myorg.
 
@@ -205,7 +207,7 @@ annotations:
 
 ```text
 S3 bucket my-prod-bucket is not allowed (allowed buckets: [my-dev-*])
-```text
+```
 
 **Solution:**
 
@@ -214,7 +216,7 @@ annotations:
   forge.dev/allowed-source-buckets: "my-dev-*,my-prod-*"
   # or for publish:
   forge.dev/allowed-publish-buckets: "my-artifacts-*"
-```text
+```
 
 ### Local sources denied
 
@@ -222,14 +224,14 @@ annotations:
 
 ```text
 local sources are not allowed (set annotation forge.dev/allow-local-sources: true for dev mode)
-```text
+```
 
 **Solution (DEV/TEST ONLY):**
 
 ```yaml
 annotations:
   forge.dev/allow-local-sources: "true"
-```text
+```
 
 **Warning:** Only enable for development/testing. Never in production.
 
@@ -247,7 +249,7 @@ kubectl get jobs -l forge.dev/package=my-package
 
 # Get logs
 kubectl logs job/my-package-build-xxxxx
-```text
+```
 
 **Common causes:**
 
@@ -352,7 +354,7 @@ The Zarf project does not publish container images - they only distribute binari
 
 ```text
 Job was active longer than specified deadline
-```text
+```
 
 **Solution:**
 
@@ -373,7 +375,7 @@ Split large operations:
 
 ```text
 OOMKilled
-```text
+```
 
 **Solution:**
 Current resource limits per action:
@@ -394,7 +396,7 @@ If package requires more resources, this needs code adjustment in pkg/actions/
 
 ```text
 x509: certificate signed by unknown authority
-```text
+```
 
 **Solution:**
 
@@ -417,7 +419,7 @@ x509: certificate signed by unknown authority
 
 ```text
 context deadline exceeded
-```text
+```
 
 **Solution:**
 Check webhook pod status:
@@ -425,18 +427,18 @@ Check webhook pod status:
 ```bash
 kubectl get pods -n forge-system -l app=forge-webhook
 kubectl logs -n forge-system -l app=forge-webhook
-```text
+```
 
 Verify webhook service:
 
 ```bash
 kubectl get svc -n forge-system forge-webhook
-```text
+```
 
 ### Webhook validation takes too long
 
 **Symptoms:**
-Slow ZarfPackageJob creation (>5 seconds)
+Slow job creation (>5 seconds)
 
 **Possible causes:**
 
@@ -457,7 +459,7 @@ Check webhook metrics and logs for performance issues.
 
 ```bash
 kubectl logs -n forge-system -l app=forge-controller --tail=100
-```text
+```
 
 **Common causes:**
 
@@ -488,7 +490,7 @@ kubectl logs -n forge-system -l app=forge-controller --tail=100
 ### Controller not reconciling
 
 **Symptoms:**
-ZarfPackageJob created but no Jobs appear
+Job resource created but no Kubernetes Jobs appear
 
 **Debug:**
 
@@ -498,7 +500,7 @@ kubectl logs -n forge-system -l app=forge-controller -f
 
 # Check if controller is receiving events
 kubectl get events -n forge-system
-```text
+```
 
 **Solution:**
 
@@ -513,14 +515,14 @@ Controller pod OOMKilled or high memory consumption
 
 **Possible causes:**
 
-1. Too many ZarfPackageJobs being monitored
+1. Too many job resources being monitored
 2. Memory leak (report bug if persists)
 3. Large job watch cache
 
 **Solution:**
 
 1. Increase memory limits in deployment
-2. Check for completed ZarfPackageJobs that can be cleaned up
+2. Check for completed job resources that can be cleaned up
 3. Review metrics for abnormal patterns
 
 ---
@@ -540,24 +542,26 @@ kubectl get validatingwebhookconfiguration forge-webhook
 
 # CRDs installed
 kubectl get crd | grep forge.dev
-```text
+```
 
-### Inspect ZarfPackageJob
+### Inspect Job Resources
 
 ```bash
-# Get package details
+# Get ZarfPackageJob details
 kubectl get ZarfPackageJob my-package -o yaml
-
-# Get package status
 kubectl get ZarfPackageJob my-package -o jsonpath='{.status}' | jq
+
+# Get UDSBundleJob details
+kubectl get UDSBundleJob my-bundle -o yaml
+kubectl get UDSBundleJob my-bundle -o jsonpath='{.status}' | jq
 
 # Get related events
 kubectl get events --field-selector involvedObject.name=my-package
 
-# Get related job
+# Get related Kubernetes job
 JOB=$(kubectl get ZarfPackageJob my-package -o jsonpath='{.status.buildStatus.jobName}' 2>/dev/null || echo "none")
 kubectl get job $JOB -o yaml
-```text
+```
 
 ### Check ServiceAccount permissions
 
@@ -567,7 +571,7 @@ kubectl get sa dev-sa -o yaml
 
 # Check annotations
 kubectl get sa dev-sa -o jsonpath='{.metadata.annotations}' | jq
-```text
+```
 
 ### View controller logs
 
@@ -580,7 +584,7 @@ kubectl logs -n forge-system -l app=forge-controller -f
 
 # Logs for specific package reconciliation
 kubectl logs -n forge-system -l app=forge-controller | grep my-package
-```text
+```
 
 ### Check metrics
 
@@ -594,7 +598,7 @@ curl http://localhost:8080/metrics | grep forge_
 # Specific metrics
 curl -s http://localhost:8080/metrics | grep forge_zarf_packages_created
 curl -s http://localhost:8080/metrics | grep forge_jobs_failed
-```text
+```
 
 ### Validate webhook configuration
 
@@ -619,7 +623,7 @@ spec:
 EOF
 # Should see webhook validation error
 kubectl delete ZarfPackageJob test-webhook --ignore-not-found
-```text
+```
 
 ---
 
@@ -636,8 +640,9 @@ If the issue persists after trying these solutions:
    # Webhook logs
    kubectl logs -n forge-system -l app=forge-webhook --tail=500 > webhook.log
 
-   # ZarfPackageJob details
+   # Job details (ZarfPackageJob or UDSBundleJob)
    kubectl get ZarfPackageJob my-package -o yaml > package.yaml
+   kubectl get UDSBundleJob my-bundle -o yaml > bundle.yaml
 
    # Events
    kubectl get events -A > events.log

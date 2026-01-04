@@ -190,7 +190,7 @@ spec:
     count/jobs.batch: "50"
 ```
 
-1. Instruct team that all ZarfPackageJobs must be created in `forge-system` namespace
+1. Instruct team that all job resources (ZarfPackageJobs and UDSBundleJobs) must be created in `forge-system` namespace
 
 #### Review Package Activity
 

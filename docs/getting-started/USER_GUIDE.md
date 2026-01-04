@@ -93,7 +93,7 @@ Forge supports two deployment modes depending on your cluster permissions and se
 **Cluster-Wide Deployment (Default)**:
 
 - Watches all namespaces
-- ZarfPackageJobs can be created in any namespace
+- ZarfPackageJobs and UDSBundleJobs can be created in any namespace
 - ServiceAccounts can be in any namespace
 - Suitable for platform teams
 
@@ -328,7 +328,7 @@ serviceaccount/restricted-builder created
 
 ### Usage
 
-Reference this ServiceAccount in your `ZarfPackageJob`:
+Reference this ServiceAccount in your `ZarfPackageJob` or `UDSBundleJob`:
 
 ```yaml
 spec:
@@ -336,7 +336,7 @@ spec:
   # ...
 ```
 
-If the `ZarfPackageJob` tries to use a disallowed source or action, the controller will reject it.
+If the job tries to use a disallowed source or action, the controller will reject it.
 
 ## Troubleshooting
 
@@ -344,10 +344,12 @@ If the `ZarfPackageJob` tries to use a disallowed source or action, the controll
 
 Forge creates Kubernetes Jobs for each operation. If an operation fails:
 
-1. Check the `ZarfPackageJob` status:
+1. Check the job status (ZarfPackageJob or UDSBundleJob):
 
     ```bash
     kubectl get ZarfPackageJob my-package -o yaml
+    # or
+    kubectl get UDSBundleJob my-bundle -o yaml
     ```
 
     Expected output (showing failed status):
@@ -384,7 +386,7 @@ Forge creates Kubernetes Jobs for each operation. If an operation fails:
 
 ### Webhook Issues
 
-If you cannot create `ZarfPackageJob` resources:
+If you cannot create job resources:
 
 1. Check if the webhook pod is running:
 

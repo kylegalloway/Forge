@@ -233,6 +233,13 @@ func (m *GenericJobMonitor[T]) processJobStatus(ctx context.Context, job *batchv
 		return nil
 	}
 
+	// Extract spec for later use
+	spec, ok := unstrObj.Object["spec"].(map[string]interface{})
+	if !ok {
+		klog.ErrorS(nil, "Failed to extract spec from resource", "resource", resourceName)
+		return fmt.Errorf("failed to extract spec from resource %s", resourceName)
+	}
+
 	// Build operation status
 	opStatus := map[string]interface{}{}
 	statusField := m.getStatusFieldName(action)
@@ -260,7 +267,22 @@ func (m *GenericJobMonitor[T]) processJobStatus(ctx context.Context, job *batchv
 
 	// Handle action chaining if job succeeded
 	if phase == "Completed" {
-		return m.handleActionChaining(ctx, unstrObj, action, artifactLocation)
+		err := m.handleActionChaining(ctx, unstrObj, action, artifactLocation)
+		// If there's no next action or chaining failed, clean up PVC if needed
+		currentAction, ok := spec["action"].(string)
+		if !ok {
+			klog.V(4).InfoS("Could not determine current action for chaining check", "resource", resourceName)
+			currentAction = ""
+		}
+		if err != nil || m.determineNextAction(currentAction, action) == "" {
+			m.cleanupArtifactPVCIfNeeded(ctx, unstrObj, resourceName)
+		}
+		return err
+	}
+
+	// If job failed, clean up PVC if needed
+	if phase == "Failed" {
+		m.cleanupArtifactPVCIfNeeded(ctx, unstrObj, resourceName)
 	}
 
 	return nil
@@ -577,6 +599,46 @@ func (m *GenericJobMonitor[T]) deleteFailedJob(ctx context.Context, job *batchv1
 	}
 
 	return nil
+}
+
+// cleanupArtifactPVCIfNeeded deletes the artifact PVC if retainArtifactPVC is false
+func (m *GenericJobMonitor[T]) cleanupArtifactPVCIfNeeded(ctx context.Context, obj *unstructured.Unstructured, resourceName string) {
+	// Only cleanup if PVC support is enabled
+	if !m.config.SupportsPVC {
+		return
+	}
+
+	// Check if retainArtifactPVC is set to false
+	spec, ok := obj.Object["spec"].(map[string]interface{})
+	if !ok {
+		return
+	}
+
+	retainPVC, ok := spec["retainArtifactPVC"].(bool)
+	if !ok {
+		// Default is true (retain), so if not specified, don't delete
+		return
+	}
+
+	if retainPVC {
+		// User wants to keep the PVC
+		return
+	}
+
+	// Delete the artifact PVC
+	pvcName := fmt.Sprintf("%s-artifacts", resourceName)
+	klog.InfoS("Deleting artifact PVC as requested by retainArtifactPVC=false",
+		"resource", resourceName, "pvc", pvcName, "namespace", obj.GetNamespace())
+
+	err := m.kubeClient.CoreV1().PersistentVolumeClaims(obj.GetNamespace()).Delete(
+		ctx, pvcName, metav1.DeleteOptions{})
+
+	if err != nil {
+		klog.ErrorS(err, "Failed to delete artifact PVC", "pvc", pvcName, "namespace", obj.GetNamespace())
+		return
+	}
+
+	klog.InfoS("Successfully deleted artifact PVC", "pvc", pvcName, "namespace", obj.GetNamespace())
 }
 
 // adoptDeployedResources handles resource adoption after successful deployment

@@ -114,6 +114,13 @@ type UDSBundleJobSpec struct {
 	// Resources defines resource requirements for the Job pods
 	// +optional
 	Resources *corev1.ResourceRequirements `json:"resources,omitempty"`
+
+	// RetainArtifactPVC determines whether to keep the artifact PVC after job completion
+	// Set to false to automatically delete the PVC when the job finishes (success or failure)
+	// Defaults to true (keep PVC) for safety
+	// +optional
+	// +kubebuilder:default=true
+	RetainArtifactPVC *bool `json:"retainArtifactPVC,omitempty"`
 }
 
 // PackageSource defines where to get the bundle definition or artifact

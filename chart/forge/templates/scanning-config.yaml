@@ -1,0 +1,42 @@
+{{- if .Values.imageScanning.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: forge-scanning-config
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: forge
+    component: scanning
+data:
+  enabled: {{ .Values.imageScanning.enabled | quote }}
+  scanner: {{ .Values.imageScanning.scanner | quote }}
+
+  # Trivy configuration
+  trivy.image: {{ .Values.imageScanning.trivy.image.repository }}:{{ .Values.imageScanning.trivy.image.tag }}
+  trivy.timeout: {{ .Values.imageScanning.trivy.timeout | quote }}
+  trivy.severities: {{ .Values.imageScanning.trivy.severities | quote }}
+  trivy.failOn: {{ .Values.imageScanning.trivy.failOn | quote }}
+  trivy.scanners: {{ .Values.imageScanning.trivy.scanners | quote }}
+  trivy.format: {{ .Values.imageScanning.trivy.format | quote }}
+
+  # Grype configuration
+  grype.image: {{ .Values.imageScanning.grype.image.repository }}:{{ .Values.imageScanning.grype.image.tag }}
+  grype.failOn: {{ .Values.imageScanning.grype.failOn | quote }}
+  grype.format: {{ .Values.imageScanning.grype.format | quote }}
+
+  # Policy configuration
+  policy.enforcePolicy: {{ .Values.imageScanning.policy.enforcePolicy | quote }}
+  policy.maxCVEs.critical: {{ .Values.imageScanning.policy.maxCVEs.critical | quote }}
+  policy.maxCVEs.high: {{ .Values.imageScanning.policy.maxCVEs.high | quote }}
+  policy.maxCVEs.medium: {{ .Values.imageScanning.policy.maxCVEs.medium | quote }}
+  {{- if .Values.imageScanning.policy.ignoredCVEs }}
+  policy.ignoredCVEs: {{ join "," .Values.imageScanning.policy.ignoredCVEs | quote }}
+  {{- else }}
+  policy.ignoredCVEs: ""
+  {{- end }}
+
+  # SBOM configuration
+  sbom.enabled: {{ .Values.imageScanning.sbom.enabled | quote }}
+  sbom.format: {{ .Values.imageScanning.sbom.format | quote }}
+  sbom.storeAsConfigMap: {{ .Values.imageScanning.sbom.storeAsConfigMap | quote }}
+{{- end }}

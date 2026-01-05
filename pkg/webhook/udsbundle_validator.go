@@ -22,6 +22,7 @@ import (
 	"strings"
 
 	udsv1alpha2 "github.com/kylegalloway/forge/pkg/apis/uds/v1alpha2"
+	"github.com/kylegalloway/forge/pkg/audit"
 	"github.com/kylegalloway/forge/pkg/constants"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -32,12 +33,14 @@ import (
 // UDSBundleJobValidator validates UDSBundleJob resources against ServiceAccount permissions
 type UDSBundleJobValidator struct {
 	kubeClient kubernetes.Interface
+	auditTrail *audit.AuditTrail
 }
 
 // NewUDSBundleJobValidator creates a new UDSBundleJob validator
 func NewUDSBundleJobValidator(kubeClient kubernetes.Interface) *UDSBundleJobValidator {
 	return &UDSBundleJobValidator{
 		kubeClient: kubeClient,
+		auditTrail: audit.NewAuditTrail(kubeClient, audit.DefaultConfig()),
 	}
 }
 
@@ -48,22 +51,35 @@ func (validator *UDSBundleJobValidator) ValidateUDSBundleJob(ctx context.Context
 	// Get the ServiceAccount
 	sa, err := validator.kubeClient.CoreV1().ServiceAccounts(bundle.Namespace).Get(ctx, bundle.Spec.ServiceAccountName, metav1.GetOptions{})
 	if err != nil {
+		reason := fmt.Sprintf("failed to get ServiceAccount %s: %v", bundle.Spec.ServiceAccountName, err)
+		if auditErr := validator.auditTrail.RecordJobValidationFailed(ctx, "UDSBundleJob", bundle.Namespace, bundle.Name, bundle.Spec.ServiceAccountName, reason); auditErr != nil {
+			klog.V(4).ErrorS(auditErr, "Failed to record audit event")
+		}
 		return fmt.Errorf("failed to get ServiceAccount %s: %w", bundle.Spec.ServiceAccountName, err)
 	}
 
 	// Validate action is allowed
 	if err := validator.validateAction(sa, bundle.Spec.Action); err != nil {
+		if auditErr := validator.auditTrail.RecordJobValidationFailed(ctx, "UDSBundleJob", bundle.Namespace, bundle.Name, bundle.Spec.ServiceAccountName, err.Error()); auditErr != nil {
+			klog.V(4).ErrorS(auditErr, "Failed to record audit event")
+		}
 		return err
 	}
 
 	// Validate source permissions
 	if err := validator.validateSource(sa, &bundle.Spec.Source); err != nil {
+		if auditErr := validator.auditTrail.RecordJobValidationFailed(ctx, "UDSBundleJob", bundle.Namespace, bundle.Name, bundle.Spec.ServiceAccountName, err.Error()); auditErr != nil {
+			klog.V(4).ErrorS(auditErr, "Failed to record audit event")
+		}
 		return err
 	}
 
 	// Validate publish permissions if publish config is specified
 	if bundle.Spec.Publish != nil {
 		if err := validator.validatePublish(sa, bundle.Spec.Publish); err != nil {
+			if auditErr := validator.auditTrail.RecordJobValidationFailed(ctx, "UDSBundleJob", bundle.Namespace, bundle.Name, bundle.Spec.ServiceAccountName, err.Error()); auditErr != nil {
+				klog.V(4).ErrorS(auditErr, "Failed to record audit event")
+			}
 			return err
 		}
 	}
@@ -71,8 +87,20 @@ func (validator *UDSBundleJobValidator) ValidateUDSBundleJob(ctx context.Context
 	// Validate deploy permissions if deploy config is specified
 	if bundle.Spec.Deploy != nil {
 		if err := validator.validateDeploy(sa, bundle.Spec.Deploy); err != nil {
+			if auditErr := validator.auditTrail.RecordJobValidationFailed(ctx, "UDSBundleJob", bundle.Namespace, bundle.Name, bundle.Spec.ServiceAccountName, err.Error()); auditErr != nil {
+				klog.V(4).ErrorS(auditErr, "Failed to record audit event")
+			}
 			return err
 		}
+	}
+
+	// Record successful validation
+	details := map[string]string{
+		"serviceAccount": bundle.Spec.ServiceAccountName,
+		"action":         string(bundle.Spec.Action),
+	}
+	if auditErr := validator.auditTrail.RecordJobValidated(ctx, "UDSBundleJob", bundle.Namespace, bundle.Name, bundle.Spec.ServiceAccountName, details); auditErr != nil {
+		klog.V(4).ErrorS(auditErr, "Failed to record audit event")
 	}
 
 	klog.InfoS("UDSBundleJob validation passed", "name", bundle.Name, "namespace", bundle.Namespace)

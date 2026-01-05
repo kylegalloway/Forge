@@ -145,7 +145,7 @@ webhook:
 zarfCLI:
   image:
     repository: localhost/zarf
-    tag: v0.66.0
+    tag: v0.68.1
     pullPolicy: IfNotPresent
 
 # Service Account configuration

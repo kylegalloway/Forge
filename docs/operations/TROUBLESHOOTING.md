@@ -294,12 +294,12 @@ kubectl get pods -n default
 ```
 
 ```text
-Failed to pull image "localhost/zarf:v0.66.0":
+Failed to pull image "localhost/zarf:v0.68.1":
 failed to authorize: failed to fetch anonymous token: 403 Forbidden
 ```
 
 **Cause:**
-The Zarf project does not publish container images - they only distribute binaries. The image `localhost/zarf:v0.66.0` referenced in the code doesn't exist in any public registry.
+The Zarf project does not publish container images - they only distribute binaries. The image `localhost/zarf:v0.68.1` referenced in the code doesn't exist in any public registry.
 
 **Solutions:**
 
@@ -309,14 +309,14 @@ The Zarf project does not publish container images - they only distribute binari
 
    ```bash
    # Build the image
-   docker build -t localhost/zarf:v0.66.0 images/zarf-cli/
+   docker build -t localhost/zarf:v0.68.1 images/zarf-cli/
 
    # For Kind clusters, load it
-   kind load docker-image localhost/zarf:v0.66.0 --name <cluster-name>
+   kind load docker-image localhost/zarf:v0.68.1 --name <cluster-name>
 
    # For Podman users:
-   podman build -t localhost/zarf:v0.66.0 images/zarf-cli/
-   podman save localhost/zarf:v0.66.0 -o /tmp/zarf-cli.tar
+   podman build -t localhost/zarf:v0.68.1 images/zarf-cli/
+   podman save localhost/zarf:v0.68.1 -o /tmp/zarf-cli.tar
    kind load image-archive /tmp/zarf-cli.tar --name <cluster-name>
    rm /tmp/zarf-cli.tar
    ```
@@ -325,12 +325,12 @@ The Zarf project does not publish container images - they only distribute binari
 
    ```bash
    # Build and tag for your registry
-   docker build -t your-registry.io/zarf:v0.66.0 images/zarf-cli/
-   docker push your-registry.io/zarf:v0.66.0
+   docker build -t your-registry.io/zarf:v0.68.1 images/zarf-cli/
+   docker push your-registry.io/zarf:v0.68.1
 
    # Update pkg/actions/build.go to reference your registry
-   # Change: ZarfCLIImage = "localhost/zarf:v0.66.0"
-   # To: ZarfCLIImage = "your-registry.io/zarf:v0.66.0"
+   # Change: ZarfCLIImage = "localhost/zarf:v0.68.1"
+   # To: ZarfCLIImage = "your-registry.io/zarf:v0.68.1"
    ```
 
 3. **Configure imagePullSecrets (if you pushed to a private registry):**

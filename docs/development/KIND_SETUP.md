@@ -282,7 +282,7 @@ Expected output:
 ```text
 localhost/forge-controller  latest      abc123def456   100MB
 localhost/forge-webhook     latest      def456abc123   95MB
-localhost/zarf              v0.66.0     789abc012def   45MB
+localhost/zarf              v0.68.1     789abc012def   45MB
 ```
 
 ### 3a. Build and Load Zarf CLI Image
@@ -299,14 +299,14 @@ make kind-zarf-cli
 
 ```bash
 # For Podman:
-podman build -t localhost/zarf:v0.66.0 images/zarf-cli/
-podman save localhost/zarf:v0.66.0 -o /tmp/zarf-cli.tar
+podman build -t localhost/zarf:v0.68.1 images/zarf-cli/
+podman save localhost/zarf:v0.68.1 -o /tmp/zarf-cli.tar
 kind load image-archive /tmp/zarf-cli.tar --name forge-dev
 rm /tmp/zarf-cli.tar
 
 # For Docker:
-docker build -t localhost/zarf:v0.66.0 images/zarf-cli/
-kind load docker-image localhost/zarf:v0.66.0 --name forge-dev
+docker build -t localhost/zarf:v0.68.1 images/zarf-cli/
+kind load docker-image localhost/zarf:v0.68.1 --name forge-dev
 ```
 
 Without this image, Zarf build/deploy jobs will fail with `ImagePullBackOff`.
@@ -601,8 +601,8 @@ kind load docker-image localhost/forge-controller:latest --name forge-dev
 kind load docker-image localhost/forge-webhook:latest --name forge-dev
 
 # Zarf CLI
-docker build -t localhost/zarf:v0.66.0 images/zarf-cli/
-kind load docker-image localhost/zarf:v0.66.0 --name forge-dev
+docker build -t localhost/zarf:v0.68.1 images/zarf-cli/
+kind load docker-image localhost/zarf:v0.68.1 --name forge-dev
 ```
 
 ### Switching Between Docker and Podman

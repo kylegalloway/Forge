@@ -160,9 +160,9 @@ helm repo add forge https://kylegalloway.github.io/forge
 helm install forge forge/forge --namespace forge-system --create-namespace --wait
 
 # Pull and load Zarf CLI image
-podman pull ghcr.io/kylegalloway/forge/zarf-cli:v0.66.0
-podman tag ghcr.io/kylegalloway/forge/zarf-cli:v0.66.0 localhost/zarf:v0.66.0
-podman save localhost/zarf:v0.66.0 -o /tmp/zarf-cli.tar
+podman pull ghcr.io/kylegalloway/forge/zarf-cli:v0.68.1
+podman tag ghcr.io/kylegalloway/forge/zarf-cli:v0.68.1 localhost/zarf:v0.68.1
+podman save localhost/zarf:v0.68.1 -o /tmp/zarf-cli.tar
 kind load image-archive /tmp/zarf-cli.tar --name forge-test
 rm /tmp/zarf-cli.tar
 ```

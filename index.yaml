@@ -15,12 +15,12 @@ entries:
     - ci-cd
     - build-automation
     maintainers:
-    - email: kyle@example.com
+    - email: kyle.galloway.1993@gmail.com
       name: Kyle Galloway
     name: forge
     type: application
     urls:
-    - https://kylegalloway.github.io/forge/forge-0.4.4.tgz
+    - https://kylegalloway.github.io/Forge/forge-0.4.4.tgz
     version: 0.4.4
   - apiVersion: v2
     appVersion: v0.4.3
@@ -36,7 +36,7 @@ entries:
     - ci-cd
     - build-automation
     maintainers:
-    - email: kyle@example.com
+    - email: kyle.galloway.1993@gmail.com
       name: Kyle Galloway
     name: forge
     type: application
@@ -57,7 +57,7 @@ entries:
     - ci-cd
     - build-automation
     maintainers:
-    - email: kyle@example.com
+    - email: kyle.galloway.1993@gmail.com
       name: Kyle Galloway
     name: forge
     type: application
@@ -78,7 +78,7 @@ entries:
     - ci-cd
     - build-automation
     maintainers:
-    - email: kyle@example.com
+    - email: kyle.galloway.1993@gmail.com
       name: Kyle Galloway
     name: forge
     type: application
@@ -99,7 +99,7 @@ entries:
     - ci-cd
     - build-automation
     maintainers:
-    - email: kyle@example.com
+    - email: kyle.galloway.1993@gmail.com
       name: Kyle Galloway
     name: forge
     type: application
@@ -120,7 +120,7 @@ entries:
     - ci-cd
     - build-automation
     maintainers:
-    - email: kyle@example.com
+    - email: kyle.galloway.1993@gmail.com
       name: Kyle Galloway
     name: forge
     type: application
@@ -141,7 +141,7 @@ entries:
     - ci-cd
     - build-automation
     maintainers:
-    - email: kyle@example.com
+    - email: kyle.galloway.1993@gmail.com
       name: Kyle Galloway
     name: forge
     type: application
@@ -162,7 +162,7 @@ entries:
     - ci-cd
     - build-automation
     maintainers:
-    - email: kyle@example.com
+    - email: kyle.galloway.1993@gmail.com
       name: Kyle Galloway
     name: forge
     type: application
@@ -183,7 +183,7 @@ entries:
     - ci-cd
     - build-automation
     maintainers:
-    - email: kyle@example.com
+    - email: kyle.galloway.1993@gmail.com
       name: Kyle Galloway
     name: forge
     type: application
@@ -204,7 +204,7 @@ entries:
     - ci-cd
     - build-automation
     maintainers:
-    - email: kyle@example.com
+    - email: kyle.galloway.1993@gmail.com
       name: Kyle Galloway
     name: forge
     type: application

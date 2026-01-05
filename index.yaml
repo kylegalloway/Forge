@@ -2,11 +2,11 @@ apiVersion: v1
 entries:
   forge:
   - apiVersion: v2
-    appVersion: v0.4.4
-    created: "2026-01-04T17:54:38.15074-06:00"
+    appVersion: 0.4.4
+    created: "2026-01-05T00:33:50.168611226Z"
     description: A Helm chart for deploying Forge - a Kubernetes controller for managing
       Zarf package build and deployment jobs
-    digest: 6d0508d164cd12a7bb15653afdf5e4d4bdfbcd73781c7522cbe935e912edac13
+    digest: e691bf219722b9667b05890a69ae41398098d30c27457b315a7c7fbac27b6cd6
     home: https://github.com/kylegalloway/forge
     keywords:
     - kubernetes
@@ -15,7 +15,7 @@ entries:
     - ci-cd
     - build-automation
     maintainers:
-    - email: kyle.galloway.1993@gmail.com
+    - email: kyle@example.com
       name: Kyle Galloway
     name: forge
     type: application
@@ -23,8 +23,8 @@ entries:
     - https://kylegalloway.github.io/Forge/forge-0.4.4.tgz
     version: 0.4.4
   - apiVersion: v2
-    appVersion: v0.4.3
-    created: "2026-01-04T17:54:38.149991-06:00"
+    appVersion: 0.4.3
+    created: "2026-01-05T00:33:50.167723178Z"
     description: A Helm chart for deploying Forge - a Kubernetes controller for managing
       Zarf package build and deployment jobs
     digest: 97d8edca4b5c8f9cb680aee06c5c5322386a028636639c3b97203856ed651127
@@ -36,7 +36,7 @@ entries:
     - ci-cd
     - build-automation
     maintainers:
-    - email: kyle.galloway.1993@gmail.com
+    - email: kyle@example.com
       name: Kyle Galloway
     name: forge
     type: application
@@ -45,7 +45,7 @@ entries:
     version: 0.4.3
   - apiVersion: v2
     appVersion: 0.4.2
-    created: "2026-01-04T17:54:38.149563-06:00"
+    created: "2026-01-05T00:33:50.166064964Z"
     description: A Helm chart for deploying Forge - a Kubernetes controller for managing
       Zarf package build and deployment jobs
     digest: 7bd986073ac30afc5a8aa8f432d3b8d3eb899e982b498d71b424d4dd1ee3fcca
@@ -57,7 +57,7 @@ entries:
     - ci-cd
     - build-automation
     maintainers:
-    - email: kyle.galloway.1993@gmail.com
+    - email: kyle@example.com
       name: Kyle Galloway
     name: forge
     type: application
@@ -66,7 +66,7 @@ entries:
     version: 0.4.2
   - apiVersion: v2
     appVersion: 0.4.1
-    created: "2026-01-04T17:54:38.14917-06:00"
+    created: "2026-01-05T00:33:50.165213905Z"
     description: A Helm chart for deploying Forge - a Kubernetes controller for managing
       Zarf package build and deployment jobs
     digest: 55da184d1e80e5859e7d0f3b128c674c97a9a6ad151c2dd9f418806b1c4d3b9e
@@ -78,7 +78,7 @@ entries:
     - ci-cd
     - build-automation
     maintainers:
-    - email: kyle.galloway.1993@gmail.com
+    - email: kyle@example.com
       name: Kyle Galloway
     name: forge
     type: application
@@ -87,7 +87,7 @@ entries:
     version: 0.4.1
   - apiVersion: v2
     appVersion: 0.4.0
-    created: "2026-01-04T17:54:38.148747-06:00"
+    created: "2026-01-05T00:33:50.16427982Z"
     description: A Helm chart for deploying Forge - a Kubernetes controller for managing
       Zarf package build and deployment jobs
     digest: 88a14acf53f60330a4e9f7c93a4aaf96bf28957d384e633e5cf8f02ea6fee989
@@ -99,7 +99,7 @@ entries:
     - ci-cd
     - build-automation
     maintainers:
-    - email: kyle.galloway.1993@gmail.com
+    - email: kyle@example.com
       name: Kyle Galloway
     name: forge
     type: application
@@ -108,7 +108,7 @@ entries:
     version: 0.4.0
   - apiVersion: v2
     appVersion: 0.3.0
-    created: "2026-01-04T17:54:38.148352-06:00"
+    created: "2026-01-05T00:33:50.163388486Z"
     description: A Helm chart for deploying Forge - a Kubernetes controller for managing
       Zarf package build and deployment jobs
     digest: 86329d8635fadfaf4a862c551fdadc3cc7bde3e037b1be1f880a1fdc692984cf
@@ -120,7 +120,7 @@ entries:
     - ci-cd
     - build-automation
     maintainers:
-    - email: kyle.galloway.1993@gmail.com
+    - email: kyle@example.com
       name: Kyle Galloway
     name: forge
     type: application
@@ -129,7 +129,7 @@ entries:
     version: 0.3.0
   - apiVersion: v2
     appVersion: 0.2.0
-    created: "2026-01-04T17:54:38.147942-06:00"
+    created: "2026-01-05T00:33:50.162542045Z"
     description: A Helm chart for deploying Forge - a Kubernetes controller for managing
       Zarf package build and deployment jobs
     digest: b3e06f942d2f2277c37bba4fd169ad4361a6ddbd4e43ec4cdcea4c3125a1d3b1
@@ -141,7 +141,7 @@ entries:
     - ci-cd
     - build-automation
     maintainers:
-    - email: kyle.galloway.1993@gmail.com
+    - email: kyle@example.com
       name: Kyle Galloway
     name: forge
     type: application
@@ -150,7 +150,7 @@ entries:
     version: 0.2.0
   - apiVersion: v2
     appVersion: 0.1.2
-    created: "2026-01-04T17:54:38.147487-06:00"
+    created: "2026-01-05T00:33:50.161643056Z"
     description: A Helm chart for deploying Forge - a Kubernetes controller for managing
       Zarf package build and deployment jobs
     digest: 65a4395fc8fc140f8636d77a0d9c6d7399aeaead51c3fe04bc5648c22af6bc9b
@@ -162,7 +162,7 @@ entries:
     - ci-cd
     - build-automation
     maintainers:
-    - email: kyle.galloway.1993@gmail.com
+    - email: kyle@example.com
       name: Kyle Galloway
     name: forge
     type: application
@@ -171,7 +171,7 @@ entries:
     version: 0.1.2
   - apiVersion: v2
     appVersion: 0.1.1
-    created: "2026-01-04T17:54:38.145949-06:00"
+    created: "2026-01-05T00:33:50.16070795Z"
     description: A Helm chart for deploying Forge - a Kubernetes controller for managing
       Zarf package build and deployment jobs
     digest: c7020a33e3ca3bde828b6eed3c3fea709fa15fe00f332600fa27bae6d22e8c05
@@ -183,7 +183,7 @@ entries:
     - ci-cd
     - build-automation
     maintainers:
-    - email: kyle.galloway.1993@gmail.com
+    - email: kyle@example.com
       name: Kyle Galloway
     name: forge
     type: application
@@ -192,7 +192,7 @@ entries:
     version: 0.1.1
   - apiVersion: v2
     appVersion: 0.1.0
-    created: "2026-01-04T17:54:38.1455-06:00"
+    created: "2026-01-05T00:33:50.159630082Z"
     description: A Helm chart for deploying Forge - a Kubernetes controller for managing
       Zarf package build and deployment jobs
     digest: c476e1c34a46a35593f74b519be9603a827065d53a52728398d97eac575b9b13
@@ -204,11 +204,11 @@ entries:
     - ci-cd
     - build-automation
     maintainers:
-    - email: kyle.galloway.1993@gmail.com
+    - email: kyle@example.com
       name: Kyle Galloway
     name: forge
     type: application
     urls:
     - https://kylegalloway.github.io/Forge/forge-0.1.0.tgz
     version: 0.1.0
-generated: "2026-01-04T17:54:38.144719-06:00"
+generated: "2026-01-05T00:33:50.157288744Z"

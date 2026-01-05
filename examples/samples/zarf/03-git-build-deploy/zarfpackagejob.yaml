@@ -56,6 +56,10 @@ spec:
     # Deploy to all components
     components: []
 
+  # PVC retention policy (optional, defaults to true)
+  # Set to false to automatically delete the artifact PVC after job completion
+  retainArtifactPVC: true
+
   resources:
     requests:
       cpu: 500m

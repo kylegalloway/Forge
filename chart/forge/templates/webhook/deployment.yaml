@@ -8,6 +8,11 @@ metadata:
     {{- include "forge.webhook.labels" . | nindent 4 }}
 spec:
   replicas: {{ .Values.webhook.replicaCount }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0  # Ensure zero downtime during updates
   selector:
     matchLabels:
       {{- include "forge.webhook.selectorLabels" . | nindent 6 }}
@@ -41,6 +46,24 @@ spec:
           value: /etc/webhook/certs/tls.crt
         - name: TLS_KEY_PATH
           value: /etc/webhook/certs/tls.key
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8443
+            scheme: HTTPS
+          initialDelaySeconds: 15
+          periodSeconds: 20
+          timeoutSeconds: 3
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: 8443
+            scheme: HTTPS
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 3
+          failureThreshold: 3
         resources:
           {{- toYaml .Values.webhook.resources | nindent 10 }}
         securityContext:
@@ -56,6 +79,17 @@ spec:
       - name: tls-certs
         secret:
           secretName: {{ .Values.webhook.tls.secretName }}
+      {{- if gt (int .Values.webhook.replicaCount) 1 }}
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  {{- include "forge.webhook.selectorLabels" . | nindent 18 }}
+              topologyKey: kubernetes.io/hostname
+      {{- end }}
       securityContext:
         runAsNonRoot: true
         runAsUser: 65532

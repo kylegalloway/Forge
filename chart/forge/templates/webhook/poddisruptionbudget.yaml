@@ -1,0 +1,14 @@
+{{- if and .Values.webhook.enabled (gt (int .Values.webhook.replicaCount) 1) -}}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "forge.fullname" . }}-webhook
+  namespace: {{ include "forge.namespace" . }}
+  labels:
+    {{- include "forge.webhook.labels" . | nindent 4 }}
+spec:
+  minAvailable: {{ .Values.webhook.reliability.pdb.minAvailable }}
+  selector:
+    matchLabels:
+      {{- include "forge.webhook.selectorLabels" . | nindent 6 }}
+{{- end }}

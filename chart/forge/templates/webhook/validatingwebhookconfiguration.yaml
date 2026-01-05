@@ -24,6 +24,6 @@ webhooks:
     scope: "Namespaced"
   admissionReviewVersions: ["v1"]
   sideEffects: None
-  failurePolicy: Fail
-  timeoutSeconds: 10
+  failurePolicy: {{ .Values.webhook.reliability.failurePolicy }}
+  timeoutSeconds: {{ .Values.webhook.reliability.timeoutSeconds }}
 {{- end }}

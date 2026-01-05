@@ -109,7 +109,7 @@ webhook:
   # Enable webhook deployment
   enabled: true
 
-  # Number of webhook replicas (recommend 2+ for HA)
+  # Number of webhook replicas (recommend 3+ for HA in production)
   replicaCount: 2
 
   # Webhook image configuration
@@ -134,6 +134,20 @@ webhook:
     secretName: forge-webhook-tls  # pragma: allowlist secret
     # CA bundle (base64 encoded) - leave empty for auto-generated certs
     caBundle: ""
+
+  # Webhook reliability configuration
+  reliability:
+    # Failure policy (Fail or Ignore)
+    # Fail: Block requests if webhook is unavailable (recommended for security)
+    # Ignore: Allow requests if webhook is unavailable (higher availability, lower security)
+    failurePolicy: Fail
+
+    # Timeout for webhook calls (seconds)
+    timeoutSeconds: 10
+
+    # PodDisruptionBudget minAvailable (only applies when replicaCount > 1)
+    pdb:
+      minAvailable: 1
 
   # Webhook metrics endpoint
   metrics:
@@ -162,6 +176,11 @@ serviceAccount:
 rbac:
   # Specifies whether RBAC resources should be created
   create: true
+
+  # Use cluster-wide permissions (ClusterRole) or namespace-scoped (Role)
+  # cluster-wide: Forge can manage jobs in any namespace
+  # namespace-scoped: Forge limited to its own namespace (more secure for multi-tenant)
+  clusterWide: true
 
 # Leader Election (for HA controller)
 leaderElection:
@@ -227,3 +246,71 @@ crds:
 
   # Keep CRDs on helm uninstall (prevents accidental data loss)
   keep: true
+
+# Image Scanning and Compliance
+imageScanning:
+  # Enable image scanning for build/deploy jobs
+  enabled: false
+
+  # Scanner to use (trivy or grype)
+  scanner: trivy
+
+  # Trivy scanner configuration
+  trivy:
+    image:
+      repository: aquasec/trivy
+      tag: "0.57.1"
+      pullPolicy: IfNotPresent
+
+    # Scan timeout
+    timeout: "10m"
+
+    # Severity levels to check (UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL)
+    severities: "CRITICAL,HIGH"
+
+    # Fail job if vulnerabilities found at these severity levels
+    failOn: "CRITICAL"
+
+    # Security scanners to enable (vuln,config,secret,license)
+    scanners: "vuln,secret"
+
+    # Output format (table, json, sarif)
+    format: "table"
+
+  # Grype scanner configuration (alternative to Trivy)
+  grype:
+    image:
+      repository: anchore/grype
+      tag: "v0.83.0"
+      pullPolicy: IfNotPresent
+
+    # Fail on severity (negligible, low, medium, high, critical)
+    failOn: "critical"
+
+    # Output format
+    format: "table"
+
+  # Policy enforcement
+  policy:
+    # Block job execution if scan fails
+    enforcePolicy: true
+
+    # Allow specific CVEs (CVE IDs to ignore)
+    ignoredCVEs: []
+
+    # Maximum allowed CVE count by severity
+    maxCVEs:
+      critical: 0
+      high: 5
+      medium: 20
+
+  # SBOM generation
+  sbom:
+    # Enable SBOM generation
+    enabled: true
+
+    # SBOM format (cyclonedx-json, spdx-json, syft-json)
+    format: "cyclonedx-json"
+
+    # Store SBOM as ConfigMap
+    storeAsConfigMap: true

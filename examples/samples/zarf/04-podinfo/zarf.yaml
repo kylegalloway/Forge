@@ -1,0 +1,16 @@
+kind: ZarfPackageConfig
+metadata:
+  name: podinfo
+  description: Podinfo - a tiny web application for testing
+  version: 6.7.0
+
+components:
+  - name: podinfo-app
+    required: true
+    charts:
+      - name: podinfo
+        version: 6.7.0
+        namespace: default
+        url: https://stefanprodan.github.io/podinfo
+    images:
+      - ghcr.io/stefanprodan/podinfo:6.7.0

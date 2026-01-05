@@ -1,0 +1,36 @@
+# Example: Build Podinfo Package from Git
+#
+# This example demonstrates:
+# - Fetching Zarf package definition from the Forge repository
+# - Building a package that wraps the Podinfo Helm chart
+# - Creating an air-gapped Zarf package
+#
+# Podinfo is a tiny web application for testing Kubernetes
+
+---
+apiVersion: forge.dev/v1alpha1
+kind: ZarfPackageJob
+metadata:
+  name: podinfo-build
+  namespace: default
+spec:
+  serviceAccountName: podinfo-builder
+
+  # Build action - creates the Zarf package
+  action: Build
+
+  # Source: Git repository containing the Zarf package definition
+  source:
+    type: Git
+    git:
+      url: https://github.com/kylegalloway/forge
+      ref: main
+      path: examples/samples/zarf/04-podinfo
+
+  resources:
+    requests:
+      cpu: 500m
+      memory: 512Mi
+    limits:
+      cpu: 1
+      memory: 1Gi

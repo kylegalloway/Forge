@@ -161,11 +161,11 @@ helm search repo forge/forge --versions
 
 # Install specific version
 helm install forge forge/forge \
-  --version 0.1.1 \
+  --version 0.4.4 \
   --namespace forge-system \
   --create-namespace \
-  --set controller.image.tag=v0.1.1 \
-  --set webhook.image.tag=v0.1.1 \
+  --set controller.image.tag=v0.4.4 \
+  --set webhook.image.tag=v0.4.4 \
   --wait
 ```
 
@@ -229,12 +229,12 @@ cd forge
 
 ```bash
 # Using Docker
-docker build -t localhost/zarf:v0.66.0 images/zarf-cli/
-kind load docker-image localhost/zarf:v0.66.0 --name forge-test
+docker build -t localhost/zarf:v0.68.1 images/zarf-cli/
+kind load docker-image localhost/zarf:v0.68.1 --name forge-test
 
 # OR using Podman
-podman build -t localhost/zarf:v0.66.0 images/zarf-cli/
-podman save localhost/zarf:v0.66.0 -o /tmp/zarf-cli.tar
+podman build -t localhost/zarf:v0.68.1 images/zarf-cli/
+podman save localhost/zarf:v0.68.1 -o /tmp/zarf-cli.tar
 kind load image-archive /tmp/zarf-cli.tar --name forge-test
 rm /tmp/zarf-cli.tar
 ```
@@ -249,9 +249,9 @@ Expected output during build:
  => [4/5] RUN adduser -D -u 1000 zarf...
  => [5/5] RUN zarf version
  => exporting to image
- => => naming to localhost/zarf:v0.66.0
+ => => naming to localhost/zarf:v0.68.1
 
-Image: "localhost/zarf:v0.66.0" with ID "sha256:..." not yet present on node "forge-test-control-plane", loading...
+Image: "localhost/zarf:v0.68.1" with ID "sha256:..." not yet present on node "forge-test-control-plane", loading...
 ```
 
 Verify the image is loaded:
@@ -263,7 +263,7 @@ docker exec -it forge-test-control-plane crictl images | grep zarf
 Expected output:
 
 ```text
-localhost/zarf    v0.66.0    e8c96af1c3cbd    45MB
+localhost/zarf    v0.68.1    e8c96af1c3cbd    45MB
 ```
 
 ### 6. Run a Test Job
@@ -279,7 +279,7 @@ metadata:
   namespace: default
   annotations:
     forge.dev/allowed-actions: "Build,Publish,Deploy"
-    forge.dev/allowed-source-repos: "https://github.com/*"
+    forge.dev/allowed-source-repos: "https://github.com/kylegalloway/forge,https://github.com/kylegalloway/forge/*"
     forge.dev/allowed-registries: "ghcr.io/*,registry1.dso.mil/*"
     forge.dev/allowed-namespaces: "default,zarf"
 ---
@@ -294,9 +294,9 @@ spec:
   source:
     type: Git
     git:
-      url: https://github.com/stefanprodan/podinfo
-      ref: 6.7.0
-      path: charts/podinfo
+      url: https://github.com/kylegalloway/forge
+      ref: main
+      path: examples/samples/zarf/04-podinfo
 EOF
 ```
 
@@ -341,7 +341,7 @@ NAME                      READY   STATUS      RESTARTS   AGE
 hello-forge-build-xxxxx   0/1     Completed   0          1m
 
 # Logs will show:
-📦 ZARF-PACKAGE CREATE zarf-package-dos-games-amd64-0.0.1.tar.zst
+📦 ZARF-PACKAGE CREATE zarf-package-podinfo-<arch>-6.7.0.tar.zst
 ✔  Package created successfully
 ```
 
@@ -400,9 +400,9 @@ spec:
   source:
     type: Git
     git:
-      url: https://github.com/stefanprodan/podinfo
-      ref: 6.7.0
-      path: charts/podinfo
+      url: https://github.com/kylegalloway/forge
+      ref: main
+      path: examples/samples/zarf/04-podinfo
   buildOptions:
     output: /workspace/output
 ```
@@ -423,9 +423,9 @@ spec:
   source:
     type: Git
     git:
-      url: https://github.com/stefanprodan/podinfo
-      ref: 6.7.0
-      path: charts/podinfo
+      url: https://github.com/kylegalloway/forge
+      ref: main
+      path: examples/samples/zarf/04-podinfo
   publish:
     destination:
       type: OCI
@@ -627,7 +627,7 @@ podman pull ghcr.io/kylegalloway/forge/forge-webhook:latest
 
 ### Zarf CLI Image Not Found
 
-If job pods show `ImagePullBackOff` for `localhost/zarf:v0.66.0`:
+If job pods show `ImagePullBackOff` for `localhost/zarf:v0.68.1`:
 
 ```bash
 # Verify image is in Kind cluster
@@ -637,12 +637,12 @@ docker exec -it forge-test-control-plane crictl images | grep zarf
 cd /path/to/forge  # Your Forge repo clone
 
 # Using Docker
-docker build -t localhost/zarf:v0.66.0 images/zarf-cli/
-kind load docker-image localhost/zarf:v0.66.0 --name forge-test
+docker build -t localhost/zarf:v0.68.1 images/zarf-cli/
+kind load docker-image localhost/zarf:v0.68.1 --name forge-test
 
 # OR using Podman
-podman build -t localhost/zarf:v0.66.0 images/zarf-cli/
-podman save localhost/zarf:v0.66.0 -o /tmp/zarf-cli.tar
+podman build -t localhost/zarf:v0.68.1 images/zarf-cli/
+podman save localhost/zarf:v0.68.1 -o /tmp/zarf-cli.tar
 kind load image-archive /tmp/zarf-cli.tar --name forge-test
 rm /tmp/zarf-cli.tar
 ```

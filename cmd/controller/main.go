@@ -24,6 +24,7 @@ import (
 
 	"github.com/kylegalloway/forge/pkg/controller"
 	"github.com/kylegalloway/forge/pkg/leaderelection"
+	"github.com/kylegalloway/forge/pkg/logging"
 	"github.com/kylegalloway/forge/pkg/telemetry"
 )
 
@@ -38,23 +39,27 @@ var (
 
 func main() {
 	parseFlags()
-	ctx := setupSignalHandler()
-	cfg := mustBuildConfig()
-	kubeClient, dynamicClient := mustCreateClients(cfg)
-	watchNamespace := determineWatchNamespace()
 
-	metrics, tracer := initializeTelemetry()
+	// Initialize structured logger
+	logger := logging.NewLogger("forge-controller")
+	ctx := setupSignalHandler(logger)
+
+	cfg := mustBuildConfig(logger)
+	kubeClient, dynamicClient := mustCreateClients(cfg, logger)
+	watchNamespace := determineWatchNamespace(logger)
+
+	metrics, tracer := initializeTelemetry(logger)
 
 	// Create both Zarf and UDS controllers using generic controller pattern
 	zarfCtrl := controller.NewGenericZarfController(kubeClient, dynamicClient, watchNamespace, metrics, tracer)
 	udsCtrl := controller.NewGenericUDSController(kubeClient, dynamicClient, watchNamespace, metrics, tracer)
 
-	healthServer := startHealthServer(zarfCtrl, udsCtrl)
-	meterProvider, metricsServer := startMetricsServer(ctx)
-	defer shutdownMeterProvider(ctx, meterProvider)
+	healthServer := startHealthServer(zarfCtrl, udsCtrl, logger)
+	meterProvider, metricsServer := startMetricsServer(ctx, logger)
+	defer shutdownMeterProvider(ctx, meterProvider, logger)
 
-	runControllers(ctx, zarfCtrl, udsCtrl, kubeClient)
-	shutdownServers(healthServer, metricsServer)
+	runControllers(ctx, zarfCtrl, udsCtrl, kubeClient, logger)
+	shutdownServers(healthServer, metricsServer, logger)
 }
 
 func parseFlags() {
@@ -68,27 +73,27 @@ func parseFlags() {
 	flag.Parse()
 }
 
-func setupSignalHandler() context.Context {
+func setupSignalHandler(logger *logging.Logger) context.Context {
 	ctx, cancel := context.WithCancel(context.Background())
 	signalChan := make(chan os.Signal, 1)
 	signal.Notify(signalChan, os.Interrupt, syscall.SIGTERM)
 	go func() {
 		<-signalChan
-		klog.Info("Received shutdown signal")
+		logger.Info(ctx, "Received shutdown signal")
 		cancel()
 	}()
 	return ctx
 }
 
-func mustBuildConfig() *rest.Config {
-	cfg, err := buildConfig(kubeconfig, masterURL)
+func mustBuildConfig(logger *logging.Logger) *rest.Config {
+	cfg, err := buildConfig(kubeconfig, masterURL, logger)
 	if err != nil {
 		klog.Fatalf("Error building kubeconfig: %v", err)
 	}
 	return cfg
 }
 
-func mustCreateClients(cfg *rest.Config) (*kubernetes.Clientset, dynamic.Interface) {
+func mustCreateClients(cfg *rest.Config, logger *logging.Logger) (*kubernetes.Clientset, dynamic.Interface) {
 	kubeClient, err := kubernetes.NewForConfig(cfg)
 	if err != nil {
 		klog.Fatalf("Error building kubernetes clientset: %v", err)
@@ -97,36 +102,40 @@ func mustCreateClients(cfg *rest.Config) (*kubernetes.Clientset, dynamic.Interfa
 	if err != nil {
 		klog.Fatalf("Error building dynamic client: %v", err)
 	}
+	_ = logger // Will use in future error handling
 	return kubeClient, dynamicClient
 }
 
-func determineWatchNamespace() string {
+func determineWatchNamespace(logger *logging.Logger) string {
+	ctx := context.Background()
 	watchNamespace := namespace
 	if watchNamespace == "" {
 		watchNamespace = corev1.NamespaceAll
-		klog.Info("Watching all namespaces")
+		logger.Info(ctx, "Watching all namespaces")
 	} else {
-		klog.Infof("Watching namespace: %s", watchNamespace)
+		logger.Info(ctx, "Watching namespace", "namespace", watchNamespace)
 	}
 	return watchNamespace
 }
 
-func initializeTelemetry() (*telemetry.Metrics, *telemetry.Tracer) {
+func initializeTelemetry(logger *logging.Logger) (*telemetry.Metrics, *telemetry.Tracer) {
+	ctx := context.Background()
 	metrics, err := telemetry.NewMetrics()
 	if err != nil {
 		klog.Fatalf("Error creating metrics: %v", err)
 	}
-	klog.Info("OpenTelemetry metrics initialized")
+	logger.Info(ctx, "OpenTelemetry metrics initialized")
 
 	tracer := telemetry.NewTracer()
-	klog.Info("OpenTelemetry tracer initialized")
+	logger.Info(ctx, "OpenTelemetry tracer initialized")
 	return metrics, tracer
 }
 
 func startHealthServer(zarfCtrl, udsCtrl interface {
 	Healthy() bool
 	Ready() bool
-}) *http.Server {
+}, logger *logging.Logger) *http.Server {
+	ctx := context.Background()
 	healthMux := http.NewServeMux()
 	healthMux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) {
 		// Both controllers must be healthy
@@ -164,16 +173,16 @@ func startHealthServer(zarfCtrl, udsCtrl interface {
 	}
 
 	go func() {
-		klog.InfoS("Starting health check server", "addr", healthAddr)
+		logger.Info(ctx, "Starting health check server", "addr", healthAddr)
 		if serverErr := healthServer.ListenAndServe(); serverErr != nil && serverErr != http.ErrServerClosed {
-			klog.ErrorS(serverErr, "Health check server failed")
+			logger.Error(ctx, serverErr, "Health check server failed")
 		}
 	}()
 
 	return healthServer
 }
 
-func startMetricsServer(_ context.Context) (*sdkmetric.MeterProvider, *http.Server) {
+func startMetricsServer(ctx context.Context, logger *logging.Logger) (*sdkmetric.MeterProvider, *http.Server) {
 	promExporter, err := prometheus.New()
 	if err != nil {
 		klog.Fatalf("Error creating Prometheus exporter: %v", err)
@@ -196,40 +205,40 @@ func startMetricsServer(_ context.Context) (*sdkmetric.MeterProvider, *http.Serv
 	}
 
 	go func() {
-		klog.InfoS("Starting metrics server (Prometheus-compatible)", "addr", metricsAddr)
+		logger.Info(ctx, "Starting metrics server (Prometheus-compatible)", "addr", metricsAddr)
 		if serverErr := metricsServer.ListenAndServe(); serverErr != nil && serverErr != http.ErrServerClosed {
-			klog.ErrorS(serverErr, "Metrics server failed")
+			logger.Error(ctx, serverErr, "Metrics server failed")
 		}
 	}()
 
 	return meterProvider, metricsServer
 }
 
-func shutdownMeterProvider(ctx context.Context, meterProvider *sdkmetric.MeterProvider) {
+func shutdownMeterProvider(ctx context.Context, meterProvider *sdkmetric.MeterProvider, logger *logging.Logger) {
 	if shutdownErr := meterProvider.Shutdown(ctx); shutdownErr != nil {
-		klog.ErrorS(shutdownErr, "Error shutting down meter provider")
+		logger.Error(ctx, shutdownErr, "Error shutting down meter provider")
 	}
 }
 
-func runControllers(ctx context.Context, zarfCtrl, udsCtrl interface{ Run(context.Context) error }, kubeClient *kubernetes.Clientset) {
-	klog.Info("Starting Forge controllers (Zarf + UDS)")
+func runControllers(ctx context.Context, zarfCtrl, udsCtrl interface{ Run(context.Context) error }, kubeClient *kubernetes.Clientset, logger *logging.Logger) {
+	logger.Info(ctx, "Starting Forge controllers (Zarf + UDS)")
 
 	if enableLeaderElection {
-		klog.Info("Leader election enabled")
+		logger.Info(ctx, "Leader election enabled")
 		leConfig := leaderelection.DefaultConfig()
 		err := leaderelection.RunWithLeaderElection(ctx, kubeClient, leConfig, func(ctx context.Context) {
 			// Run both controllers concurrently
 			errChan := make(chan error, 2)
 
 			go func() {
-				klog.Info("Starting Zarf controller with leader election")
+				logger.Info(ctx, "Starting Zarf controller with leader election")
 				if runErr := zarfCtrl.Run(ctx); runErr != nil {
 					errChan <- fmt.Errorf("zarf controller error: %w", runErr)
 				}
 			}()
 
 			go func() {
-				klog.Info("Starting UDS controller with leader election")
+				logger.Info(ctx, "Starting UDS controller with leader election")
 				if runErr := udsCtrl.Run(ctx); runErr != nil {
 					errChan <- fmt.Errorf("uds controller error: %w", runErr)
 				}
@@ -237,26 +246,26 @@ func runControllers(ctx context.Context, zarfCtrl, udsCtrl interface{ Run(contex
 
 			// Wait for first controller to fail
 			err := <-errChan
-			klog.ErrorS(err, "Controller failed")
+			logger.Error(ctx, err, "Controller failed")
 		})
 		if err != nil {
 			klog.Fatalf("Error in leader election: %v", err)
 		}
 	} else {
-		klog.Info("Leader election disabled - running both controllers as single instance")
+		logger.Info(ctx, "Leader election disabled - running both controllers as single instance")
 
 		// Run both controllers concurrently
 		errChan := make(chan error, 2)
 
 		go func() {
-			klog.Info("Starting Zarf controller")
+			logger.Info(ctx, "Starting Zarf controller")
 			if runErr := zarfCtrl.Run(ctx); runErr != nil {
 				errChan <- fmt.Errorf("zarf controller error: %w", runErr)
 			}
 		}()
 
 		go func() {
-			klog.Info("Starting UDS controller")
+			logger.Info(ctx, "Starting UDS controller")
 			if runErr := udsCtrl.Run(ctx); runErr != nil {
 				errChan <- fmt.Errorf("uds controller error: %w", runErr)
 			}
@@ -268,28 +277,30 @@ func runControllers(ctx context.Context, zarfCtrl, udsCtrl interface{ Run(contex
 	}
 }
 
-func shutdownServers(healthServer, metricsServer *http.Server) {
-	klog.Info("Shutting down servers")
+func shutdownServers(healthServer, metricsServer *http.Server, logger *logging.Logger) {
+	ctx := context.Background()
+	logger.Info(ctx, "Shutting down servers")
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer shutdownCancel()
 
 	if err := healthServer.Shutdown(shutdownCtx); err != nil {
-		klog.ErrorS(err, "Health server shutdown error")
+		logger.Error(ctx, err, "Health server shutdown error")
 	}
 	if err := metricsServer.Shutdown(shutdownCtx); err != nil {
-		klog.ErrorS(err, "Metrics server shutdown error")
+		logger.Error(ctx, err, "Metrics server shutdown error")
 	}
 
-	klog.Info("Forge controller stopped")
+	logger.Info(ctx, "Forge controller stopped")
 }
 
 // buildConfig builds a Kubernetes REST config from kubeconfig or in-cluster config
-func buildConfig(kubeconfig, masterURL string) (*rest.Config, error) {
+func buildConfig(kubeconfig, masterURL string, logger *logging.Logger) (*rest.Config, error) {
+	ctx := context.Background()
 	if kubeconfig != "" {
-		klog.Infof("Using kubeconfig: %s", kubeconfig)
+		logger.Info(ctx, "Using kubeconfig", "path", kubeconfig)
 		return clientcmd.BuildConfigFromFlags(masterURL, kubeconfig)
 	}
 
-	klog.Info("Using in-cluster config")
+	logger.Info(ctx, "Using in-cluster config")
 	return rest.InClusterConfig()
 }

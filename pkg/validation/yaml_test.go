@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"gopkg.in/yaml.v3"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"sigs.k8s.io/yaml"
 )
 
 // TestYAMLSyntax validates that all YAML files in chart/ are syntactically correct

@@ -48,7 +48,7 @@ help: ## Display this help.
 
 .PHONY: manifests
 manifests: controller-gen ## Generate CRD manifests
-	$(CONTROLLER_GEN) crd:crdVersions=v1,allowDangerousTypes=true paths=./pkg/apis/... output:crd:artifacts:config=chart/forge/crds
+	$(CONTROLLER_GEN) crd:crdVersions=v1 paths=./pkg/apis/... output:crd:artifacts:config=chart/forge/crds
 
 .PHONY: generate
 generate: ## Generate API deepcopy code.

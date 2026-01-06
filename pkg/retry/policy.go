@@ -54,7 +54,7 @@ func ParseZarfPolicy(apiPolicy *zarfv1alpha1.RetryPolicy) (*Policy, error) {
 	}
 
 	if apiPolicy.BackoffMultiplier != nil {
-		policy.BackoffMultiplier = *apiPolicy.BackoffMultiplier
+		policy.BackoffMultiplier = float64(*apiPolicy.BackoffMultiplier) / 100.0
 	}
 
 	// Compile retryable error patterns
@@ -103,7 +103,7 @@ func ParseUDSPolicy(apiPolicy *udsv1alpha2.RetryPolicy) (*Policy, error) {
 	}
 
 	if apiPolicy.BackoffMultiplier != nil {
-		policy.BackoffMultiplier = *apiPolicy.BackoffMultiplier
+		policy.BackoffMultiplier = float64(*apiPolicy.BackoffMultiplier) / 100.0
 	}
 
 	// Compile retryable error patterns

@@ -245,12 +245,12 @@ type RetryPolicy struct {
 	// +kubebuilder:default="5m"
 	MaxBackoff string `json:"maxBackoff,omitempty"`
 
-	// BackoffMultiplier for exponential backoff
+	// BackoffMultiplier for exponential backoff as a percentage (200 = 2.0x, 150 = 1.5x)
 	// +optional
-	// +kubebuilder:default=2.0
-	// +kubebuilder:validation:Type=number
-	// +kubebuilder:validation:crd:allowDangerousTypes=true
-	BackoffMultiplier *float64 `json:"backoffMultiplier,omitempty"`
+	// +kubebuilder:default=200
+	// +kubebuilder:validation:Minimum=100
+	// +kubebuilder:validation:Maximum=1000
+	BackoffMultiplier *int32 `json:"backoffMultiplier,omitempty"`
 
 	// RetryableErrors defines which error patterns should trigger retries
 	// Supports glob patterns (e.g., "*timeout*", "*throttle*")

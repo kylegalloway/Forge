@@ -522,8 +522,9 @@ func (m *GenericJobMonitor[T]) getRetryPolicy(obj *unstructured.Unstructured, ac
 		if maxBackoff, ok := retryMap["maxBackoff"].(string); ok {
 			apiPolicy.MaxBackoff = maxBackoff
 		}
-		if backoffMultiplier, ok := retryMap["backoffMultiplier"].(float64); ok {
-			apiPolicy.BackoffMultiplier = &backoffMultiplier
+		if backoffMultiplier, ok := retryMap["backoffMultiplier"].(int64); ok {
+			val := int32(backoffMultiplier) //nolint:gosec // G115: BackoffMultiplier is validated by API schema
+			apiPolicy.BackoffMultiplier = &val
 		}
 		if retryableErrors, ok := retryMap["retryableErrors"].([]interface{}); ok {
 			for _, err := range retryableErrors {
@@ -547,8 +548,9 @@ func (m *GenericJobMonitor[T]) getRetryPolicy(obj *unstructured.Unstructured, ac
 	if maxBackoff, ok := retryMap["maxBackoff"].(string); ok {
 		apiPolicy.MaxBackoff = maxBackoff
 	}
-	if backoffMultiplier, ok := retryMap["backoffMultiplier"].(float64); ok {
-		apiPolicy.BackoffMultiplier = &backoffMultiplier
+	if backoffMultiplier, ok := retryMap["backoffMultiplier"].(int64); ok {
+		val := int32(backoffMultiplier) //nolint:gosec // G115: BackoffMultiplier is validated by API schema
+		apiPolicy.BackoffMultiplier = &val
 	}
 	if retryableErrors, ok := retryMap["retryableErrors"].([]interface{}); ok {
 		for _, err := range retryableErrors {

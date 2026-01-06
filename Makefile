@@ -48,7 +48,7 @@ help: ## Display this help.
 
 .PHONY: manifests
 manifests: controller-gen ## Generate CRD manifests
-	$(CONTROLLER_GEN) crd:crdVersions=v1 paths=./pkg/apis/... output:crd:artifacts:config=chart/forge/crds
+	$(CONTROLLER_GEN) crd:crdVersions=v1,allowDangerousTypes=true paths=./pkg/apis/... output:crd:artifacts:config=chart/forge/crds
 
 .PHONY: generate
 generate: ## Generate API deepcopy code.
@@ -118,7 +118,7 @@ tidy: ## Run go mod tidy
 ##@ Build
 
 .PHONY: build
-build: build-controller build-webhook ## Build controller and webhook binaries.
+build: build-controller build-webhook build-kubectl-forge ## Build controller, webhook, and kubectl plugin binaries.
 
 .PHONY: build-controller
 build-controller: fmt vet ## Build controller binary.
@@ -127,6 +127,10 @@ build-controller: fmt vet ## Build controller binary.
 .PHONY: build-webhook
 build-webhook: fmt vet ## Build webhook binary.
 	go build -o bin/$(WBHK_TARGET) cmd/$(WBHK_TARGET)/main.go
+
+.PHONY: build-kubectl-forge
+build-kubectl-forge: fmt vet ## Build kubectl-forge plugin binary.
+	go build -o bin/kubectl-forge cmd/kubectl-forge/*.go
 
 .PHONY: run
 run: fmt vet ## Run controller from your host.

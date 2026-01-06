@@ -30,6 +30,9 @@ type JobBuilder struct {
 	args            []string
 	workingDir      string
 	resources       corev1.ResourceRequirements
+	nodeSelector    map[string]string
+	affinity        *corev1.Affinity
+	tolerations     []corev1.Toleration
 	artifactPVCName string
 	kubeClient      kubernetes.Interface
 }
@@ -106,6 +109,24 @@ func (b *JobBuilder) WithWorkingDir(dir string) *JobBuilder {
 // WithResources sets the container resource requirements.
 func (b *JobBuilder) WithResources(resources corev1.ResourceRequirements) *JobBuilder {
 	b.resources = resources
+	return b
+}
+
+// WithNodeSelector sets node selection constraints for the job pod.
+func (b *JobBuilder) WithNodeSelector(nodeSelector map[string]string) *JobBuilder {
+	b.nodeSelector = nodeSelector
+	return b
+}
+
+// WithAffinity sets pod scheduling affinity rules.
+func (b *JobBuilder) WithAffinity(affinity *corev1.Affinity) *JobBuilder {
+	b.affinity = affinity
+	return b
+}
+
+// WithTolerations sets pod tolerations.
+func (b *JobBuilder) WithTolerations(tolerations []corev1.Toleration) *JobBuilder {
+	b.tolerations = tolerations
 	return b
 }
 
@@ -323,6 +344,9 @@ func (b *JobBuilder) Build() *batchv1.Job {
 			Containers:      []corev1.Container{container},
 			Volumes:         b.volumes,
 			SecurityContext: NonRootPodSecurityContext(),
+			NodeSelector:    b.nodeSelector,
+			Affinity:        b.affinity,
+			Tolerations:     b.tolerations,
 		},
 	}
 
@@ -369,45 +393,54 @@ func DefaultResourceRequirements() corev1.ResourceRequirements {
 
 // BuildResourceRequirements returns resource requirements for Build/Create operations.
 // Used by Zarf build and UDS create actions which involve compiling and bundling packages.
+// Includes higher ephemeral storage limits for large package builds.
 func BuildResourceRequirements() corev1.ResourceRequirements {
 	return corev1.ResourceRequirements{
 		Requests: corev1.ResourceList{
-			corev1.ResourceCPU:    MustParseQuantity("500m"),
-			corev1.ResourceMemory: MustParseQuantity("1Gi"),
+			corev1.ResourceCPU:              MustParseQuantity("500m"),
+			corev1.ResourceMemory:           MustParseQuantity("1Gi"),
+			corev1.ResourceEphemeralStorage: MustParseQuantity("10Gi"),
 		},
 		Limits: corev1.ResourceList{
-			corev1.ResourceCPU:    MustParseQuantity("2000m"),
-			corev1.ResourceMemory: MustParseQuantity("4Gi"),
+			corev1.ResourceCPU:              MustParseQuantity("2000m"),
+			corev1.ResourceMemory:           MustParseQuantity("4Gi"),
+			corev1.ResourceEphemeralStorage: MustParseQuantity("20Gi"),
 		},
 	}
 }
 
 // PublishResourceRequirements returns resource requirements for Publish operations.
 // Used by both Zarf and UDS publish actions which upload artifacts to registries/S3.
+// Includes moderate ephemeral storage for reading artifacts.
 func PublishResourceRequirements() corev1.ResourceRequirements {
 	return corev1.ResourceRequirements{
 		Requests: corev1.ResourceList{
-			corev1.ResourceCPU:    MustParseQuantity("200m"),
-			corev1.ResourceMemory: MustParseQuantity("512Mi"),
+			corev1.ResourceCPU:              MustParseQuantity("200m"),
+			corev1.ResourceMemory:           MustParseQuantity("512Mi"),
+			corev1.ResourceEphemeralStorage: MustParseQuantity("5Gi"),
 		},
 		Limits: corev1.ResourceList{
-			corev1.ResourceCPU:    MustParseQuantity("1000m"),
-			corev1.ResourceMemory: MustParseQuantity("2Gi"),
+			corev1.ResourceCPU:              MustParseQuantity("1000m"),
+			corev1.ResourceMemory:           MustParseQuantity("2Gi"),
+			corev1.ResourceEphemeralStorage: MustParseQuantity("10Gi"),
 		},
 	}
 }
 
 // DeployResourceRequirements returns resource requirements for Deploy operations.
 // Used by both Zarf and UDS deploy actions which install packages to clusters.
+// Includes ephemeral storage for extracting and processing packages.
 func DeployResourceRequirements() corev1.ResourceRequirements {
 	return corev1.ResourceRequirements{
 		Requests: corev1.ResourceList{
-			corev1.ResourceCPU:    MustParseQuantity("500m"),
-			corev1.ResourceMemory: MustParseQuantity("1Gi"),
+			corev1.ResourceCPU:              MustParseQuantity("500m"),
+			corev1.ResourceMemory:           MustParseQuantity("1Gi"),
+			corev1.ResourceEphemeralStorage: MustParseQuantity("10Gi"),
 		},
 		Limits: corev1.ResourceList{
-			corev1.ResourceCPU:    MustParseQuantity("2000m"),
-			corev1.ResourceMemory: MustParseQuantity("4Gi"),
+			corev1.ResourceCPU:              MustParseQuantity("2000m"),
+			corev1.ResourceMemory:           MustParseQuantity("4Gi"),
+			corev1.ResourceEphemeralStorage: MustParseQuantity("20Gi"),
 		},
 	}
 }

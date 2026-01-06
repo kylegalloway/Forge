@@ -115,6 +115,21 @@ type ZarfPackageJobSpec struct {
 	// +optional
 	Resources *corev1.ResourceRequirements `json:"resources,omitempty"`
 
+	// NodeSelector defines node selection constraints for job pods
+	// Allows targeting specific nodes based on labels (e.g., disktype=ssd, region=us-west)
+	// +optional
+	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
+
+	// Affinity defines pod scheduling affinity/anti-affinity rules
+	// Supports node affinity, pod affinity, and pod anti-affinity for advanced scheduling
+	// +optional
+	Affinity *corev1.Affinity `json:"affinity,omitempty"`
+
+	// Tolerations define tolerations for job pods
+	// Allows pods to be scheduled on nodes with matching taints
+	// +optional
+	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
+
 	// RetainArtifactPVC determines whether to keep the artifact PVC after job completion
 	// Set to false to automatically delete the PVC when the job finishes (success or failure)
 	// Defaults to true (keep PVC) for safety
@@ -300,6 +315,7 @@ type RetryPolicy struct {
 	// +optional
 	// +kubebuilder:default=2.0
 	// +kubebuilder:validation:Type=number
+	// +kubebuilder:validation:crd:allowDangerousTypes=true
 	BackoffMultiplier *float64 `json:"backoffMultiplier,omitempty"`
 
 	// RetryableErrors defines which error patterns should trigger retries

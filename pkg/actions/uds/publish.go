@@ -113,6 +113,9 @@ func (handler *PublishHandler) createPublishJob(ctx context.Context, bundle *uds
 		WithArgs([]string{udsCmd}).
 		WithWorkingDir(constants.VolumeMountPathWorkspace).
 		WithResources(handler.getResources(bundle)).
+		WithNodeSelector(bundle.Spec.NodeSelector).
+		WithAffinity(bundle.Spec.Affinity).
+		WithTolerations(bundle.Spec.Tolerations).
 		WithUDSRetryPolicy(retryPolicy).
 		WithActiveDeadlineSeconds(activeDeadlineSeconds).
 		WithTTLSecondsAfterFinished(3600).

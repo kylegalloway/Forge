@@ -119,6 +119,9 @@ func (handler *DeployHandler) createDeployJob(ctx context.Context, bundle *udsv1
 		WithArgs([]string{udsCmd}).
 		WithWorkingDir(constants.VolumeMountPathWorkspace).
 		WithResources(handler.getResources(bundle)).
+		WithNodeSelector(bundle.Spec.NodeSelector).
+		WithAffinity(bundle.Spec.Affinity).
+		WithTolerations(bundle.Spec.Tolerations).
 		WithUDSRetryPolicy(retryPolicy).
 		WithActiveDeadlineSeconds(activeDeadlineSeconds).
 		WithTTLSecondsAfterFinished(3600).

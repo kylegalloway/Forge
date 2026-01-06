@@ -122,6 +122,9 @@ func (handler *BuildHandler) createBuildJob(ctx context.Context, pkg *zarfv1alph
 		WithArgs([]string{zarfCmd}).
 		WithWorkingDir(workingDir).
 		WithResources(handler.getResources(pkg)).
+		WithNodeSelector(pkg.Spec.NodeSelector).
+		WithAffinity(pkg.Spec.Affinity).
+		WithTolerations(pkg.Spec.Tolerations).
 		WithZarfRetryPolicy(retryPolicy).
 		WithActiveDeadlineSeconds(activeDeadlineSeconds).
 		WithTTLSecondsAfterFinished(3600).

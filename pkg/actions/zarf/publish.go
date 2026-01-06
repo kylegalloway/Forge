@@ -122,6 +122,9 @@ func (handler *PublishHandler) createPublishJob(ctx context.Context, pkg *zarfv1
 		WithArgs([]string{publishCmd}).
 		WithWorkingDir(constants.VolumeMountPathWorkspace).
 		WithResources(handler.getResources(pkg)).
+		WithNodeSelector(pkg.Spec.NodeSelector).
+		WithAffinity(pkg.Spec.Affinity).
+		WithTolerations(pkg.Spec.Tolerations).
 		WithZarfRetryPolicy(retryPolicy).
 		WithActiveDeadlineSeconds(activeDeadlineSeconds).
 		WithTTLSecondsAfterFinished(3600).

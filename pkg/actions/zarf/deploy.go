@@ -125,6 +125,9 @@ func (handler *DeployHandler) createDeployJob(ctx context.Context, pkg *zarfv1al
 		WithArgs([]string{deployCmd}).
 		WithWorkingDir(constants.VolumeMountPathWorkspace).
 		WithResources(handler.getResources(pkg)).
+		WithNodeSelector(pkg.Spec.NodeSelector).
+		WithAffinity(pkg.Spec.Affinity).
+		WithTolerations(pkg.Spec.Tolerations).
 		WithZarfRetryPolicy(retryPolicy).
 		WithActiveDeadlineSeconds(activeDeadlineSeconds).
 		WithTTLSecondsAfterFinished(3600).

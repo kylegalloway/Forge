@@ -113,6 +113,9 @@ func (handler *CreateHandler) createBundleJob(ctx context.Context, bundle *udsv1
 		WithArgs([]string{udsCmd}).
 		WithWorkingDir(workingDir).
 		WithResources(handler.getResources(bundle)).
+		WithNodeSelector(bundle.Spec.NodeSelector).
+		WithAffinity(bundle.Spec.Affinity).
+		WithTolerations(bundle.Spec.Tolerations).
 		WithUDSRetryPolicy(nil).
 		WithActiveDeadlineSeconds(activeDeadlineSeconds).
 		WithTTLSecondsAfterFinished(3600).

@@ -12,6 +12,13 @@
   * Support for Workload Identity/IRSA instead of static credentials
   * Encrypted secret storage at rest
 
+* **Remove float64 from CRDs** - BackoffMultiplier uses float64 which is discouraged:
+  * Rewrite BackoffMultiplier as string (e.g., "2.0", "1.5") with parsing/validation
+  * Alternative: Use integer percentage (200 = 2.0x, 150 = 1.5x) for better compatibility
+  * Update controller logic to parse the new format
+  * Remove `allowDangerousTypes=true` from Makefile manifests target
+  * This improves cross-language compatibility and removes CRD generation warnings
+
 ### Security Hardening
 
 * **RBAC least privilege audit** - Current ClusterRole permissions may be overly broad:

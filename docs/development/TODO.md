@@ -4,14 +4,6 @@
 
 ### Critical Operational Concerns
 
-* **Default resource limits on jobs** - Jobs currently run without resource constraints, risking cluster resource starvation. Need configurable defaults:
-  * Memory requests/limits (default: 1Gi request, 4Gi limit)
-  * CPU requests/limits (default: 500m request, 2 CPU limit)
-  * Ephemeral storage limits for large package builds
-  * Per-action overrides (build vs publish vs deploy may have different needs)
-  * Node selector and affinity rules for workload isolation
-  * Timeout configuration (default: 2 hours, configurable per-job)
-
 * **Secrets management hardening** - Git/registry credentials stored as Kubernetes Secrets visible to namespace admins:
   * Integration with external secret managers (Vault, AWS Secrets Manager, GCP Secret Manager)
   * External Secrets Operator support for dynamic credential injection
@@ -47,31 +39,7 @@
   * Cache tuning and optimization
   * Performance benchmarking suite (100+ concurrent jobs)
 
-* **Artifact storage alternatives** - PVC-based storage doesn't scale well across clusters:
-  * S3-backed artifact storage (presigned URLs for job access)
-  * OCI registry as artifact store (publish intermediate builds)
-  * Distributed storage support (Ceph, MinIO, Longhorn)
-  * Artifact compression and deduplication
-  * Multi-region artifact replication
-  * Artifact garbage collection based on LRU policy
-
 ### GitOps & Integration
-
-* **ArgoCD integration hardening** - Current integration requires manual ignoreDifferences configuration:
-  * ArgoCD Application/ApplicationSet examples in docs
-  * Pre-configured sync policies for Forge resources
-  * ArgoCD Health Assessment for custom resources (show job status in ArgoCD UI)
-  * ArgoCD Notification integration (alert on job failures)
-  * Argo Workflows integration (trigger ZarfPackageJobs from workflows)
-  * FluxCD reconciliation support
-
-* **Multi-cluster management** - Managing Zarf CLI image across clusters is manual and error-prone:
-  * Cluster fleet management for Zarf CLI image distribution
-  * Automated image sync CronJob (pull from registry, load to nodes)
-  * Multi-cluster deployment via ClusterAPI/vCluster
-  * Cross-cluster artifact sharing
-  * Centralized policy management across clusters
-  * Cluster inventory and version tracking
 
 * **CI/CD pipeline integration** - No native integrations with popular CI/CD systems:
   * GitHub Actions workflow examples
@@ -83,29 +51,22 @@
 
 ### Developer Experience
 
-* **Job artifact retrieval** - No easy way to download built packages from completed jobs:
-  * `kubectl forge download <job-name>` CLI command
-  * HTTP endpoint to stream artifacts from PVC
-  * Automatic artifact upload to S3/registry after build
-  * Artifact retention policy (keep last N successful builds)
-  * Artifact metadata API (size, checksum, build time)
-  * Browser-based artifact explorer UI
+* **Job artifact retrieval** - Partial (CLI complete via kubectl-forge, HTTP/S3/UI pending):
+  * ✅ `kubectl forge download <job-name>` CLI command
+  * ❌ HTTP endpoint to stream artifacts from PVC
+  * ❌ Automatic artifact upload to S3/registry after build
+  * ❌ Artifact retention policy (keep last N successful builds)
+  * ❌ Artifact metadata API (size, checksum, build time)
+  * ❌ Browser-based artifact explorer UI
 
-* **Job templates and reusable workflows** - Users recreate similar jobs repeatedly:
-  * ZarfPackageTemplate CRD for reusable job definitions
-  * Parameterized templates (substitute values at runtime)
-  * Template library/marketplace
-  * Inheritance and composition (extend base templates)
-  * Template validation and linting
-  * Version control for templates
-
-* **Interactive job debugging** - When jobs fail, debugging requires manual kubectl commands:
-  * `kubectl forge debug <job-name>` to exec into failed pod
-  * Automatic pod preservation on failure (keep failed pods for debugging)
-  * Job retry with modifications (change env vars, add debug flags)
-  * Live log streaming in CLI
-  * Job execution replay (re-run with same inputs)
-  * Debug mode flag (skip cleanup, verbose logging)
+* **Interactive job debugging** - Partial (CLI complete via kubectl-forge, advanced features pending):
+  * ✅ `kubectl forge debug <job-name>` to exec into failed pod
+  * ✅ Create debug pods with workspace access (`--copy-workspace`)
+  * ✅ Preserve debug pods for inspection (`--preserve-pod`)
+  * ❌ Job retry with modifications (change env vars, add debug flags)
+  * ❌ Live log streaming in CLI
+  * ❌ Job execution replay (re-run with same inputs)
+  * ❌ Debug mode flag in CRD spec (skip cleanup, verbose logging)
 
 ## Future Enhancements (Long-term)
 
@@ -113,7 +74,7 @@
 
 * **Additional destination types** - Artifactory and Nexus registry support (currently supports OCI, S3, Local)
 * **Multi-architecture bundle builds** - Cross-platform builds for arm64/amd64 in single job execution
-* **Enhanced resource scheduling** - Node affinity, tolerations, and priority classes configurable per-job (partially covered in Production Readiness)
+* **Priority classes** - Priority classes configurable per-job for pod scheduling priority
 
 ### Operational Excellence
 

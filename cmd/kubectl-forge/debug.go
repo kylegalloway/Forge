@@ -1,3 +1,4 @@
+// Package main implements the kubectl-forge CLI debug command
 package main
 
 import (
@@ -76,6 +77,7 @@ automatic cleanup and keep pods around for debugging.`,
 
 // Run executes the debug command
 func (o *DebugOptions) Run(ctx context.Context) error {
+	//nolint:errcheck // Writing to stdout in CLI context
 	fmt.Fprintf(o.IOStreams.Out, "Debugging job: %s\n", o.JobName)
 
 	// Get Kubernetes client
@@ -93,6 +95,7 @@ func (o *DebugOptions) Run(ctx context.Context) error {
 		return fmt.Errorf("failed to find job: %w", err)
 	}
 
+	//nolint:errcheck // Writing to stdout in CLI context
 	fmt.Fprintf(o.IOStreams.Out, "Found job: %s/%s\n", job.Namespace, job.Name)
 
 	// Find pods for the job
@@ -110,24 +113,29 @@ func (o *DebugOptions) Run(ctx context.Context) error {
 
 	// Use the first pod found (typically there's only one per job)
 	pod := pods[0]
+	//nolint:errcheck // Writing to stdout in CLI context
 	fmt.Fprintf(o.IOStreams.Out, "Found pod: %s (status: %s)\n", pod.Name, pod.Status.Phase)
 
 	// If pod is failed and copyWorkspace is requested, create debug pod
 	if o.CopyWorkspace {
+		//nolint:errcheck // Writing to stdout in CLI context
 		fmt.Fprintf(o.IOStreams.Out, "Creating debug pod with workspace access...\n")
-		debugPod, err := client.CreateDebugPod(ctx, pod, o.DebugImage)
-		if err != nil {
-			return fmt.Errorf("failed to create debug pod: %w", err)
+		debugPod, debugErr := client.CreateDebugPod(ctx, pod, o.DebugImage)
+		if debugErr != nil {
+			return fmt.Errorf("failed to create debug pod: %w", debugErr)
 		}
 
+		//nolint:errcheck // Writing to stdout in CLI context
 		fmt.Fprintf(o.IOStreams.Out, "Debug pod created: %s\n", debugPod.Name)
 		pod = debugPod
 
 		if !o.PreservePod {
 			defer func() {
+				//nolint:errcheck // Writing to stdout in CLI context
 				fmt.Fprintf(o.IOStreams.Out, "\nCleaning up debug pod...\n")
-				if err := client.DeletePod(context.Background(), pod); err != nil {
-					fmt.Fprintf(o.IOStreams.ErrOut, "Warning: failed to delete debug pod: %v\n", err)
+				if deleteErr := client.DeletePod(context.Background(), pod); deleteErr != nil {
+					//nolint:errcheck // Writing to stderr in CLI context
+					fmt.Fprintf(o.IOStreams.ErrOut, "Warning: failed to delete debug pod: %v\n", deleteErr)
 				}
 			}()
 		}
@@ -144,8 +152,11 @@ func (o *DebugOptions) Run(ctx context.Context) error {
 		}
 	}
 
+	//nolint:errcheck // Writing to stdout in CLI context
 	fmt.Fprintf(o.IOStreams.Out, "Exec'ing into container: %s\n", containerName)
+	//nolint:errcheck // Writing to stdout in CLI context
 	fmt.Fprintf(o.IOStreams.Out, "Shell: %s\n\n", o.Shell)
+	//nolint:errcheck // Writing to stdout in CLI context
 	fmt.Fprintf(o.IOStreams.Out, "---\n")
 
 	// Exec into the pod

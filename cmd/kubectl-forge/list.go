@@ -1,3 +1,4 @@
+// Package main implements the kubectl-forge CLI list command
 package main
 
 import (
@@ -45,7 +46,7 @@ Shows job name, type, action, phase, and age for each job.`,
 
   # List only UDS bundle jobs
   kubectl forge list --type uds`,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			return o.Run(cmd.Context())
 		},
 	}
@@ -77,27 +78,35 @@ func (o *ListOptions) Run(ctx context.Context) error {
 	}
 
 	if len(jobs) == 0 {
+		//nolint:errcheck // Writing to stdout in CLI context
 		fmt.Fprintf(o.IOStreams.Out, "No jobs found.\n")
 		return nil
 	}
 
 	// Print results in table format
 	w := tabwriter.NewWriter(o.IOStreams.Out, 0, 0, 3, ' ', 0)
-	defer w.Flush()
+	defer func() {
+		//nolint:errcheck,gosec // Flushing output in CLI context
+		w.Flush()
+	}()
 
 	// Header
 	if o.AllNamespaces {
+		//nolint:errcheck // Writing to stdout in CLI context
 		fmt.Fprintln(w, "NAMESPACE\tNAME\tTYPE\tACTION\tPHASE\tAGE")
 	} else {
+		//nolint:errcheck // Writing to stdout in CLI context
 		fmt.Fprintln(w, "NAME\tTYPE\tACTION\tPHASE\tAGE")
 	}
 
 	// Rows
 	for _, job := range jobs {
 		if o.AllNamespaces {
+			//nolint:errcheck // Writing to stdout in CLI context
 			fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\n",
 				job.Namespace, job.Name, job.Type, job.Action, job.Phase, job.Age)
 		} else {
+			//nolint:errcheck // Writing to stdout in CLI context
 			fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n",
 				job.Name, job.Type, job.Action, job.Phase, job.Age)
 		}

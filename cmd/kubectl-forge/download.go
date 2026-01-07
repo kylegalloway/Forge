@@ -1,3 +1,4 @@
+// Package main implements the kubectl-forge CLI download command
 package main
 
 import (
@@ -64,6 +65,7 @@ detect the job type and locate the appropriate artifact PVC.`,
 
 // Run executes the download command
 func (o *DownloadOptions) Run(ctx context.Context) error {
+	//nolint:errcheck // Writing to stdout in CLI context
 	fmt.Fprintf(o.IOStreams.Out, "Downloading artifacts from job: %s\n", o.JobName)
 
 	// Get Kubernetes client
@@ -81,6 +83,7 @@ func (o *DownloadOptions) Run(ctx context.Context) error {
 		return fmt.Errorf("failed to find job: %w", err)
 	}
 
+	//nolint:errcheck // Writing to stdout in CLI context
 	fmt.Fprintf(o.IOStreams.Out, "Found job: %s/%s\n", job.Namespace, job.Name)
 
 	// Find the artifact PVC
@@ -93,10 +96,11 @@ func (o *DownloadOptions) Run(ctx context.Context) error {
 		return fmt.Errorf("no artifact PVC found for job %s (job may not have completed or may not produce artifacts)", o.JobName)
 	}
 
+	//nolint:errcheck // Writing to stdout in CLI context
 	fmt.Fprintf(o.IOStreams.Out, "Found artifact PVC: %s\n", pvcName)
 
 	// Create output directory
-	if err := os.MkdirAll(o.OutputDir, 0o755); err != nil {
+	if err = os.MkdirAll(o.OutputDir, 0o750); err != nil {
 		return fmt.Errorf("failed to create output directory: %w", err)
 	}
 
@@ -106,6 +110,7 @@ func (o *DownloadOptions) Run(ctx context.Context) error {
 	}
 
 	// Download artifacts
+	//nolint:errcheck // Writing to stdout in CLI context
 	fmt.Fprintf(o.IOStreams.Out, "Downloading artifacts to: %s\n", absOutputDir)
 
 	downloadCtx, cancel := context.WithTimeout(ctx, o.Timeout)
@@ -117,8 +122,10 @@ func (o *DownloadOptions) Run(ctx context.Context) error {
 	}
 
 	// Print summary
+	//nolint:errcheck // Writing to stdout in CLI context
 	fmt.Fprintf(o.IOStreams.Out, "\n✅ Successfully downloaded %d file(s):\n", len(files))
 	for _, file := range files {
+		//nolint:errcheck // Writing to stdout in CLI context
 		fmt.Fprintf(o.IOStreams.Out, "  - %s\n", file)
 	}
 

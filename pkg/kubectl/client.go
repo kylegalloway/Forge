@@ -1,3 +1,4 @@
+// Package kubectl provides Kubernetes client utilities for kubectl-forge operations
 package kubectl
 
 import (
@@ -91,7 +92,7 @@ func (c *Client) FindJob(ctx context.Context, namespace, jobName string) (*batch
 
 // FindArtifactPVC finds the artifact PVC for a job
 // Returns PVC name or empty string if not found
-func (c *Client) FindArtifactPVC(ctx context.Context, job *batchv1.Job) (string, error) {
+func (c *Client) FindArtifactPVC(_ context.Context, job *batchv1.Job) (string, error) {
 	// Get the job's pod template volumes
 	for _, volume := range job.Spec.Template.Spec.Volumes {
 		if volume.PersistentVolumeClaim != nil {
@@ -180,12 +181,13 @@ func (c *Client) DownloadFromPVC(ctx context.Context, namespace, pvcName, output
 	defer func() {
 		deleteCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
-		_ = c.kubeClient.CoreV1().Pods(namespace).Delete(deleteCtx, podName, metav1.DeleteOptions{})
+		//nolint:errcheck,gosec // Best-effort cleanup in defer
+		c.kubeClient.CoreV1().Pods(namespace).Delete(deleteCtx, podName, metav1.DeleteOptions{})
 	}()
 
 	// Wait for pod to be running
-	if err := c.waitForPodRunning(ctx, pod, 2*time.Minute); err != nil {
-		return nil, fmt.Errorf("download pod failed to start: %w", err)
+	if waitErr := c.waitForPodRunning(ctx, pod, 2*time.Minute); waitErr != nil {
+		return nil, fmt.Errorf("download pod failed to start: %w", waitErr)
 	}
 
 	// List files in the PVC
@@ -264,11 +266,11 @@ func (c *Client) copyFromPod(ctx context.Context, pod *corev1.Pod, container, re
 	}
 
 	// Create parent directory
-	if err := os.MkdirAll(filepath.Dir(localPath), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(localPath), 0o750); err != nil {
 		return err
 	}
 
-	return os.WriteFile(localPath, []byte(stdout), 0o644)
+	return os.WriteFile(localPath, []byte(stdout), 0o600)
 }
 
 // execInPod executes a command in a pod and returns stdout
@@ -423,7 +425,8 @@ func (c *Client) CreateDebugPod(ctx context.Context, originalPod *corev1.Pod, de
 	// Wait for pod to be running
 	if err := c.waitForPodRunning(ctx, pod, 2*time.Minute); err != nil {
 		// Cleanup on failure
-		_ = c.kubeClient.CoreV1().Pods(pod.Namespace).Delete(context.Background(), pod.Name, metav1.DeleteOptions{})
+		//nolint:errcheck,gosec // Best-effort cleanup on error path
+		c.kubeClient.CoreV1().Pods(pod.Namespace).Delete(context.Background(), pod.Name, metav1.DeleteOptions{})
 		return nil, err
 	}
 
@@ -467,11 +470,12 @@ func (c *Client) ListJobs(ctx context.Context, namespace, jobType string) ([]Job
 		}
 
 		phase := "Unknown"
-		if job.Status.Succeeded > 0 {
+		switch {
+		case job.Status.Succeeded > 0:
 			phase = "Completed"
-		} else if job.Status.Failed > 0 {
+		case job.Status.Failed > 0:
 			phase = "Failed"
-		} else if job.Status.Active > 0 {
+		case job.Status.Active > 0:
 			phase = "Running"
 		}
 
@@ -524,6 +528,7 @@ type fixedSizeQueue struct {
 	size *remotecommand.TerminalSize
 }
 
+// Next returns the terminal size
 func (s *fixedSizeQueue) Next() *remotecommand.TerminalSize {
 	return s.size
 }

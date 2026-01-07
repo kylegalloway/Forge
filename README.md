@@ -126,16 +126,16 @@ helm repo update
 helm install forge forge/forge \
   --namespace forge-system \
   --create-namespace \
-  --version 0.4.5
+  --version 0.4.6
 ```
 
-**Container Images**: `ghcr.io/kylegalloway/forge/forge-controller:v0.4.5` and `ghcr.io/kylegalloway/forge/forge-webhook:v0.4.5`
+**Container Images**: `ghcr.io/kylegalloway/forge/forge-controller:v0.4.6` and `ghcr.io/kylegalloway/forge/forge-webhook:v0.4.6`
 
 **Custom Configuration**:
 
 ```bash
 helm install forge forge/forge \
-  --version 0.4.5 \
+  --version 0.4.6 \
   --namespace forge-system \
   --create-namespace \
   --set controller.replicaCount=2 \

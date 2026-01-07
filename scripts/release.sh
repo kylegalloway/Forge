@@ -280,6 +280,8 @@ echo ""
 print_step "Step 7: Publishing to gh-pages"
 git stash --include-untracked 2>/dev/null || true
 git checkout gh-pages
+git pull origin gh-pages
+print_success "gh-pages branch synced with remote"
 
 # Copy chart and update index
 cp "$CHART_PACKAGE" .

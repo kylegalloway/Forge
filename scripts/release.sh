@@ -73,29 +73,63 @@ bump_version() {
 # Array of cultural references for commit messages (rotate through these)
 get_cultural_reference() {
     local references=(
-        "Gandalf|You shall not pass... without a version bump"
-        "Marty McFly|Great Scott! We're going back to the future with"
-        "Neo|Red pill or blue pill? We chose version"
-        "Dorothy|There's no place like home, there's no place like"
-        "Luke Skywalker|Use the Force, Luke. The Force says bump to"
-        "Frodo|One does not simply walk into Mordor. One releases"
-        "Dory|Just keep swimming, just keep versioning to"
-        "HAL 9000|I'm sorry Dave, I can't do that... without releasing"
-        "Ferris Bueller|Life moves pretty fast. So does version"
-        "The Dude|The Dude abides, and so does version"
-        "Maximus|Are you not entertained?! By version"
-        "Beetlejuice|Say it three times: version version version"
-        "Tony Stark|I am Iron Man. I am also version"
-        "Morpheus|What if I told you... the new version is"
-        "Hamlet|To be or not to be version"
-        "Rocky|Yo Adrian! We got version"
-        "Indiana Jones|It belongs in a museum! Version"
-        "Jack Sparrow|Why is the rum always gone? Because we're at version"
-        "Yoda|Do or do not, there is no try. There is only version"
-        "Forrest Gump|Life is like a box of chocolates, you get version"
+        "Taylor Swift|Shake it off, shake it off! We're shaking off bugs with"
+        "Kendrick Lamar|Sit down, be humble with version"
+        "Beyoncé|Who run the world? Version"
+        "Radiohead|No surprises here, just smooth sailing to"
+        "Pink Floyd|Comfortably numb? Not with the excitement of version"
+        "David Bowie|Ground control to Major Tom, we're launching"
+        "The Beatles|Here comes the sun (version)"
+        "Walter White|I am the one who knocks... with version"
+        "Leslie Knope|Treat yo' self to version"
+        "Michael Scott|That's what she said about version"
+        "Ron Swanson|Give me all the bacon eggs you have... and version"
+        "Phoebe Buffay|Smelly cat, smelly cat, what are they feeding version"
+        "Kafka's Metamorphosis|Gregor awoke to find himself transformed into version"
+        "Vonnegut|So it goes... on to version"
+        "Terry Pratchett|The Luggage follows dutifully to version"
+        "Sisyphus|One must imagine Sisyphus happy with version"
+        "Icarus|Flying too close to the sun? Not with version"
+        "Prometheus|Stealing fire from the gods gets you version"
+        "Ragnarök|The twilight of the gods brings version"
+        "Odysseus|After ten years at sea, we've reached version"
+        "Achilles|My only weakness? Not having version"
+        "Dante's Inferno|Abandon all hope ye who don't upgrade to version"
+        "The Godfather|I'm gonna make them an offer they can't refuse:"
+        "Pulp Fiction|Say 'what' again! I dare you! Version is"
+        "Fight Club|First rule of Fight Club: always release version"
+        "Blade Runner|I've seen things you people wouldn't believe... like version"
+        "Eternal Sunshine|Meet me in Montauk with version"
+        "Her|Falling in love with an OS? Try falling for version"
+        "Dune|The spice must flow, and so must version"
+        "Arrested Development|I've made a huge mistake... NOT releasing version"
+        "Community|Six seasons and a movie, plus version"
+        "The Good Place|Holy forking shirtballs! It's version"
+        "Stranger Things|Friends don't lie about version"
+        "Succession|You can't make a Tomlette without breaking some Gregs. Version is"
+        "The Office (UK)|That's what the version said"
     )
 
     # Pick a random reference
+    local index=$((RANDOM % ${#references[@]}))
+    echo "${references[$index]}"
+}
+
+# Function to get chart publishing cultural reference
+get_chart_reference() {
+    local references=(
+        "Captain Ahab finally caught the whale:|Chart ${1} is harpooned and ready"
+        "Kerouac hit the road:|Chart ${1} is on the move, man"
+        "Columbus discovered America:|We discovered chart ${1}"
+        "Armstrong walked on the moon:|One small step for chart ${1}, one giant leap"
+        "Amelia Earhart took flight:|Chart ${1} soars into the repository"
+        "Hemingway finished his manuscript:|Chart ${1} is written and published"
+        "Bob Ross painted happy trees:|Chart ${1} is a happy little accident"
+        "Julia Child mastered French cooking:|Chart ${1} is perfectly seasoned"
+        "Freddie Mercury gave Wembley:|Chart ${1} rocks the gh-pages stage"
+        "Bowie changed personas:|Chart ${1} is the thin white duke of releases"
+    )
+
     local index=$((RANDOM % ${#references[@]}))
     echo "${references[$index]}"
 }
@@ -253,14 +287,15 @@ helm repo index . --url https://kylegalloway.github.io/forge
 print_success "Helm index updated"
 
 # Commit and push gh-pages
+CHART_REF=$(get_chart_reference "${NEW_VERSION}")
+IFS='|' read -r chart_title chart_desc <<< "$CHART_REF"
 git add "forge-${NEW_VERSION}.tgz" index.yaml
 PRE_COMMIT_ALLOW_NO_CONFIG=1 git commit -S -m "$(cat <<EOF
-📦 Chart ${NEW_VERSION} sails into the harbor like Odysseus
+📦 ${chart_title}
 
-The ${NEW_VERSION} chart has completed its epic journey and now rests
-safely in the gh-pages harbor. Updated index.yaml points the way for
-all who seek this version. Helm repo update will reveal its glory to
-the masses. The sirens sang, but we stayed the course.
+${chart_desc}. The gh-pages harbor welcomes this new arrival.
+Updated index.yaml points the way for all who seek this version.
+Helm repo update will reveal its glory to the masses.
 EOF
 )"
 git push origin gh-pages

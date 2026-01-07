@@ -59,22 +59,7 @@ Triggered on version tags (v*) or manual workflow dispatch.
 
 **SLSA Level:** Build Level 3 (isolated, signed, non-falsifiable, hermetic)
 
-### Attest (`attest.yaml`)
-
-Triggered after successful CI runs on main branch or manual workflow dispatch.
-
-**Purpose:** Build and attest development/main branch images for testing
-
-**Actions:**
-
-- Builds and pushes Docker images to GHCR (main branch builds)
-- Generates SLSA provenance
-- Creates SBOMs
-- Signs images with Cosign
-- Attests SBOMs to images
-- Scans for vulnerabilities
-
-**Note:** Version tag releases are handled exclusively by `release.yaml`
+**Note:** Attestation (signing, SBOMs, provenance) is only performed for tagged releases, not for development builds on main branch. This reduces runner usage while ensuring all production artifacts are fully attested.
 
 ## Usage
 

@@ -9,6 +9,10 @@ New to Forge? Start here to get up and running quickly.
 - [User Guide](getting-started/USER_GUIDE.md) - Complete guide to using Forge for Zarf packages and UDS bundles
 - [Deployment Guide](getting-started/DEPLOYMENT.md) - Deployment scenarios and configurations
 
+## CLI Tools
+
+- [kubectl-forge Plugin](../cmd/kubectl-forge/README.md) - kubectl plugin for listing, downloading artifacts, and debugging Forge jobs
+
 ## Development
 
 Contributing to Forge or extending its functionality? These guides cover development workflows and architecture.

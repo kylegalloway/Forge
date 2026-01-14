@@ -263,6 +263,7 @@ Forge includes production-grade observability:
 ## Documentation
 
 - **User Guide**: [USER_GUIDE.md](docs/getting-started/USER_GUIDE.md) - Complete usage examples
+- **kubectl-forge Plugin**: [kubectl-forge README](cmd/kubectl-forge/README.md) - CLI tool for listing, downloading, and debugging Forge jobs
 - **ServiceAccount Reference**: [SERVICEACCOUNT_REFERENCE.md](docs/development/SERVICEACCOUNT_REFERENCE.md) - Policy annotations
 - **Namespace-Scoped**: [NAMESPACE_SCOPED_DEPLOYMENT.md](docs/operations/NAMESPACE_SCOPED_DEPLOYMENT.md) - Restricted deployment mode
 - **Testing Guide**: [TESTING.md](docs/development/TESTING.md) - Unit, E2E, and integration testing
@@ -383,7 +384,10 @@ forge/
 │       ├── zarf/                # ZarfPackageJob examples
 │       └── uds/                 # UDSBundleJob examples
 ├── docs/                        # Documentation
-└── cmd/                         # Entrypoints (controller, webhook)
+└── cmd/
+    ├── controller/              # Controller entrypoint
+    ├── webhook/                 # Webhook entrypoint
+    └── kubectl-forge/           # kubectl plugin for Forge jobs
 ```
 
 ## Roadmap

@@ -138,6 +138,16 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      - name: Build zarf-cli image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./images/zarf-cli
+          file: ./images/zarf-cli/Dockerfile
+          push: false
+          tags: zarf-cli:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
   security:
     name: Security Scan
     runs-on: ubuntu-latest

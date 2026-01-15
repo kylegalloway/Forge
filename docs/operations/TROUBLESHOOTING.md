@@ -294,52 +294,54 @@ kubectl get pods -n default
 ```
 
 ```text
-Failed to pull image "localhost/zarf:v0.68.1":
-failed to authorize: failed to fetch anonymous token: 403 Forbidden
+Failed to pull image "ghcr.io/kylegalloway/forge/zarf-cli:v0.68.1":
+failed to pull and unpack image: pull access denied
 ```
 
 **Cause:**
-The Zarf project does not publish container images - they only distribute binaries. The image `localhost/zarf:v0.68.1` referenced in the code doesn't exist in any public registry.
+The Zarf CLI image cannot be pulled. This could be due to network issues, registry authentication, or (in Kind clusters) the image not being loaded.
 
 **Solutions:**
 
-1. **Build the Zarf CLI image (Recommended for testing/Kind):**
+1. **For Kind clusters - load the image:**
 
-   Forge includes a Dockerfile that packages the official Zarf CLI binary:
+   Kind clusters cannot pull images directly. Load the published image:
 
    ```bash
-   # Build the image
-   docker build -t localhost/zarf:v0.68.1 images/zarf-cli/
+   # Using Docker
+   docker pull ghcr.io/kylegalloway/forge/zarf-cli:v0.68.1
+   kind load docker-image ghcr.io/kylegalloway/forge/zarf-cli:v0.68.1 --name <cluster-name>
 
-   # For Kind clusters, load it
-   kind load docker-image localhost/zarf:v0.68.1 --name <cluster-name>
-
-   # For Podman users:
-   podman build -t localhost/zarf:v0.68.1 images/zarf-cli/
-   podman save localhost/zarf:v0.68.1 -o /tmp/zarf-cli.tar
+   # Using Podman
+   podman pull ghcr.io/kylegalloway/forge/zarf-cli:v0.68.1
+   podman save ghcr.io/kylegalloway/forge/zarf-cli:v0.68.1 -o /tmp/zarf-cli.tar
    kind load image-archive /tmp/zarf-cli.tar --name <cluster-name>
    rm /tmp/zarf-cli.tar
    ```
 
-2. **Build and push to your registry (Recommended for production):**
+2. **For air-gapped environments - use Zarf package:**
+
+   Deploy Forge using the included Zarf package which bundles the image:
 
    ```bash
-   # Build and tag for your registry
-   docker build -t your-registry.io/zarf:v0.68.1 images/zarf-cli/
-   docker push your-registry.io/zarf:v0.68.1
-
-   # Update pkg/actions/build.go to reference your registry
-   # Change: ZarfCLIImage = "localhost/zarf:v0.68.1"
-   # To: ZarfCLIImage = "your-registry.io/zarf:v0.68.1"
+   zarf package deploy zarf-package-forge-*.tar.zst --confirm
    ```
 
-3. **Configure imagePullSecrets (if you pushed to a private registry):**
+3. **Build locally (if needed for custom versions):**
+
+   Forge includes a Dockerfile to build custom versions:
+
+   ```bash
+   docker build -t ghcr.io/kylegalloway/forge/zarf-cli:v0.68.1 images/zarf-cli/
+   ```
+
+4. **Configure imagePullSecrets (for private registries):**
 
    ```bash
    kubectl create secret docker-registry registry-secret \
-     --docker-server=your-registry.io \
+     --docker-server=ghcr.io \
      --docker-username=<username> \
-     --docker-password=<password> \
+     --docker-password=<token> \
      -n <namespace>
 
    # Add to your namespace's default ServiceAccount

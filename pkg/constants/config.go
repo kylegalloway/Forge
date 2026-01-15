@@ -39,7 +39,7 @@ const (
 	DefaultUDSUID = 65532
 
 	// ZarfCLIImage is the container image for Zarf CLI operations.
-	ZarfCLIImage = "localhost/zarf:v0.68.1"
+	ZarfCLIImage = "ghcr.io/kylegalloway/forge/zarf-cli:v0.68.1"
 
 	// UDSCLIImage is the container image for UDS CLI operations.
 	UDSCLIImage = "ghcr.io/defenseunicorns/uds-cli:v0.27.13"

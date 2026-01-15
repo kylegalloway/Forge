@@ -162,12 +162,9 @@ kind create cluster --name forge-test
 helm repo add forge https://kylegalloway.github.io/forge
 helm install forge forge/forge --namespace forge-system --create-namespace --wait
 
-# Pull and load Zarf CLI image
-podman pull ghcr.io/kylegalloway/forge/zarf-cli:v0.68.1
-podman tag ghcr.io/kylegalloway/forge/zarf-cli:v0.68.1 localhost/zarf:v0.68.1
-podman save localhost/zarf:v0.68.1 -o /tmp/zarf-cli.tar
-kind load image-archive /tmp/zarf-cli.tar --name forge-test
-rm /tmp/zarf-cli.tar
+# Pull and load Zarf CLI image (Kind can't pull from registries)
+docker pull ghcr.io/kylegalloway/forge/zarf-cli:v0.68.1
+kind load docker-image ghcr.io/kylegalloway/forge/zarf-cli:v0.68.1 --name forge-test
 ```
 
 📖 **Testing Guide**: See [docs/development/KIND_TESTING_PUBLIC_IMAGES.md](docs/development/KIND_TESTING_PUBLIC_IMAGES.md) for complete testing setup

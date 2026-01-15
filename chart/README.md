@@ -37,15 +37,16 @@ helm install forge forge/forge \
 
 # Or install specific version
 helm install forge forge/forge \
-  --version 0.4.2 \
+  --version 0.6.0 \
   --namespace forge-system \
   --create-namespace
 ```
 
 **Available Images**:
 
-- Controller: `ghcr.io/kylegalloway/forge/forge-controller:v0.4.2`
-- Webhook: `ghcr.io/kylegalloway/forge/forge-webhook:v0.4.2`
+- Controller: `ghcr.io/kylegalloway/forge/forge-controller:v0.6.0`
+- Webhook: `ghcr.io/kylegalloway/forge/forge-webhook:v0.6.0`
+- Zarf CLI: `ghcr.io/kylegalloway/forge/zarf-cli:v0.68.1` (used by ZarfPackageJobs)
 
 ### For Developers (Local Chart)
 
@@ -104,7 +105,7 @@ controller:
   replicaCount: 1              # Number of controller replicas
   image:
     repository: ghcr.io/kylegalloway/forge/forge-controller
-    tag: "v0.4.2"
+    tag: "v0.6.0"
   resources:
     limits:
       cpu: 500m
@@ -122,9 +123,21 @@ webhook:
   replicaCount: 2              # Number of webhook replicas (recommend 2+ for HA)
   image:
     repository: ghcr.io/kylegalloway/forge/forge-webhook
-    tag: "v0.4.2"
+    tag: "v0.6.0"
   tls:
     autoGenerate: true         # Auto-generate self-signed certs
+```
+
+#### Zarf CLI Image
+
+The Zarf CLI image is used by ZarfPackageJobs to build and deploy packages:
+
+```yaml
+zarfCLI:
+  image:
+    repository: ghcr.io/kylegalloway/forge/zarf-cli
+    tag: v0.68.1
+    pullPolicy: IfNotPresent
 ```
 
 #### Metrics
@@ -372,6 +385,7 @@ Key sections:
 
 - `controller` - Controller deployment configuration
 - `webhook` - Webhook deployment configuration
+- `zarfCLI` - Zarf CLI image configuration for jobs
 - `serviceAccount` - ServiceAccount configuration
 - `rbac` - RBAC configuration
 - `networkPolicies` - Network policy configuration

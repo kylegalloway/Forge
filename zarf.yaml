@@ -1,0 +1,42 @@
+kind: ZarfPackageConfig
+metadata:
+  name: forge
+  description: "Forge - Kubernetes controller for managing Zarf package and UDS bundle operations"
+  version: "0.6.0"
+  url: https://github.com/kylegalloway/forge
+  authors: Kyle Galloway
+  architecture: multi
+  documentation: https://github.com/kylegalloway/forge
+
+components:
+  # Core Forge component - controller and webhook
+  - name: forge
+    description: "Forge controller and admission webhook for declarative Zarf/UDS operations"
+    required: true
+    charts:
+      - name: forge
+        localPath: chart/forge
+        namespace: forge-system
+        version: 0.6.0
+        valuesFiles:
+          - chart/forge/values.yaml
+    images:
+      # Forge controller image
+      - ghcr.io/kylegalloway/forge/forge-controller:v0.6.0
+      # Forge webhook image
+      - ghcr.io/kylegalloway/forge/forge-webhook:v0.6.0
+
+  # Zarf CLI image for running ZarfPackageJobs
+  - name: zarf-cli
+    description: "Zarf CLI container image used by ZarfPackageJobs to build and deploy packages"
+    required: true
+    images:
+      - ghcr.io/kylegalloway/forge/zarf-cli:v0.68.1
+
+  # Optional: Image scanning tools
+  - name: image-scanning
+    description: "Image scanning tools (Trivy and Grype) for vulnerability scanning in build jobs"
+    required: false
+    images:
+      - aquasec/trivy:0.57.1
+      - anchore/grype:v0.83.0

@@ -158,7 +158,7 @@ webhook:
 # Zarf CLI image for Jobs
 zarfCLI:
   image:
-    repository: localhost/zarf
+    repository: ghcr.io/kylegalloway/forge/zarf-cli
     tag: v0.68.1
     pullPolicy: IfNotPresent
 

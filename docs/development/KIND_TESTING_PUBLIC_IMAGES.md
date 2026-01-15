@@ -116,7 +116,7 @@ Expected output:
 
 ```text
 NAME            CHART VERSION   APP VERSION     DESCRIPTION
-forge/forge     0.1.2           v0.5.0          A Helm chart for deploying Forge - a Kubernetes...
+forge/forge     0.1.2           v0.6.0          A Helm chart for deploying Forge - a Kubernetes...
 ```
 
 ### 3. Install Forge
@@ -152,6 +152,7 @@ This installs Forge using the latest published images from `ghcr.io/kylegalloway
 **Images used:**
 - Controller: `ghcr.io/kylegalloway/forge/forge-controller:latest`
 - Webhook: `ghcr.io/kylegalloway/forge/forge-webhook:latest`
+- Zarf CLI: `ghcr.io/kylegalloway/forge/zarf-cli:v0.68.1` (used by jobs)
 
 **To install a specific version:**
 
@@ -161,11 +162,11 @@ helm search repo forge/forge --versions
 
 # Install specific version
 helm install forge forge/forge \
-  --version 0.5.0 \
+  --version 0.6.0 \
   --namespace forge-system \
   --create-namespace \
-  --set controller.image.tag=v0.5.0 \
-  --set webhook.image.tag=v0.5.0 \
+  --set controller.image.tag=v0.6.0 \
+  --set webhook.image.tag=v0.6.0 \
   --wait
 ```
 
@@ -212,46 +213,41 @@ udsbundlejobs.forge.dev      2025-12-19T10:00:00Z
 zarfpackagejobs.forge.dev     2025-12-19T10:00:00Z
 ```
 
-### 5. Build and Load Zarf CLI Image
+### 5. Load Zarf CLI Image
 
-Forge requires a containerized Zarf CLI for build and deploy operations. Unlike the Forge controller and webhook, the Zarf CLI image must be built locally because the Zarf project doesn't publish container images.
+Forge requires a containerized Zarf CLI for build and deploy operations. The Zarf CLI image is published alongside the controller and webhook images.
 
-**Why build is needed**: Zarf only publishes binaries, not container images. Forge includes a Dockerfile that downloads the official Zarf binary and packages it into a container.
-
-**Clone the Forge repo (if you haven't already):**
-
-```bash
-git clone https://github.com/kylegalloway/forge.git
-cd forge
-```
-
-**Build and load the image:**
+**Option 1: Pull published image (Recommended)**
 
 ```bash
 # Using Docker
-docker build -t localhost/zarf:v0.68.1 images/zarf-cli/
-kind load docker-image localhost/zarf:v0.68.1 --name forge-test
+docker pull ghcr.io/kylegalloway/forge/zarf-cli:v0.68.1
+kind load docker-image ghcr.io/kylegalloway/forge/zarf-cli:v0.68.1 --name forge-test
 
 # OR using Podman
-podman build -t localhost/zarf:v0.68.1 images/zarf-cli/
-podman save localhost/zarf:v0.68.1 -o /tmp/zarf-cli.tar
+podman pull ghcr.io/kylegalloway/forge/zarf-cli:v0.68.1
+podman save ghcr.io/kylegalloway/forge/zarf-cli:v0.68.1 -o /tmp/zarf-cli.tar
 kind load image-archive /tmp/zarf-cli.tar --name forge-test
 rm /tmp/zarf-cli.tar
 ```
 
-Expected output during build:
+**Option 2: Build locally**
 
-```text
-[+] Building 45.2s (10/10) FINISHED
- => [1/5] FROM docker.io/library/alpine:3.20
- => [2/5] RUN apk add --no-cache ca-certificates git curl bash
- => [3/5] RUN ARCH=$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/')...
- => [4/5] RUN adduser -D -u 1000 zarf...
- => [5/5] RUN zarf version
- => exporting to image
- => => naming to localhost/zarf:v0.68.1
+If you need to customize the Zarf CLI image or use a different version:
 
-Image: "localhost/zarf:v0.68.1" with ID "sha256:..." not yet present on node "forge-test-control-plane", loading...
+```bash
+git clone https://github.com/kylegalloway/forge.git
+cd forge
+
+# Using Docker
+docker build -t ghcr.io/kylegalloway/forge/zarf-cli:v0.68.1 images/zarf-cli/
+kind load docker-image ghcr.io/kylegalloway/forge/zarf-cli:v0.68.1 --name forge-test
+
+# OR using Podman
+podman build -t ghcr.io/kylegalloway/forge/zarf-cli:v0.68.1 images/zarf-cli/
+podman save ghcr.io/kylegalloway/forge/zarf-cli:v0.68.1 -o /tmp/zarf-cli.tar
+kind load image-archive /tmp/zarf-cli.tar --name forge-test
+rm /tmp/zarf-cli.tar
 ```
 
 Verify the image is loaded:
@@ -263,7 +259,7 @@ docker exec -it forge-test-control-plane crictl images | grep zarf
 Expected output:
 
 ```text
-localhost/zarf    v0.68.1    e8c96af1c3cbd    45MB
+ghcr.io/kylegalloway/forge/zarf-cli    v0.68.1    e8c96af1c3cbd    45MB
 ```
 
 ### 6. Run a Test Job
@@ -627,22 +623,20 @@ podman pull ghcr.io/kylegalloway/forge/forge-webhook:latest
 
 ### Zarf CLI Image Not Found
 
-If job pods show `ImagePullBackOff` for `localhost/zarf:v0.68.1`:
+If job pods show `ImagePullBackOff` for the zarf-cli image:
 
 ```bash
 # Verify image is in Kind cluster
 docker exec -it forge-test-control-plane crictl images | grep zarf
 
-# If missing, build and load it
-cd /path/to/forge  # Your Forge repo clone
-
+# If missing, pull and load it
 # Using Docker
-docker build -t localhost/zarf:v0.68.1 images/zarf-cli/
-kind load docker-image localhost/zarf:v0.68.1 --name forge-test
+docker pull ghcr.io/kylegalloway/forge/zarf-cli:v0.68.1
+kind load docker-image ghcr.io/kylegalloway/forge/zarf-cli:v0.68.1 --name forge-test
 
 # OR using Podman
-podman build -t localhost/zarf:v0.68.1 images/zarf-cli/
-podman save localhost/zarf:v0.68.1 -o /tmp/zarf-cli.tar
+podman pull ghcr.io/kylegalloway/forge/zarf-cli:v0.68.1
+podman save ghcr.io/kylegalloway/forge/zarf-cli:v0.68.1 -o /tmp/zarf-cli.tar
 kind load image-archive /tmp/zarf-cli.tar --name forge-test
 rm /tmp/zarf-cli.tar
 ```

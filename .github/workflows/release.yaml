@@ -29,6 +29,7 @@ jobs:
         run: |
           echo "controller=ghcr.io/${{ github.repository }}/forge-controller" | tr '[:upper:]' '[:lower:]' >> $GITHUB_OUTPUT
           echo "webhook=ghcr.io/${{ github.repository }}/forge-webhook" | tr '[:upper:]' '[:lower:]' >> $GITHUB_OUTPUT
+          echo "zarf_cli=ghcr.io/${{ github.repository }}/zarf-cli" | tr '[:upper:]' '[:lower:]' >> $GITHUB_OUTPUT
 
       - name: Checkout code
         uses: actions/checkout@v6
@@ -120,6 +121,15 @@ jobs:
             type=semver,pattern={{major}}
             type=sha
 
+      - name: Extract metadata for zarf-cli
+        id: meta-zarf-cli
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ steps.repo.outputs.zarf_cli }}
+          tags: |
+            type=raw,value=v0.68.1
+            type=sha
+
       # Build and push images with attestation
       - name: Build and push controller image
         id: build-controller
@@ -153,7 +163,22 @@ jobs:
           provenance: true
           sbom: true
 
-      # Generate Docker build summary for both images
+      - name: Build and push zarf-cli image
+        id: build-zarf-cli
+        uses: docker/build-push-action@v6
+        with:
+          context: ./images/zarf-cli
+          file: ./images/zarf-cli/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta-zarf-cli.outputs.tags }}
+          labels: ${{ steps.meta-zarf-cli.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          provenance: true
+          sbom: true
+
+      # Generate Docker build summary for all images
       - name: Generate Docker Build Summary
         run: |
           cat >> $GITHUB_STEP_SUMMARY << 'EOF'
@@ -174,6 +199,14 @@ jobs:
 
           **Tags:**
           ${{ steps.meta-webhook.outputs.tags }}
+
+          ### Zarf CLI Image
+          **Image:** `${{ steps.repo.outputs.zarf_cli }}`
+          **Digest:** `${{ steps.build-zarf-cli.outputs.digest }}`
+          **Platforms:** `linux/amd64`, `linux/arm64`
+
+          **Tags:**
+          ${{ steps.meta-zarf-cli.outputs.tags }}
 
           ---
           **Provenance:** ✅ SLSA Build Level 3
@@ -197,6 +230,12 @@ jobs:
           DIGEST: ${{ steps.build-webhook.outputs.digest }}
         run: |
           cosign sign --yes "${{ steps.repo.outputs.webhook }}@${DIGEST}"
+
+      - name: Sign zarf-cli image
+        env:
+          DIGEST: ${{ steps.build-zarf-cli.outputs.digest }}
+        run: |
+          cosign sign --yes "${{ steps.repo.outputs.zarf_cli }}@${DIGEST}"
 
       # Attest SBOMs to images
       - name: Attest SBOM for controller
@@ -240,6 +279,17 @@ jobs:
           format: 'sarif'
           output: 'webhook-trivy-results.sarif'
 
+      - name: Scan zarf-cli image
+        uses: aquasecurity/trivy-action@master
+        continue-on-error: true
+        env:
+          TRIVY_USERNAME: ${{ github.actor }}
+          TRIVY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          image-ref: ${{ steps.repo.outputs.zarf_cli }}@${{ steps.build-zarf-cli.outputs.digest }}
+          format: 'sarif'
+          output: 'zarf-cli-trivy-results.sarif'
+
       - name: Upload Trivy results to GitHub Security
         uses: github/codeql-action/upload-sarif@v4
         if: always()
@@ -248,6 +298,7 @@ jobs:
           sarif_file: |
             controller-trivy-results.sarif
             webhook-trivy-results.sarif
+            zarf-cli-trivy-results.sarif
 
       # Package Helm chart
       - name: Install Helm
@@ -289,6 +340,14 @@ jobs:
 
           **Tags:**
           $(echo "${{ steps.meta-webhook.outputs.tags }}" | sed 's/^/- /')
+
+          ### Zarf CLI
+          \`\`\`
+          ${{ steps.repo.outputs.zarf_cli }}@${{ steps.build-zarf-cli.outputs.digest }}
+          \`\`\`
+
+          **Tags:**
+          $(echo "${{ steps.meta-zarf-cli.outputs.tags }}" | sed 's/^/- /')
 
           ## Helm Chart
 
@@ -338,7 +397,7 @@ jobs:
 
           ## Multi-Architecture Support
 
-          Both images support:
+          All images support:
           - \`linux/amd64\`
           - \`linux/arm64\`
 

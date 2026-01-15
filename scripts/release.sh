@@ -295,7 +295,13 @@ print_success "Helm index updated"
 
 # Commit and push gh-pages
 git add "forge-${NEW_VERSION}.tgz" index.yaml
-PRE_COMMIT_ALLOW_NO_CONFIG=1 git commit -S -m "📦 $(get_chart_title "${NEW_VERSION}")"
+PRE_COMMIT_ALLOW_NO_CONFIG=1 git commit -S -m "$(cat <<EOF
+📦 $(get_chart_title "${NEW_VERSION}")
+
+Published Helm chart ${NEW_VERSION} to gh-pages repository.
+Updated index.yaml for helm repo update discovery.
+EOF
+)"
 git push origin gh-pages
 print_success "Published to gh-pages"
 

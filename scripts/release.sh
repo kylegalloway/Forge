@@ -71,63 +71,60 @@ bump_version() {
 }
 
 # Array of cultural references for commit messages (rotate through these)
-get_cultural_reference() {
+# Format: each entry is a complete title (version number appended at end)
+get_release_title() {
+    local version=$1
     local references=(
-        "Taylor Swift|Shake it off, shake it off! We're shaking off bugs with"
-        "Kendrick Lamar|Sit down, be humble with version"
-        "Beyoncé|Who run the world? Version"
-        "Radiohead|No surprises here, just smooth sailing to"
-        "Pink Floyd|Comfortably numb? Not with the excitement of version"
-        "David Bowie|Ground control to Major Tom, we're launching"
-        "The Beatles|Here comes the sun (version)"
-        "Walter White|I am the one who knocks... with version"
-        "Leslie Knope|Treat yo' self to version"
-        "Michael Scott|That's what she said about version"
-        "Ron Swanson|Give me all the bacon eggs you have... and version"
-        "Phoebe Buffay|Smelly cat, smelly cat, what are they feeding version"
-        "Kafka's Metamorphosis|Gregor awoke to find himself transformed into version"
-        "Vonnegut|So it goes... on to version"
-        "Terry Pratchett|The Luggage follows dutifully to version"
-        "Sisyphus|One must imagine Sisyphus happy with version"
-        "Icarus|Flying too close to the sun? Not with version"
-        "Prometheus|Stealing fire from the gods gets you version"
-        "Ragnarök|The twilight of the gods brings version"
-        "Odysseus|After ten years at sea, we've reached version"
-        "Achilles|My only weakness? Not having version"
-        "Dante's Inferno|Abandon all hope ye who don't upgrade to version"
-        "The Godfather|I'm gonna make them an offer they can't refuse:"
-        "Pulp Fiction|Say 'what' again! I dare you! Version is"
-        "Fight Club|First rule of Fight Club: always release version"
-        "Blade Runner|I've seen things you people wouldn't believe... like version"
-        "Eternal Sunshine|Meet me in Montauk with version"
-        "Her|Falling in love with an OS? Try falling for version"
-        "Dune|The spice must flow, and so must version"
-        "Arrested Development|I've made a huge mistake... NOT releasing version"
-        "Community|Six seasons and a movie, plus version"
-        "The Good Place|Holy forking shirtballs! It's version"
-        "Stranger Things|Friends don't lie about version"
-        "Succession|You can't make a Tomlette without breaking some Gregs. Version is"
-        "The Office (UK)|That's what the version said"
+        "Taylor Swift's Eras Tour: welcome to the ${version} era"
+        "Kendrick drops a classic: damn. version ${version}"
+        "Beyoncé runs the world with version ${version}"
+        "Radiohead: no surprises, just ${version}"
+        "Pink Floyd's Dark Side of version ${version}"
+        "Bowie's Starman brought us ${version}"
+        "The Beatles: here comes version ${version}"
+        "Walter White knocks with version ${version}"
+        "Leslie Knope treats herself to version ${version}"
+        "Michael Scott declares bankruptcy on old versions, hello ${version}"
+        "Ron Swanson approves of version ${version}"
+        "Kafka's Gregor awoke transformed into version ${version}"
+        "Vonnegut: so it goes, on to ${version}"
+        "Pratchett's Luggage carries version ${version}"
+        "Sisyphus rolls ${version} uphill (happily)"
+        "Icarus flies closer to version ${version}"
+        "Prometheus steals fire, delivers ${version}"
+        "Ragnarök brings the twilight of ${version}"
+        "Odysseus returns home with version ${version}"
+        "The Godfather makes an offer: version ${version}"
+        "Pulp Fiction: ${version} is a tasty burger"
+        "Fight Club: first rule is release ${version}"
+        "Blade Runner: replicants dream of ${version}"
+        "Dune: the spice of version ${version} must flow"
+        "Arrested Development: there's always money in ${version}"
+        "Community: six seasons and version ${version}"
+        "The Good Place: holy forking shirtballs it's ${version}"
+        "Stranger Things: friends don't lie about ${version}"
+        "Succession: L to the OG, version ${version}"
+        "Fleabag breaks the fourth wall for ${version}"
+        "Ted Lasso believes in version ${version}"
+        "Schitt's Creek: ew, David, it's ${version}"
     )
 
-    # Pick a random reference
     local index=$((RANDOM % ${#references[@]}))
     echo "${references[$index]}"
 }
 
-# Function to get chart publishing cultural reference
-get_chart_reference() {
+# Function to get chart publishing title
+get_chart_title() {
+    local version=$1
     local references=(
-        "Captain Ahab finally caught the whale:|Chart ${1} is harpooned and ready"
-        "Kerouac hit the road:|Chart ${1} is on the move, man"
-        "Columbus discovered America:|We discovered chart ${1}"
-        "Armstrong walked on the moon:|One small step for chart ${1}, one giant leap"
-        "Amelia Earhart took flight:|Chart ${1} soars into the repository"
-        "Hemingway finished his manuscript:|Chart ${1} is written and published"
-        "Bob Ross painted happy trees:|Chart ${1} is a happy little accident"
-        "Julia Child mastered French cooking:|Chart ${1} is perfectly seasoned"
-        "Freddie Mercury gave Wembley:|Chart ${1} rocks the gh-pages stage"
-        "Bowie changed personas:|Chart ${1} is the thin white duke of releases"
+        "Ahab harpoons chart ${version}"
+        "Kerouac hits the road with chart ${version}"
+        "Armstrong lands chart ${version} on gh-pages"
+        "Amelia Earhart flies chart ${version} to the repo"
+        "Bob Ross paints happy chart ${version}"
+        "Julia Child serves chart ${version}"
+        "Freddie Mercury rocks chart ${version}"
+        "Bowie's Ziggy delivers chart ${version}"
     )
 
     local index=$((RANDOM % ${#references[@]}))
@@ -139,18 +136,12 @@ generate_commit_message() {
     local new_version=$1
     local bump_type=$2
 
-    local ref_line
-    ref_line=$(get_cultural_reference)
-    IFS='|' read -r character quote <<< "$ref_line"
-
     cat <<EOF
-📦 ${character}: ${quote} ${new_version}
+📦 $(get_release_title "$new_version")
 
 Bumped ${bump_type} version from ${CURRENT_VERSION} to ${new_version}.
 Chart.yaml updated with new version and appVersion. All documentation
-references updated to reflect the new release. The prophecy foretold
-this day would come, and here we are with a shiny new version number
-ready to conquer the Kubernetes landscape.
+references updated to reflect the new release.
 EOF
 }
 
@@ -303,17 +294,8 @@ helm repo index . --url https://kylegalloway.github.io/forge
 print_success "Helm index updated"
 
 # Commit and push gh-pages
-CHART_REF=$(get_chart_reference "${NEW_VERSION}")
-IFS='|' read -r chart_title chart_desc <<< "$CHART_REF"
 git add "forge-${NEW_VERSION}.tgz" index.yaml
-PRE_COMMIT_ALLOW_NO_CONFIG=1 git commit -S -m "$(cat <<EOF
-📦 ${chart_title}
-
-${chart_desc}. The gh-pages harbor welcomes this new arrival.
-Updated index.yaml points the way for all who seek this version.
-Helm repo update will reveal its glory to the masses.
-EOF
-)"
+PRE_COMMIT_ALLOW_NO_CONFIG=1 git commit -S -m "📦 $(get_chart_title "${NEW_VERSION}")"
 git push origin gh-pages
 print_success "Published to gh-pages"
 

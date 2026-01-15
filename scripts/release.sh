@@ -236,11 +236,25 @@ for file in "${DOC_FILES[@]}"; do
         print_success "Updated $file"
     fi
 done
+
+# Update zarf.yaml (uses different tag format - no 'v' prefix for image tags)
+if [ -f "zarf.yaml" ]; then
+    # Update metadata version (quoted)
+    sed -i '' "s/version: \"${CURRENT_VERSION}\"/version: \"${NEW_VERSION}\"/g" "zarf.yaml" 2>/dev/null || \
+    sed -i "s/version: \"${CURRENT_VERSION}\"/version: \"${NEW_VERSION}\"/g" "zarf.yaml"
+    # Update chart version reference
+    sed -i '' "s/version: ${CURRENT_VERSION}/version: ${NEW_VERSION}/g" "zarf.yaml" 2>/dev/null || \
+    sed -i "s/version: ${CURRENT_VERSION}/version: ${NEW_VERSION}/g" "zarf.yaml"
+    # Update image tags (no 'v' prefix - images are tagged X.Y.Z not vX.Y.Z)
+    sed -i '' "s/:${CURRENT_VERSION}/:${NEW_VERSION}/g" "zarf.yaml" 2>/dev/null || \
+    sed -i "s/:${CURRENT_VERSION}/:${NEW_VERSION}/g" "zarf.yaml"
+    print_success "Updated zarf.yaml"
+fi
 echo ""
 
 # Step 3: Commit changes
 print_step "Step 3: Creating commit"
-git add "$CHART_FILE" "${DOC_FILES[@]}"
+git add "$CHART_FILE" "${DOC_FILES[@]}" zarf.yaml
 COMMIT_MSG=$(generate_commit_message "$NEW_VERSION" "$BUMP_TYPE")
 git commit -S -m "$COMMIT_MSG"
 print_success "Changes committed"
@@ -324,7 +338,8 @@ echo "Next steps:"
 echo "  1. GitHub Actions will build and push container images for v${NEW_VERSION}"
 echo "  2. Users can install with: helm install forge forge/forge --version ${NEW_VERSION}"
 echo "  3. Images will be available at:"
-echo "     - ghcr.io/kylegalloway/forge/forge-controller:v${NEW_VERSION}"
-echo "     - ghcr.io/kylegalloway/forge/forge-webhook:v${NEW_VERSION}"
+echo "     - ghcr.io/kylegalloway/forge/forge-controller:${NEW_VERSION}"
+echo "     - ghcr.io/kylegalloway/forge/forge-webhook:${NEW_VERSION}"
+echo "     - ghcr.io/kylegalloway/forge/zarf-cli:v0.68.1"
 echo ""
 print_success "Release automation complete! 🚀"

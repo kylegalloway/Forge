@@ -51,21 +51,15 @@
 
 ### Developer Experience
 
-* **Job artifact retrieval** - Partial (CLI complete via kubectl-forge, HTTP/S3/UI pending):
+* **Job artifact retrieval** - Partial (CLI complete via kubectl-forge, metadata pending):
   * ✅ `kubectl forge download <job-name>` CLI command
-  * ❌ HTTP endpoint to stream artifacts from PVC
-  * ❌ Automatic artifact upload to S3/registry after build
-  * ❌ Artifact retention policy (keep last N successful builds)
   * ❌ Artifact metadata API (size, checksum, build time)
-  * ❌ Browser-based artifact explorer UI
 
 * **Interactive job debugging** - Partial (CLI complete via kubectl-forge, advanced features pending):
   * ✅ `kubectl forge debug <job-name>` to exec into failed pod
   * ✅ Create debug pods with workspace access (`--copy-workspace`)
   * ✅ Preserve debug pods for inspection (`--preserve-pod`)
-  * ❌ Job retry with modifications (change env vars, add debug flags)
   * ❌ Live log streaming in CLI
-  * ❌ Job execution replay (re-run with same inputs)
   * ❌ Debug mode flag in CRD spec (skip cleanup, verbose logging)
 
 ## Future Enhancements (Long-term)

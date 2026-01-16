@@ -144,11 +144,27 @@ func (c *Client) DownloadFromPVC(ctx context.Context, namespace, pvcName, output
 		},
 		Spec: corev1.PodSpec{
 			RestartPolicy: corev1.RestartPolicyNever,
+			SecurityContext: &corev1.PodSecurityContext{
+				RunAsNonRoot: boolPtr(true),
+				RunAsUser:    int64Ptr(65534),
+				RunAsGroup:   int64Ptr(65534),
+				FSGroup:      int64Ptr(65534),
+				SeccompProfile: &corev1.SeccompProfile{
+					Type: corev1.SeccompProfileTypeRuntimeDefault,
+				},
+			},
 			Containers: []corev1.Container{
 				{
 					Name:    "download",
 					Image:   "busybox:latest",
 					Command: []string{"/bin/sh", "-c", "sleep 3600"},
+					SecurityContext: &corev1.SecurityContext{
+						AllowPrivilegeEscalation: boolPtr(false),
+						ReadOnlyRootFilesystem:   boolPtr(true),
+						Capabilities: &corev1.Capabilities{
+							Drop: []corev1.Capability{"ALL"},
+						},
+					},
 					VolumeMounts: []corev1.VolumeMount{
 						{
 							Name:      "artifacts",
@@ -406,12 +422,28 @@ func (c *Client) CreateDebugPod(ctx context.Context, originalPod *corev1.Pod, de
 		},
 		Spec: corev1.PodSpec{
 			RestartPolicy: corev1.RestartPolicyNever,
+			SecurityContext: &corev1.PodSecurityContext{
+				RunAsNonRoot: boolPtr(true),
+				RunAsUser:    int64Ptr(65534),
+				RunAsGroup:   int64Ptr(65534),
+				FSGroup:      int64Ptr(65534),
+				SeccompProfile: &corev1.SeccompProfile{
+					Type: corev1.SeccompProfileTypeRuntimeDefault,
+				},
+			},
 			Containers: []corev1.Container{
 				{
 					Name:         "debug",
 					Image:        debugImage,
 					Command:      []string{"/bin/sh", "-c", "sleep 3600"},
 					VolumeMounts: volumeMounts,
+					SecurityContext: &corev1.SecurityContext{
+						AllowPrivilegeEscalation: boolPtr(false),
+						ReadOnlyRootFilesystem:   boolPtr(true),
+						Capabilities: &corev1.Capabilities{
+							Drop: []corev1.Capability{"ALL"},
+						},
+					},
 				},
 			},
 			Volumes: volumes,
@@ -489,7 +521,7 @@ func (c *Client) ListJobs(ctx context.Context, namespace, jobType string) ([]Job
 
 		jobs = append(jobs, JobInfo{
 			Namespace: job.Namespace,
-			Name:      job.Labels[constants.LabelPackage], // Original resource name
+			Name:      job.Name,
 			Type:      typeStr,
 			Action:    action,
 			Phase:     phase,
@@ -652,4 +684,14 @@ type fixedSizeQueue struct {
 // Next returns the terminal size
 func (s *fixedSizeQueue) Next() *remotecommand.TerminalSize {
 	return s.size
+}
+
+// boolPtr returns a pointer to a bool value
+func boolPtr(b bool) *bool {
+	return &b
+}
+
+// int64Ptr returns a pointer to an int64 value
+func int64Ptr(i int64) *int64 {
+	return &i
 }

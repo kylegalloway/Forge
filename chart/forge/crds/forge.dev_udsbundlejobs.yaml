@@ -1306,6 +1306,7 @@ spec:
                   RetainArtifactPVC determines whether to keep the artifact PVC after job completion
                   Set to false to automatically delete the PVC when the job finishes (success or failure)
                   Defaults to true (keep PVC) for safety
+                  Only applies when UseArtifactPVC is true
                 type: boolean
               serviceAccountName:
                 description: |-
@@ -1472,6 +1473,13 @@ spec:
                       type: string
                   type: object
                 type: array
+              useArtifactPVC:
+                default: true
+                description: |-
+                  UseArtifactPVC determines whether to create and attach a PVC for storing build artifacts
+                  Set to false to disable PVC creation for simple jobs that don't need artifact persistence
+                  Defaults to true (PVC created for all create jobs)
+                type: boolean
             required:
             - action
             - serviceAccountName

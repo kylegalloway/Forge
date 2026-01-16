@@ -130,9 +130,17 @@ type ZarfPackageJobSpec struct {
 	// +optional
 	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
 
+	// UseArtifactPVC determines whether to create and attach a PVC for storing build artifacts
+	// Set to false to disable PVC creation for simple jobs that don't need artifact persistence
+	// Defaults to true (PVC created for all build jobs)
+	// +optional
+	// +kubebuilder:default=true
+	UseArtifactPVC *bool `json:"useArtifactPVC,omitempty"`
+
 	// RetainArtifactPVC determines whether to keep the artifact PVC after job completion
 	// Set to false to automatically delete the PVC when the job finishes (success or failure)
 	// Defaults to true (keep PVC) for safety
+	// Only applies when UseArtifactPVC is true
 	// +optional
 	// +kubebuilder:default=true
 	RetainArtifactPVC *bool `json:"retainArtifactPVC,omitempty"`
@@ -636,4 +644,22 @@ func (z *ZarfPackageJob) GetServiceAccountName() string {
 // GetAction implements the PackageResource interface
 func (z *ZarfPackageJob) GetAction() string {
 	return string(z.Spec.Action)
+}
+
+// GetUseArtifactPVC implements the PackageResource interface
+// Returns true by default if not specified
+func (z *ZarfPackageJob) GetUseArtifactPVC() bool {
+	if z.Spec.UseArtifactPVC == nil {
+		return true
+	}
+	return *z.Spec.UseArtifactPVC
+}
+
+// GetRetainArtifactPVC implements the PackageResource interface
+// Returns true by default if not specified
+func (z *ZarfPackageJob) GetRetainArtifactPVC() bool {
+	if z.Spec.RetainArtifactPVC == nil {
+		return true
+	}
+	return *z.Spec.RetainArtifactPVC
 }

@@ -130,9 +130,17 @@ type UDSBundleJobSpec struct {
 	// +optional
 	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
 
+	// UseArtifactPVC determines whether to create and attach a PVC for storing build artifacts
+	// Set to false to disable PVC creation for simple jobs that don't need artifact persistence
+	// Defaults to true (PVC created for all create jobs)
+	// +optional
+	// +kubebuilder:default=true
+	UseArtifactPVC *bool `json:"useArtifactPVC,omitempty"`
+
 	// RetainArtifactPVC determines whether to keep the artifact PVC after job completion
 	// Set to false to automatically delete the PVC when the job finishes (success or failure)
 	// Defaults to true (keep PVC) for safety
+	// Only applies when UseArtifactPVC is true
 	// +optional
 	// +kubebuilder:default=true
 	RetainArtifactPVC *bool `json:"retainArtifactPVC,omitempty"`
@@ -524,4 +532,22 @@ func (u *UDSBundleJob) GetServiceAccountName() string {
 // GetAction implements the PackageResource interface
 func (u *UDSBundleJob) GetAction() string {
 	return string(u.Spec.Action)
+}
+
+// GetUseArtifactPVC implements the PackageResource interface
+// Returns true by default if not specified
+func (u *UDSBundleJob) GetUseArtifactPVC() bool {
+	if u.Spec.UseArtifactPVC == nil {
+		return true
+	}
+	return *u.Spec.UseArtifactPVC
+}
+
+// GetRetainArtifactPVC implements the PackageResource interface
+// Returns true by default if not specified
+func (u *UDSBundleJob) GetRetainArtifactPVC() bool {
+	if u.Spec.RetainArtifactPVC == nil {
+		return true
+	}
+	return *u.Spec.RetainArtifactPVC
 }

@@ -17,4 +17,12 @@ type PackageResource interface {
 
 	// GetAction returns the action to perform (e.g., "Build", "Create", "Publish")
 	GetAction() string
+
+	// GetUseArtifactPVC returns whether to create and attach a PVC for artifacts
+	// Returns true by default if not specified
+	GetUseArtifactPVC() bool
+
+	// GetRetainArtifactPVC returns whether to retain the PVC after job completion
+	// Returns true by default if not specified
+	GetRetainArtifactPVC() bool
 }

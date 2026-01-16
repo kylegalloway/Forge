@@ -299,8 +299,9 @@ func (ctrl *GenericController[T]) dispatchAction(ctx context.Context, resource T
 	action := resource.GetAction()
 	opts := common.ExecuteOptions{}
 
-	// Determine if this is a multi-action job that needs PVC
-	if ctrl.config.SupportsPVC && ctrl.isMultiActionJob(action) {
+	// Create PVC for all primary actions (Build/Create) unless explicitly disabled
+	// PVC is always attached to build/create jobs for artifact storage and persistence
+	if ctrl.config.SupportsPVC && ctrl.isPrimaryAction(action) && resource.GetUseArtifactPVC() {
 		// Create PVC for artifact sharing
 		pvcName := fmt.Sprintf("%s-artifacts", resource.GetName())
 		if err := ctrl.ensureArtifactPVC(ctx, resource.GetNamespace(), pvcName, resource); err != nil {
@@ -344,26 +345,6 @@ func (ctrl *GenericController[T]) isPrimaryAction(action string) bool {
 
 	for _, pa := range primaryActions {
 		if action == pa {
-			return true
-		}
-	}
-
-	return false
-}
-
-// isMultiActionJob checks if an action is a compound action
-func (ctrl *GenericController[T]) isMultiActionJob(action string) bool {
-	multiActions := []string{
-		ctrl.config.PrimaryAction + "Publish",
-		ctrl.config.PrimaryAction + "Deploy",
-		"PublishDeploy",
-		ctrl.config.PrimaryAction + "PublishDeploy",
-		"BuildPublish", "BuildDeploy", "BuildPublishDeploy",
-		"CreatePublish", "CreateDeploy", "CreatePublishDeploy",
-	}
-
-	for _, ma := range multiActions {
-		if action == ma {
 			return true
 		}
 	}

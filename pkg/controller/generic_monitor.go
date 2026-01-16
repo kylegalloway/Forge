@@ -610,12 +610,20 @@ func (m *GenericJobMonitor[T]) cleanupArtifactPVCIfNeeded(ctx context.Context, o
 		return
 	}
 
-	// Check if retainArtifactPVC is set to false
+	// Check spec for PVC settings
 	spec, ok := obj.Object["spec"].(map[string]interface{})
 	if !ok {
 		return
 	}
 
+	// Check if PVC was even created (useArtifactPVC)
+	usePVC, usePVCOK := spec["useArtifactPVC"].(bool)
+	if usePVCOK && !usePVC {
+		// PVC was not created, nothing to cleanup
+		return
+	}
+
+	// Check if retainArtifactPVC is set to false
 	retainPVC, ok := spec["retainArtifactPVC"].(bool)
 	if !ok {
 		// Default is true (retain), so if not specified, don't delete

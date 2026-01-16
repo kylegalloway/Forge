@@ -31,7 +31,14 @@ components:
     description: "Zarf CLI container image used by ZarfPackageJobs to build and deploy packages"
     required: true
     images:
-      - ghcr.io/kylegalloway/forge/zarf-cli:v0.68.1
+      - ghcr.io/kylegalloway/forge/zarf-cli:v0.69.0
+
+  # UDS CLI image for running UDSBundleJobs
+  - name: uds-cli
+    description: "UDS CLI container image used by UDSBundleJobs to create and deploy bundles"
+    required: true
+    images:
+      - ghcr.io/kylegalloway/forge/uds-cli:v0.27.21
 
   # Optional: Image scanning tools
   - name: image-scanning

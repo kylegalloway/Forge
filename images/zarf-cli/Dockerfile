@@ -8,7 +8,7 @@
 FROM alpine:3.20
 
 # Zarf version to install
-ARG ZARF_VERSION=v0.68.1
+ARG ZARF_VERSION=v0.69.0
 
 # Install dependencies
 RUN apk add --no-cache \

@@ -128,17 +128,31 @@ webhook:
     autoGenerate: true         # Auto-generate self-signed certs
 ```
 
-#### Zarf CLI Image
+#### CLI Images
 
-The Zarf CLI image is used by ZarfPackageJobs to build and deploy packages:
+Forge uses containerized CLI tools for build and deploy operations. These can be customized:
+
+**Zarf CLI** - Used by ZarfPackageJobs:
 
 ```yaml
 zarfCLI:
   image:
     repository: ghcr.io/kylegalloway/forge/zarf-cli
-    tag: v0.68.1
+    tag: v0.69.0
     pullPolicy: IfNotPresent
 ```
+
+**UDS CLI** - Used by UDSBundleJobs:
+
+```yaml
+udsCLI:
+  image:
+    repository: ghcr.io/defenseunicorns/uds-cli
+    tag: v0.27.21
+    pullPolicy: IfNotPresent
+```
+
+The CLI images are passed to the controller via environment variables (`FORGE_ZARF_CLI_IMAGE`, `FORGE_UDS_CLI_IMAGE`), allowing runtime configuration without rebuilding the controller.
 
 #### Metrics
 

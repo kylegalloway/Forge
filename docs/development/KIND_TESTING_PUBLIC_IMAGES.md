@@ -152,7 +152,8 @@ This installs Forge using the latest published images from `ghcr.io/kylegalloway
 **Images used:**
 - Controller: `ghcr.io/kylegalloway/forge/forge-controller:latest`
 - Webhook: `ghcr.io/kylegalloway/forge/forge-webhook:latest`
-- Zarf CLI: `ghcr.io/kylegalloway/forge/zarf-cli:v0.68.1` (used by jobs)
+- Zarf CLI: `ghcr.io/kylegalloway/forge/zarf-cli:v0.69.0` (used by ZarfPackageJobs)
+- UDS CLI: `ghcr.io/kylegalloway/forge/uds-cli:v0.27.21` (used by UDSBundleJobs)
 
 **To install a specific version:**
 
@@ -213,53 +214,84 @@ udsbundlejobs.forge.dev      2025-12-19T10:00:00Z
 zarfpackagejobs.forge.dev     2025-12-19T10:00:00Z
 ```
 
-### 5. Load Zarf CLI Image
+### 5. Load CLI Images
 
-Forge requires a containerized Zarf CLI for build and deploy operations. The Zarf CLI image is published alongside the controller and webhook images.
+Forge requires containerized CLI images for build and deploy operations:
+- **Zarf CLI**: Used by ZarfPackageJobs for Zarf package operations
+- **UDS CLI**: Used by UDSBundleJobs for UDS bundle operations
 
-**Option 1: Pull published image (Recommended)**
+**Option 1: Pull published images (Recommended)**
 
 ```bash
 # Using Docker
-docker pull ghcr.io/kylegalloway/forge/zarf-cli:v0.68.1
-kind load docker-image ghcr.io/kylegalloway/forge/zarf-cli:v0.68.1 --name forge-test
+docker pull ghcr.io/kylegalloway/forge/zarf-cli:v0.69.0
+docker pull ghcr.io/kylegalloway/forge/uds-cli:v0.27.21
+kind load docker-image ghcr.io/kylegalloway/forge/zarf-cli:v0.69.0 --name forge-test
+kind load docker-image ghcr.io/kylegalloway/forge/uds-cli:v0.27.21 --name forge-test
 
 # OR using Podman
-podman pull ghcr.io/kylegalloway/forge/zarf-cli:v0.68.1
-podman save ghcr.io/kylegalloway/forge/zarf-cli:v0.68.1 -o /tmp/zarf-cli.tar
+podman pull ghcr.io/kylegalloway/forge/zarf-cli:v0.69.0
+podman pull ghcr.io/kylegalloway/forge/uds-cli:v0.27.21
+podman save ghcr.io/kylegalloway/forge/zarf-cli:v0.69.0 -o /tmp/zarf-cli.tar
+podman save ghcr.io/kylegalloway/forge/uds-cli:v0.27.21 -o /tmp/uds-cli.tar
 kind load image-archive /tmp/zarf-cli.tar --name forge-test
-rm /tmp/zarf-cli.tar
+kind load image-archive /tmp/uds-cli.tar --name forge-test
+rm /tmp/zarf-cli.tar /tmp/uds-cli.tar
 ```
 
 **Option 2: Build locally**
 
-If you need to customize the Zarf CLI image or use a different version:
+If you need to customize the CLI images or use different versions:
 
 ```bash
 git clone https://github.com/kylegalloway/forge.git
 cd forge
 
 # Using Docker
-docker build -t ghcr.io/kylegalloway/forge/zarf-cli:v0.68.1 images/zarf-cli/
-kind load docker-image ghcr.io/kylegalloway/forge/zarf-cli:v0.68.1 --name forge-test
+docker build -t ghcr.io/kylegalloway/forge/zarf-cli:v0.69.0 images/zarf-cli/
+docker build -t ghcr.io/kylegalloway/forge/uds-cli:v0.27.21 images/uds-cli/
+kind load docker-image ghcr.io/kylegalloway/forge/zarf-cli:v0.69.0 --name forge-test
+kind load docker-image ghcr.io/kylegalloway/forge/uds-cli:v0.27.21 --name forge-test
 
 # OR using Podman
-podman build -t ghcr.io/kylegalloway/forge/zarf-cli:v0.68.1 images/zarf-cli/
-podman save ghcr.io/kylegalloway/forge/zarf-cli:v0.68.1 -o /tmp/zarf-cli.tar
+podman build -t ghcr.io/kylegalloway/forge/zarf-cli:v0.69.0 images/zarf-cli/
+podman build -t ghcr.io/kylegalloway/forge/uds-cli:v0.27.21 images/uds-cli/
+podman save ghcr.io/kylegalloway/forge/zarf-cli:v0.69.0 -o /tmp/zarf-cli.tar
+podman save ghcr.io/kylegalloway/forge/uds-cli:v0.27.21 -o /tmp/uds-cli.tar
 kind load image-archive /tmp/zarf-cli.tar --name forge-test
-rm /tmp/zarf-cli.tar
+kind load image-archive /tmp/uds-cli.tar --name forge-test
+rm /tmp/zarf-cli.tar /tmp/uds-cli.tar
 ```
 
-Verify the image is loaded:
+**Option 3: Use custom CLI images via Helm**
+
+You can override the CLI images via Helm values:
 
 ```bash
-docker exec -it forge-test-control-plane crictl images | grep zarf
+helm install forge forge/forge \
+  --namespace forge-system \
+  --create-namespace \
+  --set zarfCLI.image.repository=my-registry.io/zarf-cli \
+  --set zarfCLI.image.tag=v0.69.0 \
+  --set udsCLI.image.repository=my-registry.io/uds-cli \
+  --set udsCLI.image.tag=v0.27.21
+```
+
+The controller also supports environment variables for image overrides:
+- `FORGE_ZARF_CLI_IMAGE`: Override Zarf CLI image
+- `FORGE_UDS_CLI_IMAGE`: Override UDS CLI image
+
+Verify the images are loaded:
+
+```bash
+docker exec -it forge-test-control-plane crictl images | grep -E "zarf|uds"
 ```
 
 Expected output:
 
 ```text
-ghcr.io/kylegalloway/forge/zarf-cli    v0.68.1    e8c96af1c3cbd    45MB
+ghcr.io/kylegalloway/forge/zarf-cli    v0.69.0    e8c96af1c3cbd    45MB
+ghcr.io/kylegalloway/forge/uds-cli     v0.27.21   a1b2c3d4e5f6g    50MB
 ```
 
 ### 6. Run a Test Job
@@ -631,12 +663,12 @@ docker exec -it forge-test-control-plane crictl images | grep zarf
 
 # If missing, pull and load it
 # Using Docker
-docker pull ghcr.io/kylegalloway/forge/zarf-cli:v0.68.1
-kind load docker-image ghcr.io/kylegalloway/forge/zarf-cli:v0.68.1 --name forge-test
+docker pull ghcr.io/kylegalloway/forge/zarf-cli:v0.69.0
+kind load docker-image ghcr.io/kylegalloway/forge/zarf-cli:v0.69.0 --name forge-test
 
 # OR using Podman
-podman pull ghcr.io/kylegalloway/forge/zarf-cli:v0.68.1
-podman save ghcr.io/kylegalloway/forge/zarf-cli:v0.68.1 -o /tmp/zarf-cli.tar
+podman pull ghcr.io/kylegalloway/forge/zarf-cli:v0.69.0
+podman save ghcr.io/kylegalloway/forge/zarf-cli:v0.69.0 -o /tmp/zarf-cli.tar
 kind load image-archive /tmp/zarf-cli.tar --name forge-test
 rm /tmp/zarf-cli.tar
 ```

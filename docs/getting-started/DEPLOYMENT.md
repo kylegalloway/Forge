@@ -52,7 +52,23 @@ helm install forge forge/forge \
 
 - `ghcr.io/kylegalloway/forge/forge-controller:v0.6.0`
 - `ghcr.io/kylegalloway/forge/forge-webhook:v0.6.0`
-- `ghcr.io/kylegalloway/forge/zarf-cli:v0.68.1` (used by ZarfPackageJobs)
+- `ghcr.io/kylegalloway/forge/zarf-cli:v0.69.0` (used by ZarfPackageJobs)
+- `ghcr.io/kylegalloway/forge/uds-cli:v0.27.21` (used by UDSBundleJobs)
+
+**CLI Image Configuration**:
+
+CLI images can be customized via Helm values or environment variables:
+
+```bash
+# Via Helm values
+helm install forge forge/forge \
+  --set zarfCLI.image.repository=my-registry.io/zarf-cli \
+  --set zarfCLI.image.tag=v0.69.0 \
+  --set udsCLI.image.repository=my-registry.io/uds-cli \
+  --set udsCLI.image.tag=v0.27.21
+```
+
+Or via controller environment variables: `FORGE_ZARF_CLI_IMAGE`, `FORGE_UDS_CLI_IMAGE`
 
 ---
 

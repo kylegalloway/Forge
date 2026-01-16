@@ -22,6 +22,7 @@ import (
 
 	udsv1alpha2 "github.com/kylegalloway/forge/pkg/apis/uds/v1alpha2"
 	zarfv1alpha1 "github.com/kylegalloway/forge/pkg/apis/zarf/v1alpha1"
+	"github.com/kylegalloway/forge/pkg/constants"
 )
 
 // Client wraps Kubernetes clients for kubectl-forge operations
@@ -457,7 +458,7 @@ func (c *Client) ListJobs(ctx context.Context, namespace, jobType string) ([]Job
 
 	for _, job := range jobList.Items {
 		resourceType := job.Labels["resource-type"]
-		action := job.Labels["action"]
+		action := job.Labels[constants.LabelAction]
 
 		// Skip if type filter doesn't match
 		if jobType != "all" {
@@ -488,7 +489,7 @@ func (c *Client) ListJobs(ctx context.Context, namespace, jobType string) ([]Job
 
 		jobs = append(jobs, JobInfo{
 			Namespace: job.Namespace,
-			Name:      job.Labels["package"], // Original resource name
+			Name:      job.Labels[constants.LabelPackage], // Original resource name
 			Type:      typeStr,
 			Action:    action,
 			Phase:     phase,

@@ -30,6 +30,7 @@ jobs:
           echo "controller=ghcr.io/${{ github.repository }}/forge-controller" | tr '[:upper:]' '[:lower:]' >> $GITHUB_OUTPUT
           echo "webhook=ghcr.io/${{ github.repository }}/forge-webhook" | tr '[:upper:]' '[:lower:]' >> $GITHUB_OUTPUT
           echo "zarf_cli=ghcr.io/${{ github.repository }}/zarf-cli" | tr '[:upper:]' '[:lower:]' >> $GITHUB_OUTPUT
+          echo "uds_cli=ghcr.io/${{ github.repository }}/uds-cli" | tr '[:upper:]' '[:lower:]' >> $GITHUB_OUTPUT
 
       - name: Checkout code
         uses: actions/checkout@v6
@@ -55,6 +56,16 @@ jobs:
           fi
           echo "version=${VERSION#v}" >> $GITHUB_OUTPUT
           echo "full_version=${VERSION}" >> $GITHUB_OUTPUT
+
+      - name: Extract CLI versions from Dockerfiles
+        id: cli-versions
+        run: |
+          ZARF_VERSION=$(grep -E '^ARG ZARF_VERSION=' images/zarf-cli/Dockerfile | cut -d= -f2)
+          UDS_VERSION=$(grep -E '^ARG UDS_VERSION=' images/uds-cli/Dockerfile | cut -d= -f2)
+          echo "zarf_version=${ZARF_VERSION}" >> $GITHUB_OUTPUT
+          echo "uds_version=${UDS_VERSION}" >> $GITHUB_OUTPUT
+          echo "Extracted Zarf CLI version: ${ZARF_VERSION}"
+          echo "Extracted UDS CLI version: ${UDS_VERSION}"
 
       # Build binaries with reproducible builds
       - name: Build binaries
@@ -127,7 +138,16 @@ jobs:
         with:
           images: ${{ steps.repo.outputs.zarf_cli }}
           tags: |
-            type=raw,value=v0.68.1
+            type=raw,value=${{ steps.cli-versions.outputs.zarf_version }}
+            type=sha
+
+      - name: Extract metadata for uds-cli
+        id: meta-uds-cli
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ steps.repo.outputs.uds_cli }}
+          tags: |
+            type=raw,value=${{ steps.cli-versions.outputs.uds_version }}
             type=sha
 
       # Build and push images with attestation
@@ -178,6 +198,21 @@ jobs:
           provenance: true
           sbom: true
 
+      - name: Build and push uds-cli image
+        id: build-uds-cli
+        uses: docker/build-push-action@v6
+        with:
+          context: ./images/uds-cli
+          file: ./images/uds-cli/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta-uds-cli.outputs.tags }}
+          labels: ${{ steps.meta-uds-cli.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          provenance: true
+          sbom: true
+
       # Generate Docker build summary for all images
       - name: Generate Docker Build Summary
         run: |
@@ -208,6 +243,14 @@ jobs:
           **Tags:**
           ${{ steps.meta-zarf-cli.outputs.tags }}
 
+          ### UDS CLI Image
+          **Image:** `${{ steps.repo.outputs.uds_cli }}`
+          **Digest:** `${{ steps.build-uds-cli.outputs.digest }}`
+          **Platforms:** `linux/amd64`, `linux/arm64`
+
+          **Tags:**
+          ${{ steps.meta-uds-cli.outputs.tags }}
+
           ---
           **Provenance:** ✅ SLSA Build Level 3
           **SBOM:** ✅ Attached
@@ -236,6 +279,12 @@ jobs:
           DIGEST: ${{ steps.build-zarf-cli.outputs.digest }}
         run: |
           cosign sign --yes "${{ steps.repo.outputs.zarf_cli }}@${DIGEST}"
+
+      - name: Sign uds-cli image
+        env:
+          DIGEST: ${{ steps.build-uds-cli.outputs.digest }}
+        run: |
+          cosign sign --yes "${{ steps.repo.outputs.uds_cli }}@${DIGEST}"
 
       # Attest SBOMs to images
       - name: Attest SBOM for controller
@@ -290,6 +339,17 @@ jobs:
           format: 'sarif'
           output: 'zarf-cli-trivy-results.sarif'
 
+      - name: Scan uds-cli image
+        uses: aquasecurity/trivy-action@master
+        continue-on-error: true
+        env:
+          TRIVY_USERNAME: ${{ github.actor }}
+          TRIVY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          image-ref: ${{ steps.repo.outputs.uds_cli }}@${{ steps.build-uds-cli.outputs.digest }}
+          format: 'sarif'
+          output: 'uds-cli-trivy-results.sarif'
+
       - name: Upload Trivy results to GitHub Security
         uses: github/codeql-action/upload-sarif@v4
         if: always()
@@ -299,6 +359,7 @@ jobs:
             controller-trivy-results.sarif
             webhook-trivy-results.sarif
             zarf-cli-trivy-results.sarif
+            uds-cli-trivy-results.sarif
 
       # Package Helm chart
       - name: Install Helm
@@ -348,6 +409,14 @@ jobs:
 
           **Tags:**
           $(echo "${{ steps.meta-zarf-cli.outputs.tags }}" | sed 's/^/- /')
+
+          ### UDS CLI
+          \`\`\`
+          ${{ steps.repo.outputs.uds_cli }}@${{ steps.build-uds-cli.outputs.digest }}
+          \`\`\`
+
+          **Tags:**
+          $(echo "${{ steps.meta-uds-cli.outputs.tags }}" | sed 's/^/- /')
 
           ## Helm Chart
 

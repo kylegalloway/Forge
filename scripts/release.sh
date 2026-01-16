@@ -135,15 +135,25 @@ get_chart_title() {
     echo "${references[$index]}"
 }
 
+# Function to capitalize first letter (bash 3.2 compatible)
+capitalize() {
+    local str=$1
+    local first
+    first=$(echo "${str:0:1}" | tr '[:lower:]' '[:upper:]')
+    echo "${first}${str:1}"
+}
+
 # Function to generate commit message with cultural reference
 generate_commit_message() {
     local new_version=$1
     local bump_type=$2
+    local cap_bump_type
+    cap_bump_type=$(capitalize "$bump_type")
 
     cat <<EOF
 📦 $(get_release_title "$new_version")
 
-${bump_type^} version bump: ${CURRENT_VERSION} → ${new_version}
+${cap_bump_type} version bump: ${CURRENT_VERSION} → ${new_version}
 
 Updated files:
 - chart/forge/Chart.yaml (version and appVersion)

@@ -71,42 +71,42 @@ bump_version() {
 }
 
 # Array of cultural references for commit messages (rotate through these)
-# Format: each entry is a complete title (version number appended at end)
+# Format: References are EMBEDDED naturally - no "Artist: description" labels
 get_release_title() {
     local version=$1
     local references=(
-        "Taylor Swift's Eras Tour: welcome to the ${version} era"
-        "Kendrick drops a classic: damn. version ${version}"
-        "Beyoncé runs the world with version ${version}"
-        "Radiohead: no surprises, just ${version}"
-        "Pink Floyd's Dark Side of version ${version}"
-        "Bowie's Starman brought us ${version}"
-        "The Beatles: here comes version ${version}"
-        "Walter White knocks with version ${version}"
-        "Leslie Knope treats herself to version ${version}"
-        "Michael Scott declares bankruptcy on old versions, hello ${version}"
-        "Ron Swanson approves of version ${version}"
-        "Kafka's Gregor awoke transformed into version ${version}"
-        "Vonnegut: so it goes, on to ${version}"
-        "Pratchett's Luggage carries version ${version}"
-        "Sisyphus rolls ${version} uphill (happily)"
-        "Icarus flies closer to version ${version}"
-        "Prometheus steals fire, delivers ${version}"
-        "Ragnarök brings the twilight of ${version}"
-        "Odysseus returns home with version ${version}"
-        "The Godfather makes an offer: version ${version}"
-        "Pulp Fiction: ${version} is a tasty burger"
-        "Fight Club: first rule is release ${version}"
-        "Blade Runner: replicants dream of ${version}"
-        "Dune: the spice of version ${version} must flow"
-        "Arrested Development: there's always money in ${version}"
-        "Community: six seasons and version ${version}"
-        "The Good Place: holy forking shirtballs it's ${version}"
-        "Stranger Things: friends don't lie about ${version}"
-        "Succession: L to the OG, version ${version}"
-        "Fleabag breaks the fourth wall for ${version}"
-        "Ted Lasso believes in version ${version}"
-        "Schitt's Creek: ew, David, it's ${version}"
+        "Welcome to the ${version} era (we hope you like it here)"
+        "Damn. Version ${version} just dropped"
+        "Who run the world? Version ${version}"
+        "No surprises, just ${version}"
+        "There is no dark side of ${version} really - it's all dark"
+        "There's a starman waiting in ${version}"
+        "Here comes version ${version}, doo-doo-doo-doo"
+        "I am the one who releases ${version}"
+        "Treat yo'self to version ${version}"
+        "I declare bankruptcy on all versions before ${version}"
+        "Give me all the bacon and eggs you have: ${version}"
+        "One morning Gregor awoke transformed into version ${version}"
+        "So it goes. On to ${version}"
+        "The turtle moves, and so does ${version}"
+        "One must imagine ${version} happy"
+        "The sun melted the wax, but ${version} soars on"
+        "Fire stolen from the gods, delivered as ${version}"
+        "The old versions fall; ${version} rises from the ashes"
+        "Ten years to get here, but ${version} is home"
+        "An offer you can't refuse: version ${version}"
+        "Now that's a tasty version ${version}"
+        "First rule: we release ${version}"
+        "Replicants dream of version ${version}"
+        "The spice of ${version} must flow"
+        "There's always money in version ${version}"
+        "Six seasons and a version ${version}"
+        "Holy forking shirtballs it's ${version}"
+        "Friends don't lie, and neither does ${version}"
+        "L to the OG, version ${version}"
+        "This is a love story about ${version}"
+        "Believe in version ${version}"
+        "Ew, David, it's only version ${version}"
     )
 
     local index=$((RANDOM % ${#references[@]}))
@@ -117,14 +117,18 @@ get_release_title() {
 get_chart_title() {
     local version=$1
     local references=(
-        "Ahab harpoons chart ${version}"
-        "Kerouac hits the road with chart ${version}"
-        "Armstrong lands chart ${version} on gh-pages"
-        "Amelia Earhart flies chart ${version} to the repo"
-        "Bob Ross paints happy chart ${version}"
-        "Julia Child serves chart ${version}"
-        "Freddie Mercury rocks chart ${version}"
-        "Bowie's Ziggy delivers chart ${version}"
+        "Thar she blows! Chart ${version} harpooned"
+        "On the road again with chart ${version}"
+        "One small step for helm, one giant chart ${version}"
+        "Chart ${version} crosses the Atlantic"
+        "Happy little chart ${version}"
+        "Bon appétit, chart ${version}"
+        "We will rock chart ${version}"
+        "Chart ${version} fell to earth"
+        "Chart ${version} rides eternal, shiny and chrome"
+        "To infinity and chart ${version}"
+        "Winter is coming, but so is chart ${version}"
+        "I'll be back with chart ${version}"
     )
 
     local index=$((RANDOM % ${#references[@]}))
@@ -139,9 +143,16 @@ generate_commit_message() {
     cat <<EOF
 📦 $(get_release_title "$new_version")
 
-Bumped ${bump_type} version from ${CURRENT_VERSION} to ${new_version}.
-Chart.yaml updated with new version and appVersion. All documentation
-references updated to reflect the new release.
+${bump_type^} version bump: ${CURRENT_VERSION} → ${new_version}
+
+Updated files:
+- chart/forge/Chart.yaml (version and appVersion)
+- README.md and user documentation
+- zarf.yaml package metadata
+
+The tag v${new_version} triggers the release workflow, which builds
+and publishes container images for controller, webhook, zarf-cli,
+and uds-cli to ghcr.io.
 EOF
 }
 
@@ -298,8 +309,12 @@ git add "forge-${NEW_VERSION}.tgz" index.yaml
 PRE_COMMIT_ALLOW_NO_CONFIG=1 git commit -S -m "$(cat <<EOF
 📦 $(get_chart_title "${NEW_VERSION}")
 
-Published Helm chart ${NEW_VERSION} to gh-pages repository.
-Updated index.yaml for helm repo update discovery.
+Helm chart ${NEW_VERSION} now available via:
+  helm repo add forge https://kylegalloway.github.io/forge
+  helm install forge forge/forge --version ${NEW_VERSION}
+
+Packaged chart added to gh-pages with updated index.yaml for
+automatic discovery on helm repo update.
 EOF
 )"
 git push origin gh-pages
@@ -328,6 +343,7 @@ echo "  2. Users can install with: helm install forge forge/forge --version ${NE
 echo "  3. Images will be available at:"
 echo "     - ghcr.io/kylegalloway/forge/forge-controller:${NEW_VERSION}"
 echo "     - ghcr.io/kylegalloway/forge/forge-webhook:${NEW_VERSION}"
-echo "     - ghcr.io/kylegalloway/forge/zarf-cli:v0.68.1"
+echo "     - ghcr.io/kylegalloway/forge/zarf-cli (version from Dockerfile)"
+echo "     - ghcr.io/kylegalloway/forge/uds-cli (version from Dockerfile)"
 echo ""
 print_success "Release automation complete! 🚀"

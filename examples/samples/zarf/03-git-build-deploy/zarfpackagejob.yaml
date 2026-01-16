@@ -56,7 +56,12 @@ spec:
     # Deploy to all components
     components: []
 
-  # PVC retention policy (optional, defaults to true)
+  # PVC configuration (optional)
+  # useArtifactPVC: Whether to create a PVC for artifact storage (default: true)
+  # Set to false for simple jobs that don't need persistent artifact storage
+  useArtifactPVC: true
+
+  # retainArtifactPVC: Whether to keep the PVC after job completion (default: true)
   # Set to false to automatically delete the artifact PVC after job completion
   retainArtifactPVC: true
 

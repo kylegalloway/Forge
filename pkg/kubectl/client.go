@@ -500,6 +500,126 @@ func (c *Client) ListJobs(ctx context.Context, namespace, jobType string) ([]Job
 	return jobs, nil
 }
 
+// LogOptions configures log retrieval from pods
+type LogOptions struct {
+	Follow        bool
+	Previous      bool
+	Timestamps    bool
+	TailLines     int64
+	SinceSeconds  int64
+	Container     string
+	AllContainers bool
+}
+
+// GetPodLogs retrieves logs from a pod and writes them to the output writer
+func (c *Client) GetPodLogs(ctx context.Context, pod *corev1.Pod, opts *LogOptions, output io.Writer) error {
+	containers := []string{}
+
+	switch {
+	case opts.AllContainers:
+		for _, container := range pod.Spec.InitContainers {
+			containers = append(containers, container.Name)
+		}
+		for _, container := range pod.Spec.Containers {
+			containers = append(containers, container.Name)
+		}
+	case opts.Container != "":
+		containers = []string{opts.Container}
+	case len(pod.Spec.Containers) > 0:
+		containers = []string{pod.Spec.Containers[0].Name}
+	}
+
+	for i, container := range containers {
+		if opts.AllContainers && len(containers) > 1 {
+			//nolint:errcheck // Writing to output in CLI context
+			fmt.Fprintf(output, "==> Container: %s <==\n", container)
+		}
+
+		logOpts := &corev1.PodLogOptions{
+			Container:  container,
+			Follow:     opts.Follow,
+			Previous:   opts.Previous,
+			Timestamps: opts.Timestamps,
+		}
+
+		if opts.TailLines > 0 {
+			logOpts.TailLines = &opts.TailLines
+		}
+		if opts.SinceSeconds > 0 {
+			logOpts.SinceSeconds = &opts.SinceSeconds
+		}
+
+		req := c.kubeClient.CoreV1().Pods(pod.Namespace).GetLogs(pod.Name, logOpts)
+		stream, err := req.Stream(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to get log stream for container %s: %w", container, err)
+		}
+
+		_, err = io.Copy(output, stream)
+		closeErr := stream.Close()
+		if err != nil && err != io.EOF {
+			return fmt.Errorf("failed to read logs from container %s: %w", container, err)
+		}
+		if closeErr != nil {
+			return fmt.Errorf("failed to close log stream: %w", closeErr)
+		}
+
+		if i < len(containers)-1 {
+			//nolint:errcheck // Writing to output in CLI context
+			fmt.Fprintln(output)
+		}
+	}
+
+	return nil
+}
+
+// GetJobEvents retrieves events for a job and its associated pods
+func (c *Client) GetJobEvents(ctx context.Context, namespace, jobName string, allEvents bool) ([]corev1.Event, error) {
+	// Get events for the job itself
+	jobFieldSelector := fmt.Sprintf("involvedObject.name=%s,involvedObject.kind=Job", jobName)
+
+	jobEvents, err := c.kubeClient.CoreV1().Events(namespace).List(ctx, metav1.ListOptions{
+		FieldSelector: jobFieldSelector,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to list job events: %w", err)
+	}
+
+	events := jobEvents.Items
+
+	// Get events for pods of this job
+	pods, err := c.kubeClient.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{
+		LabelSelector: fmt.Sprintf("job-name=%s", jobName),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to list job pods: %w", err)
+	}
+
+	for _, pod := range pods.Items {
+		podFieldSelector := fmt.Sprintf("involvedObject.name=%s,involvedObject.kind=Pod", pod.Name)
+		podEvents, err := c.kubeClient.CoreV1().Events(namespace).List(ctx, metav1.ListOptions{
+			FieldSelector: podFieldSelector,
+		})
+		if err != nil {
+			continue // Skip pod events on error
+		}
+		events = append(events, podEvents.Items...)
+	}
+
+	// Filter to warnings only if not showing all
+	if !allEvents {
+		filtered := make([]corev1.Event, 0)
+		for _, e := range events {
+			if e.Type == corev1.EventTypeWarning {
+				filtered = append(filtered, e)
+			}
+		}
+		events = filtered
+	}
+
+	return events, nil
+}
+
 // TTY handles terminal sizing for interactive exec
 type TTY struct {
 	In  io.Reader

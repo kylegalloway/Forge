@@ -33,14 +33,26 @@ Forge is a Kubernetes operator that orchestrates Zarf package and UDS bundle bui
 publications, and deployments. This plugin simplifies common developer workflows like
 downloading artifacts and debugging failed jobs.`,
 		Version: version,
-		Example: `  # Download artifacts from a completed job
+		Example: `  # List all jobs in current namespace
+  kubectl forge list
+
+  # Get detailed job information
+  kubectl forge get job my-package-build
+
+  # Get logs from a job
+  kubectl forge get logs my-package-build --follow
+
+  # Get pods for a job
+  kubectl forge get pods my-package-build
+
+  # Get events for a job
+  kubectl forge get events my-package-build
+
+  # Download artifacts from a completed job
   kubectl forge download my-package-build
 
   # Debug a failed job (exec into the pod)
-  kubectl forge debug my-package-build --failed
-
-  # List all jobs in current namespace
-  kubectl forge list`,
+  kubectl forge debug my-package-build --failed`,
 		SilenceUsage: true,
 	}
 
@@ -51,6 +63,7 @@ downloading artifacts and debugging failed jobs.`,
 	rootCmd.AddCommand(NewDownloadCommand(configFlags))
 	rootCmd.AddCommand(NewDebugCommand(configFlags))
 	rootCmd.AddCommand(NewListCommand(configFlags))
+	rootCmd.AddCommand(NewGetCommand(configFlags))
 
 	return rootCmd
 }

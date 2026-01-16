@@ -36,6 +36,11 @@ spec:
         args:
           {{- toYaml . | nindent 10 }}
         {{- end }}
+        env:
+        - name: FORGE_ZARF_CLI_IMAGE
+          value: "{{ .Values.zarfCLI.image.repository }}:{{ .Values.zarfCLI.image.tag }}"
+        - name: FORGE_UDS_CLI_IMAGE
+          value: "{{ .Values.udsCLI.image.repository }}:{{ .Values.udsCLI.image.tag }}"
         ports:
         - name: metrics
           containerPort: 8080

@@ -159,7 +159,14 @@ webhook:
 zarfCLI:
   image:
     repository: ghcr.io/kylegalloway/forge/zarf-cli
-    tag: v0.68.1
+    tag: v0.69.0
+    pullPolicy: IfNotPresent
+
+# UDS CLI image for Jobs
+udsCLI:
+  image:
+    repository: ghcr.io/defenseunicorns/uds-cli
+    tag: v0.27.21
     pullPolicy: IfNotPresent
 
 # Service Account configuration

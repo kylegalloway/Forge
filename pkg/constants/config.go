@@ -12,9 +12,16 @@
 // UID constants ensure Jobs run with predictable non-root users for security:
 //   - DefaultZarfUID (1000): Standard user UID for Zarf CLI containers
 //   - DefaultUDSUID (65532): Higher UID for UDS CLI containers to avoid conflicts
+//
+// Container images can be overridden via environment variables:
+//   - FORGE_ZARF_CLI_IMAGE: Override the Zarf CLI image
+//   - FORGE_UDS_CLI_IMAGE: Override the UDS CLI image
 package constants
 
-import "time"
+import (
+	"os"
+	"time"
+)
 
 const (
 	// JobMonitorInterval is how often to check Job statuses.
@@ -38,11 +45,11 @@ const (
 	// DefaultUDSUID is the UID for UDS CLI containers (65532).
 	DefaultUDSUID = 65532
 
-	// ZarfCLIImage is the container image for Zarf CLI operations.
-	ZarfCLIImage = "ghcr.io/kylegalloway/forge/zarf-cli:v0.68.1"
+	// DefaultZarfCLIImage is the default container image for Zarf CLI operations.
+	DefaultZarfCLIImage = "ghcr.io/kylegalloway/forge/zarf-cli:v0.69.0"
 
-	// UDSCLIImage is the container image for UDS CLI operations.
-	UDSCLIImage = "ghcr.io/defenseunicorns/uds-cli:v0.27.13"
+	// DefaultUDSCLIImage is the default container image for UDS CLI operations.
+	DefaultUDSCLIImage = "ghcr.io/defenseunicorns/uds-cli:v0.27.21"
 
 	// VolumeNameWorkspace is the name of the workspace volume.
 	VolumeNameWorkspace = "workspace"
@@ -80,3 +87,19 @@ const (
 	// ContainerNameUDSDeploy is the container name for UDS bundle deploy Jobs.
 	ContainerNameUDSDeploy = "uds-deploy"
 )
+
+// ZarfCLIImage is the container image for Zarf CLI operations.
+// It can be overridden via the FORGE_ZARF_CLI_IMAGE environment variable.
+var ZarfCLIImage = getEnvOrDefault("FORGE_ZARF_CLI_IMAGE", DefaultZarfCLIImage)
+
+// UDSCLIImage is the container image for UDS CLI operations.
+// It can be overridden via the FORGE_UDS_CLI_IMAGE environment variable.
+var UDSCLIImage = getEnvOrDefault("FORGE_UDS_CLI_IMAGE", DefaultUDSCLIImage)
+
+// getEnvOrDefault returns the value of the environment variable or the default value if not set.
+func getEnvOrDefault(key, defaultValue string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return defaultValue
+}

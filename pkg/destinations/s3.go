@@ -22,6 +22,7 @@ func (destination *S3Destination) GetPublishCommand(pkg *zarfv1alpha1.ZarfPackag
 }
 
 // GetJobConfiguration returns the AWS credentials env vars
+// Uses same key names as S3 sources: 'access-key-id' and 'secret-access-key'
 func (destination *S3Destination) GetJobConfiguration(pkg *zarfv1alpha1.ZarfPackageJob) (*JobConfig, error) {
 	s3Config := pkg.Spec.Publish.Destination.S3
 	if s3Config == nil {
@@ -30,14 +31,32 @@ func (destination *S3Destination) GetJobConfiguration(pkg *zarfv1alpha1.ZarfPack
 
 	config := &JobConfig{}
 
-	if s3Config.CredentialsSecretRef != nil {
-		config.EnvFrom = append(config.EnvFrom, corev1.EnvFromSource{
-			SecretRef: &corev1.SecretEnvSource{
-				LocalObjectReference: corev1.LocalObjectReference{
-					Name: s3Config.CredentialsSecretRef.Name,
+	if s3Config.CredentialsSecretRef != nil { // pragma: allowlist secret
+		secretName := s3Config.CredentialsSecretRef.Name // pragma: allowlist secret
+		config.Env = append(config.Env,
+			corev1.EnvVar{
+				Name: "AWS_ACCESS_KEY_ID",
+				ValueFrom: &corev1.EnvVarSource{
+					SecretKeyRef: &corev1.SecretKeySelector{ // pragma: allowlist secret
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: secretName,
+						},
+						Key: "access-key-id",
+					},
 				},
 			},
-		})
+			corev1.EnvVar{
+				Name: "AWS_SECRET_ACCESS_KEY", // pragma: allowlist secret
+				ValueFrom: &corev1.EnvVarSource{
+					SecretKeyRef: &corev1.SecretKeySelector{ // pragma: allowlist secret
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: secretName,
+						},
+						Key: "secret-access-key", // pragma: allowlist secret
+					},
+				},
+			},
+		)
 	}
 
 	return config, nil

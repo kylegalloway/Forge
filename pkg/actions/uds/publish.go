@@ -214,6 +214,7 @@ func (handler *PublishHandler) buildEnvVars(bundle *udsv1alpha2.UDSBundleJob) []
 		}
 
 		// Add AWS credentials from secret if provided
+		// Uses same key names as S3 sources: 'access-key-id' and 'secret-access-key'
 		if dest.S3.CredentialsSecretRef != nil { // pragma: allowlist secret
 			envVars = append(envVars,
 				corev1.EnvVar{
@@ -223,7 +224,7 @@ func (handler *PublishHandler) buildEnvVars(bundle *udsv1alpha2.UDSBundleJob) []
 							LocalObjectReference: corev1.LocalObjectReference{
 								Name: dest.S3.CredentialsSecretRef.Name, // pragma: allowlist secret
 							},
-							Key: "aws_access_key_id",
+							Key: "access-key-id",
 						},
 					},
 				},
@@ -234,7 +235,7 @@ func (handler *PublishHandler) buildEnvVars(bundle *udsv1alpha2.UDSBundleJob) []
 							LocalObjectReference: corev1.LocalObjectReference{
 								Name: dest.S3.CredentialsSecretRef.Name, // pragma: allowlist secret
 							},
-							Key: "aws_secret_access_key", // pragma: allowlist secret
+							Key: "secret-access-key", // pragma: allowlist secret
 						},
 					},
 				},

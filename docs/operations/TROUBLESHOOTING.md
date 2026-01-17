@@ -274,7 +274,7 @@ kubectl logs job/my-package-build-xxxxx
    InvalidAccessKeyId: The AWS Access Key Id you provided does not exist
    ```
 
-   **Solution:** Verify Secret contains correct access-key-id and secret-access-key
+   **Solution:** Verify Secret contains correct `access-key-id` and `secret-access-key` keys
 
 3. **OCI auth failure**
 

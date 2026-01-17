@@ -305,7 +305,7 @@ spec:
       key: dos-games-v1.0.0.tar.zst
       region: us-east-1
       credentialsSecretRef:
-        name: aws-creds # Secret containing AWS_ACCESS_KEY_ID/SECRET
+        name: aws-creds # Secret with 'access-key-id' and 'secret-access-key' keys
   deploy:
     target: InCluster
     namespace: games
@@ -459,7 +459,7 @@ spec:
   source:
     type: OCI
     oci:
-      ref: ghcr.io/myorg/bundles/app-bundle:1.0.0
+      reference: ghcr.io/myorg/bundles/app-bundle:1.0.0
       credentialsSecretRef:
         name: oci-registry-creds
   deploy:
@@ -493,7 +493,7 @@ deploy-bundle   Running    15s
 deploy-bundle   Succeeded  8m30s
 ```
 
-### 4. Deploy to Remote Cluster
+### 4. Deploy to External Cluster
 
 Deploys a bundle to a different cluster using a kubeconfig Secret.
 
@@ -509,11 +509,14 @@ spec:
   source:
     type: OCI
     oci:
-      ref: ghcr.io/myorg/bundles/platform:latest
+      reference: ghcr.io/myorg/bundles/platform:latest
   deploy:
-    target: RemoteCluster
-    kubeconfigSecretRef:
-      name: target-cluster-kubeconfig
+    target: ExternalCluster
+    kubeconfig:
+      secretRef:
+        name: target-cluster-kubeconfig
+        namespace: default
+      key: kubeconfig
 ```
 
 Create the kubeconfig Secret:
@@ -574,9 +577,10 @@ spec:
 Create the AWS credentials Secret:
 
 ```bash
+# S3 sources and destinations use consistent key names
 kubectl create secret generic aws-s3-creds \
-  --from-literal=aws_access_key_id=AKIAIOSFODNN7EXAMPLE \
-  --from-literal=aws_secret_access_key=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY \
+  --from-literal=access-key-id=AKIAIOSFODNN7EXAMPLE \
+  --from-literal=secret-access-key=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY \
   --namespace default
 ```
 

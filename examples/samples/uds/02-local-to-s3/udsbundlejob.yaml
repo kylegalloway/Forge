@@ -24,6 +24,7 @@ metadata:
 
 ---
 # Secret for AWS S3 credentials
+# S3 sources and destinations use consistent keys: 'access-key-id' and 'secret-access-key'
 apiVersion: v1
 kind: Secret
 metadata:

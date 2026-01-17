@@ -24,6 +24,7 @@ metadata:
 
 ---
 # Secret containing AWS credentials for S3
+# S3 sources and destinations use consistent keys: 'access-key-id' and 'secret-access-key'
 apiVersion: v1
 kind: Secret
 metadata:
@@ -31,9 +32,8 @@ metadata:
   namespace: default
 type: Opaque
 stringData:
-  AWS_ACCESS_KEY_ID: "AKIAIOSFODNN7EXAMPLE"
-  AWS_SECRET_ACCESS_KEY: "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
-  AWS_DEFAULT_REGION: "us-west-2"
+  access-key-id: "AKIAIOSFODNN7EXAMPLE"
+  secret-access-key: "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
 
 ---
 apiVersion: forge.dev/v1alpha1

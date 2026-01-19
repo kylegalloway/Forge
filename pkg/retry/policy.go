@@ -7,8 +7,8 @@ import (
 	"regexp"
 	"time"
 
-	udsv1alpha2 "github.com/kylegalloway/forge/pkg/apis/uds/v1alpha2"
-	zarfv1alpha1 "github.com/kylegalloway/forge/pkg/apis/zarf/v1alpha1"
+	udsv1alpha3 "github.com/kylegalloway/forge/pkg/apis/uds/v1alpha3"
+	zarfv1alpha3 "github.com/kylegalloway/forge/pkg/apis/zarf/v1alpha3"
 )
 
 // Policy encapsulates retry configuration
@@ -21,7 +21,7 @@ type Policy struct {
 }
 
 // ParseZarfPolicy converts Zarf API RetryPolicy to internal Policy
-func ParseZarfPolicy(apiPolicy *zarfv1alpha1.RetryPolicy) (*Policy, error) {
+func ParseZarfPolicy(apiPolicy *zarfv1alpha3.RetryPolicy) (*Policy, error) {
 	if apiPolicy == nil {
 		return nil, nil
 	}
@@ -70,7 +70,7 @@ func ParseZarfPolicy(apiPolicy *zarfv1alpha1.RetryPolicy) (*Policy, error) {
 }
 
 // ParseUDSPolicy converts UDS API RetryPolicy to internal Policy
-func ParseUDSPolicy(apiPolicy *udsv1alpha2.RetryPolicy) (*Policy, error) {
+func ParseUDSPolicy(apiPolicy *udsv1alpha3.RetryPolicy) (*Policy, error) {
 	if apiPolicy == nil {
 		return nil, nil
 	}

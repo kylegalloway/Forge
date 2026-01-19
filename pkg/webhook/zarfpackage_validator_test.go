@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	zarfv1alpha1 "github.com/kylegalloway/forge/pkg/apis/zarf/v1alpha1"
+	zarfv1alpha3 "github.com/kylegalloway/forge/pkg/apis/zarf/v1alpha3"
 	"github.com/kylegalloway/forge/pkg/constants"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -42,17 +42,17 @@ func TestValidateZarfPackageJob_ValidBuild(t *testing.T) {
 		t.Fatalf("Failed to create ServiceAccount: %v", err)
 	}
 
-	pkg := &zarfv1alpha1.ZarfPackageJob{
+	pkg := &zarfv1alpha3.ZarfPackageJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-build",
 			Namespace: "default",
 		},
-		Spec: zarfv1alpha1.ZarfPackageJobSpec{
+		Spec: zarfv1alpha3.ZarfPackageJobSpec{
 			ServiceAccountName: "test-sa",
-			Action:             zarfv1alpha1.ActionBuild,
-			Source: zarfv1alpha1.PackageSource{
-				Type: zarfv1alpha1.SourceTypeGit,
-				Git: &zarfv1alpha1.GitSource{
+			Action:             zarfv1alpha3.ActionBuild,
+			Source: zarfv1alpha3.PackageSource{
+				Type: zarfv1alpha3.SourceTypeGit,
+				Git: &zarfv1alpha3.GitSource{
 					URL: "https://github.com/test/repo",
 					Ref: "main",
 				},
@@ -70,17 +70,17 @@ func TestValidateZarfPackageJob_MissingServiceAccount(t *testing.T) {
 	kubeClient := fake.NewClientset()
 	validator := NewZarfPackageJobValidator(kubeClient)
 
-	pkg := &zarfv1alpha1.ZarfPackageJob{
+	pkg := &zarfv1alpha3.ZarfPackageJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-build",
 			Namespace: "default",
 		},
-		Spec: zarfv1alpha1.ZarfPackageJobSpec{
+		Spec: zarfv1alpha3.ZarfPackageJobSpec{
 			ServiceAccountName: "nonexistent-sa",
-			Action:             zarfv1alpha1.ActionBuild,
-			Source: zarfv1alpha1.PackageSource{
-				Type: zarfv1alpha1.SourceTypeGit,
-				Git: &zarfv1alpha1.GitSource{
+			Action:             zarfv1alpha3.ActionBuild,
+			Source: zarfv1alpha3.PackageSource{
+				Type: zarfv1alpha3.SourceTypeGit,
+				Git: &zarfv1alpha3.GitSource{
 					URL: "https://github.com/test/repo",
 				},
 			},
@@ -99,7 +99,7 @@ func TestValidateAction(t *testing.T) {
 	tests := []struct {
 		name          string
 		annotations   map[string]string
-		action        zarfv1alpha1.Action
+		action        zarfv1alpha3.Action
 		wantErr       bool
 		errorContains string
 	}{
@@ -108,7 +108,7 @@ func TestValidateAction(t *testing.T) {
 			annotations: map[string]string{
 				constants.AnnotationAllowedActions: "Build,Publish",
 			},
-			action:  zarfv1alpha1.ActionBuild,
+			action:  zarfv1alpha3.ActionBuild,
 			wantErr: false,
 		},
 		{
@@ -116,14 +116,14 @@ func TestValidateAction(t *testing.T) {
 			annotations: map[string]string{
 				constants.AnnotationAllowedActions: "Build",
 			},
-			action:        zarfv1alpha1.ActionPublish,
+			action:        zarfv1alpha3.ActionPublish,
 			wantErr:       true,
 			errorContains: "not allowed",
 		},
 		{
 			name:          "missing annotation",
 			annotations:   map[string]string{},
-			action:        zarfv1alpha1.ActionBuild,
+			action:        zarfv1alpha3.ActionBuild,
 			wantErr:       true,
 			errorContains: "no allowed-actions annotation",
 		},
@@ -132,7 +132,7 @@ func TestValidateAction(t *testing.T) {
 			annotations: map[string]string{
 				constants.AnnotationAllowedActions: "Build,Publish,Deploy,BuildPublish",
 			},
-			action:  zarfv1alpha1.ActionBuildPublish,
+			action:  zarfv1alpha3.ActionBuildPublish,
 			wantErr: false,
 		},
 	}
@@ -166,7 +166,7 @@ func TestValidateSource(t *testing.T) {
 	tests := []struct {
 		name          string
 		annotations   map[string]string
-		source        *zarfv1alpha1.PackageSource
+		source        *zarfv1alpha3.PackageSource
 		wantErr       bool
 		errorContains string
 	}{
@@ -175,9 +175,9 @@ func TestValidateSource(t *testing.T) {
 			annotations: map[string]string{
 				constants.AnnotationAllowedSourceRepos: "https://github.com/myorg/*",
 			},
-			source: &zarfv1alpha1.PackageSource{
-				Type: zarfv1alpha1.SourceTypeGit,
-				Git: &zarfv1alpha1.GitSource{
+			source: &zarfv1alpha3.PackageSource{
+				Type: zarfv1alpha3.SourceTypeGit,
+				Git: &zarfv1alpha3.GitSource{
 					URL: "https://github.com/myorg/repo",
 				},
 			},
@@ -188,9 +188,9 @@ func TestValidateSource(t *testing.T) {
 			annotations: map[string]string{
 				constants.AnnotationAllowedSourceRepos: "https://github.com/myorg/*",
 			},
-			source: &zarfv1alpha1.PackageSource{
-				Type: zarfv1alpha1.SourceTypeGit,
-				Git: &zarfv1alpha1.GitSource{
+			source: &zarfv1alpha3.PackageSource{
+				Type: zarfv1alpha3.SourceTypeGit,
+				Git: &zarfv1alpha3.GitSource{
 					URL: "https://github.com/otherorg/repo",
 				},
 			},
@@ -202,10 +202,10 @@ func TestValidateSource(t *testing.T) {
 			annotations: map[string]string{
 				constants.AnnotationAllowedSourceRegistries: "ghcr.io/myorg/*",
 			},
-			source: &zarfv1alpha1.PackageSource{
-				Type: zarfv1alpha1.SourceTypeOCI,
-				OCI: &zarfv1alpha1.OCISource{
-					Image: "ghcr.io/myorg/package:v1.0.0",
+			source: &zarfv1alpha3.PackageSource{
+				Type: zarfv1alpha3.SourceTypeOCI,
+				OCI: &zarfv1alpha3.OCISource{
+					Reference: "ghcr.io/myorg/package:v1.0.0",
 				},
 			},
 			wantErr: false,
@@ -215,9 +215,9 @@ func TestValidateSource(t *testing.T) {
 			annotations: map[string]string{
 				constants.AnnotationAllowedSourceBuckets: "my-bucket,other-bucket",
 			},
-			source: &zarfv1alpha1.PackageSource{
-				Type: zarfv1alpha1.SourceTypeS3,
-				S3: &zarfv1alpha1.S3Source{
+			source: &zarfv1alpha3.PackageSource{
+				Type: zarfv1alpha3.SourceTypeS3,
+				S3: &zarfv1alpha3.S3Source{
 					Bucket: "my-bucket",
 					Key:    "packages/test.tar.zst",
 					Region: "us-east-1",
@@ -256,7 +256,7 @@ func TestValidatePublish(t *testing.T) {
 	tests := []struct {
 		name          string
 		annotations   map[string]string
-		publish       *zarfv1alpha1.PublishConfig
+		publish       *zarfv1alpha3.PublishConfig
 		wantErr       bool
 		errorContains string
 	}{
@@ -265,10 +265,10 @@ func TestValidatePublish(t *testing.T) {
 			annotations: map[string]string{
 				constants.AnnotationAllowedPublishRegistries: "ghcr.io/myorg/*",
 			},
-			publish: &zarfv1alpha1.PublishConfig{
-				Destination: zarfv1alpha1.PublishDestination{
-					Type: zarfv1alpha1.DestinationTypeOCI,
-					OCI: &zarfv1alpha1.OCIDestination{
+			publish: &zarfv1alpha3.PublishConfig{
+				Destination: zarfv1alpha3.PublishDestination{
+					Type: zarfv1alpha3.DestinationTypeOCI,
+					OCI: &zarfv1alpha3.OCIDestination{
 						Registry:   "ghcr.io",
 						Repository: "myorg/packages",
 						Tag:        "v1.0.0",
@@ -282,10 +282,10 @@ func TestValidatePublish(t *testing.T) {
 			annotations: map[string]string{
 				constants.AnnotationAllowedPublishRegistries: "ghcr.io/myorg/*",
 			},
-			publish: &zarfv1alpha1.PublishConfig{
-				Destination: zarfv1alpha1.PublishDestination{
-					Type: zarfv1alpha1.DestinationTypeOCI,
-					OCI: &zarfv1alpha1.OCIDestination{
+			publish: &zarfv1alpha3.PublishConfig{
+				Destination: zarfv1alpha3.PublishDestination{
+					Type: zarfv1alpha3.DestinationTypeOCI,
+					OCI: &zarfv1alpha3.OCIDestination{
 						Registry:   "docker.io",
 						Repository: "otherorg/packages",
 					},
@@ -299,10 +299,10 @@ func TestValidatePublish(t *testing.T) {
 			annotations: map[string]string{
 				constants.AnnotationAllowedPublishBuckets: "publish-bucket,backup-bucket",
 			},
-			publish: &zarfv1alpha1.PublishConfig{
-				Destination: zarfv1alpha1.PublishDestination{
-					Type: zarfv1alpha1.DestinationTypeS3,
-					S3: &zarfv1alpha1.S3Destination{
+			publish: &zarfv1alpha3.PublishConfig{
+				Destination: zarfv1alpha3.PublishDestination{
+					Type: zarfv1alpha3.DestinationTypeS3,
+					S3: &zarfv1alpha3.S3Destination{
 						Bucket:    "publish-bucket",
 						KeyPrefix: "prod/",
 						Region:    "us-east-1",
@@ -342,7 +342,7 @@ func TestValidateDeploy(t *testing.T) {
 	tests := []struct {
 		name          string
 		annotations   map[string]string
-		deploy        *zarfv1alpha1.DeployConfig
+		deploy        *zarfv1alpha3.DeployConfig
 		wantErr       bool
 		errorContains string
 	}{
@@ -351,8 +351,8 @@ func TestValidateDeploy(t *testing.T) {
 			annotations: map[string]string{
 				constants.AnnotationAllowedDeployTargets: "InCluster",
 			},
-			deploy: &zarfv1alpha1.DeployConfig{
-				Target:    zarfv1alpha1.DeployTargetInCluster,
+			deploy: &zarfv1alpha3.DeployConfig{
+				Target:    zarfv1alpha3.DeployTargetInCluster,
 				Namespace: "default",
 			},
 			wantErr: false,
@@ -362,8 +362,8 @@ func TestValidateDeploy(t *testing.T) {
 			annotations: map[string]string{
 				constants.AnnotationAllowedDeployTargets: "InCluster",
 			},
-			deploy: &zarfv1alpha1.DeployConfig{
-				Target: zarfv1alpha1.DeployTargetExternalCluster,
+			deploy: &zarfv1alpha3.DeployConfig{
+				Target: zarfv1alpha3.DeployTargetExternalCluster,
 			},
 			wantErr:       true,
 			errorContains: "not allowed",
@@ -371,8 +371,8 @@ func TestValidateDeploy(t *testing.T) {
 		{
 			name:        "missing annotation",
 			annotations: map[string]string{},
-			deploy: &zarfv1alpha1.DeployConfig{
-				Target: zarfv1alpha1.DeployTargetInCluster,
+			deploy: &zarfv1alpha3.DeployConfig{
+				Target: zarfv1alpha3.DeployTargetInCluster,
 			},
 			wantErr:       true,
 			errorContains: "no allowed-deploy-targets annotation",
@@ -501,10 +501,10 @@ func TestValidatePublish_LocalDestination(t *testing.T) {
 	client := fake.NewClientset(sa)
 	validator := NewZarfPackageJobValidator(client)
 
-	publish := &zarfv1alpha1.PublishConfig{
-		Destination: zarfv1alpha1.PublishDestination{
-			Type: zarfv1alpha1.DestinationTypeLocal,
-			Local: &zarfv1alpha1.LocalDestination{
+	publish := &zarfv1alpha3.PublishConfig{
+		Destination: zarfv1alpha3.PublishDestination{
+			Type: zarfv1alpha3.DestinationTypeLocal,
+			Local: &zarfv1alpha3.LocalDestination{
 				Path:    "/tmp/output",
 				DevMode: true,
 			},
@@ -528,8 +528,8 @@ func TestValidatePublish_UnknownDestination(t *testing.T) {
 	client := fake.NewClientset(sa)
 	validator := NewZarfPackageJobValidator(client)
 
-	publish := &zarfv1alpha1.PublishConfig{
-		Destination: zarfv1alpha1.PublishDestination{
+	publish := &zarfv1alpha3.PublishConfig{
+		Destination: zarfv1alpha3.PublishDestination{
 			Type: "UnknownType",
 		},
 	}
@@ -554,7 +554,7 @@ func TestValidateSource_UnknownType(t *testing.T) {
 	client := fake.NewClientset(sa)
 	validator := NewZarfPackageJobValidator(client)
 
-	source := &zarfv1alpha1.PackageSource{
+	source := &zarfv1alpha3.PackageSource{
 		Type: "UnknownSourceType",
 	}
 

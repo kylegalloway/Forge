@@ -26,14 +26,14 @@ var (
 	// ZarfPackageJobGVR is the GroupVersionResource for ZarfPackageJob
 	ZarfPackageJobGVR = schema.GroupVersionResource{
 		Group:    APIGroup,
-		Version:  "v1alpha1",
+		Version:  "v1alpha3",
 		Resource: ZarfPackageJobResource,
 	}
 
 	// UDSBundleJobGVR is the GroupVersionResource for UDSBundleJob
 	UDSBundleJobGVR = schema.GroupVersionResource{
 		Group:    APIGroup,
-		Version:  "v1alpha2",
+		Version:  "v1alpha3",
 		Resource: UDSBundleJobResource,
 	}
 )

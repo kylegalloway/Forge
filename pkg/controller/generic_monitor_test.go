@@ -14,7 +14,7 @@ import (
 	dynamicfake "k8s.io/client-go/dynamic/fake"
 	"k8s.io/client-go/kubernetes/fake"
 
-	zarfv1alpha1 "github.com/kylegalloway/forge/pkg/apis/zarf/v1alpha1"
+	zarfv1alpha3 "github.com/kylegalloway/forge/pkg/apis/zarf/v1alpha3"
 	"github.com/kylegalloway/forge/pkg/constants"
 )
 
@@ -67,12 +67,12 @@ func TestProcessJobStatus_MissingLabels(t *testing.T) {
 func TestProcessJobStatus_RunningJob(t *testing.T) {
 	kubeClient := fake.NewClientset()
 	scheme := runtime.NewScheme()
-	_ = zarfv1alpha1.AddToScheme(scheme)
+	_ = zarfv1alpha3.AddToScheme(scheme)
 	dynamicClient := dynamicfake.NewSimpleDynamicClient(scheme)
 
 	// Create resource
 	resource := createTestUnstructuredZarfJob("test-pkg", "default")
-	_, err := dynamicClient.Resource(zarfv1alpha1.SchemeGroupVersion.WithResource("zarfpackagejobs")).
+	_, err := dynamicClient.Resource(zarfv1alpha3.SchemeGroupVersion.WithResource("zarfpackagejobs")).
 		Namespace("default").
 		Create(context.Background(), resource, metav1.CreateOptions{})
 	if err != nil {
@@ -97,7 +97,7 @@ func TestProcessJobStatus_RunningJob(t *testing.T) {
 		kubeClient,
 		dynamicClient,
 		"default",
-		zarfv1alpha1.SchemeGroupVersion.WithResource("zarfpackagejobs"),
+		zarfv1alpha3.SchemeGroupVersion.WithResource("zarfpackagejobs"),
 		&mockMetricsRecorder{},
 		config,
 		&mockSuccessHandler{},
@@ -135,12 +135,12 @@ func TestProcessJobStatus_RunningJob(t *testing.T) {
 func TestProcessJobStatus_CompletedJob(t *testing.T) {
 	kubeClient := fake.NewClientset()
 	scheme := runtime.NewScheme()
-	_ = zarfv1alpha1.AddToScheme(scheme)
+	_ = zarfv1alpha3.AddToScheme(scheme)
 	dynamicClient := dynamicfake.NewSimpleDynamicClient(scheme)
 
 	// Create resource
 	resource := createTestUnstructuredZarfJob("test-pkg", "default")
-	_, err := dynamicClient.Resource(zarfv1alpha1.SchemeGroupVersion.WithResource("zarfpackagejobs")).
+	_, err := dynamicClient.Resource(zarfv1alpha3.SchemeGroupVersion.WithResource("zarfpackagejobs")).
 		Namespace("default").
 		Create(context.Background(), resource, metav1.CreateOptions{})
 	if err != nil {
@@ -167,7 +167,7 @@ func TestProcessJobStatus_CompletedJob(t *testing.T) {
 		kubeClient,
 		dynamicClient,
 		"default",
-		zarfv1alpha1.SchemeGroupVersion.WithResource("zarfpackagejobs"),
+		zarfv1alpha3.SchemeGroupVersion.WithResource("zarfpackagejobs"),
 		&mockMetricsRecorder{},
 		config,
 		&mockSuccessHandler{},
@@ -218,12 +218,12 @@ func TestProcessJobStatus_CompletedJob(t *testing.T) {
 func TestProcessJobStatus_FailedJob(t *testing.T) {
 	kubeClient := fake.NewClientset()
 	scheme := runtime.NewScheme()
-	_ = zarfv1alpha1.AddToScheme(scheme)
+	_ = zarfv1alpha3.AddToScheme(scheme)
 	dynamicClient := dynamicfake.NewSimpleDynamicClient(scheme)
 
 	// Create resource
 	resource := createTestUnstructuredZarfJob("test-pkg", "default")
-	_, err := dynamicClient.Resource(zarfv1alpha1.SchemeGroupVersion.WithResource("zarfpackagejobs")).
+	_, err := dynamicClient.Resource(zarfv1alpha3.SchemeGroupVersion.WithResource("zarfpackagejobs")).
 		Namespace("default").
 		Create(context.Background(), resource, metav1.CreateOptions{})
 	if err != nil {
@@ -250,7 +250,7 @@ func TestProcessJobStatus_FailedJob(t *testing.T) {
 		kubeClient,
 		dynamicClient,
 		"default",
-		zarfv1alpha1.SchemeGroupVersion.WithResource("zarfpackagejobs"),
+		zarfv1alpha3.SchemeGroupVersion.WithResource("zarfpackagejobs"),
 		&mockMetricsRecorder{},
 		config,
 		&mockSuccessHandler{},
@@ -302,7 +302,7 @@ func TestProcessJobStatus_FailedJob(t *testing.T) {
 func TestProcessJobStatus_ResourceNotFound(t *testing.T) {
 	kubeClient := fake.NewClientset()
 	scheme := runtime.NewScheme()
-	_ = zarfv1alpha1.AddToScheme(scheme)
+	_ = zarfv1alpha3.AddToScheme(scheme)
 	// Don't create resource - it will be "not found"
 	dynamicClient := dynamicfake.NewSimpleDynamicClient(scheme)
 
@@ -318,7 +318,7 @@ func TestProcessJobStatus_ResourceNotFound(t *testing.T) {
 		kubeClient,
 		dynamicClient,
 		"default",
-		zarfv1alpha1.SchemeGroupVersion.WithResource("zarfpackagejobs"),
+		zarfv1alpha3.SchemeGroupVersion.WithResource("zarfpackagejobs"),
 		&mockMetricsRecorder{},
 		config,
 		&mockSuccessHandler{},
@@ -363,12 +363,12 @@ func TestProcessJobStatus_ResourceNotFound(t *testing.T) {
 func TestProcessJobStatus_StatusUpdateError(t *testing.T) {
 	kubeClient := fake.NewClientset()
 	scheme := runtime.NewScheme()
-	_ = zarfv1alpha1.AddToScheme(scheme)
+	_ = zarfv1alpha3.AddToScheme(scheme)
 	dynamicClient := dynamicfake.NewSimpleDynamicClient(scheme)
 
 	// Create resource
 	resource := createTestUnstructuredZarfJob("test-pkg", "default")
-	_, err := dynamicClient.Resource(zarfv1alpha1.SchemeGroupVersion.WithResource("zarfpackagejobs")).
+	_, err := dynamicClient.Resource(zarfv1alpha3.SchemeGroupVersion.WithResource("zarfpackagejobs")).
 		Namespace("default").
 		Create(context.Background(), resource, metav1.CreateOptions{})
 	if err != nil {
@@ -392,7 +392,7 @@ func TestProcessJobStatus_StatusUpdateError(t *testing.T) {
 		kubeClient,
 		dynamicClient,
 		"default",
-		zarfv1alpha1.SchemeGroupVersion.WithResource("zarfpackagejobs"),
+		zarfv1alpha3.SchemeGroupVersion.WithResource("zarfpackagejobs"),
 		&mockMetricsRecorder{},
 		config,
 		&mockSuccessHandler{},
@@ -434,12 +434,12 @@ func TestProcessJobStatus_StatusUpdateError(t *testing.T) {
 func TestProcessJobStatus_MultipleCompletedJobs(t *testing.T) {
 	kubeClient := fake.NewClientset()
 	scheme := runtime.NewScheme()
-	_ = zarfv1alpha1.AddToScheme(scheme)
+	_ = zarfv1alpha3.AddToScheme(scheme)
 	dynamicClient := dynamicfake.NewSimpleDynamicClient(scheme)
 
 	// Create resource
 	resource := createTestUnstructuredZarfJob("test-pkg", "default")
-	_, err := dynamicClient.Resource(zarfv1alpha1.SchemeGroupVersion.WithResource("zarfpackagejobs")).
+	_, err := dynamicClient.Resource(zarfv1alpha3.SchemeGroupVersion.WithResource("zarfpackagejobs")).
 		Namespace("default").
 		Create(context.Background(), resource, metav1.CreateOptions{})
 	if err != nil {
@@ -464,7 +464,7 @@ func TestProcessJobStatus_MultipleCompletedJobs(t *testing.T) {
 		kubeClient,
 		dynamicClient,
 		"default",
-		zarfv1alpha1.SchemeGroupVersion.WithResource("zarfpackagejobs"),
+		zarfv1alpha3.SchemeGroupVersion.WithResource("zarfpackagejobs"),
 		&mockMetricsRecorder{},
 		config,
 		&mockSuccessHandler{},
@@ -535,12 +535,12 @@ func TestProcessJobStatus_MultipleCompletedJobs(t *testing.T) {
 }
 
 // Helper function to create test monitor
-func createTestMonitor(t *testing.T) *GenericJobMonitor[*zarfv1alpha1.ZarfPackageJob] {
+func createTestMonitor(t *testing.T) *GenericJobMonitor[*zarfv1alpha3.ZarfPackageJob] {
 	t.Helper()
 
 	kubeClient := fake.NewClientset()
 	scheme := runtime.NewScheme()
-	_ = zarfv1alpha1.AddToScheme(scheme)
+	_ = zarfv1alpha3.AddToScheme(scheme)
 	dynamicClient := dynamicfake.NewSimpleDynamicClient(scheme)
 
 	config := MonitorConfig{
@@ -555,7 +555,7 @@ func createTestMonitor(t *testing.T) *GenericJobMonitor[*zarfv1alpha1.ZarfPackag
 		kubeClient,
 		dynamicClient,
 		"default",
-		zarfv1alpha1.SchemeGroupVersion.WithResource("zarfpackagejobs"),
+		zarfv1alpha3.SchemeGroupVersion.WithResource("zarfpackagejobs"),
 		&mockMetricsRecorder{},
 		config,
 		&mockSuccessHandler{},

@@ -11,7 +11,7 @@ import (
 	"k8s.io/klog/v2"
 
 	"github.com/kylegalloway/forge/pkg/actions"
-	udsv1alpha2 "github.com/kylegalloway/forge/pkg/apis/uds/v1alpha2"
+	udsv1alpha3 "github.com/kylegalloway/forge/pkg/apis/uds/v1alpha3"
 	"github.com/kylegalloway/forge/pkg/constants"
 	"github.com/kylegalloway/forge/pkg/telemetry"
 )
@@ -37,9 +37,7 @@ func NewPublishHandler(kubeClient kubernetes.Interface, metrics *telemetry.Metri
 // The artifactPath and artifactPVCName parameters enable multi-action job support (CreatePublish, etc.)
 // When artifactPVCName is set, the PVC is mounted and artifactPath specifies where to find the bundle.
 // When empty, assumes standalone publish with bundle source in workspace or from spec.
-//
-//nolint:staticcheck // SA1019: UDSBundleJob v1alpha1 must be supported until v0.10.0
-func (handler *PublishHandler) Execute(ctx context.Context, bundle *udsv1alpha2.UDSBundleJob, artifactPath, artifactPVCName string) (*actions.ActionResult, error) {
+func (handler *PublishHandler) Execute(ctx context.Context, bundle *udsv1alpha3.UDSBundleJob, artifactPath, artifactPVCName string) (*actions.ActionResult, error) {
 
 	klog.InfoS("Executing UDS Bundle Publish action", "name", bundle.Name, "namespace", bundle.Namespace, "artifactPath", artifactPath, "artifactPVC", artifactPVCName)
 
@@ -76,7 +74,7 @@ func (handler *PublishHandler) Execute(ctx context.Context, bundle *udsv1alpha2.
 }
 
 // createPublishJob creates a Kubernetes Job to publish a UDS bundle
-func (handler *PublishHandler) createPublishJob(ctx context.Context, bundle *udsv1alpha2.UDSBundleJob, artifactPath, artifactPVCName string) (*batchv1.Job, error) {
+func (handler *PublishHandler) createPublishJob(ctx context.Context, bundle *udsv1alpha3.UDSBundleJob, artifactPath, artifactPVCName string) (*batchv1.Job, error) {
 	jobName := fmt.Sprintf("%s-publish", bundle.Name)
 
 	// Build UDS CLI publish command
@@ -89,7 +87,7 @@ func (handler *PublishHandler) createPublishJob(ctx context.Context, bundle *uds
 	envVars := handler.buildEnvVars(bundle)
 
 	// Get retry policy from publish config
-	var retryPolicy *udsv1alpha2.RetryPolicy
+	var retryPolicy *udsv1alpha3.RetryPolicy
 	if bundle.Spec.Publish != nil {
 		retryPolicy = bundle.Spec.Publish.Retry
 	}
@@ -100,7 +98,7 @@ func (handler *PublishHandler) createPublishJob(ctx context.Context, bundle *uds
 	// Build Job using JobBuilder
 	builder := actions.NewJobBuilder(jobName, bundle.Namespace).
 		WithKubeClient(handler.kubeClient).
-		WithOwnerReference(bundle, udsv1alpha2.SchemeGroupVersion.WithKind("UDSBundleJob")).
+		WithOwnerReference(bundle, udsv1alpha3.SchemeGroupVersion.WithKind("UDSBundleJob")).
 		WithLabels(map[string]string{
 			"app":                  "forge",
 			"resource-type":        "udsbundlejob",
@@ -154,7 +152,7 @@ func (handler *PublishHandler) createPublishJob(ctx context.Context, bundle *uds
 }
 
 // buildPublishCommand builds the UDS CLI publish command
-func (handler *PublishHandler) buildPublishCommand(bundle *udsv1alpha2.UDSBundleJob, artifactPath string) (string, error) {
+func (handler *PublishHandler) buildPublishCommand(bundle *udsv1alpha3.UDSBundleJob, artifactPath string) (string, error) {
 	dest := bundle.Spec.Publish.Destination
 
 	// Determine bundle path - use artifactPath if provided (multi-action workflow),
@@ -167,7 +165,7 @@ func (handler *PublishHandler) buildPublishCommand(bundle *udsv1alpha2.UDSBundle
 	}
 
 	switch dest.Type {
-	case udsv1alpha2.DestinationTypeOCI:
+	case udsv1alpha3.DestinationTypeOCI:
 		if dest.OCI == nil {
 			return "", fmt.Errorf("OCI destination configuration is required")
 		}
@@ -175,15 +173,15 @@ func (handler *PublishHandler) buildPublishCommand(bundle *udsv1alpha2.UDSBundle
 		ociRef := fmt.Sprintf("%s/%s:%s", dest.OCI.Registry, dest.OCI.Repository, dest.OCI.Tag)
 		return fmt.Sprintf("uds publish %s %s", bundlePath, ociRef), nil
 
-	case udsv1alpha2.DestinationTypeS3:
+	case udsv1alpha3.DestinationTypeS3:
 		if dest.S3 == nil {
 			return "", fmt.Errorf("S3 destination configuration is required")
 		}
 		// For S3, we'll use AWS CLI to upload
-		s3Path := fmt.Sprintf("s3://%s/%s", dest.S3.Bucket, dest.S3.Key)
+		s3Path := fmt.Sprintf("s3://%s/%s", dest.S3.Bucket, dest.S3.KeyPrefix)
 		return fmt.Sprintf("aws s3 cp %s %s", bundlePath, s3Path), nil
 
-	case udsv1alpha2.DestinationTypeLocal:
+	case udsv1alpha3.DestinationTypeLocal:
 		// Local destination - just echo success
 		return fmt.Sprintf("echo 'Bundle artifact stored locally at %s'", bundlePath), nil
 
@@ -193,13 +191,13 @@ func (handler *PublishHandler) buildPublishCommand(bundle *udsv1alpha2.UDSBundle
 }
 
 // buildEnvVars builds environment variables for the publish job
-func (handler *PublishHandler) buildEnvVars(bundle *udsv1alpha2.UDSBundleJob) []corev1.EnvVar {
+func (handler *PublishHandler) buildEnvVars(bundle *udsv1alpha3.UDSBundleJob) []corev1.EnvVar {
 	envVars := []corev1.EnvVar{}
 
 	dest := bundle.Spec.Publish.Destination
 
 	// S3 configuration
-	if dest.Type == udsv1alpha2.DestinationTypeS3 && dest.S3 != nil {
+	if dest.Type == udsv1alpha3.DestinationTypeS3 && dest.S3 != nil {
 		if dest.S3.Region != "" {
 			envVars = append(envVars, corev1.EnvVar{
 				Name:  "AWS_REGION",
@@ -215,14 +213,14 @@ func (handler *PublishHandler) buildEnvVars(bundle *udsv1alpha2.UDSBundleJob) []
 
 		// Add AWS credentials from secret if provided
 		// Uses same key names as S3 sources: 'access-key-id' and 'secret-access-key'
-		if dest.S3.CredentialsSecretRef != nil { // pragma: allowlist secret
+		if dest.S3.CredentialRef != nil { // pragma: allowlist secret
 			envVars = append(envVars,
 				corev1.EnvVar{
 					Name: "AWS_ACCESS_KEY_ID",
 					ValueFrom: &corev1.EnvVarSource{
 						SecretKeyRef: &corev1.SecretKeySelector{ // pragma: allowlist secret
 							LocalObjectReference: corev1.LocalObjectReference{
-								Name: dest.S3.CredentialsSecretRef.Name, // pragma: allowlist secret
+								Name: dest.S3.CredentialRef.Name, // pragma: allowlist secret
 							},
 							Key: "access-key-id",
 						},
@@ -233,7 +231,7 @@ func (handler *PublishHandler) buildEnvVars(bundle *udsv1alpha2.UDSBundleJob) []
 					ValueFrom: &corev1.EnvVarSource{
 						SecretKeyRef: &corev1.SecretKeySelector{ // pragma: allowlist secret
 							LocalObjectReference: corev1.LocalObjectReference{
-								Name: dest.S3.CredentialsSecretRef.Name, // pragma: allowlist secret
+								Name: dest.S3.CredentialRef.Name, // pragma: allowlist secret
 							},
 							Key: "secret-access-key", // pragma: allowlist secret
 						},
@@ -247,11 +245,11 @@ func (handler *PublishHandler) buildEnvVars(bundle *udsv1alpha2.UDSBundleJob) []
 }
 
 // addCredentialVolumes adds credential volumes for OCI registries
-func (handler *PublishHandler) addCredentialVolumes(bundle *udsv1alpha2.UDSBundleJob, job *batchv1.Job) {
+func (handler *PublishHandler) addCredentialVolumes(bundle *udsv1alpha3.UDSBundleJob, job *batchv1.Job) {
 	dest := bundle.Spec.Publish.Destination
 
 	// Add docker-config volume for OCI registries
-	if dest.Type == udsv1alpha2.DestinationTypeOCI && dest.OCI != nil && dest.OCI.CredentialsSecretRef != nil { // pragma: allowlist secret
+	if dest.Type == udsv1alpha3.DestinationTypeOCI && dest.OCI != nil && dest.OCI.CredentialRef != nil { // pragma: allowlist secret
 		// Ensure the job has at least one container before accessing Containers[0]
 		if len(job.Spec.Template.Spec.Containers) == 0 {
 			klog.ErrorS(nil, "Job has no containers, cannot add credential volumes", "job", job.Name)
@@ -262,7 +260,7 @@ func (handler *PublishHandler) addCredentialVolumes(bundle *udsv1alpha2.UDSBundl
 			Name: "docker-config",
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{ // pragma: allowlist secret
-					SecretName: dest.OCI.CredentialsSecretRef.Name, // pragma: allowlist secret
+					SecretName: dest.OCI.CredentialRef.Name, // pragma: allowlist secret
 					Items: []corev1.KeyToPath{
 						{
 							Key:  ".dockerconfigjson",
@@ -295,7 +293,7 @@ func (handler *PublishHandler) addCredentialVolumes(bundle *udsv1alpha2.UDSBundl
 }
 
 // getResources returns resource requirements for the publish job
-func (handler *PublishHandler) getResources(bundle *udsv1alpha2.UDSBundleJob) corev1.ResourceRequirements {
+func (handler *PublishHandler) getResources(bundle *udsv1alpha3.UDSBundleJob) corev1.ResourceRequirements {
 	if bundle.Spec.Resources != nil {
 		return *bundle.Spec.Resources
 	}

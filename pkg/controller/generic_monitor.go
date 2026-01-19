@@ -8,8 +8,8 @@ import (
 	"github.com/kylegalloway/forge/pkg/actions"
 	"github.com/kylegalloway/forge/pkg/actions/common"
 	apiscommon "github.com/kylegalloway/forge/pkg/apis/common"
-	udsv1alpha2 "github.com/kylegalloway/forge/pkg/apis/uds/v1alpha2"
-	zarfv1alpha1 "github.com/kylegalloway/forge/pkg/apis/zarf/v1alpha1"
+	udsv1alpha3 "github.com/kylegalloway/forge/pkg/apis/uds/v1alpha3"
+	zarfv1alpha3 "github.com/kylegalloway/forge/pkg/apis/zarf/v1alpha3"
 	"github.com/kylegalloway/forge/pkg/constants"
 	"github.com/kylegalloway/forge/pkg/resources"
 	"github.com/kylegalloway/forge/pkg/retry"
@@ -511,7 +511,7 @@ func (m *GenericJobMonitor[T]) getRetryPolicy(obj *unstructured.Unstructured, ac
 	resourceType := m.config.ResourceType
 	if resourceType == "ZarfPackageJob" {
 		// Convert map to Zarf RetryPolicy
-		apiPolicy := &zarfv1alpha1.RetryPolicy{}
+		apiPolicy := &zarfv1alpha3.RetryPolicy{}
 		if maxRetries, ok := retryMap["maxRetries"].(int64); ok {
 			val := int32(maxRetries) //nolint:gosec // G115: MaxRetries is validated by API schema
 			apiPolicy.MaxRetries = &val
@@ -537,7 +537,7 @@ func (m *GenericJobMonitor[T]) getRetryPolicy(obj *unstructured.Unstructured, ac
 	}
 
 	// Convert map to UDS RetryPolicy
-	apiPolicy := &udsv1alpha2.RetryPolicy{}
+	apiPolicy := &udsv1alpha3.RetryPolicy{}
 	if maxRetries, ok := retryMap["maxRetries"].(int64); ok {
 		val := int32(maxRetries) //nolint:gosec // G115: MaxRetries is validated by API schema
 		apiPolicy.MaxRetries = &val
@@ -758,8 +758,8 @@ func (m *GenericJobMonitor[T]) adoptDeployedResources(ctx context.Context, obj *
 }
 
 // parseZarfResourceSelector converts a map to ZarfResourceSelector
-func (m *GenericJobMonitor[T]) parseZarfResourceSelector(selectorMap map[string]interface{}) *zarfv1alpha1.ResourceSelector {
-	selector := &zarfv1alpha1.ResourceSelector{}
+func (m *GenericJobMonitor[T]) parseZarfResourceSelector(selectorMap map[string]interface{}) *zarfv1alpha3.ResourceSelector {
+	selector := &zarfv1alpha3.ResourceSelector{}
 
 	if matchLabels, ok := selectorMap["matchLabels"].(map[string]interface{}); ok {
 		selector.MatchLabels = make(map[string]string)
@@ -794,8 +794,8 @@ func (m *GenericJobMonitor[T]) parseZarfResourceSelector(selectorMap map[string]
 }
 
 // parseUDSResourceSelector converts a map to UDSResourceSelector
-func (m *GenericJobMonitor[T]) parseUDSResourceSelector(selectorMap map[string]interface{}) *udsv1alpha2.ResourceSelector {
-	selector := &udsv1alpha2.ResourceSelector{}
+func (m *GenericJobMonitor[T]) parseUDSResourceSelector(selectorMap map[string]interface{}) *udsv1alpha3.ResourceSelector {
+	selector := &udsv1alpha3.ResourceSelector{}
 
 	if matchLabels, ok := selectorMap["matchLabels"].(map[string]interface{}); ok {
 		selector.MatchLabels = make(map[string]string)

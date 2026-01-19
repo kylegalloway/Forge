@@ -264,7 +264,7 @@ kubectl logs job/my-package-build-xxxxx
    ```yaml
    source:
      git:
-       credentialsSecretRef:
+       credentialRef:
          name: github-token
    ```
 
@@ -480,7 +480,7 @@ kubectl logs -n forge-system -l app=forge-controller --tail=100
 2. **CRD not installed**
 
    ```text
-   no matches for kind "ZarfPackageJob" in version "forge.dev/v1alpha1"
+   no matches for kind "ZarfPackageJob" in version "forge.dev/v1alpha3"
    ```
 
    **Solution:** Install CRDs:
@@ -610,7 +610,7 @@ kubectl get validatingwebhookconfiguration forge-webhook -o yaml
 
 # Test webhook (will fail but shows if webhook is reachable)
 kubectl create -f - <<EOF
-apiVersion: forge.dev/v1alpha1
+apiVersion: forge.dev/v1alpha3
 kind: ZarfPackageJob
 metadata:
   name: test-webhook

@@ -21,8 +21,8 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/klog/v2"
 
-	udsv1alpha2 "github.com/kylegalloway/forge/pkg/apis/uds/v1alpha2"
-	zarfv1alpha1 "github.com/kylegalloway/forge/pkg/apis/zarf/v1alpha1"
+	udsv1alpha3 "github.com/kylegalloway/forge/pkg/apis/uds/v1alpha3"
+	zarfv1alpha3 "github.com/kylegalloway/forge/pkg/apis/zarf/v1alpha3"
 	"github.com/kylegalloway/forge/pkg/logging"
 	"github.com/kylegalloway/forge/pkg/webhook"
 )
@@ -39,11 +39,11 @@ func init() {
 	if err := admissionv1.AddToScheme(scheme); err != nil {
 		panic(fmt.Sprintf("failed to add admissionv1 to scheme: %v", err))
 	}
-	if err := zarfv1alpha1.AddToScheme(scheme); err != nil {
-		panic(fmt.Sprintf("failed to add zarfv1alpha1 to scheme: %v", err))
+	if err := zarfv1alpha3.AddToScheme(scheme); err != nil {
+		panic(fmt.Sprintf("failed to add zarfv1alpha3 to scheme: %v", err))
 	}
-	if err := udsv1alpha2.AddToScheme(scheme); err != nil {
-		panic(fmt.Sprintf("failed to add udsv1alpha2 to scheme: %v", err))
+	if err := udsv1alpha3.AddToScheme(scheme); err != nil {
+		panic(fmt.Sprintf("failed to add udsv1alpha3 to scheme: %v", err))
 	}
 }
 
@@ -201,7 +201,7 @@ func (ws *WebhookServer) validateZarfPackageJob(ctx context.Context, request *ad
 		"user", request.UserInfo.Username)
 
 	// Decode ZarfPackageJob object
-	var pkg zarfv1alpha1.ZarfPackageJob
+	var pkg zarfv1alpha3.ZarfPackageJob
 	deserializer := codecs.UniversalDeserializer()
 	if _, _, err := deserializer.Decode(request.Object.Raw, nil, &pkg); err != nil {
 		ws.logger.Error(ctx, err, "Failed to decode ZarfPackageJob")
@@ -246,7 +246,7 @@ func (ws *WebhookServer) validateUDSBundleJob(ctx context.Context, request *admi
 		"user", request.UserInfo.Username)
 
 	// Decode UDSBundleJob object
-	var bundle udsv1alpha2.UDSBundleJob
+	var bundle udsv1alpha3.UDSBundleJob
 	deserializer := codecs.UniversalDeserializer()
 	if _, _, err := deserializer.Decode(request.Object.Raw, nil, &bundle); err != nil {
 		ws.logger.Error(ctx, err, "Failed to decode UDSBundleJob")

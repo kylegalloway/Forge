@@ -1,22 +1,29 @@
-// Package v1alpha1 defines the v1alpha1 API for Forge job specifications.
+// Package v1alpha3 defines the v1alpha3 API for Zarf package job specifications.
 //
 // This package contains type definitions for ZarfPackageJob resources that enable
 // building, publishing, and deploying Zarf packages in a Kubernetes-native way.
 //
+// v1alpha3 API Changes:
+// - Aligned field names with UDS API (Reference, Variables, ExternalCluster)
+// - Uses common.SecretReference and common.ExternalClusterConfig
+// - Feature parity with UDS API (S3Source, GitSource, LocalSource, LocalDestination)
+//
 // NOTE: ZarfPackageJob is a Forge job specification, NOT a Zarf package definition.
 // It describes what operations Forge should perform on Zarf packages.
-package v1alpha1
+package v1alpha3
 
 import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"github.com/kylegalloway/forge/pkg/apis/common"
 )
 
 const (
 	// GroupName is the API group name
 	GroupName = "forge.dev"
 	// Version is the API version
-	Version = "v1alpha1"
+	Version = "v1alpha3"
 )
 
 // Action represents an operation to perform on a Zarf package
@@ -144,67 +151,6 @@ type ZarfPackageJobSpec struct {
 	// +optional
 	// +kubebuilder:default=true
 	RetainArtifactPVC *bool `json:"retainArtifactPVC,omitempty"`
-
-	// RBACPolicy defines policy restrictions for this resource
-	// +optional
-	RBACPolicy *RBACPolicy `json:"rbacPolicy,omitempty"`
-}
-
-// RBACPolicy defines policy restrictions
-type RBACPolicy struct {
-	// AllowedUsers specifies which users can use this resource
-	// +optional
-	AllowedUsers []string `json:"allowedUsers,omitempty"`
-
-	// AllowedActions specifies which actions are permitted
-	// +optional
-	AllowedActions []Action `json:"allowedActions,omitempty"`
-
-	// AllowedSources specifies which source types/patterns are permitted
-	// +optional
-	AllowedSources []AllowedSource `json:"allowedSources,omitempty"`
-
-	// AllowedDestinations specifies which destination types/patterns are permitted
-	// +optional
-	AllowedDestinations []AllowedDestination `json:"allowedDestinations,omitempty"`
-
-	// AllowedDeployTargets specifies which deploy targets are permitted
-	// +optional
-	AllowedDeployTargets []DeployTargetType `json:"allowedDeployTargets,omitempty"`
-}
-
-// AllowedSource defines a permitted source pattern
-type AllowedSource struct {
-	// Type of source allowed
-	// +kubebuilder:validation:Required
-	Type SourceType `json:"type"`
-
-	// Repos allowed (glob pattern) for Git
-	// +optional
-	Repos []string `json:"repos,omitempty"`
-
-	// Buckets allowed (glob pattern) for S3
-	// +optional
-	Buckets []string `json:"buckets,omitempty"`
-
-	// Images allowed (glob pattern) for OCI
-	// +optional
-	Images []string `json:"images,omitempty"`
-}
-
-// AllowedDestination defines a permitted destination pattern
-type AllowedDestination struct {
-	// Type of destination allowed
-	// +kubebuilder:validation:Required
-	Type DestinationType `json:"type"`
-
-	// Buckets allowed (glob pattern) for S3
-	// +optional
-	Buckets []string `json:"buckets,omitempty"`
-
-	// Registries allowed (glob pattern) for OCI
-	// +optional
-	Registries []string `json:"registries,omitempty"`
 }
 
 // PackageSource defines where to get the package from
@@ -238,18 +184,19 @@ type GitSource struct {
 	URL string `json:"url"`
 
 	// Ref is the branch, tag, or commit to checkout
-	// +kubebuilder:validation:Required
-	Ref string `json:"ref"`
+	// +optional
+	// +kubebuilder:default="main"
+	Ref string `json:"ref,omitempty"`
 
 	// Path to the zarf.yaml within the repository
 	// +optional
 	// +kubebuilder:default="."
 	Path string `json:"path,omitempty"`
 
-	// CredentialsSecretRef references a Secret with Git credentials
+	// CredentialRef references a Secret with Git credentials
 	// Secret should contain 'ssh-key' or 'token' key
 	// +optional
-	CredentialsSecretRef *SecretReference `json:"credentialsSecretRef,omitempty"`
+	CredentialRef *common.SecretReference `json:"credentialRef,omitempty"`
 
 	// DisableCloneCredentials prevents using the credentials for clone operations
 	// +optional
@@ -268,25 +215,29 @@ type S3Source struct {
 	Key string `json:"key"`
 
 	// Region is the AWS region
-	// +kubebuilder:validation:Required
-	Region string `json:"region"`
+	// +optional
+	Region string `json:"region,omitempty"`
 
-	// CredentialsSecretRef references a Secret with AWS credentials
+	// Endpoint for S3-compatible storage (e.g., MinIO)
+	// +optional
+	Endpoint string `json:"endpoint,omitempty"`
+
+	// CredentialRef references a Secret with AWS credentials
 	// Secret should contain 'access-key-id' and 'secret-access-key'
 	// +optional
-	CredentialsSecretRef *SecretReference `json:"credentialsSecretRef,omitempty"`
+	CredentialRef *common.SecretReference `json:"credentialRef,omitempty"`
 }
 
 // OCISource defines an OCI registry source
 type OCISource struct {
-	// Image is the full OCI image reference (registry/repo:tag or @digest)
+	// Reference is the full OCI reference (registry/repo:tag or @digest)
 	// +kubebuilder:validation:Required
-	Image string `json:"image"`
+	Reference string `json:"reference"`
 
-	// CredentialsSecretRef references a Secret with registry credentials
+	// CredentialRef references a Secret with registry credentials
 	// Secret should be type kubernetes.io/dockerconfigjson
 	// +optional
-	CredentialsSecretRef *SecretReference `json:"credentialsSecretRef,omitempty"`
+	CredentialRef *common.SecretReference `json:"credentialRef,omitempty"`
 }
 
 // LocalSource defines a local filesystem source (dev/testing only)
@@ -386,17 +337,21 @@ type S3Destination struct {
 	// +kubebuilder:validation:Required
 	Bucket string `json:"bucket"`
 
-	// KeyPrefix for the uploaded artifact
-	// +optional
-	KeyPrefix string `json:"keyPrefix,omitempty"`
+	// KeyPrefix is the S3 key prefix (artifact name is appended)
+	// +kubebuilder:validation:Required
+	KeyPrefix string `json:"keyPrefix"`
 
 	// Region is the AWS region
-	// +kubebuilder:validation:Required
-	Region string `json:"region"`
-
-	// CredentialsSecretRef references a Secret with AWS credentials
 	// +optional
-	CredentialsSecretRef *SecretReference `json:"credentialsSecretRef,omitempty"`
+	Region string `json:"region,omitempty"`
+
+	// Endpoint for S3-compatible storage
+	// +optional
+	Endpoint string `json:"endpoint,omitempty"`
+
+	// CredentialRef references a Secret with AWS credentials
+	// +optional
+	CredentialRef *common.SecretReference `json:"credentialRef,omitempty"`
 }
 
 // OCIDestination defines OCI registry publish configuration
@@ -413,9 +368,9 @@ type OCIDestination struct {
 	// +kubebuilder:validation:Required
 	Tag string `json:"tag"`
 
-	// CredentialsSecretRef references a Secret with registry credentials
+	// CredentialRef references a Secret with registry credentials
 	// +optional
-	CredentialsSecretRef *SecretReference `json:"credentialsSecretRef,omitempty"`
+	CredentialRef *common.SecretReference `json:"credentialRef,omitempty"`
 }
 
 // LocalDestination defines local filesystem publish (dev/testing only)
@@ -449,13 +404,13 @@ type DeployConfig struct {
 	// +optional
 	Components []string `json:"components,omitempty"`
 
-	// SetVariables are Zarf variables to set during deployment
+	// Variables are Zarf variables to set during deployment
 	// +optional
-	SetVariables map[string]string `json:"setVariables,omitempty"`
+	Variables map[string]string `json:"variables,omitempty"`
 
-	// ExternalCluster configuration (required if target=ExternalCluster)
+	// ExternalCluster configuration for deploying to a remote cluster
 	// +optional
-	ExternalCluster *ExternalClusterConfig `json:"externalCluster,omitempty"`
+	ExternalCluster *common.ExternalClusterConfig `json:"externalCluster,omitempty"`
 
 	// Retry policy for deploy failures
 	// +optional
@@ -509,28 +464,6 @@ type ResourceSelector struct {
 	ValidateOwnership *bool `json:"validateOwnership,omitempty"`
 }
 
-// ExternalClusterConfig defines connection to an external cluster
-type ExternalClusterConfig struct {
-	// KubeconfigSecretRef references a Secret containing the kubeconfig
-	// +kubebuilder:validation:Required
-	KubeconfigSecretRef SecretReference `json:"kubeconfigSecretRef"`
-
-	// Context is the kubeconfig context to use
-	// +optional
-	Context string `json:"context,omitempty"`
-}
-
-// SecretReference references a Kubernetes Secret
-type SecretReference struct {
-	// Name of the secret
-	// +kubebuilder:validation:Required
-	Name string `json:"name"`
-
-	// Namespace of the secret (defaults to resource namespace)
-	// +optional
-	Namespace string `json:"namespace,omitempty"`
-}
-
 // ZarfPackageJobStatus defines the observed state of ZarfPackageJob
 type ZarfPackageJobStatus struct {
 	// Phase represents the current phase of the operation
@@ -564,8 +497,13 @@ type ZarfPackageJobStatus struct {
 
 // OperationStatus represents the status of a single operation
 type OperationStatus struct {
-	// State is the current state (Pending, Running, Completed, Failed, Retrying)
-	State string `json:"state"`
+	// Phase is the current phase (Pending, Running, Completed, Failed, Retrying)
+	// +optional
+	Phase string `json:"phase,omitempty"`
+
+	// Message provides operation-specific details
+	// +optional
+	Message string `json:"message,omitempty"`
 
 	// StartTime when the operation started
 	// +optional
@@ -574,10 +512,6 @@ type OperationStatus struct {
 	// CompletionTime when the operation completed
 	// +optional
 	CompletionTime *metav1.Time `json:"completionTime,omitempty"`
-
-	// Message provides details about the operation
-	// +optional
-	Message string `json:"message,omitempty"`
 
 	// ArtifactLocation where the artifact was stored (for build/publish)
 	// +optional
@@ -600,6 +534,7 @@ type OperationStatus struct {
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
+// +kubebuilder:storageversion
 // +kubebuilder:resource:shortName=zpj
 // +kubebuilder:printcolumn:name="Action",type=string,JSONPath=`.spec.action`
 // +kubebuilder:printcolumn:name="Source",type=string,JSONPath=`.spec.source.type`

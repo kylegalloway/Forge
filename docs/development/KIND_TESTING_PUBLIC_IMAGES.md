@@ -311,7 +311,7 @@ metadata:
     forge.dev/allowed-registries: "ghcr.io/*,registry1.dso.mil/*"
     forge.dev/allowed-namespaces: "default,zarf"
 ---
-apiVersion: forge.dev/v1alpha1
+apiVersion: forge.dev/v1alpha3
 kind: ZarfPackageJob
 metadata:
   name: hello-forge
@@ -384,7 +384,7 @@ Expected output (showing relevant sections):
 ```text
 Name:         hello-forge
 Namespace:    default
-API Version:  forge.dev/v1alpha1
+API Version:  forge.dev/v1alpha3
 Kind:         ZarfPackageJob
 Spec:
   Action:  build
@@ -417,7 +417,7 @@ Deleted nodes: ["forge-test-control-plane"]
 Test building a Zarf package from Git:
 
 ```yaml
-apiVersion: forge.dev/v1alpha1
+apiVersion: forge.dev/v1alpha3
 kind: ZarfPackageJob
 metadata:
   name: build-test
@@ -440,7 +440,7 @@ spec:
 Test building and publishing to an OCI registry:
 
 ```yaml
-apiVersion: forge.dev/v1alpha1
+apiVersion: forge.dev/v1alpha3
 kind: ZarfPackageJob
 metadata:
   name: build-publish-test
@@ -461,7 +461,7 @@ spec:
         registry: ghcr.io
         repository: myorg/packages
         tag: latest
-        credentialsSecretRef:
+        credentialRef:
           name: registry-creds
 ```
 
@@ -479,7 +479,7 @@ kubectl create secret generic registry-creds \
 Test deploying a package from an OCI registry:
 
 ```yaml
-apiVersion: forge.dev/v1alpha1
+apiVersion: forge.dev/v1alpha3
 kind: ZarfPackageJob
 metadata:
   name: deploy-test
@@ -501,7 +501,7 @@ spec:
 Test UDS bundle operations:
 
 ```yaml
-apiVersion: forge.dev/v1alpha2
+apiVersion: forge.dev/v1alpha3
 kind: UDSBundleJob
 metadata:
   name: uds-test

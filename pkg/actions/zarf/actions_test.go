@@ -9,7 +9,8 @@ import (
 	"k8s.io/client-go/dynamic/fake"
 	kubefake "k8s.io/client-go/kubernetes/fake"
 
-	zarfv1alpha1 "github.com/kylegalloway/forge/pkg/apis/zarf/v1alpha1"
+	"github.com/kylegalloway/forge/pkg/apis/common"
+	zarfv1alpha3 "github.com/kylegalloway/forge/pkg/apis/zarf/v1alpha3"
 	testhelpers "github.com/kylegalloway/forge/pkg/controller/testing"
 	"github.com/kylegalloway/forge/pkg/telemetry"
 )
@@ -72,22 +73,22 @@ func TestBuildHandlerExecute(t *testing.T) {
 
 	tests := []struct {
 		name    string
-		pkg     *zarfv1alpha1.ZarfPackageJob
+		pkg     *zarfv1alpha3.ZarfPackageJob
 		wantErr bool
 	}{
 		{
 			name: "build with git source",
-			pkg: &zarfv1alpha1.ZarfPackageJob{
+			pkg: &zarfv1alpha3.ZarfPackageJob{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-build",
 					Namespace: "default",
 				},
-				Spec: zarfv1alpha1.ZarfPackageJobSpec{
+				Spec: zarfv1alpha3.ZarfPackageJobSpec{
 					ServiceAccountName: "test-sa",
-					Action:             zarfv1alpha1.ActionBuild,
-					Source: zarfv1alpha1.PackageSource{
-						Type: zarfv1alpha1.SourceTypeGit,
-						Git: &zarfv1alpha1.GitSource{
+					Action:             zarfv1alpha3.ActionBuild,
+					Source: zarfv1alpha3.PackageSource{
+						Type: zarfv1alpha3.SourceTypeGit,
+						Git: &zarfv1alpha3.GitSource{
 							URL: "https://github.com/test/repo",
 							Ref: "main",
 						},
@@ -98,14 +99,14 @@ func TestBuildHandlerExecute(t *testing.T) {
 		},
 		{
 			name: "build without source",
-			pkg: &zarfv1alpha1.ZarfPackageJob{
+			pkg: &zarfv1alpha3.ZarfPackageJob{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-build",
 					Namespace: "default",
 				},
-				Spec: zarfv1alpha1.ZarfPackageJobSpec{
+				Spec: zarfv1alpha3.ZarfPackageJobSpec{
 					ServiceAccountName: "test-sa",
-					Action:             zarfv1alpha1.ActionBuild,
+					Action:             zarfv1alpha3.ActionBuild,
 				},
 			},
 			wantErr: true,
@@ -128,22 +129,22 @@ func TestPublishHandlerExecute(t *testing.T) {
 
 	tests := []struct {
 		name    string
-		pkg     *zarfv1alpha1.ZarfPackageJob
+		pkg     *zarfv1alpha3.ZarfPackageJob
 		wantErr bool
 	}{
 		{
 			name: "publish without config",
-			pkg: &zarfv1alpha1.ZarfPackageJob{
+			pkg: &zarfv1alpha3.ZarfPackageJob{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-publish",
 					Namespace: "default",
 				},
-				Spec: zarfv1alpha1.ZarfPackageJobSpec{
+				Spec: zarfv1alpha3.ZarfPackageJobSpec{
 					ServiceAccountName: "test-sa",
-					Action:             zarfv1alpha1.ActionPublish,
-					Source: zarfv1alpha1.PackageSource{
-						Type: zarfv1alpha1.SourceTypeGit,
-						Git: &zarfv1alpha1.GitSource{
+					Action:             zarfv1alpha3.ActionPublish,
+					Source: zarfv1alpha3.PackageSource{
+						Type: zarfv1alpha3.SourceTypeGit,
+						Git: &zarfv1alpha3.GitSource{
 							URL: "https://github.com/test/repo",
 						},
 					},
@@ -153,24 +154,24 @@ func TestPublishHandlerExecute(t *testing.T) {
 		},
 		{
 			name: "publish with OCI destination",
-			pkg: &zarfv1alpha1.ZarfPackageJob{
+			pkg: &zarfv1alpha3.ZarfPackageJob{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-publish",
 					Namespace: "default",
 				},
-				Spec: zarfv1alpha1.ZarfPackageJobSpec{
+				Spec: zarfv1alpha3.ZarfPackageJobSpec{
 					ServiceAccountName: "test-sa",
-					Action:             zarfv1alpha1.ActionPublish,
-					Source: zarfv1alpha1.PackageSource{
-						Type: zarfv1alpha1.SourceTypeGit,
-						Git: &zarfv1alpha1.GitSource{
+					Action:             zarfv1alpha3.ActionPublish,
+					Source: zarfv1alpha3.PackageSource{
+						Type: zarfv1alpha3.SourceTypeGit,
+						Git: &zarfv1alpha3.GitSource{
 							URL: "https://github.com/test/repo",
 						},
 					},
-					Publish: &zarfv1alpha1.PublishConfig{
-						Destination: zarfv1alpha1.PublishDestination{
-							Type: zarfv1alpha1.DestinationTypeOCI,
-							OCI: &zarfv1alpha1.OCIDestination{
+					Publish: &zarfv1alpha3.PublishConfig{
+						Destination: zarfv1alpha3.PublishDestination{
+							Type: zarfv1alpha3.DestinationTypeOCI,
+							OCI: &zarfv1alpha3.OCIDestination{
 								Registry:   "ghcr.io",
 								Repository: "test/repo",
 								Tag:        "v1.0.0",
@@ -200,23 +201,23 @@ func TestDeployHandlerExecute(t *testing.T) {
 
 	tests := []struct {
 		name    string
-		pkg     *zarfv1alpha1.ZarfPackageJob
+		pkg     *zarfv1alpha3.ZarfPackageJob
 		wantErr bool
 	}{
 		{
 			name: "deploy without config",
-			pkg: &zarfv1alpha1.ZarfPackageJob{
+			pkg: &zarfv1alpha3.ZarfPackageJob{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-deploy",
 					Namespace: "default",
 				},
-				Spec: zarfv1alpha1.ZarfPackageJobSpec{
+				Spec: zarfv1alpha3.ZarfPackageJobSpec{
 					ServiceAccountName: "test-sa",
-					Action:             zarfv1alpha1.ActionDeploy,
-					Source: zarfv1alpha1.PackageSource{
-						Type: zarfv1alpha1.SourceTypeOCI,
-						OCI: &zarfv1alpha1.OCISource{
-							Image: "ghcr.io/test/package:v1.0.0",
+					Action:             zarfv1alpha3.ActionDeploy,
+					Source: zarfv1alpha3.PackageSource{
+						Type: zarfv1alpha3.SourceTypeOCI,
+						OCI: &zarfv1alpha3.OCISource{
+							Reference: "ghcr.io/test/package:v1.0.0",
 						},
 					},
 				},
@@ -225,22 +226,22 @@ func TestDeployHandlerExecute(t *testing.T) {
 		},
 		{
 			name: "deploy to in-cluster",
-			pkg: &zarfv1alpha1.ZarfPackageJob{
+			pkg: &zarfv1alpha3.ZarfPackageJob{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-deploy",
 					Namespace: "default",
 				},
-				Spec: zarfv1alpha1.ZarfPackageJobSpec{
+				Spec: zarfv1alpha3.ZarfPackageJobSpec{
 					ServiceAccountName: "test-sa",
-					Action:             zarfv1alpha1.ActionDeploy,
-					Source: zarfv1alpha1.PackageSource{
-						Type: zarfv1alpha1.SourceTypeOCI,
-						OCI: &zarfv1alpha1.OCISource{
-							Image: "ghcr.io/test/package:v1.0.0",
+					Action:             zarfv1alpha3.ActionDeploy,
+					Source: zarfv1alpha3.PackageSource{
+						Type: zarfv1alpha3.SourceTypeOCI,
+						OCI: &zarfv1alpha3.OCISource{
+							Reference: "ghcr.io/test/package:v1.0.0",
 						},
 					},
-					Deploy: &zarfv1alpha1.DeployConfig{
-						Target:    zarfv1alpha1.DeployTargetInCluster,
+					Deploy: &zarfv1alpha3.DeployConfig{
+						Target:    zarfv1alpha3.DeployTargetInCluster,
 						Namespace: "default",
 					},
 				},
@@ -264,21 +265,21 @@ func TestDeployHandlerExecute_ExternalCluster(t *testing.T) {
 	dynamicClient := fake.NewSimpleDynamicClient(runtime.NewScheme())
 	handler := NewDeployHandler(client, dynamicClient, testhelpers.MustNewMetrics(), telemetry.NewTracer())
 
-	pkg := &zarfv1alpha1.ZarfPackageJob{
+	pkg := &zarfv1alpha3.ZarfPackageJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-deploy-external",
 			Namespace: "default",
 		},
-		Spec: zarfv1alpha1.ZarfPackageJobSpec{
+		Spec: zarfv1alpha3.ZarfPackageJobSpec{
 			ServiceAccountName: "test-sa",
-			Action:             zarfv1alpha1.ActionDeploy,
-			Source: zarfv1alpha1.PackageSource{
-				Type: zarfv1alpha1.SourceTypeLocal,
+			Action:             zarfv1alpha3.ActionDeploy,
+			Source: zarfv1alpha3.PackageSource{
+				Type: zarfv1alpha3.SourceTypeLocal,
 			},
-			Deploy: &zarfv1alpha1.DeployConfig{
-				Target: zarfv1alpha1.DeployTargetExternalCluster,
-				ExternalCluster: &zarfv1alpha1.ExternalClusterConfig{
-					KubeconfigSecretRef: zarfv1alpha1.SecretReference{
+			Deploy: &zarfv1alpha3.DeployConfig{
+				Target: zarfv1alpha3.DeployTargetExternalCluster,
+				ExternalCluster: &common.ExternalClusterConfig{
+					SecretRef: common.SecretReference{
 						Name: "external-kubeconfig",
 					},
 				},
@@ -342,16 +343,16 @@ func TestDeployHandlerExecute_MissingDeployConfig(t *testing.T) {
 	dynamicClient := fake.NewSimpleDynamicClient(runtime.NewScheme())
 	handler := NewDeployHandler(client, dynamicClient, testhelpers.MustNewMetrics(), telemetry.NewTracer())
 
-	pkg := &zarfv1alpha1.ZarfPackageJob{
+	pkg := &zarfv1alpha3.ZarfPackageJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-deploy-no-config",
 			Namespace: "default",
 		},
-		Spec: zarfv1alpha1.ZarfPackageJobSpec{
+		Spec: zarfv1alpha3.ZarfPackageJobSpec{
 			ServiceAccountName: "test-sa",
-			Action:             zarfv1alpha1.ActionDeploy,
-			Source: zarfv1alpha1.PackageSource{
-				Type: zarfv1alpha1.SourceTypeLocal,
+			Action:             zarfv1alpha3.ActionDeploy,
+			Source: zarfv1alpha3.PackageSource{
+				Type: zarfv1alpha3.SourceTypeLocal,
 			},
 			// Deploy is nil
 		},
@@ -367,16 +368,16 @@ func TestPublishHandlerExecute_MissingPublishConfig(t *testing.T) {
 	client := kubefake.NewClientset()
 	handler := NewPublishHandler(client, testhelpers.MustNewMetrics(), telemetry.NewTracer())
 
-	pkg := &zarfv1alpha1.ZarfPackageJob{
+	pkg := &zarfv1alpha3.ZarfPackageJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-publish-no-config",
 			Namespace: "default",
 		},
-		Spec: zarfv1alpha1.ZarfPackageJobSpec{
+		Spec: zarfv1alpha3.ZarfPackageJobSpec{
 			ServiceAccountName: "test-sa",
-			Action:             zarfv1alpha1.ActionPublish,
-			Source: zarfv1alpha1.PackageSource{
-				Type: zarfv1alpha1.SourceTypeLocal,
+			Action:             zarfv1alpha3.ActionPublish,
+			Source: zarfv1alpha3.PackageSource{
+				Type: zarfv1alpha3.SourceTypeLocal,
 			},
 			// Publish is nil
 		},
@@ -392,17 +393,17 @@ func TestBuildHandlerExecute_LocalSource(t *testing.T) {
 	kubeClient := kubefake.NewClientset()
 	handler := NewBuildHandler(kubeClient, testhelpers.MustNewMetrics(), telemetry.NewTracer())
 
-	pkg := &zarfv1alpha1.ZarfPackageJob{
+	pkg := &zarfv1alpha3.ZarfPackageJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-local-build",
 			Namespace: "default",
 		},
-		Spec: zarfv1alpha1.ZarfPackageJobSpec{
+		Spec: zarfv1alpha3.ZarfPackageJobSpec{
 			ServiceAccountName: "test-sa",
-			Action:             zarfv1alpha1.ActionBuild,
-			Source: zarfv1alpha1.PackageSource{
-				Type: zarfv1alpha1.SourceTypeLocal,
-				Local: &zarfv1alpha1.LocalSource{
+			Action:             zarfv1alpha3.ActionBuild,
+			Source: zarfv1alpha3.PackageSource{
+				Type: zarfv1alpha3.SourceTypeLocal,
+				Local: &zarfv1alpha3.LocalSource{
 					Path:    "/tmp/package",
 					DevMode: true,
 				},
@@ -438,25 +439,25 @@ func TestPublishHandlerExecute_LocalSource(t *testing.T) {
 	kubeClient := kubefake.NewClientset()
 	handler := NewPublishHandler(kubeClient, testhelpers.MustNewMetrics(), telemetry.NewTracer())
 
-	pkg := &zarfv1alpha1.ZarfPackageJob{
+	pkg := &zarfv1alpha3.ZarfPackageJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-local-publish",
 			Namespace: "default",
 		},
-		Spec: zarfv1alpha1.ZarfPackageJobSpec{
+		Spec: zarfv1alpha3.ZarfPackageJobSpec{
 			ServiceAccountName: "test-sa",
-			Action:             zarfv1alpha1.ActionPublish,
-			Source: zarfv1alpha1.PackageSource{
-				Type: zarfv1alpha1.SourceTypeLocal,
-				Local: &zarfv1alpha1.LocalSource{
+			Action:             zarfv1alpha3.ActionPublish,
+			Source: zarfv1alpha3.PackageSource{
+				Type: zarfv1alpha3.SourceTypeLocal,
+				Local: &zarfv1alpha3.LocalSource{
 					Path:    "/tmp/package.tar.zst",
 					DevMode: true,
 				},
 			},
-			Publish: &zarfv1alpha1.PublishConfig{
-				Destination: zarfv1alpha1.PublishDestination{
-					Type: zarfv1alpha1.DestinationTypeOCI,
-					OCI: &zarfv1alpha1.OCIDestination{
+			Publish: &zarfv1alpha3.PublishConfig{
+				Destination: zarfv1alpha3.PublishDestination{
+					Type: zarfv1alpha3.DestinationTypeOCI,
+					OCI: &zarfv1alpha3.OCIDestination{
 						Registry:   "ghcr.io",
 						Repository: "test/package",
 						Tag:        "v1.0.0",
@@ -495,23 +496,23 @@ func TestDeployHandlerExecute_LocalSource(t *testing.T) {
 	dynamicClient := fake.NewSimpleDynamicClient(runtime.NewScheme())
 	handler := NewDeployHandler(kubeClient, dynamicClient, testhelpers.MustNewMetrics(), telemetry.NewTracer())
 
-	pkg := &zarfv1alpha1.ZarfPackageJob{
+	pkg := &zarfv1alpha3.ZarfPackageJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-local-deploy",
 			Namespace: "default",
 		},
-		Spec: zarfv1alpha1.ZarfPackageJobSpec{
+		Spec: zarfv1alpha3.ZarfPackageJobSpec{
 			ServiceAccountName: "test-sa",
-			Action:             zarfv1alpha1.ActionDeploy,
-			Source: zarfv1alpha1.PackageSource{
-				Type: zarfv1alpha1.SourceTypeLocal,
-				Local: &zarfv1alpha1.LocalSource{
+			Action:             zarfv1alpha3.ActionDeploy,
+			Source: zarfv1alpha3.PackageSource{
+				Type: zarfv1alpha3.SourceTypeLocal,
+				Local: &zarfv1alpha3.LocalSource{
 					Path:    "/tmp/package.tar.zst",
 					DevMode: true,
 				},
 			},
-			Deploy: &zarfv1alpha1.DeployConfig{
-				Target:    zarfv1alpha1.DeployTargetInCluster,
+			Deploy: &zarfv1alpha3.DeployConfig{
+				Target:    zarfv1alpha3.DeployTargetInCluster,
 				Namespace: "default",
 			},
 		},
@@ -546,26 +547,26 @@ func TestDeployHandlerExecute_WithComponentsAndVariables(t *testing.T) {
 	dynamicClient := fake.NewSimpleDynamicClient(runtime.NewScheme())
 	handler := NewDeployHandler(kubeClient, dynamicClient, testhelpers.MustNewMetrics(), telemetry.NewTracer())
 
-	pkg := &zarfv1alpha1.ZarfPackageJob{
+	pkg := &zarfv1alpha3.ZarfPackageJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-deploy-advanced",
 			Namespace: "default",
 		},
-		Spec: zarfv1alpha1.ZarfPackageJobSpec{
+		Spec: zarfv1alpha3.ZarfPackageJobSpec{
 			ServiceAccountName: "test-sa",
-			Action:             zarfv1alpha1.ActionDeploy,
-			Source: zarfv1alpha1.PackageSource{
-				Type: zarfv1alpha1.SourceTypeLocal,
-				Local: &zarfv1alpha1.LocalSource{
+			Action:             zarfv1alpha3.ActionDeploy,
+			Source: zarfv1alpha3.PackageSource{
+				Type: zarfv1alpha3.SourceTypeLocal,
+				Local: &zarfv1alpha3.LocalSource{
 					Path:    "/tmp/package.tar.zst",
 					DevMode: true,
 				},
 			},
-			Deploy: &zarfv1alpha1.DeployConfig{
-				Target:     zarfv1alpha1.DeployTargetInCluster,
+			Deploy: &zarfv1alpha3.DeployConfig{
+				Target:     zarfv1alpha3.DeployTargetInCluster,
 				Namespace:  "test-namespace",
 				Components: []string{"component1", "component2"},
-				SetVariables: map[string]string{
+				Variables: map[string]string{
 					"IMAGE_TAG": "v1.2.3",
 					"REPLICAS":  "3",
 				},
@@ -610,25 +611,25 @@ func TestDeployHandlerExecute_ExternalClusterWithContext(t *testing.T) {
 	dynamicClient := fake.NewSimpleDynamicClient(runtime.NewScheme())
 	handler := NewDeployHandler(kubeClient, dynamicClient, testhelpers.MustNewMetrics(), telemetry.NewTracer())
 
-	pkg := &zarfv1alpha1.ZarfPackageJob{
+	pkg := &zarfv1alpha3.ZarfPackageJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-deploy-external-context",
 			Namespace: "default",
 		},
-		Spec: zarfv1alpha1.ZarfPackageJobSpec{
+		Spec: zarfv1alpha3.ZarfPackageJobSpec{
 			ServiceAccountName: "test-sa",
-			Action:             zarfv1alpha1.ActionDeploy,
-			Source: zarfv1alpha1.PackageSource{
-				Type: zarfv1alpha1.SourceTypeLocal,
-				Local: &zarfv1alpha1.LocalSource{
+			Action:             zarfv1alpha3.ActionDeploy,
+			Source: zarfv1alpha3.PackageSource{
+				Type: zarfv1alpha3.SourceTypeLocal,
+				Local: &zarfv1alpha3.LocalSource{
 					Path:    "/tmp/package.tar.zst",
 					DevMode: true,
 				},
 			},
-			Deploy: &zarfv1alpha1.DeployConfig{
-				Target: zarfv1alpha1.DeployTargetExternalCluster,
-				ExternalCluster: &zarfv1alpha1.ExternalClusterConfig{
-					KubeconfigSecretRef: zarfv1alpha1.SecretReference{ // pragma: allowlist secret
+			Deploy: &zarfv1alpha3.DeployConfig{
+				Target: zarfv1alpha3.DeployTargetExternalCluster,
+				ExternalCluster: &common.ExternalClusterConfig{
+					SecretRef: common.SecretReference{ // pragma: allowlist secret
 						Name: "external-kubeconfig",
 					},
 					Context: "production-cluster",

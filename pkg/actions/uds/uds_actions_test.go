@@ -13,7 +13,8 @@ import (
 	kubefake "k8s.io/client-go/kubernetes/fake"
 
 	"github.com/kylegalloway/forge/pkg/actions"
-	udsv1alpha2 "github.com/kylegalloway/forge/pkg/apis/uds/v1alpha2"
+	"github.com/kylegalloway/forge/pkg/apis/common"
+	udsv1alpha3 "github.com/kylegalloway/forge/pkg/apis/uds/v1alpha3"
 	testhelpers "github.com/kylegalloway/forge/pkg/controller/testing"
 	"github.com/kylegalloway/forge/pkg/telemetry"
 )
@@ -92,22 +93,22 @@ func TestCreateHandlerExecute(t *testing.T) {
 
 	tests := []struct {
 		name    string
-		bundle  *udsv1alpha2.UDSBundleJob
+		bundle  *udsv1alpha3.UDSBundleJob
 		wantErr bool
 	}{
 		{
 			name: "create with git source",
-			bundle: &udsv1alpha2.UDSBundleJob{
+			bundle: &udsv1alpha3.UDSBundleJob{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-create",
 					Namespace: "default",
 				},
-				Spec: udsv1alpha2.UDSBundleJobSpec{
+				Spec: udsv1alpha3.UDSBundleJobSpec{
 					ServiceAccountName: "test-sa",
-					Action:             udsv1alpha2.ActionCreate,
-					Source: udsv1alpha2.PackageSource{
-						Type: udsv1alpha2.SourceTypeGit,
-						Git: &udsv1alpha2.GitSource{
+					Action:             udsv1alpha3.ActionCreate,
+					Source: udsv1alpha3.PackageSource{
+						Type: udsv1alpha3.SourceTypeGit,
+						Git: &udsv1alpha3.GitSource{
 							URL: "https://github.com/test/repo",
 							Ref: "main",
 						},
@@ -118,17 +119,17 @@ func TestCreateHandlerExecute(t *testing.T) {
 		},
 		{
 			name: "create with oci source",
-			bundle: &udsv1alpha2.UDSBundleJob{
+			bundle: &udsv1alpha3.UDSBundleJob{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-create-oci",
 					Namespace: "default",
 				},
-				Spec: udsv1alpha2.UDSBundleJobSpec{
+				Spec: udsv1alpha3.UDSBundleJobSpec{
 					ServiceAccountName: "test-sa",
-					Action:             udsv1alpha2.ActionCreate,
-					Source: udsv1alpha2.PackageSource{
-						Type: udsv1alpha2.SourceTypeOCI,
-						OCI: &udsv1alpha2.OCISource{
+					Action:             udsv1alpha3.ActionCreate,
+					Source: udsv1alpha3.PackageSource{
+						Type: udsv1alpha3.SourceTypeOCI,
+						OCI: &udsv1alpha3.OCISource{
 							Reference: "ghcr.io/test/bundles:v1.0.0",
 						},
 					},
@@ -138,17 +139,17 @@ func TestCreateHandlerExecute(t *testing.T) {
 		},
 		{
 			name: "create with local source",
-			bundle: &udsv1alpha2.UDSBundleJob{
+			bundle: &udsv1alpha3.UDSBundleJob{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-create-local",
 					Namespace: "default",
 				},
-				Spec: udsv1alpha2.UDSBundleJobSpec{
+				Spec: udsv1alpha3.UDSBundleJobSpec{
 					ServiceAccountName: "test-sa",
-					Action:             udsv1alpha2.ActionCreate,
-					Source: udsv1alpha2.PackageSource{
-						Type: udsv1alpha2.SourceTypeLocal,
-						Local: &udsv1alpha2.LocalSource{
+					Action:             udsv1alpha3.ActionCreate,
+					Source: udsv1alpha3.PackageSource{
+						Type: udsv1alpha3.SourceTypeLocal,
+						Local: &udsv1alpha3.LocalSource{
 							Path: "/workspace/bundle",
 						},
 					},
@@ -158,15 +159,15 @@ func TestCreateHandlerExecute(t *testing.T) {
 		},
 		{
 			name: "create without source type",
-			bundle: &udsv1alpha2.UDSBundleJob{
+			bundle: &udsv1alpha3.UDSBundleJob{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-create-no-source",
 					Namespace: "default",
 				},
-				Spec: udsv1alpha2.UDSBundleJobSpec{
+				Spec: udsv1alpha3.UDSBundleJobSpec{
 					ServiceAccountName: "test-sa",
-					Action:             udsv1alpha2.ActionCreate,
-					Source:             udsv1alpha2.PackageSource{},
+					Action:             udsv1alpha3.ActionCreate,
+					Source:             udsv1alpha3.PackageSource{},
 				},
 			},
 			wantErr: true,
@@ -207,29 +208,29 @@ func TestPublishHandlerExecute(t *testing.T) {
 
 	tests := []struct {
 		name    string
-		bundle  *udsv1alpha2.UDSBundleJob
+		bundle  *udsv1alpha3.UDSBundleJob
 		wantErr bool
 	}{
 		{
 			name: "publish to oci",
-			bundle: &udsv1alpha2.UDSBundleJob{
+			bundle: &udsv1alpha3.UDSBundleJob{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-publish",
 					Namespace: "default",
 				},
-				Spec: udsv1alpha2.UDSBundleJobSpec{
+				Spec: udsv1alpha3.UDSBundleJobSpec{
 					ServiceAccountName: "test-sa",
-					Action:             udsv1alpha2.ActionPublish,
-					Source: udsv1alpha2.PackageSource{
-						Type: udsv1alpha2.SourceTypeLocal,
-						Local: &udsv1alpha2.LocalSource{
+					Action:             udsv1alpha3.ActionPublish,
+					Source: udsv1alpha3.PackageSource{
+						Type: udsv1alpha3.SourceTypeLocal,
+						Local: &udsv1alpha3.LocalSource{
 							Path: "/workspace/bundle",
 						},
 					},
-					Publish: &udsv1alpha2.PublishConfig{
-						Destination: udsv1alpha2.PublishDestination{
-							Type: udsv1alpha2.DestinationTypeOCI,
-							OCI: &udsv1alpha2.OCIDestination{
+					Publish: &udsv1alpha3.PublishConfig{
+						Destination: udsv1alpha3.PublishDestination{
+							Type: udsv1alpha3.DestinationTypeOCI,
+							OCI: &udsv1alpha3.OCIDestination{
 								Registry:   "ghcr.io",
 								Repository: "test/bundles",
 								Tag:        "v1.0.0",
@@ -242,27 +243,27 @@ func TestPublishHandlerExecute(t *testing.T) {
 		},
 		{
 			name: "publish to s3",
-			bundle: &udsv1alpha2.UDSBundleJob{
+			bundle: &udsv1alpha3.UDSBundleJob{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-publish-s3",
 					Namespace: "default",
 				},
-				Spec: udsv1alpha2.UDSBundleJobSpec{
+				Spec: udsv1alpha3.UDSBundleJobSpec{
 					ServiceAccountName: "test-sa",
-					Action:             udsv1alpha2.ActionPublish,
-					Source: udsv1alpha2.PackageSource{
-						Type: udsv1alpha2.SourceTypeLocal,
-						Local: &udsv1alpha2.LocalSource{
+					Action:             udsv1alpha3.ActionPublish,
+					Source: udsv1alpha3.PackageSource{
+						Type: udsv1alpha3.SourceTypeLocal,
+						Local: &udsv1alpha3.LocalSource{
 							Path: "/workspace/bundle",
 						},
 					},
-					Publish: &udsv1alpha2.PublishConfig{
-						Destination: udsv1alpha2.PublishDestination{
-							Type: udsv1alpha2.DestinationTypeS3,
-							S3: &udsv1alpha2.S3Destination{
-								Bucket: "my-bundles",
-								Key:    "uds/bundle.tar.zst",
-								Region: "us-east-1",
+					Publish: &udsv1alpha3.PublishConfig{
+						Destination: udsv1alpha3.PublishDestination{
+							Type: udsv1alpha3.DestinationTypeS3,
+							S3: &udsv1alpha3.S3Destination{
+								Bucket:    "my-bundles",
+								KeyPrefix: "uds/bundle.tar.zst",
+								Region:    "us-east-1",
 							},
 						},
 					},
@@ -272,17 +273,17 @@ func TestPublishHandlerExecute(t *testing.T) {
 		},
 		{
 			name: "publish without destination",
-			bundle: &udsv1alpha2.UDSBundleJob{
+			bundle: &udsv1alpha3.UDSBundleJob{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-publish-no-dest",
 					Namespace: "default",
 				},
-				Spec: udsv1alpha2.UDSBundleJobSpec{
+				Spec: udsv1alpha3.UDSBundleJobSpec{
 					ServiceAccountName: "test-sa",
-					Action:             udsv1alpha2.ActionPublish,
-					Source: udsv1alpha2.PackageSource{
-						Type: udsv1alpha2.SourceTypeLocal,
-						Local: &udsv1alpha2.LocalSource{
+					Action:             udsv1alpha3.ActionPublish,
+					Source: udsv1alpha3.PackageSource{
+						Type: udsv1alpha3.SourceTypeLocal,
+						Local: &udsv1alpha3.LocalSource{
 							Path: "/workspace/bundle",
 						},
 					},
@@ -321,27 +322,27 @@ func TestDeployHandlerExecute(t *testing.T) {
 
 	tests := []struct {
 		name    string
-		bundle  *udsv1alpha2.UDSBundleJob
+		bundle  *udsv1alpha3.UDSBundleJob
 		wantErr bool
 	}{
 		{
 			name: "deploy to in-cluster",
-			bundle: &udsv1alpha2.UDSBundleJob{
+			bundle: &udsv1alpha3.UDSBundleJob{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-deploy",
 					Namespace: "default",
 				},
-				Spec: udsv1alpha2.UDSBundleJobSpec{
+				Spec: udsv1alpha3.UDSBundleJobSpec{
 					ServiceAccountName: "test-sa",
-					Action:             udsv1alpha2.ActionDeploy,
-					Source: udsv1alpha2.PackageSource{
-						Type: udsv1alpha2.SourceTypeOCI,
-						OCI: &udsv1alpha2.OCISource{
+					Action:             udsv1alpha3.ActionDeploy,
+					Source: udsv1alpha3.PackageSource{
+						Type: udsv1alpha3.SourceTypeOCI,
+						OCI: &udsv1alpha3.OCISource{
 							Reference: "ghcr.io/test/bundles:v1.0.0",
 						},
 					},
-					Deploy: &udsv1alpha2.DeployConfig{
-						Target: udsv1alpha2.DeployTargetInCluster,
+					Deploy: &udsv1alpha3.DeployConfig{
+						Target: udsv1alpha3.DeployTargetInCluster,
 					},
 				},
 			},
@@ -349,22 +350,22 @@ func TestDeployHandlerExecute(t *testing.T) {
 		},
 		{
 			name: "deploy with specific packages",
-			bundle: &udsv1alpha2.UDSBundleJob{
+			bundle: &udsv1alpha3.UDSBundleJob{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-deploy-packages",
 					Namespace: "default",
 				},
-				Spec: udsv1alpha2.UDSBundleJobSpec{
+				Spec: udsv1alpha3.UDSBundleJobSpec{
 					ServiceAccountName: "test-sa",
-					Action:             udsv1alpha2.ActionDeploy,
-					Source: udsv1alpha2.PackageSource{
-						Type: udsv1alpha2.SourceTypeOCI,
-						OCI: &udsv1alpha2.OCISource{
+					Action:             udsv1alpha3.ActionDeploy,
+					Source: udsv1alpha3.PackageSource{
+						Type: udsv1alpha3.SourceTypeOCI,
+						OCI: &udsv1alpha3.OCISource{
 							Reference: "ghcr.io/test/bundles:v1.0.0",
 						},
 					},
-					Deploy: &udsv1alpha2.DeployConfig{
-						Target:     udsv1alpha2.DeployTargetInCluster,
+					Deploy: &udsv1alpha3.DeployConfig{
+						Target:     udsv1alpha3.DeployTargetInCluster,
 						Components: []string{"package1", "package2"},
 					},
 				},
@@ -373,17 +374,17 @@ func TestDeployHandlerExecute(t *testing.T) {
 		},
 		{
 			name: "deploy without deploy spec",
-			bundle: &udsv1alpha2.UDSBundleJob{
+			bundle: &udsv1alpha3.UDSBundleJob{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-deploy-no-spec",
 					Namespace: "default",
 				},
-				Spec: udsv1alpha2.UDSBundleJobSpec{
+				Spec: udsv1alpha3.UDSBundleJobSpec{
 					ServiceAccountName: "test-sa",
-					Action:             udsv1alpha2.ActionDeploy,
-					Source: udsv1alpha2.PackageSource{
-						Type: udsv1alpha2.SourceTypeOCI,
-						OCI: &udsv1alpha2.OCISource{
+					Action:             udsv1alpha3.ActionDeploy,
+					Source: udsv1alpha3.PackageSource{
+						Type: udsv1alpha3.SourceTypeOCI,
+						OCI: &udsv1alpha3.OCISource{
 							Reference: "ghcr.io/test/bundles:v1.0.0",
 						},
 					},
@@ -420,7 +421,7 @@ func TestCreateHandlerBuildUDSCommand(t *testing.T) {
 
 	tests := []struct {
 		name       string
-		bundle     *udsv1alpha2.UDSBundleJob
+		bundle     *udsv1alpha3.UDSBundleJob
 		wantCmd    []string
 		wantDir    string
 		wantErr    bool
@@ -428,11 +429,11 @@ func TestCreateHandlerBuildUDSCommand(t *testing.T) {
 	}{
 		{
 			name: "git source",
-			bundle: &udsv1alpha2.UDSBundleJob{
-				Spec: udsv1alpha2.UDSBundleJobSpec{
-					Source: udsv1alpha2.PackageSource{
-						Type: udsv1alpha2.SourceTypeGit,
-						Git: &udsv1alpha2.GitSource{
+			bundle: &udsv1alpha3.UDSBundleJob{
+				Spec: udsv1alpha3.UDSBundleJobSpec{
+					Source: udsv1alpha3.PackageSource{
+						Type: udsv1alpha3.SourceTypeGit,
+						Git: &udsv1alpha3.GitSource{
 							Path: "bundles/my-bundle",
 						},
 					},
@@ -444,11 +445,11 @@ func TestCreateHandlerBuildUDSCommand(t *testing.T) {
 		},
 		{
 			name: "local source",
-			bundle: &udsv1alpha2.UDSBundleJob{
-				Spec: udsv1alpha2.UDSBundleJobSpec{
-					Source: udsv1alpha2.PackageSource{
-						Type: udsv1alpha2.SourceTypeLocal,
-						Local: &udsv1alpha2.LocalSource{
+			bundle: &udsv1alpha3.UDSBundleJob{
+				Spec: udsv1alpha3.UDSBundleJobSpec{
+					Source: udsv1alpha3.PackageSource{
+						Type: udsv1alpha3.SourceTypeLocal,
+						Local: &udsv1alpha3.LocalSource{
 							Path: "/custom/path",
 						},
 					},
@@ -460,11 +461,11 @@ func TestCreateHandlerBuildUDSCommand(t *testing.T) {
 		},
 		{
 			name: "oci source",
-			bundle: &udsv1alpha2.UDSBundleJob{
-				Spec: udsv1alpha2.UDSBundleJobSpec{
-					Source: udsv1alpha2.PackageSource{
-						Type: udsv1alpha2.SourceTypeOCI,
-						OCI: &udsv1alpha2.OCISource{
+			bundle: &udsv1alpha3.UDSBundleJob{
+				Spec: udsv1alpha3.UDSBundleJobSpec{
+					Source: udsv1alpha3.PackageSource{
+						Type: udsv1alpha3.SourceTypeOCI,
+						OCI: &udsv1alpha3.OCISource{
 							Reference: "ghcr.io/test/bundle:v1.0.0",
 						},
 					},
@@ -504,8 +505,8 @@ func TestGetResources(t *testing.T) {
 	deployHandler := &DeployHandler{}
 
 	// Test with nil resources
-	bundle := &udsv1alpha2.UDSBundleJob{
-		Spec: udsv1alpha2.UDSBundleJobSpec{},
+	bundle := &udsv1alpha3.UDSBundleJob{
+		Spec: udsv1alpha3.UDSBundleJobSpec{},
 	}
 
 	createRes := createHandler.getResources(bundle)
@@ -557,15 +558,15 @@ func TestAddKubeconfigVolume(t *testing.T) {
 
 	tests := []struct {
 		name   string
-		bundle *udsv1alpha2.UDSBundleJob
+		bundle *udsv1alpha3.UDSBundleJob
 		job    *batchv1.Job
 		want   int // number of volumes expected
 	}{
 		{
 			name: "no kubeconfig",
-			bundle: &udsv1alpha2.UDSBundleJob{
-				Spec: udsv1alpha2.UDSBundleJobSpec{
-					Deploy: &udsv1alpha2.DeployConfig{},
+			bundle: &udsv1alpha3.UDSBundleJob{
+				Spec: udsv1alpha3.UDSBundleJobSpec{
+					Deploy: &udsv1alpha3.DeployConfig{},
 				},
 			},
 			job: &batchv1.Job{
@@ -584,11 +585,11 @@ func TestAddKubeconfigVolume(t *testing.T) {
 		},
 		{
 			name: "with kubeconfig",
-			bundle: &udsv1alpha2.UDSBundleJob{
-				Spec: udsv1alpha2.UDSBundleJobSpec{
-					Deploy: &udsv1alpha2.DeployConfig{
-						Kubeconfig: &udsv1alpha2.KubeconfigReference{
-							SecretRef: corev1.SecretReference{
+			bundle: &udsv1alpha3.UDSBundleJob{
+				Spec: udsv1alpha3.UDSBundleJobSpec{
+					Deploy: &udsv1alpha3.DeployConfig{
+						ExternalCluster: &common.ExternalClusterConfig{
+							SecretRef: common.SecretReference{
 								Name: "my-kubeconfig",
 							},
 							Key: "config",
@@ -641,13 +642,13 @@ func TestAddCredentialVolumes(t *testing.T) {
 		},
 	}
 
-	bundle := &udsv1alpha2.UDSBundleJob{
-		Spec: udsv1alpha2.UDSBundleJobSpec{
-			Publish: &udsv1alpha2.PublishConfig{
-				Destination: udsv1alpha2.PublishDestination{
-					Type: udsv1alpha2.DestinationTypeOCI,
-					OCI: &udsv1alpha2.OCIDestination{
-						CredentialsSecretRef: &corev1.SecretReference{
+	bundle := &udsv1alpha3.UDSBundleJob{
+		Spec: udsv1alpha3.UDSBundleJobSpec{
+			Publish: &udsv1alpha3.PublishConfig{
+				Destination: udsv1alpha3.PublishDestination{
+					Type: udsv1alpha3.DestinationTypeOCI,
+					OCI: &udsv1alpha3.OCIDestination{
+						CredentialRef: &common.SecretReference{
 							Name: "oci-creds",
 						},
 					},
@@ -678,13 +679,13 @@ func TestAddCredentialVolumes(t *testing.T) {
 		},
 	}
 
-	bundle2 := &udsv1alpha2.UDSBundleJob{
-		Spec: udsv1alpha2.UDSBundleJobSpec{
-			Publish: &udsv1alpha2.PublishConfig{
-				Destination: udsv1alpha2.PublishDestination{
-					Type: udsv1alpha2.DestinationTypeS3,
-					S3: &udsv1alpha2.S3Destination{
-						CredentialsSecretRef: &corev1.SecretReference{
+	bundle2 := &udsv1alpha3.UDSBundleJob{
+		Spec: udsv1alpha3.UDSBundleJobSpec{
+			Publish: &udsv1alpha3.PublishConfig{
+				Destination: udsv1alpha3.PublishDestination{
+					Type: udsv1alpha3.DestinationTypeS3,
+					S3: &udsv1alpha3.S3Destination{
+						CredentialRef: &common.SecretReference{
 							Name: "s3-creds",
 						},
 					},
@@ -710,7 +711,7 @@ func TestBuildInitContainers(t *testing.T) {
 
 	tests := []struct {
 		name                    string
-		bundle                  *udsv1alpha2.UDSBundleJob
+		bundle                  *udsv1alpha3.UDSBundleJob
 		wantContainerCount      int
 		wantGitAskpassInCmd     bool
 		wantGitCredsVolumeMount bool
@@ -718,11 +719,11 @@ func TestBuildInitContainers(t *testing.T) {
 	}{
 		{
 			name: "git source without credentials",
-			bundle: &udsv1alpha2.UDSBundleJob{
-				Spec: udsv1alpha2.UDSBundleJobSpec{
-					Source: udsv1alpha2.PackageSource{
-						Type: udsv1alpha2.SourceTypeGit,
-						Git: &udsv1alpha2.GitSource{
+			bundle: &udsv1alpha3.UDSBundleJob{
+				Spec: udsv1alpha3.UDSBundleJobSpec{
+					Source: udsv1alpha3.PackageSource{
+						Type: udsv1alpha3.SourceTypeGit,
+						Git: &udsv1alpha3.GitSource{
 							URL: "https://github.com/test/repo",
 							Ref: "main",
 						},
@@ -735,14 +736,14 @@ func TestBuildInitContainers(t *testing.T) {
 		},
 		{
 			name: "git source with credentials",
-			bundle: &udsv1alpha2.UDSBundleJob{
-				Spec: udsv1alpha2.UDSBundleJobSpec{
-					Source: udsv1alpha2.PackageSource{
-						Type: udsv1alpha2.SourceTypeGit,
-						Git: &udsv1alpha2.GitSource{
+			bundle: &udsv1alpha3.UDSBundleJob{
+				Spec: udsv1alpha3.UDSBundleJobSpec{
+					Source: udsv1alpha3.PackageSource{
+						Type: udsv1alpha3.SourceTypeGit,
+						Git: &udsv1alpha3.GitSource{
 							URL: "https://github.com/test/private-repo",
 							Ref: "main",
-							CredentialsSecretRef: &corev1.SecretReference{
+							CredentialRef: &common.SecretReference{
 								Name: "git-creds",
 							},
 						},
@@ -755,14 +756,14 @@ func TestBuildInitContainers(t *testing.T) {
 		},
 		{
 			name: "git source with credentials disabled",
-			bundle: &udsv1alpha2.UDSBundleJob{
-				Spec: udsv1alpha2.UDSBundleJobSpec{
-					Source: udsv1alpha2.PackageSource{
-						Type: udsv1alpha2.SourceTypeGit,
-						Git: &udsv1alpha2.GitSource{
+			bundle: &udsv1alpha3.UDSBundleJob{
+				Spec: udsv1alpha3.UDSBundleJobSpec{
+					Source: udsv1alpha3.PackageSource{
+						Type: udsv1alpha3.SourceTypeGit,
+						Git: &udsv1alpha3.GitSource{
 							URL: "https://github.com/test/public-repo",
 							Ref: "main",
-							CredentialsSecretRef: &corev1.SecretReference{
+							CredentialRef: &common.SecretReference{
 								Name: "git-creds",
 							},
 							DisableCloneCredentials: true,
@@ -776,10 +777,10 @@ func TestBuildInitContainers(t *testing.T) {
 		},
 		{
 			name: "oci source",
-			bundle: &udsv1alpha2.UDSBundleJob{
-				Spec: udsv1alpha2.UDSBundleJobSpec{
-					Source: udsv1alpha2.PackageSource{
-						Type: udsv1alpha2.SourceTypeOCI,
+			bundle: &udsv1alpha3.UDSBundleJob{
+				Spec: udsv1alpha3.UDSBundleJobSpec{
+					Source: udsv1alpha3.PackageSource{
+						Type: udsv1alpha3.SourceTypeOCI,
 					},
 				},
 			},
@@ -845,17 +846,17 @@ func TestBuildVolumes(t *testing.T) {
 
 	tests := []struct {
 		name               string
-		bundle             *udsv1alpha2.UDSBundleJob
+		bundle             *udsv1alpha3.UDSBundleJob
 		wantVolumeCount    int
 		wantGitCredsVolume bool
 	}{
 		{
 			name: "git source without credentials",
-			bundle: &udsv1alpha2.UDSBundleJob{
-				Spec: udsv1alpha2.UDSBundleJobSpec{
-					Source: udsv1alpha2.PackageSource{
-						Type: udsv1alpha2.SourceTypeGit,
-						Git: &udsv1alpha2.GitSource{
+			bundle: &udsv1alpha3.UDSBundleJob{
+				Spec: udsv1alpha3.UDSBundleJobSpec{
+					Source: udsv1alpha3.PackageSource{
+						Type: udsv1alpha3.SourceTypeGit,
+						Git: &udsv1alpha3.GitSource{
 							URL: "https://github.com/test/repo",
 							Ref: "main",
 						},
@@ -867,14 +868,14 @@ func TestBuildVolumes(t *testing.T) {
 		},
 		{
 			name: "git source with credentials",
-			bundle: &udsv1alpha2.UDSBundleJob{
-				Spec: udsv1alpha2.UDSBundleJobSpec{
-					Source: udsv1alpha2.PackageSource{
-						Type: udsv1alpha2.SourceTypeGit,
-						Git: &udsv1alpha2.GitSource{
+			bundle: &udsv1alpha3.UDSBundleJob{
+				Spec: udsv1alpha3.UDSBundleJobSpec{
+					Source: udsv1alpha3.PackageSource{
+						Type: udsv1alpha3.SourceTypeGit,
+						Git: &udsv1alpha3.GitSource{
 							URL: "https://github.com/test/private-repo",
 							Ref: "main",
-							CredentialsSecretRef: &corev1.SecretReference{
+							CredentialRef: &common.SecretReference{
 								Name: "git-creds",
 							},
 						},
@@ -886,14 +887,14 @@ func TestBuildVolumes(t *testing.T) {
 		},
 		{
 			name: "git source with credentials disabled",
-			bundle: &udsv1alpha2.UDSBundleJob{
-				Spec: udsv1alpha2.UDSBundleJobSpec{
-					Source: udsv1alpha2.PackageSource{
-						Type: udsv1alpha2.SourceTypeGit,
-						Git: &udsv1alpha2.GitSource{
+			bundle: &udsv1alpha3.UDSBundleJob{
+				Spec: udsv1alpha3.UDSBundleJobSpec{
+					Source: udsv1alpha3.PackageSource{
+						Type: udsv1alpha3.SourceTypeGit,
+						Git: &udsv1alpha3.GitSource{
 							URL: "https://github.com/test/public-repo",
 							Ref: "main",
-							CredentialsSecretRef: &corev1.SecretReference{
+							CredentialRef: &common.SecretReference{
 								Name: "git-creds",
 							},
 							DisableCloneCredentials: true,
@@ -906,10 +907,10 @@ func TestBuildVolumes(t *testing.T) {
 		},
 		{
 			name: "oci source",
-			bundle: &udsv1alpha2.UDSBundleJob{
-				Spec: udsv1alpha2.UDSBundleJobSpec{
-					Source: udsv1alpha2.PackageSource{
-						Type: udsv1alpha2.SourceTypeOCI,
+			bundle: &udsv1alpha3.UDSBundleJob{
+				Spec: udsv1alpha3.UDSBundleJobSpec{
+					Source: udsv1alpha3.PackageSource{
+						Type: udsv1alpha3.SourceTypeOCI,
 					},
 				},
 			},

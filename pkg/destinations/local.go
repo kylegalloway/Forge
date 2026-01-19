@@ -4,14 +4,14 @@ package destinations
 import (
 	"fmt"
 
-	zarfv1alpha1 "github.com/kylegalloway/forge/pkg/apis/zarf/v1alpha1"
+	zarfv1alpha3 "github.com/kylegalloway/forge/pkg/apis/zarf/v1alpha3"
 )
 
 // LocalDestination handles local filesystem destinations
 type LocalDestination struct{}
 
 // GetPublishCommand returns the cp command
-func (destination *LocalDestination) GetPublishCommand(pkg *zarfv1alpha1.ZarfPackageJob, artifactPath string) (string, error) {
+func (destination *LocalDestination) GetPublishCommand(pkg *zarfv1alpha3.ZarfPackageJob, artifactPath string) (string, error) {
 	localConfig := pkg.Spec.Publish.Destination.Local
 	if localConfig == nil {
 		return "", fmt.Errorf("local destination configuration is missing")
@@ -25,6 +25,6 @@ func (destination *LocalDestination) GetPublishCommand(pkg *zarfv1alpha1.ZarfPac
 }
 
 // GetJobConfiguration returns nil for local destinations
-func (destination *LocalDestination) GetJobConfiguration(_ *zarfv1alpha1.ZarfPackageJob) (*JobConfig, error) {
+func (destination *LocalDestination) GetJobConfiguration(_ *zarfv1alpha3.ZarfPackageJob) (*JobConfig, error) {
 	return &JobConfig{}, nil
 }

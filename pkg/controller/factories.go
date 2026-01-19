@@ -7,8 +7,8 @@ import (
 
 	"github.com/kylegalloway/forge/pkg/actions/uds"
 	"github.com/kylegalloway/forge/pkg/actions/zarf"
-	udsv1alpha2 "github.com/kylegalloway/forge/pkg/apis/uds/v1alpha2"
-	zarfv1alpha1 "github.com/kylegalloway/forge/pkg/apis/zarf/v1alpha1"
+	udsv1alpha3 "github.com/kylegalloway/forge/pkg/apis/uds/v1alpha3"
+	zarfv1alpha3 "github.com/kylegalloway/forge/pkg/apis/zarf/v1alpha3"
 	"github.com/kylegalloway/forge/pkg/constants"
 	"github.com/kylegalloway/forge/pkg/telemetry"
 )
@@ -20,7 +20,7 @@ func NewGenericZarfController(
 	namespace string,
 	metrics *telemetry.Metrics,
 	tracer *telemetry.Tracer,
-) *GenericController[*zarfv1alpha1.ZarfPackageJob] {
+) *GenericController[*zarfv1alpha3.ZarfPackageJob] {
 	// Create action handlers
 	buildHandler := zarf.NewBuildHandler(kubeClient, metrics, tracer)
 	publishHandler := zarf.NewPublishHandler(kubeClient, metrics, tracer)
@@ -44,7 +44,7 @@ func NewGenericZarfController(
 		StatusFieldName: "buildStatus",
 	}
 
-	return NewGenericController[*zarfv1alpha1.ZarfPackageJob](
+	return NewGenericController[*zarfv1alpha3.ZarfPackageJob](
 		kubeClient,
 		dynamicClient,
 		namespace,
@@ -65,7 +65,7 @@ func NewGenericUDSController(
 	namespace string,
 	metrics *telemetry.Metrics,
 	tracer *telemetry.Tracer,
-) *GenericController[*udsv1alpha2.UDSBundleJob] {
+) *GenericController[*udsv1alpha3.UDSBundleJob] {
 	// Create action handlers
 	createHandler := uds.NewCreateHandler(kubeClient, metrics, tracer)
 	publishHandler := uds.NewPublishHandler(kubeClient, metrics, tracer)
@@ -89,7 +89,7 @@ func NewGenericUDSController(
 		StatusFieldName: "createStatus",
 	}
 
-	return NewGenericController[*udsv1alpha2.UDSBundleJob](
+	return NewGenericController[*udsv1alpha3.UDSBundleJob](
 		kubeClient,
 		dynamicClient,
 		namespace,

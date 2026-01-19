@@ -107,7 +107,7 @@ Verify the annotations include the required permissions. See [Policy Validation 
 **Symptoms:**
 
 ```text
-Error: no matches for kind "UDSBundleJob" in version "forge.dev/v1alpha1"
+Error: no matches for kind "UDSBundleJob" in version "forge.dev/v1alpha3"
 ```
 
 **Solution:** The v1alpha1 API has been completely removed. Migrate to v1alpha2 API. See [API Version Migration Issues](#api-version-migration-issues) and [V1ALPHA2_MIGRATION.md](V1ALPHA2_MIGRATION.md).
@@ -184,7 +184,7 @@ spec:
   source:
     type: OCI
     oci:
-      credentialsSecretRef:
+      credentialRef:
         name: oci-creds
 ```
 
@@ -268,7 +268,7 @@ kubectl describe job my-bundle-create
 **Solution:** Increase timeout in UDSBundleJob spec:
 
 ```yaml
-apiVersion: forge.dev/v1alpha2
+apiVersion: forge.dev/v1alpha3
 kind: UDSBundleJob
 metadata:
   name: large-bundle
@@ -778,7 +778,7 @@ spec:
     type: Git
     git:
       url: git@github.com:myorg/private-bundle.git
-      credentialsSecretRef:
+      credentialRef:
         name: git-ssh-key
 ```
 

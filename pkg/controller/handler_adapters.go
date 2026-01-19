@@ -7,8 +7,8 @@ import (
 	"github.com/kylegalloway/forge/pkg/actions/common"
 	"github.com/kylegalloway/forge/pkg/actions/uds"
 	"github.com/kylegalloway/forge/pkg/actions/zarf"
-	udsv1alpha2 "github.com/kylegalloway/forge/pkg/apis/uds/v1alpha2"
-	zarfv1alpha1 "github.com/kylegalloway/forge/pkg/apis/zarf/v1alpha1"
+	udsv1alpha3 "github.com/kylegalloway/forge/pkg/apis/uds/v1alpha3"
+	zarfv1alpha3 "github.com/kylegalloway/forge/pkg/apis/zarf/v1alpha3"
 )
 
 // ZarfBuildHandlerAdapter adapts zarf.BuildHandler to common.ActionHandler
@@ -22,7 +22,7 @@ func NewZarfBuildHandlerAdapter(handler *zarf.BuildHandler) *ZarfBuildHandlerAda
 }
 
 // Execute implements common.ActionHandler interface
-func (a *ZarfBuildHandlerAdapter) Execute(ctx context.Context, resource *zarfv1alpha1.ZarfPackageJob, opts common.ExecuteOptions) (*actions.ActionResult, error) {
+func (a *ZarfBuildHandlerAdapter) Execute(ctx context.Context, resource *zarfv1alpha3.ZarfPackageJob, opts common.ExecuteOptions) (*actions.ActionResult, error) {
 	return a.handler.Execute(ctx, resource, opts.ArtifactPVCName)
 }
 
@@ -37,7 +37,7 @@ func NewZarfPublishHandlerAdapter(handler *zarf.PublishHandler) *ZarfPublishHand
 }
 
 // Execute implements common.ActionHandler interface
-func (a *ZarfPublishHandlerAdapter) Execute(ctx context.Context, resource *zarfv1alpha1.ZarfPackageJob, opts common.ExecuteOptions) (*actions.ActionResult, error) {
+func (a *ZarfPublishHandlerAdapter) Execute(ctx context.Context, resource *zarfv1alpha3.ZarfPackageJob, opts common.ExecuteOptions) (*actions.ActionResult, error) {
 	return a.handler.Execute(ctx, resource, opts.ArtifactPath, opts.ArtifactPVCName)
 }
 
@@ -52,7 +52,7 @@ func NewZarfDeployHandlerAdapter(handler *zarf.DeployHandler) *ZarfDeployHandler
 }
 
 // Execute implements common.ActionHandler interface
-func (a *ZarfDeployHandlerAdapter) Execute(ctx context.Context, resource *zarfv1alpha1.ZarfPackageJob, opts common.ExecuteOptions) (*actions.ActionResult, error) {
+func (a *ZarfDeployHandlerAdapter) Execute(ctx context.Context, resource *zarfv1alpha3.ZarfPackageJob, opts common.ExecuteOptions) (*actions.ActionResult, error) {
 	return a.handler.Execute(ctx, resource, opts.ArtifactPath, opts.ArtifactPVCName)
 }
 
@@ -67,7 +67,7 @@ func NewUDSCreateHandlerAdapter(handler *uds.CreateHandler) *UDSCreateHandlerAda
 }
 
 // Execute implements common.ActionHandler interface
-func (a *UDSCreateHandlerAdapter) Execute(ctx context.Context, resource *udsv1alpha2.UDSBundleJob, opts common.ExecuteOptions) (*actions.ActionResult, error) {
+func (a *UDSCreateHandlerAdapter) Execute(ctx context.Context, resource *udsv1alpha3.UDSBundleJob, opts common.ExecuteOptions) (*actions.ActionResult, error) {
 	return a.handler.Execute(ctx, resource, opts.ArtifactPVCName)
 }
 
@@ -82,7 +82,7 @@ func NewUDSPublishHandlerAdapter(handler *uds.PublishHandler) *UDSPublishHandler
 }
 
 // Execute implements common.ActionHandler interface
-func (a *UDSPublishHandlerAdapter) Execute(ctx context.Context, resource *udsv1alpha2.UDSBundleJob, opts common.ExecuteOptions) (*actions.ActionResult, error) {
+func (a *UDSPublishHandlerAdapter) Execute(ctx context.Context, resource *udsv1alpha3.UDSBundleJob, opts common.ExecuteOptions) (*actions.ActionResult, error) {
 	return a.handler.Execute(ctx, resource, opts.ArtifactPath, opts.ArtifactPVCName)
 }
 
@@ -97,14 +97,14 @@ func NewUDSDeployHandlerAdapter(handler *uds.DeployHandler) *UDSDeployHandlerAda
 }
 
 // Execute implements common.ActionHandler interface
-func (a *UDSDeployHandlerAdapter) Execute(ctx context.Context, resource *udsv1alpha2.UDSBundleJob, opts common.ExecuteOptions) (*actions.ActionResult, error) {
+func (a *UDSDeployHandlerAdapter) Execute(ctx context.Context, resource *udsv1alpha3.UDSBundleJob, opts common.ExecuteOptions) (*actions.ActionResult, error) {
 	return a.handler.Execute(ctx, resource, opts.ArtifactPath, opts.ArtifactPVCName)
 }
 
 // Compile-time assertions that adapters implement ActionHandler
-var _ common.ActionHandler[*zarfv1alpha1.ZarfPackageJob] = (*ZarfBuildHandlerAdapter)(nil)
-var _ common.ActionHandler[*zarfv1alpha1.ZarfPackageJob] = (*ZarfPublishHandlerAdapter)(nil)
-var _ common.ActionHandler[*zarfv1alpha1.ZarfPackageJob] = (*ZarfDeployHandlerAdapter)(nil)
-var _ common.ActionHandler[*udsv1alpha2.UDSBundleJob] = (*UDSCreateHandlerAdapter)(nil)
-var _ common.ActionHandler[*udsv1alpha2.UDSBundleJob] = (*UDSPublishHandlerAdapter)(nil)
-var _ common.ActionHandler[*udsv1alpha2.UDSBundleJob] = (*UDSDeployHandlerAdapter)(nil)
+var _ common.ActionHandler[*zarfv1alpha3.ZarfPackageJob] = (*ZarfBuildHandlerAdapter)(nil)
+var _ common.ActionHandler[*zarfv1alpha3.ZarfPackageJob] = (*ZarfPublishHandlerAdapter)(nil)
+var _ common.ActionHandler[*zarfv1alpha3.ZarfPackageJob] = (*ZarfDeployHandlerAdapter)(nil)
+var _ common.ActionHandler[*udsv1alpha3.UDSBundleJob] = (*UDSCreateHandlerAdapter)(nil)
+var _ common.ActionHandler[*udsv1alpha3.UDSBundleJob] = (*UDSPublishHandlerAdapter)(nil)
+var _ common.ActionHandler[*udsv1alpha3.UDSBundleJob] = (*UDSDeployHandlerAdapter)(nil)

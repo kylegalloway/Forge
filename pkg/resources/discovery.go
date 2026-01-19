@@ -4,8 +4,8 @@ import (
 	"context"
 	"path/filepath"
 
-	udsv1alpha2 "github.com/kylegalloway/forge/pkg/apis/uds/v1alpha2"
-	zarfv1alpha1 "github.com/kylegalloway/forge/pkg/apis/zarf/v1alpha1"
+	udsv1alpha3 "github.com/kylegalloway/forge/pkg/apis/uds/v1alpha3"
+	zarfv1alpha3 "github.com/kylegalloway/forge/pkg/apis/zarf/v1alpha3"
 
 	"k8s.io/client-go/dynamic"
 	"k8s.io/klog/v2"
@@ -24,7 +24,7 @@ func NewDiscoverer(dynamicClient dynamic.Interface) *Discoverer {
 }
 
 // DiscoverZarfResources finds resources matching Zarf ResourceSelector in specified namespaces
-func (d *Discoverer) DiscoverZarfResources(_ context.Context, selector *zarfv1alpha1.ResourceSelector, namespaces []string) ([]ResourceReference, error) {
+func (d *Discoverer) DiscoverZarfResources(_ context.Context, selector *zarfv1alpha3.ResourceSelector, namespaces []string) ([]ResourceReference, error) {
 	if selector == nil {
 		return nil, nil
 	}
@@ -42,7 +42,7 @@ func (d *Discoverer) DiscoverZarfResources(_ context.Context, selector *zarfv1al
 }
 
 // DiscoverUDSResources finds resources matching UDS ResourceSelector in specified namespaces
-func (d *Discoverer) DiscoverUDSResources(_ context.Context, selector *udsv1alpha2.ResourceSelector, namespaces []string) ([]ResourceReference, error) {
+func (d *Discoverer) DiscoverUDSResources(_ context.Context, selector *udsv1alpha3.ResourceSelector, namespaces []string) ([]ResourceReference, error) {
 	if selector == nil {
 		return nil, nil
 	}

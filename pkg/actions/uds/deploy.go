@@ -13,7 +13,7 @@ import (
 	"k8s.io/klog/v2"
 
 	"github.com/kylegalloway/forge/pkg/actions"
-	udsv1alpha2 "github.com/kylegalloway/forge/pkg/apis/uds/v1alpha2"
+	udsv1alpha3 "github.com/kylegalloway/forge/pkg/apis/uds/v1alpha3"
 	"github.com/kylegalloway/forge/pkg/constants"
 	"github.com/kylegalloway/forge/pkg/resources"
 	"github.com/kylegalloway/forge/pkg/telemetry"
@@ -42,7 +42,7 @@ func NewDeployHandler(kubeClient kubernetes.Interface, dynamicClient dynamic.Int
 // The artifactPath and artifactPVCName parameters enable multi-action job support (CreateDeploy, etc.)
 // When artifactPVCName is set, the PVC is mounted and artifactPath specifies where to find the bundle.
 // When empty, assumes standalone deploy with bundle source in workspace or from spec.
-func (handler *DeployHandler) Execute(ctx context.Context, bundle *udsv1alpha2.UDSBundleJob, artifactPath, artifactPVCName string) (*actions.ActionResult, error) {
+func (handler *DeployHandler) Execute(ctx context.Context, bundle *udsv1alpha3.UDSBundleJob, artifactPath, artifactPVCName string) (*actions.ActionResult, error) {
 
 	klog.InfoS("Executing UDS Bundle Deploy action", "name", bundle.Name, "namespace", bundle.Namespace, "artifactPath", artifactPath, "artifactPVC", artifactPVCName)
 
@@ -85,7 +85,7 @@ func (handler *DeployHandler) Execute(ctx context.Context, bundle *udsv1alpha2.U
 }
 
 // createDeployJob creates a Kubernetes Job to deploy a UDS bundle
-func (handler *DeployHandler) createDeployJob(ctx context.Context, bundle *udsv1alpha2.UDSBundleJob, artifactPath, artifactPVCName string) (*batchv1.Job, error) {
+func (handler *DeployHandler) createDeployJob(ctx context.Context, bundle *udsv1alpha3.UDSBundleJob, artifactPath, artifactPVCName string) (*batchv1.Job, error) {
 	jobName := fmt.Sprintf("%s-deploy", bundle.Name)
 
 	// Build UDS CLI deploy command
@@ -96,7 +96,7 @@ func (handler *DeployHandler) createDeployJob(ctx context.Context, bundle *udsv1
 
 	// Determine timeout and retry policy - use Deploy config if specified
 	timeoutStr := ""
-	var retryPolicy *udsv1alpha2.RetryPolicy
+	var retryPolicy *udsv1alpha3.RetryPolicy
 	if bundle.Spec.Deploy != nil {
 		timeoutStr = bundle.Spec.Deploy.Timeout
 		retryPolicy = bundle.Spec.Deploy.Retry
@@ -106,7 +106,7 @@ func (handler *DeployHandler) createDeployJob(ctx context.Context, bundle *udsv1
 	// Build Job using JobBuilder
 	builder := actions.NewJobBuilder(jobName, bundle.Namespace).
 		WithKubeClient(handler.kubeClient).
-		WithOwnerReference(bundle, udsv1alpha2.SchemeGroupVersion.WithKind("UDSBundleJob")).
+		WithOwnerReference(bundle, udsv1alpha3.SchemeGroupVersion.WithKind("UDSBundleJob")).
 		WithLabels(map[string]string{
 			"app":                  "forge",
 			"resource-type":        "udsbundlejob",
@@ -144,7 +144,7 @@ func (handler *DeployHandler) createDeployJob(ctx context.Context, bundle *udsv1
 	}
 
 	// Add kubeconfig volume for external cluster deployment
-	if bundle.Spec.Deploy.Target == udsv1alpha2.DeployTargetExternalCluster {
+	if bundle.Spec.Deploy.Target == udsv1alpha3.DeployTargetExternalCluster {
 		handler.addKubeconfigVolume(bundle, job)
 	}
 
@@ -165,7 +165,7 @@ func (handler *DeployHandler) createDeployJob(ctx context.Context, bundle *udsv1
 }
 
 // buildDeployCommand builds the UDS CLI deploy command
-func (handler *DeployHandler) buildDeployCommand(bundle *udsv1alpha2.UDSBundleJob, artifactPath string) string {
+func (handler *DeployHandler) buildDeployCommand(bundle *udsv1alpha3.UDSBundleJob, artifactPath string) string {
 	deploy := bundle.Spec.Deploy
 
 	// Determine bundle path - use artifactPath if provided (multi-action workflow),
@@ -197,7 +197,7 @@ func (handler *DeployHandler) buildDeployCommand(bundle *udsv1alpha2.UDSBundleJo
 	}
 
 	// Add kubeconfig for external cluster
-	if deploy.Target == udsv1alpha2.DeployTargetExternalCluster {
+	if deploy.Target == udsv1alpha3.DeployTargetExternalCluster {
 		cmd = "export KUBECONFIG=/etc/kubeconfig/kubeconfig && " + cmd
 	}
 
@@ -205,7 +205,7 @@ func (handler *DeployHandler) buildDeployCommand(bundle *udsv1alpha2.UDSBundleJo
 }
 
 // buildEnvVars builds environment variables for the deploy job
-func (handler *DeployHandler) buildEnvVars(bundle *udsv1alpha2.UDSBundleJob) []corev1.EnvVar {
+func (handler *DeployHandler) buildEnvVars(bundle *udsv1alpha3.UDSBundleJob) []corev1.EnvVar {
 	envVars := []corev1.EnvVar{}
 
 	// Add timeout as env var for UDS CLI
@@ -220,8 +220,8 @@ func (handler *DeployHandler) buildEnvVars(bundle *udsv1alpha2.UDSBundleJob) []c
 }
 
 // addKubeconfigVolume adds kubeconfig volume and mount for external cluster deployment
-func (handler *DeployHandler) addKubeconfigVolume(bundle *udsv1alpha2.UDSBundleJob, job *batchv1.Job) {
-	if bundle.Spec.Deploy.Kubeconfig == nil || bundle.Spec.Deploy.Kubeconfig.SecretRef.Name == "" { // pragma: allowlist secret
+func (handler *DeployHandler) addKubeconfigVolume(bundle *udsv1alpha3.UDSBundleJob, job *batchv1.Job) {
+	if bundle.Spec.Deploy.ExternalCluster == nil || bundle.Spec.Deploy.ExternalCluster.SecretRef.Name == "" { // pragma: allowlist secret
 		return
 	}
 
@@ -232,8 +232,8 @@ func (handler *DeployHandler) addKubeconfigVolume(bundle *udsv1alpha2.UDSBundleJ
 	}
 
 	kubeconfigKey := "kubeconfig"
-	if bundle.Spec.Deploy.Kubeconfig.Key != "" {
-		kubeconfigKey = bundle.Spec.Deploy.Kubeconfig.Key
+	if bundle.Spec.Deploy.ExternalCluster.Key != "" {
+		kubeconfigKey = bundle.Spec.Deploy.ExternalCluster.Key
 	}
 
 	// Add kubeconfig volume
@@ -241,7 +241,7 @@ func (handler *DeployHandler) addKubeconfigVolume(bundle *udsv1alpha2.UDSBundleJ
 		Name: "kubeconfig",
 		VolumeSource: corev1.VolumeSource{
 			Secret: &corev1.SecretVolumeSource{ // pragma: allowlist secret
-				SecretName: bundle.Spec.Deploy.Kubeconfig.SecretRef.Name, // pragma: allowlist secret
+				SecretName: bundle.Spec.Deploy.ExternalCluster.SecretRef.Name, // pragma: allowlist secret
 				Items: []corev1.KeyToPath{
 					{
 						Key:  kubeconfigKey,
@@ -264,7 +264,7 @@ func (handler *DeployHandler) addKubeconfigVolume(bundle *udsv1alpha2.UDSBundleJ
 }
 
 // getResources returns resource requirements for the deploy job
-func (handler *DeployHandler) getResources(bundle *udsv1alpha2.UDSBundleJob) corev1.ResourceRequirements {
+func (handler *DeployHandler) getResources(bundle *udsv1alpha3.UDSBundleJob) corev1.ResourceRequirements {
 	if bundle.Spec.Resources != nil {
 		return *bundle.Spec.Resources
 	}
@@ -275,7 +275,7 @@ func (handler *DeployHandler) getResources(bundle *udsv1alpha2.UDSBundleJob) cor
 }
 
 // validateAdoptionConfig validates resource adoption configuration
-func (handler *DeployHandler) validateAdoptionConfig(ctx context.Context, bundle *udsv1alpha2.UDSBundleJob) error {
+func (handler *DeployHandler) validateAdoptionConfig(ctx context.Context, bundle *udsv1alpha3.UDSBundleJob) error {
 	// If no adoption policy specified, nothing to validate
 	if bundle.Spec.Deploy.AdoptionPolicy == nil {
 		return nil
@@ -286,7 +286,7 @@ func (handler *DeployHandler) validateAdoptionConfig(ctx context.Context, bundle
 	klog.V(4).InfoS("Validating adoption configuration", "policy", adoptionPolicy, "bundle", bundle.Name)
 
 	// If policy is "Adopt", ResourceSelector must be provided
-	if adoptionPolicy == udsv1alpha2.AdoptionPolicyAdopt {
+	if adoptionPolicy == udsv1alpha3.AdoptionPolicyAdopt {
 		if bundle.Spec.Deploy.ResourceSelector == nil {
 			return fmt.Errorf("resourceSelector is required when adoptionPolicy is 'Adopt'")
 		}

@@ -1,27 +1,29 @@
-// Package v1alpha2 defines the v1alpha2 API for UDS bundle job specifications.
+// Package v1alpha3 defines the v1alpha3 API for UDS bundle job specifications.
 //
 // This package contains type definitions for UDSBundleJob resources that enable
 // creating, publishing, and deploying UDS bundles in a Kubernetes-native way.
 //
-// v1alpha2 API Changes:
-// - Unified naming with Zarf: BundleAction → Action, PackageSourceType → SourceType, etc.
-// - Semantically correct naming: UDSBundleJob (bundles) vs ZarfPackageJob (packages)
-// - Maintains backward compatibility with v1alpha1 via conversion webhook
+// v1alpha3 API Changes:
+// - Aligned field names with Zarf API (Reference, Variables, ExternalCluster)
+// - Uses common.SecretReference and common.ExternalClusterConfig
+// - Feature parity with Zarf API (S3Source, GitSource, LocalSource, LocalDestination)
 //
 // NOTE: UDSBundleJob is a Forge job specification, NOT a UDS bundle definition.
 // It describes what operations Forge should perform on UDS bundles.
-package v1alpha2
+package v1alpha3
 
 import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"github.com/kylegalloway/forge/pkg/apis/common"
 )
 
 const (
 	// GroupName is the API group name
 	GroupName = "forge.dev"
 	// Version is the API version
-	Version = "v1alpha2"
+	Version = "v1alpha3"
 )
 
 // Action represents an operation to perform on a UDS bundle
@@ -45,7 +47,7 @@ const (
 	ActionCreatePublishDeploy Action = "CreatePublishDeploy"
 )
 
-// SourceType represents where the package source or artifact comes from
+// SourceType represents where the bundle source or artifact comes from
 // +kubebuilder:validation:Enum=Git;S3;OCI;Local
 type SourceType string
 
@@ -60,7 +62,7 @@ const (
 	SourceTypeLocal SourceType = "Local"
 )
 
-// DestinationType represents where package artifacts are published
+// DestinationType represents where bundle artifacts are published
 // +kubebuilder:validation:Enum=S3;OCI;Local
 type DestinationType string
 
@@ -173,19 +175,22 @@ type PackageSource struct {
 type GitSource struct {
 	// URL of the Git repository
 	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:Pattern=`^https://.*`
 	URL string `json:"url"`
 
 	// Ref specifies the branch, tag, or commit to checkout
+	// +optional
 	// +kubebuilder:default="main"
 	Ref string `json:"ref,omitempty"`
 
 	// Path to the uds-bundle.yaml file within the repository
+	// +optional
 	// +kubebuilder:default="."
 	Path string `json:"path,omitempty"`
 
-	// CredentialsSecretRef references a Secret containing Git credentials
+	// CredentialRef references a Secret containing Git credentials
 	// +optional
-	CredentialsSecretRef *corev1.SecretReference `json:"credentialsSecretRef,omitempty"`
+	CredentialRef *common.SecretReference `json:"credentialRef,omitempty"`
 
 	// DisableCloneCredentials prevents using the credentials for clone operations
 	// +optional
@@ -211,9 +216,9 @@ type S3Source struct {
 	// +optional
 	Endpoint string `json:"endpoint,omitempty"`
 
-	// CredentialsSecretRef references a Secret containing AWS credentials
+	// CredentialRef references a Secret containing AWS credentials
 	// +optional
-	CredentialsSecretRef *corev1.SecretReference `json:"credentialsSecretRef,omitempty"`
+	CredentialRef *common.SecretReference `json:"credentialRef,omitempty"`
 }
 
 // OCISource defines an OCI registry source
@@ -222,9 +227,9 @@ type OCISource struct {
 	// +kubebuilder:validation:Required
 	Reference string `json:"reference"`
 
-	// CredentialsSecretRef references a Secret containing registry credentials
+	// CredentialRef references a Secret containing registry credentials
 	// +optional
-	CredentialsSecretRef *corev1.SecretReference `json:"credentialsSecretRef,omitempty"`
+	CredentialRef *common.SecretReference `json:"credentialRef,omitempty"`
 }
 
 // LocalSource defines a local filesystem source (development only)
@@ -232,6 +237,10 @@ type LocalSource struct {
 	// Path to the local directory containing uds-bundle.yaml
 	// +kubebuilder:validation:Required
 	Path string `json:"path"`
+
+	// DevMode must be true to use local sources
+	// +kubebuilder:validation:Required
+	DevMode bool `json:"devMode"`
 }
 
 // RetryPolicy defines retry behavior for transient failures
@@ -273,6 +282,11 @@ type PublishConfig struct {
 	// +kubebuilder:validation:Required
 	Destination PublishDestination `json:"destination"`
 
+	// Timeout for the publish operation
+	// +optional
+	// +kubebuilder:default="30m"
+	Timeout string `json:"timeout,omitempty"`
+
 	// Retry policy for publish failures
 	// +optional
 	Retry *RetryPolicy `json:"retry,omitempty"`
@@ -291,6 +305,10 @@ type PublishDestination struct {
 	// OCI destination configuration
 	// +optional
 	OCI *OCIDestination `json:"oci,omitempty"`
+
+	// Local destination configuration (dev/testing only)
+	// +optional
+	Local *LocalDestination `json:"local,omitempty"`
 }
 
 // S3Destination defines an S3 bucket destination
@@ -299,9 +317,9 @@ type S3Destination struct {
 	// +kubebuilder:validation:Required
 	Bucket string `json:"bucket"`
 
-	// Key is the object key/path within the bucket
-	// +optional
-	Key string `json:"key,omitempty"`
+	// KeyPrefix is the S3 key prefix (artifact name is appended)
+	// +kubebuilder:validation:Required
+	KeyPrefix string `json:"keyPrefix"`
 
 	// Region is the AWS region
 	// +optional
@@ -311,9 +329,9 @@ type S3Destination struct {
 	// +optional
 	Endpoint string `json:"endpoint,omitempty"`
 
-	// CredentialsSecretRef references a Secret containing AWS credentials
+	// CredentialRef references a Secret containing AWS credentials
 	// +optional
-	CredentialsSecretRef *corev1.SecretReference `json:"credentialsSecretRef,omitempty"`
+	CredentialRef *common.SecretReference `json:"credentialRef,omitempty"`
 }
 
 // OCIDestination defines an OCI registry destination
@@ -330,9 +348,20 @@ type OCIDestination struct {
 	// +kubebuilder:validation:Required
 	Tag string `json:"tag"`
 
-	// CredentialsSecretRef references a Secret containing registry credentials
+	// CredentialRef references a Secret containing registry credentials
 	// +optional
-	CredentialsSecretRef *corev1.SecretReference `json:"credentialsSecretRef,omitempty"`
+	CredentialRef *common.SecretReference `json:"credentialRef,omitempty"`
+}
+
+// LocalDestination defines local filesystem destination (dev/testing only)
+type LocalDestination struct {
+	// Path is the local filesystem path for the artifact
+	// +kubebuilder:validation:Required
+	Path string `json:"path"`
+
+	// DevMode must be true to use local destinations
+	// +kubebuilder:validation:Required
+	DevMode bool `json:"devMode"`
 }
 
 // DeployConfig defines deployment configuration
@@ -346,16 +375,17 @@ type DeployConfig struct {
 	Namespace string `json:"namespace,omitempty"`
 
 	// Timeout for deployment operations
-	// +kubebuilder:default="60m"
-	Timeout string `json:"timeout,omitempty"`
-
-	// Kubeconfig for external cluster deployment
 	// +optional
-	Kubeconfig *KubeconfigReference `json:"kubeconfig,omitempty"`
+	// +kubebuilder:default="30m"
+	Timeout string `json:"timeout,omitempty"`
 
 	// Variables to pass to the bundle deployment
 	// +optional
 	Variables map[string]string `json:"variables,omitempty"`
+
+	// ExternalCluster configuration for deploying to a remote cluster
+	// +optional
+	ExternalCluster *common.ExternalClusterConfig `json:"externalCluster,omitempty"`
 
 	// Components to deploy (if empty, deploys all)
 	// +optional
@@ -413,17 +443,6 @@ type ResourceSelector struct {
 	ValidateOwnership *bool `json:"validateOwnership,omitempty"`
 }
 
-// KubeconfigReference references a kubeconfig for external cluster deployment
-type KubeconfigReference struct {
-	// SecretRef references a Secret containing kubeconfig data
-	// +kubebuilder:validation:Required
-	SecretRef corev1.SecretReference `json:"secretRef"`
-
-	// Key within the Secret containing the kubeconfig
-	// +kubebuilder:default="kubeconfig"
-	Key string `json:"key,omitempty"`
-}
-
 // UDSBundleJobStatus defines the observed state of a UDSBundleJob
 type UDSBundleJobStatus struct {
 	// Phase represents the current phase of the job
@@ -457,9 +476,9 @@ type UDSBundleJobStatus struct {
 
 // OperationStatus tracks the status of a specific operation
 type OperationStatus struct {
-	// State represents the operation state (Pending, Running, Completed, Failed, Retrying)
+	// Phase is the current phase (Pending, Running, Completed, Failed, Retrying)
 	// +optional
-	State string `json:"state,omitempty"`
+	Phase string `json:"phase,omitempty"`
 
 	// Message provides operation-specific details
 	// +optional
@@ -472,6 +491,10 @@ type OperationStatus struct {
 	// CompletionTime is when the operation completed
 	// +optional
 	CompletionTime *metav1.Time `json:"completionTime,omitempty"`
+
+	// ArtifactLocation where the artifact was stored
+	// +optional
+	ArtifactLocation string `json:"artifactLocation,omitempty"`
 
 	// JobName is the Kubernetes Job name for this operation
 	// +optional
@@ -493,6 +516,7 @@ type OperationStatus struct {
 // UDSBundleJob represents a job to create, publish, or deploy a UDS bundle
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
+// +kubebuilder:storageversion
 // +kubebuilder:resource:shortName=ubj
 // +kubebuilder:printcolumn:name="Action",type=string,JSONPath=`.spec.action`
 // +kubebuilder:printcolumn:name="Source",type=string,JSONPath=`.spec.source.type`

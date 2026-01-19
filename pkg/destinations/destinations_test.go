@@ -3,24 +3,25 @@ package destinations
 import (
 	"testing"
 
-	zarfv1alpha1 "github.com/kylegalloway/forge/pkg/apis/zarf/v1alpha1"
+	"github.com/kylegalloway/forge/pkg/apis/common"
+	zarfv1alpha3 "github.com/kylegalloway/forge/pkg/apis/zarf/v1alpha3"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func TestNew(t *testing.T) {
 	tests := []struct {
 		name     string
-		pkg      *zarfv1alpha1.ZarfPackageJob
+		pkg      *zarfv1alpha3.ZarfPackageJob
 		wantType string
 		wantErr  bool
 	}{
 		{
 			name: "s3 destination",
-			pkg: &zarfv1alpha1.ZarfPackageJob{
-				Spec: zarfv1alpha1.ZarfPackageJobSpec{
-					Publish: &zarfv1alpha1.PublishConfig{
-						Destination: zarfv1alpha1.PublishDestination{
-							Type: zarfv1alpha1.DestinationTypeS3,
+			pkg: &zarfv1alpha3.ZarfPackageJob{
+				Spec: zarfv1alpha3.ZarfPackageJobSpec{
+					Publish: &zarfv1alpha3.PublishConfig{
+						Destination: zarfv1alpha3.PublishDestination{
+							Type: zarfv1alpha3.DestinationTypeS3,
 						},
 					},
 				},
@@ -30,11 +31,11 @@ func TestNew(t *testing.T) {
 		},
 		{
 			name: "oci destination",
-			pkg: &zarfv1alpha1.ZarfPackageJob{
-				Spec: zarfv1alpha1.ZarfPackageJobSpec{
-					Publish: &zarfv1alpha1.PublishConfig{
-						Destination: zarfv1alpha1.PublishDestination{
-							Type: zarfv1alpha1.DestinationTypeOCI,
+			pkg: &zarfv1alpha3.ZarfPackageJob{
+				Spec: zarfv1alpha3.ZarfPackageJobSpec{
+					Publish: &zarfv1alpha3.PublishConfig{
+						Destination: zarfv1alpha3.PublishDestination{
+							Type: zarfv1alpha3.DestinationTypeOCI,
 						},
 					},
 				},
@@ -44,11 +45,11 @@ func TestNew(t *testing.T) {
 		},
 		{
 			name: "local destination",
-			pkg: &zarfv1alpha1.ZarfPackageJob{
-				Spec: zarfv1alpha1.ZarfPackageJobSpec{
-					Publish: &zarfv1alpha1.PublishConfig{
-						Destination: zarfv1alpha1.PublishDestination{
-							Type: zarfv1alpha1.DestinationTypeLocal,
+			pkg: &zarfv1alpha3.ZarfPackageJob{
+				Spec: zarfv1alpha3.ZarfPackageJobSpec{
+					Publish: &zarfv1alpha3.PublishConfig{
+						Destination: zarfv1alpha3.PublishDestination{
+							Type: zarfv1alpha3.DestinationTypeLocal,
 						},
 					},
 				},
@@ -58,17 +59,17 @@ func TestNew(t *testing.T) {
 		},
 		{
 			name: "missing publish config",
-			pkg: &zarfv1alpha1.ZarfPackageJob{
-				Spec: zarfv1alpha1.ZarfPackageJobSpec{},
+			pkg: &zarfv1alpha3.ZarfPackageJob{
+				Spec: zarfv1alpha3.ZarfPackageJobSpec{},
 			},
 			wantErr: true,
 		},
 		{
 			name: "unsupported destination type",
-			pkg: &zarfv1alpha1.ZarfPackageJob{
-				Spec: zarfv1alpha1.ZarfPackageJobSpec{
-					Publish: &zarfv1alpha1.PublishConfig{
-						Destination: zarfv1alpha1.PublishDestination{
+			pkg: &zarfv1alpha3.ZarfPackageJob{
+				Spec: zarfv1alpha3.ZarfPackageJobSpec{
+					Publish: &zarfv1alpha3.PublishConfig{
+						Destination: zarfv1alpha3.PublishDestination{
 							Type: "UnsupportedType",
 						},
 					},
@@ -95,22 +96,22 @@ func TestNew(t *testing.T) {
 func TestS3DestinationGetPublishCommand(t *testing.T) {
 	tests := []struct {
 		name         string
-		pkg          *zarfv1alpha1.ZarfPackageJob
+		pkg          *zarfv1alpha3.ZarfPackageJob
 		artifactPath string
 		wantErr      bool
 	}{
 		{
 			name: "basic s3 upload",
-			pkg: &zarfv1alpha1.ZarfPackageJob{
+			pkg: &zarfv1alpha3.ZarfPackageJob{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-pkg",
 					Namespace: "default",
 				},
-				Spec: zarfv1alpha1.ZarfPackageJobSpec{
-					Publish: &zarfv1alpha1.PublishConfig{
-						Destination: zarfv1alpha1.PublishDestination{
-							Type: zarfv1alpha1.DestinationTypeS3,
-							S3: &zarfv1alpha1.S3Destination{
+				Spec: zarfv1alpha3.ZarfPackageJobSpec{
+					Publish: &zarfv1alpha3.PublishConfig{
+						Destination: zarfv1alpha3.PublishDestination{
+							Type: zarfv1alpha3.DestinationTypeS3,
+							S3: &zarfv1alpha3.S3Destination{
 								Bucket:    "my-bucket",
 								KeyPrefix: "packages/",
 								Region:    "us-east-1",
@@ -124,15 +125,15 @@ func TestS3DestinationGetPublishCommand(t *testing.T) {
 		},
 		{
 			name: "missing s3 config",
-			pkg: &zarfv1alpha1.ZarfPackageJob{
+			pkg: &zarfv1alpha3.ZarfPackageJob{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-pkg",
 					Namespace: "default",
 				},
-				Spec: zarfv1alpha1.ZarfPackageJobSpec{
-					Publish: &zarfv1alpha1.PublishConfig{
-						Destination: zarfv1alpha1.PublishDestination{
-							Type: zarfv1alpha1.DestinationTypeS3,
+				Spec: zarfv1alpha3.ZarfPackageJobSpec{
+					Publish: &zarfv1alpha3.PublishConfig{
+						Destination: zarfv1alpha3.PublishDestination{
+							Type: zarfv1alpha3.DestinationTypeS3,
 						},
 					},
 				},
@@ -160,17 +161,17 @@ func TestS3DestinationGetPublishCommand(t *testing.T) {
 func TestS3DestinationGetJobConfiguration(t *testing.T) {
 	tests := []struct {
 		name    string
-		pkg     *zarfv1alpha1.ZarfPackageJob
+		pkg     *zarfv1alpha3.ZarfPackageJob
 		wantErr bool
 	}{
 		{
 			name: "s3 without credentials",
-			pkg: &zarfv1alpha1.ZarfPackageJob{
-				Spec: zarfv1alpha1.ZarfPackageJobSpec{
-					Publish: &zarfv1alpha1.PublishConfig{
-						Destination: zarfv1alpha1.PublishDestination{
-							Type: zarfv1alpha1.DestinationTypeS3,
-							S3: &zarfv1alpha1.S3Destination{
+			pkg: &zarfv1alpha3.ZarfPackageJob{
+				Spec: zarfv1alpha3.ZarfPackageJobSpec{
+					Publish: &zarfv1alpha3.PublishConfig{
+						Destination: zarfv1alpha3.PublishDestination{
+							Type: zarfv1alpha3.DestinationTypeS3,
+							S3: &zarfv1alpha3.S3Destination{
 								Bucket: "my-bucket",
 								Region: "us-east-1",
 							},
@@ -182,15 +183,15 @@ func TestS3DestinationGetJobConfiguration(t *testing.T) {
 		},
 		{
 			name: "s3 with credentials",
-			pkg: &zarfv1alpha1.ZarfPackageJob{
-				Spec: zarfv1alpha1.ZarfPackageJobSpec{
-					Publish: &zarfv1alpha1.PublishConfig{
-						Destination: zarfv1alpha1.PublishDestination{
-							Type: zarfv1alpha1.DestinationTypeS3,
-							S3: &zarfv1alpha1.S3Destination{
+			pkg: &zarfv1alpha3.ZarfPackageJob{
+				Spec: zarfv1alpha3.ZarfPackageJobSpec{
+					Publish: &zarfv1alpha3.PublishConfig{
+						Destination: zarfv1alpha3.PublishDestination{
+							Type: zarfv1alpha3.DestinationTypeS3,
+							S3: &zarfv1alpha3.S3Destination{
 								Bucket: "my-bucket",
 								Region: "us-east-1",
-								CredentialsSecretRef: &zarfv1alpha1.SecretReference{
+								CredentialRef: &common.SecretReference{
 									Name: "aws-creds",
 								},
 							},
@@ -220,22 +221,22 @@ func TestS3DestinationGetJobConfiguration(t *testing.T) {
 func TestOCIDestinationGetPublishCommand(t *testing.T) {
 	tests := []struct {
 		name         string
-		pkg          *zarfv1alpha1.ZarfPackageJob
+		pkg          *zarfv1alpha3.ZarfPackageJob
 		artifactPath string
 		wantErr      bool
 	}{
 		{
 			name: "basic oci push",
-			pkg: &zarfv1alpha1.ZarfPackageJob{
+			pkg: &zarfv1alpha3.ZarfPackageJob{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-pkg",
 					Namespace: "default",
 				},
-				Spec: zarfv1alpha1.ZarfPackageJobSpec{
-					Publish: &zarfv1alpha1.PublishConfig{
-						Destination: zarfv1alpha1.PublishDestination{
-							Type: zarfv1alpha1.DestinationTypeOCI,
-							OCI: &zarfv1alpha1.OCIDestination{
+				Spec: zarfv1alpha3.ZarfPackageJobSpec{
+					Publish: &zarfv1alpha3.PublishConfig{
+						Destination: zarfv1alpha3.PublishDestination{
+							Type: zarfv1alpha3.DestinationTypeOCI,
+							OCI: &zarfv1alpha3.OCIDestination{
 								Registry:   "ghcr.io",
 								Repository: "test/packages",
 								Tag:        "v1.0.0",
@@ -249,15 +250,15 @@ func TestOCIDestinationGetPublishCommand(t *testing.T) {
 		},
 		{
 			name: "missing oci config",
-			pkg: &zarfv1alpha1.ZarfPackageJob{
+			pkg: &zarfv1alpha3.ZarfPackageJob{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-pkg",
 					Namespace: "default",
 				},
-				Spec: zarfv1alpha1.ZarfPackageJobSpec{
-					Publish: &zarfv1alpha1.PublishConfig{
-						Destination: zarfv1alpha1.PublishDestination{
-							Type: zarfv1alpha1.DestinationTypeOCI,
+				Spec: zarfv1alpha3.ZarfPackageJobSpec{
+					Publish: &zarfv1alpha3.PublishConfig{
+						Destination: zarfv1alpha3.PublishDestination{
+							Type: zarfv1alpha3.DestinationTypeOCI,
 						},
 					},
 				},
@@ -285,17 +286,17 @@ func TestOCIDestinationGetPublishCommand(t *testing.T) {
 func TestOCIDestinationGetJobConfiguration(t *testing.T) {
 	tests := []struct {
 		name    string
-		pkg     *zarfv1alpha1.ZarfPackageJob
+		pkg     *zarfv1alpha3.ZarfPackageJob
 		wantErr bool
 	}{
 		{
 			name: "oci without credentials",
-			pkg: &zarfv1alpha1.ZarfPackageJob{
-				Spec: zarfv1alpha1.ZarfPackageJobSpec{
-					Publish: &zarfv1alpha1.PublishConfig{
-						Destination: zarfv1alpha1.PublishDestination{
-							Type: zarfv1alpha1.DestinationTypeOCI,
-							OCI: &zarfv1alpha1.OCIDestination{
+			pkg: &zarfv1alpha3.ZarfPackageJob{
+				Spec: zarfv1alpha3.ZarfPackageJobSpec{
+					Publish: &zarfv1alpha3.PublishConfig{
+						Destination: zarfv1alpha3.PublishDestination{
+							Type: zarfv1alpha3.DestinationTypeOCI,
+							OCI: &zarfv1alpha3.OCIDestination{
 								Registry:   "ghcr.io",
 								Repository: "test/packages",
 							},
@@ -307,15 +308,15 @@ func TestOCIDestinationGetJobConfiguration(t *testing.T) {
 		},
 		{
 			name: "oci with credentials",
-			pkg: &zarfv1alpha1.ZarfPackageJob{
-				Spec: zarfv1alpha1.ZarfPackageJobSpec{
-					Publish: &zarfv1alpha1.PublishConfig{
-						Destination: zarfv1alpha1.PublishDestination{
-							Type: zarfv1alpha1.DestinationTypeOCI,
-							OCI: &zarfv1alpha1.OCIDestination{
+			pkg: &zarfv1alpha3.ZarfPackageJob{
+				Spec: zarfv1alpha3.ZarfPackageJobSpec{
+					Publish: &zarfv1alpha3.PublishConfig{
+						Destination: zarfv1alpha3.PublishDestination{
+							Type: zarfv1alpha3.DestinationTypeOCI,
+							OCI: &zarfv1alpha3.OCIDestination{
 								Registry:   "ghcr.io",
 								Repository: "test/packages",
-								CredentialsSecretRef: &zarfv1alpha1.SecretReference{
+								CredentialRef: &common.SecretReference{
 									Name: "registry-creds",
 								},
 							},
@@ -345,22 +346,22 @@ func TestOCIDestinationGetJobConfiguration(t *testing.T) {
 func TestLocalDestinationGetPublishCommand(t *testing.T) {
 	tests := []struct {
 		name         string
-		pkg          *zarfv1alpha1.ZarfPackageJob
+		pkg          *zarfv1alpha3.ZarfPackageJob
 		artifactPath string
 		wantErr      bool
 	}{
 		{
 			name: "local copy",
-			pkg: &zarfv1alpha1.ZarfPackageJob{
+			pkg: &zarfv1alpha3.ZarfPackageJob{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-pkg",
 					Namespace: "default",
 				},
-				Spec: zarfv1alpha1.ZarfPackageJobSpec{
-					Publish: &zarfv1alpha1.PublishConfig{
-						Destination: zarfv1alpha1.PublishDestination{
-							Type: zarfv1alpha1.DestinationTypeLocal,
-							Local: &zarfv1alpha1.LocalDestination{
+				Spec: zarfv1alpha3.ZarfPackageJobSpec{
+					Publish: &zarfv1alpha3.PublishConfig{
+						Destination: zarfv1alpha3.PublishDestination{
+							Type: zarfv1alpha3.DestinationTypeLocal,
+							Local: &zarfv1alpha3.LocalDestination{
 								Path: "/output/packages",
 							},
 						},
@@ -372,15 +373,15 @@ func TestLocalDestinationGetPublishCommand(t *testing.T) {
 		},
 		{
 			name: "missing local config",
-			pkg: &zarfv1alpha1.ZarfPackageJob{
+			pkg: &zarfv1alpha3.ZarfPackageJob{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-pkg",
 					Namespace: "default",
 				},
-				Spec: zarfv1alpha1.ZarfPackageJobSpec{
-					Publish: &zarfv1alpha1.PublishConfig{
-						Destination: zarfv1alpha1.PublishDestination{
-							Type: zarfv1alpha1.DestinationTypeLocal,
+				Spec: zarfv1alpha3.ZarfPackageJobSpec{
+					Publish: &zarfv1alpha3.PublishConfig{
+						Destination: zarfv1alpha3.PublishDestination{
+							Type: zarfv1alpha3.DestinationTypeLocal,
 						},
 					},
 				},
@@ -407,12 +408,12 @@ func TestLocalDestinationGetPublishCommand(t *testing.T) {
 
 func TestLocalDestinationGetJobConfiguration(t *testing.T) {
 	dest := &LocalDestination{}
-	pkg := &zarfv1alpha1.ZarfPackageJob{
-		Spec: zarfv1alpha1.ZarfPackageJobSpec{
-			Publish: &zarfv1alpha1.PublishConfig{
-				Destination: zarfv1alpha1.PublishDestination{
-					Type: zarfv1alpha1.DestinationTypeLocal,
-					Local: &zarfv1alpha1.LocalDestination{
+	pkg := &zarfv1alpha3.ZarfPackageJob{
+		Spec: zarfv1alpha3.ZarfPackageJobSpec{
+			Publish: &zarfv1alpha3.PublishConfig{
+				Destination: zarfv1alpha3.PublishDestination{
+					Type: zarfv1alpha3.DestinationTypeLocal,
+					Local: &zarfv1alpha3.LocalDestination{
 						Path: "/output",
 					},
 				},

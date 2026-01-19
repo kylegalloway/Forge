@@ -15,7 +15,7 @@ import (
 	"k8s.io/klog/v2"
 
 	"github.com/kylegalloway/forge/pkg/actions"
-	zarfv1alpha1 "github.com/kylegalloway/forge/pkg/apis/zarf/v1alpha1"
+	zarfv1alpha3 "github.com/kylegalloway/forge/pkg/apis/zarf/v1alpha3"
 	"github.com/kylegalloway/forge/pkg/constants"
 	"github.com/kylegalloway/forge/pkg/sources"
 	"github.com/kylegalloway/forge/pkg/telemetry"
@@ -48,7 +48,7 @@ func NewBuildHandler(kubeClient kubernetes.Interface, metrics *telemetry.Metrics
 //
 // For the rationale behind this signature divergence, see:
 // docs/development/ARCHITECTURE.md#handler-signature-divergence
-func (handler *BuildHandler) Execute(ctx context.Context, pkg *zarfv1alpha1.ZarfPackageJob, artifactPVCName string) (*actions.ActionResult, error) {
+func (handler *BuildHandler) Execute(ctx context.Context, pkg *zarfv1alpha3.ZarfPackageJob, artifactPVCName string) (*actions.ActionResult, error) {
 
 	klog.InfoS("Executing Zarf Package Build action", "name", pkg.Name, "namespace", pkg.Namespace, "artifactPVC", artifactPVCName)
 
@@ -85,7 +85,7 @@ func (handler *BuildHandler) Execute(ctx context.Context, pkg *zarfv1alpha1.Zarf
 }
 
 // createBuildJob creates a Kubernetes Job to build a Zarf package
-func (handler *BuildHandler) createBuildJob(ctx context.Context, pkg *zarfv1alpha1.ZarfPackageJob, artifactPVCName string) (*batchv1.Job, error) {
+func (handler *BuildHandler) createBuildJob(ctx context.Context, pkg *zarfv1alpha3.ZarfPackageJob, artifactPVCName string) (*batchv1.Job, error) {
 	jobName := fmt.Sprintf("%s-build", pkg.Name)
 
 	// Build zarf command based on source type and artifact PVC
@@ -99,7 +99,7 @@ func (handler *BuildHandler) createBuildJob(ctx context.Context, pkg *zarfv1alph
 
 	// Determine timeout and retry policy
 	timeoutStr := ""
-	var retryPolicy *zarfv1alpha1.RetryPolicy
+	var retryPolicy *zarfv1alpha3.RetryPolicy
 	if pkg.Spec.Build != nil {
 		timeoutStr = pkg.Spec.Build.Timeout
 		retryPolicy = pkg.Spec.Build.Retry
@@ -109,7 +109,7 @@ func (handler *BuildHandler) createBuildJob(ctx context.Context, pkg *zarfv1alph
 	// Build Job using JobBuilder
 	builder := actions.NewJobBuilder(jobName, pkg.Namespace).
 		WithKubeClient(handler.kubeClient).
-		WithOwnerReference(pkg, zarfv1alpha1.SchemeGroupVersion.WithKind("ZarfPackageJob")).
+		WithOwnerReference(pkg, zarfv1alpha3.SchemeGroupVersion.WithKind("ZarfPackageJob")).
 		WithLabels(map[string]string{
 			"app":                  "forge",
 			"resource-type":        "zarfpackagejob",
@@ -133,8 +133,8 @@ func (handler *BuildHandler) createBuildJob(ctx context.Context, pkg *zarfv1alph
 		WithArtifactPVC(artifactPVCName)
 
 	// Add docker-config volume if OCI source with credentials
-	if pkg.Spec.Source.Type == zarfv1alpha1.SourceTypeOCI && pkg.Spec.Source.OCI != nil && pkg.Spec.Source.OCI.CredentialsSecretRef != nil { // pragma: allowlist secret
-		builder.WithDockerConfigSecret(pkg.Spec.Source.OCI.CredentialsSecretRef.Name) // pragma: allowlist secret
+	if pkg.Spec.Source.Type == zarfv1alpha3.SourceTypeOCI && pkg.Spec.Source.OCI != nil && pkg.Spec.Source.OCI.CredentialRef != nil { // pragma: allowlist secret
+		builder.WithDockerConfigSecret(pkg.Spec.Source.OCI.CredentialRef.Name) // pragma: allowlist secret
 	}
 
 	// Create or get the job
@@ -147,7 +147,7 @@ func (handler *BuildHandler) createBuildJob(ctx context.Context, pkg *zarfv1alph
 }
 
 // buildZarfCommand builds the zarf CLI command based on package source
-func (handler *BuildHandler) buildZarfCommand(_ *zarfv1alpha1.ZarfPackageJob, artifactPVCName string) (string, string) {
+func (handler *BuildHandler) buildZarfCommand(_ *zarfv1alpha3.ZarfPackageJob, artifactPVCName string) (string, string) {
 	workingDir := constants.VolumeMountPathWorkspace
 
 	// Build command - output to /artifacts if PVC exists, otherwise /output
@@ -165,7 +165,7 @@ func (handler *BuildHandler) buildZarfCommand(_ *zarfv1alpha1.ZarfPackageJob, ar
 }
 
 // buildInitContainers creates init containers for source artifact retrieval
-func (handler *BuildHandler) buildInitContainers(pkg *zarfv1alpha1.ZarfPackageJob) ([]corev1.Container, error) {
+func (handler *BuildHandler) buildInitContainers(pkg *zarfv1alpha3.ZarfPackageJob) ([]corev1.Container, error) {
 	sourceHandler, err := sources.New(pkg)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create source handler: %w", err)
@@ -185,7 +185,7 @@ func (handler *BuildHandler) buildInitContainers(pkg *zarfv1alpha1.ZarfPackageJo
 
 // getResources returns resource requirements for the job pod
 // Uses spec.resources if provided, otherwise falls back to sensible defaults
-func (handler *BuildHandler) getResources(pkg *zarfv1alpha1.ZarfPackageJob) corev1.ResourceRequirements {
+func (handler *BuildHandler) getResources(pkg *zarfv1alpha3.ZarfPackageJob) corev1.ResourceRequirements {
 	// If custom resources specified, use them
 	if pkg.Spec.Resources != nil {
 		return *pkg.Spec.Resources

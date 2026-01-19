@@ -23,7 +23,7 @@ metadata:
     forge.dev/allowed-deploy-targets: "local,*"
 
 ---
-apiVersion: forge.dev/v1alpha2
+apiVersion: forge.dev/v1alpha3
 kind: UDSBundleJob
 metadata:
   name: git-build-deploy-bundle-example

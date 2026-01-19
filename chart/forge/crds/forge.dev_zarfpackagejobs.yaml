@@ -29,7 +29,7 @@ spec:
     - jsonPath: .metadata.creationTimestamp
       name: Age
       type: date
-    name: v1alpha1
+    name: v1alpha3
     schema:
       openAPIV3Schema:
         description: |-
@@ -1053,27 +1053,34 @@ spec:
                       type: string
                     type: array
                   externalCluster:
-                    description: ExternalCluster configuration (required if target=ExternalCluster)
+                    description: ExternalCluster configuration for deploying to a
+                      remote cluster
                     properties:
                       context:
-                        description: Context is the kubeconfig context to use
+                        description: Context specifies which context to use from the
+                          kubeconfig
                         type: string
-                      kubeconfigSecretRef:
-                        description: KubeconfigSecretRef references a Secret containing
-                          the kubeconfig
+                      key:
+                        default: kubeconfig
+                        description: Key is the key within the secret containing the
+                          kubeconfig data
+                        type: string
+                      secretRef:
+                        description: SecretRef references a secret containing the
+                          kubeconfig
                         properties:
                           name:
-                            description: Name of the secret
+                            description: Name is the name of the secret
                             type: string
                           namespace:
-                            description: Namespace of the secret (defaults to resource
-                              namespace)
+                            description: Namespace of the secret. Defaults to the
+                              namespace of the referencing resource.
                             type: string
                         required:
                         - name
                         type: object
                     required:
-                    - kubeconfigSecretRef
+                    - secretRef
                     type: object
                   namespace:
                     default: default
@@ -1144,11 +1151,6 @@ spec:
                           type: string
                         type: array
                     type: object
-                  setVariables:
-                    additionalProperties:
-                      type: string
-                    description: SetVariables are Zarf variables to set during deployment
-                    type: object
                   target:
                     description: Target specifies where to deploy
                     enum:
@@ -1159,6 +1161,11 @@ spec:
                     default: 30m
                     description: Timeout for the deployment
                     type: string
+                  variables:
+                    additionalProperties:
+                      type: string
+                    description: Variables are Zarf variables to set during deployment
+                    type: object
                 required:
                 - target
                 type: object
@@ -1193,16 +1200,16 @@ spec:
                       oci:
                         description: OCI destination configuration (required if type=OCI)
                         properties:
-                          credentialsSecretRef:
-                            description: CredentialsSecretRef references a Secret
-                              with registry credentials
+                          credentialRef:
+                            description: CredentialRef references a Secret with registry
+                              credentials
                             properties:
                               name:
-                                description: Name of the secret
+                                description: Name is the name of the secret
                                 type: string
                               namespace:
-                                description: Namespace of the secret (defaults to
-                                  resource namespace)
+                                description: Namespace of the secret. Defaults to
+                                  the namespace of the referencing resource.
                                 type: string
                             required:
                             - name
@@ -1228,29 +1235,33 @@ spec:
                           bucket:
                             description: Bucket name
                             type: string
-                          credentialsSecretRef:
-                            description: CredentialsSecretRef references a Secret
-                              with AWS credentials
+                          credentialRef:
+                            description: CredentialRef references a Secret with AWS
+                              credentials
                             properties:
                               name:
-                                description: Name of the secret
+                                description: Name is the name of the secret
                                 type: string
                               namespace:
-                                description: Namespace of the secret (defaults to
-                                  resource namespace)
+                                description: Namespace of the secret. Defaults to
+                                  the namespace of the referencing resource.
                                 type: string
                             required:
                             - name
                             type: object
+                          endpoint:
+                            description: Endpoint for S3-compatible storage
+                            type: string
                           keyPrefix:
-                            description: KeyPrefix for the uploaded artifact
+                            description: KeyPrefix is the S3 key prefix (artifact
+                              name is appended)
                             type: string
                           region:
                             description: Region is the AWS region
                             type: string
                         required:
                         - bucket
-                        - region
+                        - keyPrefix
                         type: object
                       type:
                         description: Type specifies the destination type
@@ -1304,102 +1315,6 @@ spec:
                     type: string
                 required:
                 - destination
-                type: object
-              rbacPolicy:
-                description: RBACPolicy defines policy restrictions for this resource
-                properties:
-                  allowedActions:
-                    description: AllowedActions specifies which actions are permitted
-                    items:
-                      description: Action represents an operation to perform on a
-                        Zarf package
-                      enum:
-                      - Build
-                      - Publish
-                      - Deploy
-                      - BuildPublish
-                      - BuildDeploy
-                      - PublishDeploy
-                      - BuildPublishDeploy
-                      type: string
-                    type: array
-                  allowedDeployTargets:
-                    description: AllowedDeployTargets specifies which deploy targets
-                      are permitted
-                    items:
-                      description: DeployTargetType represents where packages are
-                        deployed
-                      enum:
-                      - InCluster
-                      - ExternalCluster
-                      type: string
-                    type: array
-                  allowedDestinations:
-                    description: AllowedDestinations specifies which destination types/patterns
-                      are permitted
-                    items:
-                      description: AllowedDestination defines a permitted destination
-                        pattern
-                      properties:
-                        buckets:
-                          description: Buckets allowed (glob pattern) for S3
-                          items:
-                            type: string
-                          type: array
-                        registries:
-                          description: Registries allowed (glob pattern) for OCI
-                          items:
-                            type: string
-                          type: array
-                        type:
-                          description: Type of destination allowed
-                          enum:
-                          - S3
-                          - OCI
-                          - Local
-                          type: string
-                      required:
-                      - type
-                      type: object
-                    type: array
-                  allowedSources:
-                    description: AllowedSources specifies which source types/patterns
-                      are permitted
-                    items:
-                      description: AllowedSource defines a permitted source pattern
-                      properties:
-                        buckets:
-                          description: Buckets allowed (glob pattern) for S3
-                          items:
-                            type: string
-                          type: array
-                        images:
-                          description: Images allowed (glob pattern) for OCI
-                          items:
-                            type: string
-                          type: array
-                        repos:
-                          description: Repos allowed (glob pattern) for Git
-                          items:
-                            type: string
-                          type: array
-                        type:
-                          description: Type of source allowed
-                          enum:
-                          - Git
-                          - S3
-                          - OCI
-                          - Local
-                          type: string
-                      required:
-                      - type
-                      type: object
-                    type: array
-                  allowedUsers:
-                    description: AllowedUsers specifies which users can use this resource
-                    items:
-                      type: string
-                    type: array
                 type: object
               resources:
                 description: |-
@@ -1483,17 +1398,17 @@ spec:
                   git:
                     description: Git source configuration (required if type=Git)
                     properties:
-                      credentialsSecretRef:
+                      credentialRef:
                         description: |-
-                          CredentialsSecretRef references a Secret with Git credentials
+                          CredentialRef references a Secret with Git credentials
                           Secret should contain 'ssh-key' or 'token' key
                         properties:
                           name:
-                            description: Name of the secret
+                            description: Name is the name of the secret
                             type: string
                           namespace:
-                            description: Namespace of the secret (defaults to resource
-                              namespace)
+                            description: Namespace of the secret. Defaults to the
+                              namespace of the referencing resource.
                             type: string
                         required:
                         - name
@@ -1508,6 +1423,7 @@ spec:
                         description: Path to the zarf.yaml within the repository
                         type: string
                       ref:
+                        default: main
                         description: Ref is the branch, tag, or commit to checkout
                         type: string
                       url:
@@ -1515,7 +1431,6 @@ spec:
                         pattern: ^https://.*
                         type: string
                     required:
-                    - ref
                     - url
                     type: object
                   local:
@@ -1536,27 +1451,27 @@ spec:
                   oci:
                     description: OCI source configuration (required if type=OCI)
                     properties:
-                      credentialsSecretRef:
+                      credentialRef:
                         description: |-
-                          CredentialsSecretRef references a Secret with registry credentials
+                          CredentialRef references a Secret with registry credentials
                           Secret should be type kubernetes.io/dockerconfigjson
                         properties:
                           name:
-                            description: Name of the secret
+                            description: Name is the name of the secret
                             type: string
                           namespace:
-                            description: Namespace of the secret (defaults to resource
-                              namespace)
+                            description: Namespace of the secret. Defaults to the
+                              namespace of the referencing resource.
                             type: string
                         required:
                         - name
                         type: object
-                      image:
-                        description: Image is the full OCI image reference (registry/repo:tag
+                      reference:
+                        description: Reference is the full OCI reference (registry/repo:tag
                           or @digest)
                         type: string
                     required:
-                    - image
+                    - reference
                     type: object
                   s3:
                     description: S3 source configuration (required if type=S3)
@@ -1564,21 +1479,24 @@ spec:
                       bucket:
                         description: Bucket name
                         type: string
-                      credentialsSecretRef:
+                      credentialRef:
                         description: |-
-                          CredentialsSecretRef references a Secret with AWS credentials
+                          CredentialRef references a Secret with AWS credentials
                           Secret should contain 'access-key-id' and 'secret-access-key'
                         properties:
                           name:
-                            description: Name of the secret
+                            description: Name is the name of the secret
                             type: string
                           namespace:
-                            description: Namespace of the secret (defaults to resource
-                              namespace)
+                            description: Namespace of the secret. Defaults to the
+                              namespace of the referencing resource.
                             type: string
                         required:
                         - name
                         type: object
+                      endpoint:
+                        description: Endpoint for S3-compatible storage (e.g., MinIO)
+                        type: string
                       key:
                         description: Key is the object key (path) in the bucket
                         type: string
@@ -1588,7 +1506,6 @@ spec:
                     required:
                     - bucket
                     - key
-                    - region
                     type: object
                   type:
                     description: Type specifies the source type
@@ -1673,11 +1590,15 @@ spec:
                     description: LastFailureReason from most recent failure
                     type: string
                   message:
-                    description: Message provides details about the operation
+                    description: Message provides operation-specific details
                     type: string
                   nextRetryTime:
                     description: NextRetryTime when next retry will be attempted
                     format: date-time
+                    type: string
+                  phase:
+                    description: Phase is the current phase (Pending, Running, Completed,
+                      Failed, Retrying)
                     type: string
                   retryCount:
                     description: RetryCount tracks number of retry attempts
@@ -1687,12 +1608,6 @@ spec:
                     description: StartTime when the operation started
                     format: date-time
                     type: string
-                  state:
-                    description: State is the current state (Pending, Running, Completed,
-                      Failed, Retrying)
-                    type: string
-                required:
-                - state
                 type: object
               deployStatus:
                 description: DeployStatus contains deploy operation status
@@ -1709,11 +1624,15 @@ spec:
                     description: LastFailureReason from most recent failure
                     type: string
                   message:
-                    description: Message provides details about the operation
+                    description: Message provides operation-specific details
                     type: string
                   nextRetryTime:
                     description: NextRetryTime when next retry will be attempted
                     format: date-time
+                    type: string
+                  phase:
+                    description: Phase is the current phase (Pending, Running, Completed,
+                      Failed, Retrying)
                     type: string
                   retryCount:
                     description: RetryCount tracks number of retry attempts
@@ -1723,12 +1642,6 @@ spec:
                     description: StartTime when the operation started
                     format: date-time
                     type: string
-                  state:
-                    description: State is the current state (Pending, Running, Completed,
-                      Failed, Retrying)
-                    type: string
-                required:
-                - state
                 type: object
               lastUpdateTime:
                 description: LastUpdateTime is the last time the status was updated
@@ -1760,11 +1673,15 @@ spec:
                     description: LastFailureReason from most recent failure
                     type: string
                   message:
-                    description: Message provides details about the operation
+                    description: Message provides operation-specific details
                     type: string
                   nextRetryTime:
                     description: NextRetryTime when next retry will be attempted
                     format: date-time
+                    type: string
+                  phase:
+                    description: Phase is the current phase (Pending, Running, Completed,
+                      Failed, Retrying)
                     type: string
                   retryCount:
                     description: RetryCount tracks number of retry attempts
@@ -1774,12 +1691,6 @@ spec:
                     description: StartTime when the operation started
                     format: date-time
                     type: string
-                  state:
-                    description: State is the current state (Pending, Running, Completed,
-                      Failed, Retrying)
-                    type: string
-                required:
-                - state
                 type: object
             type: object
         type: object

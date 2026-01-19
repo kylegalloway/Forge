@@ -3,7 +3,7 @@ package destinations
 import (
 	"fmt"
 
-	zarfv1alpha1 "github.com/kylegalloway/forge/pkg/apis/zarf/v1alpha1"
+	zarfv1alpha3 "github.com/kylegalloway/forge/pkg/apis/zarf/v1alpha3"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -11,7 +11,7 @@ import (
 type S3Destination struct{}
 
 // GetPublishCommand returns the aws s3 cp command
-func (destination *S3Destination) GetPublishCommand(pkg *zarfv1alpha1.ZarfPackageJob, artifactPath string) (string, error) {
+func (destination *S3Destination) GetPublishCommand(pkg *zarfv1alpha3.ZarfPackageJob, artifactPath string) (string, error) {
 	s3Config := pkg.Spec.Publish.Destination.S3
 	if s3Config == nil {
 		return "", fmt.Errorf("s3 destination configuration is missing")
@@ -23,7 +23,7 @@ func (destination *S3Destination) GetPublishCommand(pkg *zarfv1alpha1.ZarfPackag
 
 // GetJobConfiguration returns the AWS credentials env vars
 // Uses same key names as S3 sources: 'access-key-id' and 'secret-access-key'
-func (destination *S3Destination) GetJobConfiguration(pkg *zarfv1alpha1.ZarfPackageJob) (*JobConfig, error) {
+func (destination *S3Destination) GetJobConfiguration(pkg *zarfv1alpha3.ZarfPackageJob) (*JobConfig, error) {
 	s3Config := pkg.Spec.Publish.Destination.S3
 	if s3Config == nil {
 		return nil, fmt.Errorf("s3 destination configuration is missing")
@@ -31,8 +31,8 @@ func (destination *S3Destination) GetJobConfiguration(pkg *zarfv1alpha1.ZarfPack
 
 	config := &JobConfig{}
 
-	if s3Config.CredentialsSecretRef != nil { // pragma: allowlist secret
-		secretName := s3Config.CredentialsSecretRef.Name // pragma: allowlist secret
+	if s3Config.CredentialRef != nil { // pragma: allowlist secret
+		secretName := s3Config.CredentialRef.Name // pragma: allowlist secret
 		config.Env = append(config.Env,
 			corev1.EnvVar{
 				Name: "AWS_ACCESS_KEY_ID",

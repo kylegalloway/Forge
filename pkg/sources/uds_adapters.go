@@ -3,18 +3,16 @@ package sources
 import (
 	"fmt"
 
-	udsv1alpha2 "github.com/kylegalloway/forge/pkg/apis/uds/v1alpha2"
+	udsv1alpha3 "github.com/kylegalloway/forge/pkg/apis/uds/v1alpha3"
 	"github.com/kylegalloway/forge/pkg/constants"
 	corev1 "k8s.io/api/core/v1"
 )
 
 // GetUDSInitContainer returns an init container for the given UDS bundle source
 // This adapts UDS bundle sources to use the shared source handler logic
-//
-//nolint:staticcheck // SA1019: UDSBundleJob v1alpha1 must be supported until v0.10.0
-func GetUDSInitContainer(bundle *udsv1alpha2.UDSBundleJob) (*corev1.Container, error) {
+func GetUDSInitContainer(bundle *udsv1alpha3.UDSBundleJob) (*corev1.Container, error) {
 	switch bundle.Spec.Source.Type {
-	case udsv1alpha2.SourceTypeGit:
+	case udsv1alpha3.SourceTypeGit:
 		gitSource := bundle.Spec.Source.Git
 		if gitSource == nil {
 			return nil, fmt.Errorf("git source configuration is missing")
@@ -22,8 +20,8 @@ func GetUDSInitContainer(bundle *udsv1alpha2.UDSBundleJob) (*corev1.Container, e
 
 		// Convert UDS GitSource to common GitSourceConfig
 		var secretName string
-		if gitSource.CredentialsSecretRef != nil { // pragma: allowlist secret
-			secretName = gitSource.CredentialsSecretRef.Name // pragma: allowlist secret
+		if gitSource.CredentialRef != nil { // pragma: allowlist secret
+			secretName = gitSource.CredentialRef.Name // pragma: allowlist secret
 		}
 
 		config := &GitSourceConfig{
@@ -37,7 +35,7 @@ func GetUDSInitContainer(bundle *udsv1alpha2.UDSBundleJob) (*corev1.Container, e
 		// Use common builder with UDS UID
 		return BuildGitInitContainer(config, int64(constants.DefaultUDSUID))
 
-	case udsv1alpha2.SourceTypeS3:
+	case udsv1alpha3.SourceTypeS3:
 		s3Source := bundle.Spec.Source.S3
 		if s3Source == nil {
 			return nil, fmt.Errorf("s3 source configuration is missing")
@@ -45,8 +43,8 @@ func GetUDSInitContainer(bundle *udsv1alpha2.UDSBundleJob) (*corev1.Container, e
 
 		// Convert UDS S3Source to common S3SourceConfig
 		var secretName string
-		if s3Source.CredentialsSecretRef != nil { // pragma: allowlist secret
-			secretName = s3Source.CredentialsSecretRef.Name // pragma: allowlist secret
+		if s3Source.CredentialRef != nil { // pragma: allowlist secret
+			secretName = s3Source.CredentialRef.Name // pragma: allowlist secret
 		}
 
 		config := &S3SourceConfig{
@@ -60,7 +58,7 @@ func GetUDSInitContainer(bundle *udsv1alpha2.UDSBundleJob) (*corev1.Container, e
 		// Use common builder with UDS UID
 		return BuildS3InitContainer(config, int64(constants.DefaultUDSUID))
 
-	case udsv1alpha2.SourceTypeOCI:
+	case udsv1alpha3.SourceTypeOCI:
 		ociSource := bundle.Spec.Source.OCI
 		if ociSource == nil {
 			return nil, fmt.Errorf("oci source configuration is missing")
@@ -68,8 +66,8 @@ func GetUDSInitContainer(bundle *udsv1alpha2.UDSBundleJob) (*corev1.Container, e
 
 		// Convert UDS OCISource to common OCISourceConfig
 		var secretName string
-		if ociSource.CredentialsSecretRef != nil { // pragma: allowlist secret
-			secretName = ociSource.CredentialsSecretRef.Name // pragma: allowlist secret
+		if ociSource.CredentialRef != nil { // pragma: allowlist secret
+			secretName = ociSource.CredentialRef.Name // pragma: allowlist secret
 		}
 
 		config := &OCISourceConfig{
@@ -80,7 +78,7 @@ func GetUDSInitContainer(bundle *udsv1alpha2.UDSBundleJob) (*corev1.Container, e
 		// Use common builder with UDS UID
 		return BuildOCIInitContainer(config, int64(constants.DefaultUDSUID))
 
-	case udsv1alpha2.SourceTypeLocal:
+	case udsv1alpha3.SourceTypeLocal:
 		// Local sources don't need an init container - the volume is mounted directly
 		return nil, nil
 

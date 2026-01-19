@@ -3,8 +3,8 @@ package controller
 import (
 	"context"
 
-	udsv1alpha2 "github.com/kylegalloway/forge/pkg/apis/uds/v1alpha2"
-	zarfv1alpha1 "github.com/kylegalloway/forge/pkg/apis/zarf/v1alpha1"
+	udsv1alpha3 "github.com/kylegalloway/forge/pkg/apis/uds/v1alpha3"
+	zarfv1alpha3 "github.com/kylegalloway/forge/pkg/apis/zarf/v1alpha3"
 	"github.com/kylegalloway/forge/pkg/telemetry"
 )
 
@@ -84,7 +84,7 @@ func (r *ZarfMetricsRecorder) RecordActionDuration(ctx context.Context, namespac
 }
 
 // Compile-time assertion that ZarfMetricsRecorder implements MetricsRecorder
-var _ MetricsRecorder[*zarfv1alpha1.ZarfPackageJob] = (*ZarfMetricsRecorder)(nil)
+var _ MetricsRecorder[*zarfv1alpha3.ZarfPackageJob] = (*ZarfMetricsRecorder)(nil)
 
 // UDSMetricsRecorder adapts telemetry.Metrics to MetricsRecorder[*UDSBundleJob]
 type UDSMetricsRecorder struct {
@@ -168,4 +168,4 @@ func (r *UDSMetricsRecorder) RecordActionDuration(_ context.Context, _, _, _ str
 }
 
 // Compile-time assertion that UDSMetricsRecorder implements MetricsRecorder
-var _ MetricsRecorder[*udsv1alpha2.UDSBundleJob] = (*UDSMetricsRecorder)(nil)
+var _ MetricsRecorder[*udsv1alpha3.UDSBundleJob] = (*UDSMetricsRecorder)(nil)

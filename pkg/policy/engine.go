@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	udsv1alpha2 "github.com/kylegalloway/forge/pkg/apis/uds/v1alpha2"
-	zarfv1alpha1 "github.com/kylegalloway/forge/pkg/apis/zarf/v1alpha1"
+	udsv1alpha3 "github.com/kylegalloway/forge/pkg/apis/uds/v1alpha3"
+	zarfv1alpha3 "github.com/kylegalloway/forge/pkg/apis/zarf/v1alpha3"
 	"github.com/kylegalloway/forge/pkg/constants"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -28,7 +28,7 @@ func NewEngine(kubeClient kubernetes.Interface) *Engine {
 }
 
 // Validate checks if the operation is allowed based on the ServiceAccount permissions
-func (engine *Engine) Validate(ctx context.Context, pkg *zarfv1alpha1.ZarfPackageJob) error {
+func (engine *Engine) Validate(ctx context.Context, pkg *zarfv1alpha3.ZarfPackageJob) error {
 	// 1. Fetch ServiceAccount
 	saName := pkg.Spec.ServiceAccountName
 	if saName == "" {
@@ -84,12 +84,12 @@ func (engine *Engine) Validate(ctx context.Context, pkg *zarfv1alpha1.ZarfPackag
 }
 
 // validateSource checks if the source is allowed
-func (engine *Engine) validateSource(source zarfv1alpha1.PackageSource, annotations map[string]string, saName string) error {
+func (engine *Engine) validateSource(source zarfv1alpha3.PackageSource, annotations map[string]string, saName string) error {
 	// Security by default: if the required annotation is missing, access is denied.
 	// Each source type requires its corresponding annotation to be present with allowed values.
 
 	switch source.Type {
-	case zarfv1alpha1.SourceTypeGit:
+	case zarfv1alpha3.SourceTypeGit:
 		allowedRepos := parseList(annotations[constants.AnnotationAllowedSourceRepos])
 		if len(allowedRepos) == 0 {
 			return fmt.Errorf("no allowed source repos defined (annotation %s is required)", constants.AnnotationAllowedSourceRepos)
@@ -101,7 +101,7 @@ func (engine *Engine) validateSource(source zarfv1alpha1.PackageSource, annotati
 			return fmt.Errorf("git repo %s is not allowed (allowed repos: %v) for ServiceAccount %s",
 				source.Git.URL, allowedRepos, saName)
 		}
-	case zarfv1alpha1.SourceTypeS3:
+	case zarfv1alpha3.SourceTypeS3:
 		allowedBuckets := parseList(annotations[constants.AnnotationAllowedSourceBuckets])
 		if len(allowedBuckets) == 0 {
 			return fmt.Errorf("no allowed source buckets defined (annotation %s is required)", constants.AnnotationAllowedSourceBuckets)
@@ -113,7 +113,7 @@ func (engine *Engine) validateSource(source zarfv1alpha1.PackageSource, annotati
 			return fmt.Errorf("S3 bucket %s is not allowed (allowed buckets: %v) for ServiceAccount %s",
 				source.S3.Bucket, allowedBuckets, saName)
 		}
-	case zarfv1alpha1.SourceTypeOCI:
+	case zarfv1alpha3.SourceTypeOCI:
 		allowedRegistries := parseList(annotations[constants.AnnotationAllowedSourceRegistries])
 		if len(allowedRegistries) == 0 {
 			return fmt.Errorf("no allowed source registries defined (annotation %s is required)", constants.AnnotationAllowedSourceRegistries)
@@ -121,11 +121,11 @@ func (engine *Engine) validateSource(source zarfv1alpha1.PackageSource, annotati
 		if source.OCI == nil {
 			return fmt.Errorf("source type is OCI but OCI config is nil")
 		}
-		if !matchAny(allowedRegistries, source.OCI.Image) {
+		if !matchAny(allowedRegistries, source.OCI.Reference) {
 			return fmt.Errorf("OCI image %s is not allowed (allowed registries: %v) for ServiceAccount %s",
-				source.OCI.Image, allowedRegistries, saName)
+				source.OCI.Reference, allowedRegistries, saName)
 		}
-	case zarfv1alpha1.SourceTypeLocal:
+	case zarfv1alpha3.SourceTypeLocal:
 		// Local sources require explicit permission (dev mode only)
 		if annotations[constants.AnnotationAllowLocalSources] != "true" {
 			return fmt.Errorf("local sources are not allowed (set annotation %s: true for dev mode)", constants.AnnotationAllowLocalSources)
@@ -137,9 +137,9 @@ func (engine *Engine) validateSource(source zarfv1alpha1.PackageSource, annotati
 }
 
 // validateDestination checks if the destination is allowed
-func (engine *Engine) validateDestination(dest zarfv1alpha1.PublishDestination, annotations map[string]string, saName string) error {
+func (engine *Engine) validateDestination(dest zarfv1alpha3.PublishDestination, annotations map[string]string, saName string) error {
 	switch dest.Type {
-	case zarfv1alpha1.DestinationTypeS3:
+	case zarfv1alpha3.DestinationTypeS3:
 		allowedBuckets := parseList(annotations[constants.AnnotationAllowedPublishBuckets])
 		if len(allowedBuckets) == 0 {
 			return fmt.Errorf("no allowed publish buckets defined (annotation %s is required)", constants.AnnotationAllowedPublishBuckets)
@@ -151,7 +151,7 @@ func (engine *Engine) validateDestination(dest zarfv1alpha1.PublishDestination, 
 			return fmt.Errorf("S3 bucket %s is not allowed (allowed buckets: %v) for ServiceAccount %s",
 				dest.S3.Bucket, allowedBuckets, saName)
 		}
-	case zarfv1alpha1.DestinationTypeOCI:
+	case zarfv1alpha3.DestinationTypeOCI:
 		allowedRegistries := parseList(annotations[constants.AnnotationAllowedPublishRegistries])
 		if len(allowedRegistries) == 0 {
 			return fmt.Errorf("no allowed publish registries defined (annotation %s is required)", constants.AnnotationAllowedPublishRegistries)
@@ -165,7 +165,7 @@ func (engine *Engine) validateDestination(dest zarfv1alpha1.PublishDestination, 
 			return fmt.Errorf("OCI registry %s is not allowed (allowed registries: %v) for ServiceAccount %s",
 				ociRef, allowedRegistries, saName)
 		}
-	case zarfv1alpha1.DestinationTypeLocal:
+	case zarfv1alpha3.DestinationTypeLocal:
 		// Local destinations require explicit permission (dev mode only)
 		if annotations[constants.AnnotationAllowLocalSources] != "true" {
 			return fmt.Errorf("local destinations are not allowed (set annotation %s: true for dev mode)", constants.AnnotationAllowLocalSources)
@@ -188,7 +188,7 @@ func isActionAllowed(action string, allowed []string) bool {
 	return false
 }
 
-func isDeployTargetAllowed(target zarfv1alpha1.DeployTargetType, allowed []string) bool {
+func isDeployTargetAllowed(target zarfv1alpha3.DeployTargetType, allowed []string) bool {
 	if len(allowed) == 0 {
 		return false
 	}
@@ -235,7 +235,7 @@ func matchAny(patterns []string, value string) bool {
 }
 
 // ValidateUDSBundle checks if the UDS bundle operation is allowed based on the ServiceAccount permissions
-func (engine *Engine) ValidateUDSBundle(ctx context.Context, bundle *udsv1alpha2.UDSBundleJob) error {
+func (engine *Engine) ValidateUDSBundle(ctx context.Context, bundle *udsv1alpha3.UDSBundleJob) error {
 	// 1. Fetch ServiceAccount
 	saName := bundle.Spec.ServiceAccountName
 	if saName == "" {
@@ -291,12 +291,12 @@ func (engine *Engine) ValidateUDSBundle(ctx context.Context, bundle *udsv1alpha2
 }
 
 // validatePackageSource checks if the UDS bundle source is allowed
-func (engine *Engine) validatePackageSource(source udsv1alpha2.PackageSource, annotations map[string]string, saName string) error {
+func (engine *Engine) validatePackageSource(source udsv1alpha3.PackageSource, annotations map[string]string, saName string) error {
 	// Security by default: if the required annotation is missing, access is denied.
 	// Each source type requires its corresponding annotation to be present with allowed values.
 
 	switch source.Type {
-	case udsv1alpha2.SourceTypeGit:
+	case udsv1alpha3.SourceTypeGit:
 		allowedRepos := parseList(annotations[constants.AnnotationAllowedSourceRepos])
 		if len(allowedRepos) == 0 {
 			return fmt.Errorf("no allowed source repos defined (annotation %s is required)", constants.AnnotationAllowedSourceRepos)
@@ -308,7 +308,7 @@ func (engine *Engine) validatePackageSource(source udsv1alpha2.PackageSource, an
 			return fmt.Errorf("git repo %s is not allowed (allowed repos: %v) for ServiceAccount %s",
 				source.Git.URL, allowedRepos, saName)
 		}
-	case udsv1alpha2.SourceTypeS3:
+	case udsv1alpha3.SourceTypeS3:
 		allowedBuckets := parseList(annotations[constants.AnnotationAllowedSourceBuckets])
 		if len(allowedBuckets) == 0 {
 			return fmt.Errorf("no allowed source buckets defined (annotation %s is required)", constants.AnnotationAllowedSourceBuckets)
@@ -320,7 +320,7 @@ func (engine *Engine) validatePackageSource(source udsv1alpha2.PackageSource, an
 			return fmt.Errorf("S3 bucket %s is not allowed (allowed buckets: %v) for ServiceAccount %s",
 				source.S3.Bucket, allowedBuckets, saName)
 		}
-	case udsv1alpha2.SourceTypeOCI:
+	case udsv1alpha3.SourceTypeOCI:
 		allowedRegistries := parseList(annotations[constants.AnnotationAllowedSourceRegistries])
 		if len(allowedRegistries) == 0 {
 			return fmt.Errorf("no allowed source registries defined (annotation %s is required)", constants.AnnotationAllowedSourceRegistries)
@@ -332,7 +332,7 @@ func (engine *Engine) validatePackageSource(source udsv1alpha2.PackageSource, an
 			return fmt.Errorf("OCI reference %s is not allowed (allowed registries: %v) for ServiceAccount %s",
 				source.OCI.Reference, allowedRegistries, saName)
 		}
-	case udsv1alpha2.SourceTypeLocal:
+	case udsv1alpha3.SourceTypeLocal:
 		// Local sources require explicit permission (dev mode only)
 		if annotations[constants.AnnotationAllowLocalSources] != "true" {
 			return fmt.Errorf("local sources are not allowed (set annotation %s: true for dev mode)", constants.AnnotationAllowLocalSources)
@@ -344,9 +344,9 @@ func (engine *Engine) validatePackageSource(source udsv1alpha2.PackageSource, an
 }
 
 // validatePublishDestination checks if the UDS bundle destination is allowed
-func (engine *Engine) validatePublishDestination(dest udsv1alpha2.PublishDestination, annotations map[string]string, saName string) error {
+func (engine *Engine) validatePublishDestination(dest udsv1alpha3.PublishDestination, annotations map[string]string, saName string) error {
 	switch dest.Type {
-	case udsv1alpha2.DestinationTypeS3:
+	case udsv1alpha3.DestinationTypeS3:
 		allowedBuckets := parseList(annotations[constants.AnnotationAllowedPublishBuckets])
 		if len(allowedBuckets) == 0 {
 			return fmt.Errorf("no allowed publish buckets defined (annotation %s is required)", constants.AnnotationAllowedPublishBuckets)
@@ -358,7 +358,7 @@ func (engine *Engine) validatePublishDestination(dest udsv1alpha2.PublishDestina
 			return fmt.Errorf("S3 bucket %s is not allowed (allowed buckets: %v) for ServiceAccount %s",
 				dest.S3.Bucket, allowedBuckets, saName)
 		}
-	case udsv1alpha2.DestinationTypeOCI:
+	case udsv1alpha3.DestinationTypeOCI:
 		allowedRegistries := parseList(annotations[constants.AnnotationAllowedPublishRegistries])
 		if len(allowedRegistries) == 0 {
 			return fmt.Errorf("no allowed publish registries defined (annotation %s is required)", constants.AnnotationAllowedPublishRegistries)
@@ -372,7 +372,7 @@ func (engine *Engine) validatePublishDestination(dest udsv1alpha2.PublishDestina
 			return fmt.Errorf("OCI registry %s is not allowed (allowed registries: %v) for ServiceAccount %s",
 				ociRef, allowedRegistries, saName)
 		}
-	case udsv1alpha2.DestinationTypeLocal:
+	case udsv1alpha3.DestinationTypeLocal:
 		// Local destinations require explicit permission (dev mode only)
 		if annotations[constants.AnnotationAllowLocalSources] != "true" {
 			return fmt.Errorf("local destinations are not allowed (set annotation %s: true for dev mode)", constants.AnnotationAllowLocalSources)
@@ -383,7 +383,7 @@ func (engine *Engine) validatePublishDestination(dest udsv1alpha2.PublishDestina
 	return nil
 }
 
-func isBundleDeployTargetAllowed(target udsv1alpha2.DeployTargetType, allowed []string) bool {
+func isBundleDeployTargetAllowed(target udsv1alpha3.DeployTargetType, allowed []string) bool {
 	if len(allowed) == 0 {
 		return false
 	}

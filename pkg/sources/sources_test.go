@@ -4,23 +4,24 @@ import (
 	"testing"
 
 	"github.com/kylegalloway/forge/pkg/actions"
-	zarfv1alpha1 "github.com/kylegalloway/forge/pkg/apis/zarf/v1alpha1"
+	"github.com/kylegalloway/forge/pkg/apis/common"
+	zarfv1alpha3 "github.com/kylegalloway/forge/pkg/apis/zarf/v1alpha3"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func TestNew(t *testing.T) {
 	tests := []struct {
 		name     string
-		pkg      *zarfv1alpha1.ZarfPackageJob
+		pkg      *zarfv1alpha3.ZarfPackageJob
 		wantType string
 		wantErr  bool
 	}{
 		{
 			name: "git source",
-			pkg: &zarfv1alpha1.ZarfPackageJob{
-				Spec: zarfv1alpha1.ZarfPackageJobSpec{
-					Source: zarfv1alpha1.PackageSource{
-						Type: zarfv1alpha1.SourceTypeGit,
+			pkg: &zarfv1alpha3.ZarfPackageJob{
+				Spec: zarfv1alpha3.ZarfPackageJobSpec{
+					Source: zarfv1alpha3.PackageSource{
+						Type: zarfv1alpha3.SourceTypeGit,
 					},
 				},
 			},
@@ -29,10 +30,10 @@ func TestNew(t *testing.T) {
 		},
 		{
 			name: "s3 source",
-			pkg: &zarfv1alpha1.ZarfPackageJob{
-				Spec: zarfv1alpha1.ZarfPackageJobSpec{
-					Source: zarfv1alpha1.PackageSource{
-						Type: zarfv1alpha1.SourceTypeS3,
+			pkg: &zarfv1alpha3.ZarfPackageJob{
+				Spec: zarfv1alpha3.ZarfPackageJobSpec{
+					Source: zarfv1alpha3.PackageSource{
+						Type: zarfv1alpha3.SourceTypeS3,
 					},
 				},
 			},
@@ -41,10 +42,10 @@ func TestNew(t *testing.T) {
 		},
 		{
 			name: "oci source",
-			pkg: &zarfv1alpha1.ZarfPackageJob{
-				Spec: zarfv1alpha1.ZarfPackageJobSpec{
-					Source: zarfv1alpha1.PackageSource{
-						Type: zarfv1alpha1.SourceTypeOCI,
+			pkg: &zarfv1alpha3.ZarfPackageJob{
+				Spec: zarfv1alpha3.ZarfPackageJobSpec{
+					Source: zarfv1alpha3.PackageSource{
+						Type: zarfv1alpha3.SourceTypeOCI,
 					},
 				},
 			},
@@ -53,10 +54,10 @@ func TestNew(t *testing.T) {
 		},
 		{
 			name: "local source",
-			pkg: &zarfv1alpha1.ZarfPackageJob{
-				Spec: zarfv1alpha1.ZarfPackageJobSpec{
-					Source: zarfv1alpha1.PackageSource{
-						Type: zarfv1alpha1.SourceTypeLocal,
+			pkg: &zarfv1alpha3.ZarfPackageJob{
+				Spec: zarfv1alpha3.ZarfPackageJobSpec{
+					Source: zarfv1alpha3.PackageSource{
+						Type: zarfv1alpha3.SourceTypeLocal,
 					},
 				},
 			},
@@ -65,9 +66,9 @@ func TestNew(t *testing.T) {
 		},
 		{
 			name: "unsupported source",
-			pkg: &zarfv1alpha1.ZarfPackageJob{
-				Spec: zarfv1alpha1.ZarfPackageJobSpec{
-					Source: zarfv1alpha1.PackageSource{
+			pkg: &zarfv1alpha3.ZarfPackageJob{
+				Spec: zarfv1alpha3.ZarfPackageJobSpec{
+					Source: zarfv1alpha3.PackageSource{
 						Type: "UnsupportedType",
 					},
 				},
@@ -93,20 +94,20 @@ func TestNew(t *testing.T) {
 func TestGitSourceGetInitContainer(t *testing.T) {
 	tests := []struct {
 		name    string
-		pkg     *zarfv1alpha1.ZarfPackageJob
+		pkg     *zarfv1alpha3.ZarfPackageJob
 		wantErr bool
 	}{
 		{
 			name: "basic git clone",
-			pkg: &zarfv1alpha1.ZarfPackageJob{
+			pkg: &zarfv1alpha3.ZarfPackageJob{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-pkg",
 					Namespace: "default",
 				},
-				Spec: zarfv1alpha1.ZarfPackageJobSpec{
-					Source: zarfv1alpha1.PackageSource{
-						Type: zarfv1alpha1.SourceTypeGit,
-						Git: &zarfv1alpha1.GitSource{
+				Spec: zarfv1alpha3.ZarfPackageJobSpec{
+					Source: zarfv1alpha3.PackageSource{
+						Type: zarfv1alpha3.SourceTypeGit,
+						Git: &zarfv1alpha3.GitSource{
 							URL: "https://github.com/test/repo",
 							Ref: "main",
 						},
@@ -117,15 +118,15 @@ func TestGitSourceGetInitContainer(t *testing.T) {
 		},
 		{
 			name: "git clone with path",
-			pkg: &zarfv1alpha1.ZarfPackageJob{
+			pkg: &zarfv1alpha3.ZarfPackageJob{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-pkg",
 					Namespace: "default",
 				},
-				Spec: zarfv1alpha1.ZarfPackageJobSpec{
-					Source: zarfv1alpha1.PackageSource{
-						Type: zarfv1alpha1.SourceTypeGit,
-						Git: &zarfv1alpha1.GitSource{
+				Spec: zarfv1alpha3.ZarfPackageJobSpec{
+					Source: zarfv1alpha3.PackageSource{
+						Type: zarfv1alpha3.SourceTypeGit,
+						Git: &zarfv1alpha3.GitSource{
 							URL:  "https://github.com/test/repo",
 							Ref:  "main",
 							Path: "examples/zarf-package",
@@ -137,18 +138,18 @@ func TestGitSourceGetInitContainer(t *testing.T) {
 		},
 		{
 			name: "git clone with credentials",
-			pkg: &zarfv1alpha1.ZarfPackageJob{
+			pkg: &zarfv1alpha3.ZarfPackageJob{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-pkg",
 					Namespace: "default",
 				},
-				Spec: zarfv1alpha1.ZarfPackageJobSpec{
-					Source: zarfv1alpha1.PackageSource{
-						Type: zarfv1alpha1.SourceTypeGit,
-						Git: &zarfv1alpha1.GitSource{
+				Spec: zarfv1alpha3.ZarfPackageJobSpec{
+					Source: zarfv1alpha3.PackageSource{
+						Type: zarfv1alpha3.SourceTypeGit,
+						Git: &zarfv1alpha3.GitSource{
 							URL: "https://github.com/test/private-repo",
 							Ref: "main",
-							CredentialsSecretRef: &zarfv1alpha1.SecretReference{
+							CredentialRef: &common.SecretReference{
 								Name: "git-creds",
 							},
 						},
@@ -159,18 +160,18 @@ func TestGitSourceGetInitContainer(t *testing.T) {
 		},
 		{
 			name: "git clone with credentials disabled",
-			pkg: &zarfv1alpha1.ZarfPackageJob{
+			pkg: &zarfv1alpha3.ZarfPackageJob{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-pkg",
 					Namespace: "default",
 				},
-				Spec: zarfv1alpha1.ZarfPackageJobSpec{
-					Source: zarfv1alpha1.PackageSource{
-						Type: zarfv1alpha1.SourceTypeGit,
-						Git: &zarfv1alpha1.GitSource{
+				Spec: zarfv1alpha3.ZarfPackageJobSpec{
+					Source: zarfv1alpha3.PackageSource{
+						Type: zarfv1alpha3.SourceTypeGit,
+						Git: &zarfv1alpha3.GitSource{
 							URL: "https://github.com/test/public-repo",
 							Ref: "main",
-							CredentialsSecretRef: &zarfv1alpha1.SecretReference{
+							CredentialRef: &common.SecretReference{
 								Name: "git-creds",
 							},
 							DisableCloneCredentials: true,
@@ -182,14 +183,14 @@ func TestGitSourceGetInitContainer(t *testing.T) {
 		},
 		{
 			name: "missing git config",
-			pkg: &zarfv1alpha1.ZarfPackageJob{
+			pkg: &zarfv1alpha3.ZarfPackageJob{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-pkg",
 					Namespace: "default",
 				},
-				Spec: zarfv1alpha1.ZarfPackageJobSpec{
-					Source: zarfv1alpha1.PackageSource{
-						Type: zarfv1alpha1.SourceTypeGit,
+				Spec: zarfv1alpha3.ZarfPackageJobSpec{
+					Source: zarfv1alpha3.PackageSource{
+						Type: zarfv1alpha3.SourceTypeGit,
 					},
 				},
 			},
@@ -241,7 +242,7 @@ func TestGitSourceGetInitContainer(t *testing.T) {
 
 				// Verify credentials are mounted when enabled  # pragma: allowlist secret
 				if tt.pkg.Spec.Source.Git != nil &&
-					tt.pkg.Spec.Source.Git.CredentialsSecretRef != nil && // pragma: allowlist secret
+					tt.pkg.Spec.Source.Git.CredentialRef != nil && // pragma: allowlist secret
 					!tt.pkg.Spec.Source.Git.DisableCloneCredentials {
 					// Should mount git-creds volume
 					found := false
@@ -279,20 +280,20 @@ func findSubstring(s, substr string) bool {
 func TestS3SourceGetInitContainer(t *testing.T) {
 	tests := []struct {
 		name    string
-		pkg     *zarfv1alpha1.ZarfPackageJob
+		pkg     *zarfv1alpha3.ZarfPackageJob
 		wantErr bool
 	}{
 		{
 			name: "basic s3 download",
-			pkg: &zarfv1alpha1.ZarfPackageJob{
+			pkg: &zarfv1alpha3.ZarfPackageJob{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-pkg",
 					Namespace: "default",
 				},
-				Spec: zarfv1alpha1.ZarfPackageJobSpec{
-					Source: zarfv1alpha1.PackageSource{
-						Type: zarfv1alpha1.SourceTypeS3,
-						S3: &zarfv1alpha1.S3Source{
+				Spec: zarfv1alpha3.ZarfPackageJobSpec{
+					Source: zarfv1alpha3.PackageSource{
+						Type: zarfv1alpha3.SourceTypeS3,
+						S3: &zarfv1alpha3.S3Source{
 							Bucket: "my-bucket",
 							Key:    "packages/test.tar.zst",
 							Region: "us-east-1",
@@ -304,19 +305,19 @@ func TestS3SourceGetInitContainer(t *testing.T) {
 		},
 		{
 			name: "s3 with credentials",
-			pkg: &zarfv1alpha1.ZarfPackageJob{
+			pkg: &zarfv1alpha3.ZarfPackageJob{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-pkg",
 					Namespace: "default",
 				},
-				Spec: zarfv1alpha1.ZarfPackageJobSpec{
-					Source: zarfv1alpha1.PackageSource{
-						Type: zarfv1alpha1.SourceTypeS3,
-						S3: &zarfv1alpha1.S3Source{
+				Spec: zarfv1alpha3.ZarfPackageJobSpec{
+					Source: zarfv1alpha3.PackageSource{
+						Type: zarfv1alpha3.SourceTypeS3,
+						S3: &zarfv1alpha3.S3Source{
 							Bucket: "my-bucket",
 							Key:    "packages/test.tar.zst",
 							Region: "us-east-1",
-							CredentialsSecretRef: &zarfv1alpha1.SecretReference{
+							CredentialRef: &common.SecretReference{
 								Name: "aws-creds",
 							},
 						},
@@ -327,14 +328,14 @@ func TestS3SourceGetInitContainer(t *testing.T) {
 		},
 		{
 			name: "missing s3 config",
-			pkg: &zarfv1alpha1.ZarfPackageJob{
+			pkg: &zarfv1alpha3.ZarfPackageJob{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-pkg",
 					Namespace: "default",
 				},
-				Spec: zarfv1alpha1.ZarfPackageJobSpec{
-					Source: zarfv1alpha1.PackageSource{
-						Type: zarfv1alpha1.SourceTypeS3,
+				Spec: zarfv1alpha3.ZarfPackageJobSpec{
+					Source: zarfv1alpha3.PackageSource{
+						Type: zarfv1alpha3.SourceTypeS3,
 					},
 				},
 			},
@@ -366,21 +367,21 @@ func TestS3SourceGetInitContainer(t *testing.T) {
 func TestOCISourceGetInitContainer(t *testing.T) {
 	tests := []struct {
 		name    string
-		pkg     *zarfv1alpha1.ZarfPackageJob
+		pkg     *zarfv1alpha3.ZarfPackageJob
 		wantErr bool
 	}{
 		{
 			name: "basic oci pull",
-			pkg: &zarfv1alpha1.ZarfPackageJob{
+			pkg: &zarfv1alpha3.ZarfPackageJob{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-pkg",
 					Namespace: "default",
 				},
-				Spec: zarfv1alpha1.ZarfPackageJobSpec{
-					Source: zarfv1alpha1.PackageSource{
-						Type: zarfv1alpha1.SourceTypeOCI,
-						OCI: &zarfv1alpha1.OCISource{
-							Image: "ghcr.io/test/package:v1.0.0",
+				Spec: zarfv1alpha3.ZarfPackageJobSpec{
+					Source: zarfv1alpha3.PackageSource{
+						Type: zarfv1alpha3.SourceTypeOCI,
+						OCI: &zarfv1alpha3.OCISource{
+							Reference: "ghcr.io/test/package:v1.0.0",
 						},
 					},
 				},
@@ -389,17 +390,17 @@ func TestOCISourceGetInitContainer(t *testing.T) {
 		},
 		{
 			name: "oci with credentials",
-			pkg: &zarfv1alpha1.ZarfPackageJob{
+			pkg: &zarfv1alpha3.ZarfPackageJob{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-pkg",
 					Namespace: "default",
 				},
-				Spec: zarfv1alpha1.ZarfPackageJobSpec{
-					Source: zarfv1alpha1.PackageSource{
-						Type: zarfv1alpha1.SourceTypeOCI,
-						OCI: &zarfv1alpha1.OCISource{
-							Image: "ghcr.io/test/package:v1.0.0",
-							CredentialsSecretRef: &zarfv1alpha1.SecretReference{
+				Spec: zarfv1alpha3.ZarfPackageJobSpec{
+					Source: zarfv1alpha3.PackageSource{
+						Type: zarfv1alpha3.SourceTypeOCI,
+						OCI: &zarfv1alpha3.OCISource{
+							Reference: "ghcr.io/test/package:v1.0.0",
+							CredentialRef: &common.SecretReference{
 								Name: "registry-creds",
 							},
 						},
@@ -410,14 +411,14 @@ func TestOCISourceGetInitContainer(t *testing.T) {
 		},
 		{
 			name: "missing oci config",
-			pkg: &zarfv1alpha1.ZarfPackageJob{
+			pkg: &zarfv1alpha3.ZarfPackageJob{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-pkg",
 					Namespace: "default",
 				},
-				Spec: zarfv1alpha1.ZarfPackageJobSpec{
-					Source: zarfv1alpha1.PackageSource{
-						Type: zarfv1alpha1.SourceTypeOCI,
+				Spec: zarfv1alpha3.ZarfPackageJobSpec{
+					Source: zarfv1alpha3.PackageSource{
+						Type: zarfv1alpha3.SourceTypeOCI,
 					},
 				},
 			},
@@ -448,10 +449,10 @@ func TestOCISourceGetInitContainer(t *testing.T) {
 
 func TestLocalSourceGetInitContainer(t *testing.T) {
 	source := &LocalSource{}
-	pkg := &zarfv1alpha1.ZarfPackageJob{
-		Spec: zarfv1alpha1.ZarfPackageJobSpec{
-			Source: zarfv1alpha1.PackageSource{
-				Type: zarfv1alpha1.SourceTypeLocal,
+	pkg := &zarfv1alpha3.ZarfPackageJob{
+		Spec: zarfv1alpha3.ZarfPackageJobSpec{
+			Source: zarfv1alpha3.PackageSource{
+				Type: zarfv1alpha3.SourceTypeLocal,
 			},
 		},
 	}

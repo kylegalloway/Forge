@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	udsv1alpha2 "github.com/kylegalloway/forge/pkg/apis/uds/v1alpha2"
+	udsv1alpha3 "github.com/kylegalloway/forge/pkg/apis/uds/v1alpha3"
 	"github.com/kylegalloway/forge/pkg/constants"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -42,17 +42,17 @@ func TestValidateUDSBundleJob_ValidCreate(t *testing.T) {
 		t.Fatalf("Failed to create ServiceAccount: %v", err)
 	}
 
-	bundle := &udsv1alpha2.UDSBundleJob{
+	bundle := &udsv1alpha3.UDSBundleJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-create",
 			Namespace: "default",
 		},
-		Spec: udsv1alpha2.UDSBundleJobSpec{
+		Spec: udsv1alpha3.UDSBundleJobSpec{
 			ServiceAccountName: "test-sa",
-			Action:             udsv1alpha2.ActionCreate,
-			Source: udsv1alpha2.PackageSource{
-				Type: udsv1alpha2.SourceTypeGit,
-				Git: &udsv1alpha2.GitSource{
+			Action:             udsv1alpha3.ActionCreate,
+			Source: udsv1alpha3.PackageSource{
+				Type: udsv1alpha3.SourceTypeGit,
+				Git: &udsv1alpha3.GitSource{
 					URL: "https://github.com/test/repo",
 					Ref: "main",
 				},
@@ -70,17 +70,17 @@ func TestValidateUDSBundleJob_MissingServiceAccount(t *testing.T) {
 	kubeClient := fake.NewClientset()
 	validator := NewUDSBundleJobValidator(kubeClient)
 
-	bundle := &udsv1alpha2.UDSBundleJob{
+	bundle := &udsv1alpha3.UDSBundleJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-create",
 			Namespace: "default",
 		},
-		Spec: udsv1alpha2.UDSBundleJobSpec{
+		Spec: udsv1alpha3.UDSBundleJobSpec{
 			ServiceAccountName: "nonexistent-sa",
-			Action:             udsv1alpha2.ActionCreate,
-			Source: udsv1alpha2.PackageSource{
-				Type: udsv1alpha2.SourceTypeGit,
-				Git: &udsv1alpha2.GitSource{
+			Action:             udsv1alpha3.ActionCreate,
+			Source: udsv1alpha3.PackageSource{
+				Type: udsv1alpha3.SourceTypeGit,
+				Git: &udsv1alpha3.GitSource{
 					URL: "https://github.com/test/repo",
 				},
 			},
@@ -99,7 +99,7 @@ func TestValidateUDSAction(t *testing.T) {
 	tests := []struct {
 		name          string
 		annotations   map[string]string
-		action        udsv1alpha2.Action
+		action        udsv1alpha3.Action
 		wantErr       bool
 		errorContains string
 	}{
@@ -108,7 +108,7 @@ func TestValidateUDSAction(t *testing.T) {
 			annotations: map[string]string{
 				constants.AnnotationAllowedActions: "Create,Publish",
 			},
-			action:  udsv1alpha2.ActionCreate,
+			action:  udsv1alpha3.ActionCreate,
 			wantErr: false,
 		},
 		{
@@ -116,14 +116,14 @@ func TestValidateUDSAction(t *testing.T) {
 			annotations: map[string]string{
 				constants.AnnotationAllowedActions: "Create",
 			},
-			action:        udsv1alpha2.ActionPublish,
+			action:        udsv1alpha3.ActionPublish,
 			wantErr:       true,
 			errorContains: "not allowed",
 		},
 		{
 			name:          "missing annotation",
 			annotations:   map[string]string{},
-			action:        udsv1alpha2.ActionCreate,
+			action:        udsv1alpha3.ActionCreate,
 			wantErr:       true,
 			errorContains: "no allowed-actions annotation",
 		},
@@ -132,7 +132,7 @@ func TestValidateUDSAction(t *testing.T) {
 			annotations: map[string]string{
 				constants.AnnotationAllowedActions: "Create,Publish,Deploy,CreatePublish",
 			},
-			action:  udsv1alpha2.ActionCreatePublish,
+			action:  udsv1alpha3.ActionCreatePublish,
 			wantErr: false,
 		},
 	}
@@ -166,7 +166,7 @@ func TestValidateUDSPackageSource(t *testing.T) {
 	tests := []struct {
 		name          string
 		annotations   map[string]string
-		source        *udsv1alpha2.PackageSource
+		source        *udsv1alpha3.PackageSource
 		wantErr       bool
 		errorContains string
 	}{
@@ -175,9 +175,9 @@ func TestValidateUDSPackageSource(t *testing.T) {
 			annotations: map[string]string{
 				constants.AnnotationAllowedSourceRepos: "https://github.com/myorg/*",
 			},
-			source: &udsv1alpha2.PackageSource{
-				Type: udsv1alpha2.SourceTypeGit,
-				Git: &udsv1alpha2.GitSource{
+			source: &udsv1alpha3.PackageSource{
+				Type: udsv1alpha3.SourceTypeGit,
+				Git: &udsv1alpha3.GitSource{
 					URL: "https://github.com/myorg/repo",
 				},
 			},
@@ -188,9 +188,9 @@ func TestValidateUDSPackageSource(t *testing.T) {
 			annotations: map[string]string{
 				constants.AnnotationAllowedSourceRepos: "https://github.com/myorg/*",
 			},
-			source: &udsv1alpha2.PackageSource{
-				Type: udsv1alpha2.SourceTypeGit,
-				Git: &udsv1alpha2.GitSource{
+			source: &udsv1alpha3.PackageSource{
+				Type: udsv1alpha3.SourceTypeGit,
+				Git: &udsv1alpha3.GitSource{
 					URL: "https://github.com/otherorg/repo",
 				},
 			},
@@ -202,9 +202,9 @@ func TestValidateUDSPackageSource(t *testing.T) {
 			annotations: map[string]string{
 				constants.AnnotationAllowedSourceRegistries: "ghcr.io/myorg/*",
 			},
-			source: &udsv1alpha2.PackageSource{
-				Type: udsv1alpha2.SourceTypeOCI,
-				OCI: &udsv1alpha2.OCISource{
+			source: &udsv1alpha3.PackageSource{
+				Type: udsv1alpha3.SourceTypeOCI,
+				OCI: &udsv1alpha3.OCISource{
 					Reference: "ghcr.io/myorg/bundle:v1.0.0",
 				},
 			},
@@ -215,9 +215,9 @@ func TestValidateUDSPackageSource(t *testing.T) {
 			annotations: map[string]string{
 				constants.AnnotationAllowedSourceBuckets: "my-bucket,other-bucket",
 			},
-			source: &udsv1alpha2.PackageSource{
-				Type: udsv1alpha2.SourceTypeS3,
-				S3: &udsv1alpha2.S3Source{
+			source: &udsv1alpha3.PackageSource{
+				Type: udsv1alpha3.SourceTypeS3,
+				S3: &udsv1alpha3.S3Source{
 					Bucket: "my-bucket",
 					Key:    "bundles/test.tar.zst",
 					Region: "us-east-1",
@@ -256,7 +256,7 @@ func TestValidateUDSBundlePublish(t *testing.T) {
 	tests := []struct {
 		name          string
 		annotations   map[string]string
-		publish       *udsv1alpha2.PublishConfig
+		publish       *udsv1alpha3.PublishConfig
 		wantErr       bool
 		errorContains string
 	}{
@@ -265,10 +265,10 @@ func TestValidateUDSBundlePublish(t *testing.T) {
 			annotations: map[string]string{
 				constants.AnnotationAllowedPublishRegistries: "ghcr.io/myorg/*",
 			},
-			publish: &udsv1alpha2.PublishConfig{
-				Destination: udsv1alpha2.PublishDestination{
-					Type: udsv1alpha2.DestinationTypeOCI,
-					OCI: &udsv1alpha2.OCIDestination{
+			publish: &udsv1alpha3.PublishConfig{
+				Destination: udsv1alpha3.PublishDestination{
+					Type: udsv1alpha3.DestinationTypeOCI,
+					OCI: &udsv1alpha3.OCIDestination{
 						Registry:   "ghcr.io",
 						Repository: "myorg/bundles",
 						Tag:        "v1.0.0",
@@ -282,10 +282,10 @@ func TestValidateUDSBundlePublish(t *testing.T) {
 			annotations: map[string]string{
 				constants.AnnotationAllowedPublishRegistries: "ghcr.io/myorg/*",
 			},
-			publish: &udsv1alpha2.PublishConfig{
-				Destination: udsv1alpha2.PublishDestination{
-					Type: udsv1alpha2.DestinationTypeOCI,
-					OCI: &udsv1alpha2.OCIDestination{
+			publish: &udsv1alpha3.PublishConfig{
+				Destination: udsv1alpha3.PublishDestination{
+					Type: udsv1alpha3.DestinationTypeOCI,
+					OCI: &udsv1alpha3.OCIDestination{
 						Registry:   "docker.io",
 						Repository: "otherorg/bundles",
 					},
@@ -299,13 +299,13 @@ func TestValidateUDSBundlePublish(t *testing.T) {
 			annotations: map[string]string{
 				constants.AnnotationAllowedPublishBuckets: "publish-bucket,backup-bucket",
 			},
-			publish: &udsv1alpha2.PublishConfig{
-				Destination: udsv1alpha2.PublishDestination{
-					Type: udsv1alpha2.DestinationTypeS3,
-					S3: &udsv1alpha2.S3Destination{
-						Bucket: "publish-bucket",
-						Key:    "prod/",
-						Region: "us-east-1",
+			publish: &udsv1alpha3.PublishConfig{
+				Destination: udsv1alpha3.PublishDestination{
+					Type: udsv1alpha3.DestinationTypeS3,
+					S3: &udsv1alpha3.S3Destination{
+						Bucket:    "publish-bucket",
+						KeyPrefix: "prod/",
+						Region:    "us-east-1",
 					},
 				},
 			},
@@ -342,7 +342,7 @@ func TestValidateUDSBundleDeploy(t *testing.T) {
 	tests := []struct {
 		name          string
 		annotations   map[string]string
-		deploy        *udsv1alpha2.DeployConfig
+		deploy        *udsv1alpha3.DeployConfig
 		wantErr       bool
 		errorContains string
 	}{
@@ -351,8 +351,8 @@ func TestValidateUDSBundleDeploy(t *testing.T) {
 			annotations: map[string]string{
 				constants.AnnotationAllowedDeployTargets: "InCluster",
 			},
-			deploy: &udsv1alpha2.DeployConfig{
-				Target:    udsv1alpha2.DeployTargetInCluster,
+			deploy: &udsv1alpha3.DeployConfig{
+				Target:    udsv1alpha3.DeployTargetInCluster,
 				Namespace: "default",
 			},
 			wantErr: false,
@@ -362,8 +362,8 @@ func TestValidateUDSBundleDeploy(t *testing.T) {
 			annotations: map[string]string{
 				constants.AnnotationAllowedDeployTargets: "InCluster",
 			},
-			deploy: &udsv1alpha2.DeployConfig{
-				Target: udsv1alpha2.DeployTargetExternalCluster,
+			deploy: &udsv1alpha3.DeployConfig{
+				Target: udsv1alpha3.DeployTargetExternalCluster,
 			},
 			wantErr:       true,
 			errorContains: "not allowed",
@@ -371,8 +371,8 @@ func TestValidateUDSBundleDeploy(t *testing.T) {
 		{
 			name:        "missing annotation",
 			annotations: map[string]string{},
-			deploy: &udsv1alpha2.DeployConfig{
-				Target: udsv1alpha2.DeployTargetInCluster,
+			deploy: &udsv1alpha3.DeployConfig{
+				Target: udsv1alpha3.DeployTargetInCluster,
 			},
 			wantErr:       true,
 			errorContains: "no allowed-deploy-targets annotation",
@@ -413,9 +413,9 @@ func TestValidateUDSBundlePublish_LocalDestination(t *testing.T) {
 	client := fake.NewClientset(sa)
 	validator := NewUDSBundleJobValidator(client)
 
-	publish := &udsv1alpha2.PublishConfig{
-		Destination: udsv1alpha2.PublishDestination{
-			Type: udsv1alpha2.DestinationTypeLocal,
+	publish := &udsv1alpha3.PublishConfig{
+		Destination: udsv1alpha3.PublishDestination{
+			Type: udsv1alpha3.DestinationTypeLocal,
 		},
 	}
 
@@ -436,8 +436,8 @@ func TestValidateUDSBundlePublish_UnknownDestination(t *testing.T) {
 	client := fake.NewClientset(sa)
 	validator := NewUDSBundleJobValidator(client)
 
-	publish := &udsv1alpha2.PublishConfig{
-		Destination: udsv1alpha2.PublishDestination{
+	publish := &udsv1alpha3.PublishConfig{
+		Destination: udsv1alpha3.PublishDestination{
 			Type: "UnknownType",
 		},
 	}
@@ -462,7 +462,7 @@ func TestValidateUDSPackageSource_UnknownType(t *testing.T) {
 	client := fake.NewClientset(sa)
 	validator := NewUDSBundleJobValidator(client)
 
-	source := &udsv1alpha2.PackageSource{
+	source := &udsv1alpha3.PackageSource{
 		Type: "UnknownSourceType",
 	}
 
@@ -497,33 +497,33 @@ func TestValidateUDSBundleJob_CompleteWorkflow(t *testing.T) {
 		t.Fatalf("Failed to create ServiceAccount: %v", err)
 	}
 
-	bundle := &udsv1alpha2.UDSBundleJob{
+	bundle := &udsv1alpha3.UDSBundleJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-complete",
 			Namespace: "default",
 		},
-		Spec: udsv1alpha2.UDSBundleJobSpec{
+		Spec: udsv1alpha3.UDSBundleJobSpec{
 			ServiceAccountName: "test-sa",
-			Action:             udsv1alpha2.ActionCreatePublishDeploy,
-			Source: udsv1alpha2.PackageSource{
-				Type: udsv1alpha2.SourceTypeGit,
-				Git: &udsv1alpha2.GitSource{
+			Action:             udsv1alpha3.ActionCreatePublishDeploy,
+			Source: udsv1alpha3.PackageSource{
+				Type: udsv1alpha3.SourceTypeGit,
+				Git: &udsv1alpha3.GitSource{
 					URL: "https://github.com/test/repo",
 					Ref: "main",
 				},
 			},
-			Publish: &udsv1alpha2.PublishConfig{
-				Destination: udsv1alpha2.PublishDestination{
-					Type: udsv1alpha2.DestinationTypeOCI,
-					OCI: &udsv1alpha2.OCIDestination{
+			Publish: &udsv1alpha3.PublishConfig{
+				Destination: udsv1alpha3.PublishDestination{
+					Type: udsv1alpha3.DestinationTypeOCI,
+					OCI: &udsv1alpha3.OCIDestination{
 						Registry:   "ghcr.io",
 						Repository: "test/bundles",
 						Tag:        "v1.0.0",
 					},
 				},
 			},
-			Deploy: &udsv1alpha2.DeployConfig{
-				Target:    udsv1alpha2.DeployTargetInCluster,
+			Deploy: &udsv1alpha3.DeployConfig{
+				Target:    udsv1alpha3.DeployTargetInCluster,
 				Namespace: "default",
 			},
 		},

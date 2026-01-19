@@ -135,7 +135,7 @@ Starting Forge controller
 All ZarfPackageJobs and UDSBundleJobs **must be created in the forge-system namespace**:
 
 ```yaml
-apiVersion: forge.dev/v1alpha1
+apiVersion: forge.dev/v1alpha3
 kind: ZarfPackageJob
 metadata:
   name: my-package

@@ -36,7 +36,7 @@ stringData:
   secret-access-key: "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
 
 ---
-apiVersion: forge.dev/v1alpha1
+apiVersion: forge.dev/v1alpha3
 kind: ZarfPackageJob
 metadata:
   name: local-to-s3-example
@@ -61,7 +61,7 @@ spec:
         bucket: my-zarf-packages
         key: hello-local-to-s3/zarf-package-hello-local-to-s3-amd64-1.0.0.tar.zst
         region: us-west-2
-        credentialsSecretRef:
+        credentialRef:
           name: s3-credentials
 
   resources:

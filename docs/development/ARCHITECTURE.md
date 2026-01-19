@@ -96,7 +96,7 @@ If multi-action job patterns converge in the future, consider:
 ### Zarf Multi-Action Pipeline
 
 ```yaml
-apiVersion: forge.dev/v1alpha1
+apiVersion: forge.dev/v1alpha3
 kind: ZarfPackageJob
 metadata:
   name: build-publish-deploy
@@ -117,7 +117,7 @@ spec:
 ### UDS Multi-Action Pipeline
 
 ```yaml
-apiVersion: forge.dev/v1alpha2
+apiVersion: forge.dev/v1alpha3
 kind: UDSBundleJob
 metadata:
   name: create-publish-deploy

@@ -14,7 +14,7 @@ import (
 
 	"github.com/kylegalloway/forge/pkg/actions"
 	"github.com/kylegalloway/forge/pkg/actions/common"
-	zarfv1alpha1 "github.com/kylegalloway/forge/pkg/apis/zarf/v1alpha1"
+	zarfv1alpha3 "github.com/kylegalloway/forge/pkg/apis/zarf/v1alpha3"
 	testhelpers "github.com/kylegalloway/forge/pkg/controller/testing"
 	"github.com/kylegalloway/forge/pkg/telemetry"
 )
@@ -26,7 +26,7 @@ func TestHandleObject_ConversionError(t *testing.T) {
 	// Create invalid unstructured object that can't be converted
 	invalidObj := &unstructured.Unstructured{
 		Object: map[string]interface{}{
-			"apiVersion": "forge.dev/v1alpha1",
+			"apiVersion": "forge.dev/v1alpha3",
 			"kind":       "ZarfPackageJob",
 			"metadata": map[string]interface{}{
 				"name":      "test-pkg",
@@ -73,7 +73,7 @@ func TestHandleObject_SkipsTerminalState(t *testing.T) {
 func TestHandleObject_ActionDispatchError(t *testing.T) {
 	kubeClient := fake.NewClientset()
 	scheme := runtime.NewScheme()
-	_ = zarfv1alpha1.AddToScheme(scheme)
+	_ = zarfv1alpha3.AddToScheme(scheme)
 	dynamicClient := dynamicfake.NewSimpleDynamicClient(scheme)
 
 	// Create handler that always fails
@@ -81,7 +81,7 @@ func TestHandleObject_ActionDispatchError(t *testing.T) {
 		err: errors.New("job creation failed: API server unreachable"),
 	}
 
-	gvr := zarfv1alpha1.SchemeGroupVersion.WithResource("zarfpackagejobs")
+	gvr := zarfv1alpha3.SchemeGroupVersion.WithResource("zarfpackagejobs")
 
 	config := ControllerConfig{
 		ResourceType:    "ZarfPackageJob",
@@ -187,10 +187,10 @@ func TestEnsureArtifactPVC_CreateError(t *testing.T) {
 func TestUpdateStatus_NotFoundError(t *testing.T) {
 	kubeClient := fake.NewClientset()
 	scheme := runtime.NewScheme()
-	_ = zarfv1alpha1.AddToScheme(scheme)
+	_ = zarfv1alpha3.AddToScheme(scheme)
 	dynamicClient := dynamicfake.NewSimpleDynamicClient(scheme)
 
-	gvr := zarfv1alpha1.SchemeGroupVersion.WithResource("zarfpackagejobs")
+	gvr := zarfv1alpha3.SchemeGroupVersion.WithResource("zarfpackagejobs")
 
 	config := ControllerConfig{
 		ResourceType:    "ZarfPackageJob",
@@ -226,15 +226,15 @@ func TestUpdateStatus_NotFoundError(t *testing.T) {
 
 // Helper functions
 
-func createTestController(t *testing.T) *GenericController[*zarfv1alpha1.ZarfPackageJob] {
+func createTestController(t *testing.T) *GenericController[*zarfv1alpha3.ZarfPackageJob] {
 	t.Helper()
 
 	kubeClient := fake.NewClientset()
 	scheme := runtime.NewScheme()
-	_ = zarfv1alpha1.AddToScheme(scheme)
+	_ = zarfv1alpha3.AddToScheme(scheme)
 	dynamicClient := dynamicfake.NewSimpleDynamicClient(scheme)
 
-	gvr := zarfv1alpha1.SchemeGroupVersion.WithResource("zarfpackagejobs")
+	gvr := zarfv1alpha3.SchemeGroupVersion.WithResource("zarfpackagejobs")
 
 	config := ControllerConfig{
 		ResourceType:    "ZarfPackageJob",
@@ -262,7 +262,7 @@ func createTestController(t *testing.T) *GenericController[*zarfv1alpha1.ZarfPac
 func createTestUnstructuredZarfJob(name, namespace string) *unstructured.Unstructured { //nolint:unparam // namespace parameter kept for API consistency
 	return &unstructured.Unstructured{
 		Object: map[string]interface{}{
-			"apiVersion": "forge.dev/v1alpha1",
+			"apiVersion": "forge.dev/v1alpha3",
 			"kind":       "ZarfPackageJob",
 			"metadata": map[string]interface{}{
 				"name":      name,
@@ -287,7 +287,7 @@ func createTestUnstructuredZarfJob(name, namespace string) *unstructured.Unstruc
 
 type mockSuccessHandler struct{}
 
-func (m *mockSuccessHandler) Execute(_ context.Context, _ *zarfv1alpha1.ZarfPackageJob, _ common.ExecuteOptions) (*actions.ActionResult, error) {
+func (m *mockSuccessHandler) Execute(_ context.Context, _ *zarfv1alpha3.ZarfPackageJob, _ common.ExecuteOptions) (*actions.ActionResult, error) {
 	return &actions.ActionResult{
 		JobName: "test-job",
 		Phase:   "Running",
@@ -298,7 +298,7 @@ type mockFailingHandler struct {
 	err error
 }
 
-func (m *mockFailingHandler) Execute(_ context.Context, _ *zarfv1alpha1.ZarfPackageJob, _ common.ExecuteOptions) (*actions.ActionResult, error) {
+func (m *mockFailingHandler) Execute(_ context.Context, _ *zarfv1alpha3.ZarfPackageJob, _ common.ExecuteOptions) (*actions.ActionResult, error) {
 	return nil, m.err
 }
 
@@ -324,4 +324,4 @@ func (m *mockMetricsRecorder) RecordActionDuration(_ context.Context, _, _, _ st
 }
 
 // Compile-time check that mockMetricsRecorder implements MetricsRecorder
-var _ MetricsRecorder[*zarfv1alpha1.ZarfPackageJob] = (*mockMetricsRecorder)(nil)
+var _ MetricsRecorder[*zarfv1alpha3.ZarfPackageJob] = (*mockMetricsRecorder)(nil)

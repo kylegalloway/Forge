@@ -20,8 +20,8 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/remotecommand"
 
-	udsv1alpha2 "github.com/kylegalloway/forge/pkg/apis/uds/v1alpha2"
-	zarfv1alpha1 "github.com/kylegalloway/forge/pkg/apis/zarf/v1alpha1"
+	udsv1alpha3 "github.com/kylegalloway/forge/pkg/apis/uds/v1alpha3"
+	zarfv1alpha3 "github.com/kylegalloway/forge/pkg/apis/zarf/v1alpha3"
 	"github.com/kylegalloway/forge/pkg/constants"
 )
 
@@ -59,10 +59,10 @@ func NewClientFromFlags(configFlags *genericclioptions.ConfigFlags) (*Client, er
 	if err := scheme.AddToScheme(forgeScheme); err != nil {
 		return nil, err
 	}
-	if err := zarfv1alpha1.AddToScheme(forgeScheme); err != nil {
+	if err := zarfv1alpha3.AddToScheme(forgeScheme); err != nil {
 		return nil, err
 	}
-	if err := udsv1alpha2.AddToScheme(forgeScheme); err != nil {
+	if err := udsv1alpha3.AddToScheme(forgeScheme); err != nil {
 		return nil, err
 	}
 

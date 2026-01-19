@@ -14,7 +14,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog/v2"
 
-	zarfv1alpha1 "github.com/kylegalloway/forge/pkg/apis/zarf/v1alpha1"
+	zarfv1alpha3 "github.com/kylegalloway/forge/pkg/apis/zarf/v1alpha3"
 	"github.com/kylegalloway/forge/pkg/constants"
 	"github.com/kylegalloway/forge/pkg/sources"
 	"github.com/kylegalloway/forge/pkg/telemetry"
@@ -39,7 +39,7 @@ func NewDeployHandler(kubeClient kubernetes.Interface, dynamicClient dynamic.Int
 }
 
 // Execute performs a Deploy action for the given ZarfPackageJob
-func (handler *DeployHandler) Execute(ctx context.Context, pkg *zarfv1alpha1.ZarfPackageJob, artifactPath string, artifactPVCName string) (*actions.ActionResult, error) {
+func (handler *DeployHandler) Execute(ctx context.Context, pkg *zarfv1alpha3.ZarfPackageJob, artifactPath string, artifactPVCName string) (*actions.ActionResult, error) {
 	klog.InfoS("Executing Zarf Package Deploy action", "name", pkg.Name, "namespace", pkg.Namespace, "artifactPVC", artifactPVCName)
 
 	// Record deploy started
@@ -81,7 +81,7 @@ func (handler *DeployHandler) Execute(ctx context.Context, pkg *zarfv1alpha1.Zar
 }
 
 // createDeployJob creates a Kubernetes Job to deploy a Zarf package
-func (handler *DeployHandler) createDeployJob(ctx context.Context, pkg *zarfv1alpha1.ZarfPackageJob, artifactPath string, artifactPVCName string) (*batchv1.Job, error) {
+func (handler *DeployHandler) createDeployJob(ctx context.Context, pkg *zarfv1alpha3.ZarfPackageJob, artifactPath string, artifactPVCName string) (*batchv1.Job, error) {
 	jobName := fmt.Sprintf("%s-deploy", pkg.Name)
 
 	// If multi-action job, update artifactPath to use glob pattern for PVC location
@@ -100,7 +100,7 @@ func (handler *DeployHandler) createDeployJob(ctx context.Context, pkg *zarfv1al
 
 	// Parse timeout and retry policy
 	timeoutStr := ""
-	var retryPolicy *zarfv1alpha1.RetryPolicy
+	var retryPolicy *zarfv1alpha3.RetryPolicy
 	if pkg.Spec.Deploy != nil {
 		timeoutStr = pkg.Spec.Deploy.Timeout
 		retryPolicy = pkg.Spec.Deploy.Retry
@@ -112,7 +112,7 @@ func (handler *DeployHandler) createDeployJob(ctx context.Context, pkg *zarfv1al
 
 	// Build Job using JobBuilder
 	builder := actions.NewJobBuilder(jobName, pkg.Namespace).
-		WithOwnerReference(pkg, zarfv1alpha1.SchemeGroupVersion.WithKind("ZarfPackageJob")).
+		WithOwnerReference(pkg, zarfv1alpha3.SchemeGroupVersion.WithKind("ZarfPackageJob")).
 		WithLabels(map[string]string{
 			"app":                  "forge",
 			"resource-type":        "zarfpackagejob",
@@ -141,8 +141,8 @@ func (handler *DeployHandler) createDeployJob(ctx context.Context, pkg *zarfv1al
 	}
 
 	// Add source credential volume if OCI source with credentials
-	if pkg.Spec.Source.Type == zarfv1alpha1.SourceTypeOCI && pkg.Spec.Source.OCI != nil && pkg.Spec.Source.OCI.CredentialsSecretRef != nil { // pragma: allowlist secret
-		builder.WithDockerConfigSecret(pkg.Spec.Source.OCI.CredentialsSecretRef.Name) // pragma: allowlist secret
+	if pkg.Spec.Source.Type == zarfv1alpha3.SourceTypeOCI && pkg.Spec.Source.OCI != nil && pkg.Spec.Source.OCI.CredentialRef != nil { // pragma: allowlist secret
+		builder.WithDockerConfigSecret(pkg.Spec.Source.OCI.CredentialRef.Name) // pragma: allowlist secret
 	}
 
 	// Build the job spec so we can apply additional configuration
@@ -152,10 +152,10 @@ func (handler *DeployHandler) createDeployJob(ctx context.Context, pkg *zarfv1al
 	handler.addServiceAccount(pkg, job)
 
 	// Add kubeconfig volume for external cluster deploys
-	if pkg.Spec.Deploy.Target == zarfv1alpha1.DeployTargetExternalCluster {
+	if pkg.Spec.Deploy.Target == zarfv1alpha3.DeployTargetExternalCluster {
 		kubeconfigSecretName := ""
-		if pkg.Spec.Deploy.ExternalCluster != nil && pkg.Spec.Deploy.ExternalCluster.KubeconfigSecretRef.Name != "" { // pragma: allowlist secret
-			kubeconfigSecretName = pkg.Spec.Deploy.ExternalCluster.KubeconfigSecretRef.Name // pragma: allowlist secret
+		if pkg.Spec.Deploy.ExternalCluster != nil && pkg.Spec.Deploy.ExternalCluster.SecretRef.Name != "" { // pragma: allowlist secret
+			kubeconfigSecretName = pkg.Spec.Deploy.ExternalCluster.SecretRef.Name // pragma: allowlist secret
 		}
 		actions.AddKubeconfigVolume(job, kubeconfigSecretName)
 	}
@@ -177,7 +177,7 @@ func (handler *DeployHandler) createDeployJob(ctx context.Context, pkg *zarfv1al
 }
 
 // buildDeployCommand builds the zarf deploy command
-func (handler *DeployHandler) buildDeployCommand(pkg *zarfv1alpha1.ZarfPackageJob, artifactPath string) string {
+func (handler *DeployHandler) buildDeployCommand(pkg *zarfv1alpha3.ZarfPackageJob, artifactPath string) string {
 	deploy := pkg.Spec.Deploy
 
 	// Base command
@@ -191,12 +191,12 @@ func (handler *DeployHandler) buildDeployCommand(pkg *zarfv1alpha1.ZarfPackageJo
 	}
 
 	// Add variables if specified
-	for key, value := range deploy.SetVariables {
+	for key, value := range deploy.Variables {
 		cmd = fmt.Sprintf("%s --set %s=%s", cmd, key, value)
 	}
 
 	// External cluster needs kubeconfig
-	if deploy.Target == zarfv1alpha1.DeployTargetExternalCluster {
+	if deploy.Target == zarfv1alpha3.DeployTargetExternalCluster {
 		cmd = fmt.Sprintf("export KUBECONFIG=/kubeconfig/config && %s", cmd)
 		if deploy.ExternalCluster != nil && deploy.ExternalCluster.Context != "" {
 			cmd = fmt.Sprintf("%s --kubeconfig-context=%s", cmd, deploy.ExternalCluster.Context)
@@ -207,7 +207,7 @@ func (handler *DeployHandler) buildDeployCommand(pkg *zarfv1alpha1.ZarfPackageJo
 }
 
 // buildEnvVars builds environment variables for deploy job
-func (handler *DeployHandler) buildEnvVars(pkg *zarfv1alpha1.ZarfPackageJob) []corev1.EnvVar {
+func (handler *DeployHandler) buildEnvVars(pkg *zarfv1alpha3.ZarfPackageJob) []corev1.EnvVar {
 	envVars := []corev1.EnvVar{
 		{
 			Name:  "ZARF_CONFIRM",
@@ -227,7 +227,7 @@ func (handler *DeployHandler) buildEnvVars(pkg *zarfv1alpha1.ZarfPackageJob) []c
 }
 
 // buildInitContainers creates init containers for artifact retrieval
-func (handler *DeployHandler) buildInitContainers(pkg *zarfv1alpha1.ZarfPackageJob, _ string) ([]corev1.Container, error) {
+func (handler *DeployHandler) buildInitContainers(pkg *zarfv1alpha3.ZarfPackageJob, _ string) ([]corev1.Container, error) {
 	sourceHandler, err := sources.New(pkg)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create source handler: %w", err)
@@ -247,7 +247,7 @@ func (handler *DeployHandler) buildInitContainers(pkg *zarfv1alpha1.ZarfPackageJ
 
 // getResources returns resource requirements for the job pod
 // Uses spec.resources if provided, otherwise falls back to sensible defaults
-func (handler *DeployHandler) getResources(pkg *zarfv1alpha1.ZarfPackageJob) corev1.ResourceRequirements {
+func (handler *DeployHandler) getResources(pkg *zarfv1alpha3.ZarfPackageJob) corev1.ResourceRequirements {
 	// If custom resources specified, use them
 	if pkg.Spec.Resources != nil {
 		return *pkg.Spec.Resources
@@ -258,13 +258,13 @@ func (handler *DeployHandler) getResources(pkg *zarfv1alpha1.ZarfPackageJob) cor
 }
 
 // addServiceAccount adds the ServiceAccount to the job pod
-func (handler *DeployHandler) addServiceAccount(pkg *zarfv1alpha1.ZarfPackageJob, job *batchv1.Job) {
+func (handler *DeployHandler) addServiceAccount(pkg *zarfv1alpha3.ZarfPackageJob, job *batchv1.Job) {
 	// Use the ZarfPackageJob's ServiceAccount
 	job.Spec.Template.Spec.ServiceAccountName = pkg.Spec.ServiceAccountName
 }
 
 // validateAdoptionConfig validates resource adoption configuration
-func (handler *DeployHandler) validateAdoptionConfig(ctx context.Context, pkg *zarfv1alpha1.ZarfPackageJob) error {
+func (handler *DeployHandler) validateAdoptionConfig(ctx context.Context, pkg *zarfv1alpha3.ZarfPackageJob) error {
 	// If no adoption policy specified, nothing to validate
 	if pkg.Spec.Deploy.AdoptionPolicy == nil {
 		return nil
@@ -275,7 +275,7 @@ func (handler *DeployHandler) validateAdoptionConfig(ctx context.Context, pkg *z
 	klog.V(4).InfoS("Validating adoption configuration", "policy", adoptionPolicy, "package", pkg.Name)
 
 	// If policy is "Adopt", ResourceSelector must be provided
-	if adoptionPolicy == zarfv1alpha1.AdoptionPolicyAdopt {
+	if adoptionPolicy == zarfv1alpha3.AdoptionPolicyAdopt {
 		if pkg.Spec.Deploy.ResourceSelector == nil {
 			return fmt.Errorf("resourceSelector is required when adoptionPolicy is 'Adopt'")
 		}

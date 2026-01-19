@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/kylegalloway/forge/pkg/actions"
-	zarfv1alpha1 "github.com/kylegalloway/forge/pkg/apis/zarf/v1alpha1"
+	zarfv1alpha3 "github.com/kylegalloway/forge/pkg/apis/zarf/v1alpha3"
 	"github.com/kylegalloway/forge/pkg/constants"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -19,7 +19,7 @@ type OCISourceConfig struct {
 type OCISource struct{}
 
 // GetInitContainer returns an init container to pull the artifact from OCI
-func (source *OCISource) GetInitContainer(pkg *zarfv1alpha1.ZarfPackageJob) (*corev1.Container, error) {
+func (source *OCISource) GetInitContainer(pkg *zarfv1alpha3.ZarfPackageJob) (*corev1.Container, error) {
 	ociSource := pkg.Spec.Source.OCI
 	if ociSource == nil {
 		return nil, fmt.Errorf("oci source configuration is missing")
@@ -27,12 +27,12 @@ func (source *OCISource) GetInitContainer(pkg *zarfv1alpha1.ZarfPackageJob) (*co
 
 	// Convert to common config
 	var secretName string
-	if ociSource.CredentialsSecretRef != nil { // pragma: allowlist secret
-		secretName = ociSource.CredentialsSecretRef.Name // pragma: allowlist secret
+	if ociSource.CredentialRef != nil { // pragma: allowlist secret
+		secretName = ociSource.CredentialRef.Name // pragma: allowlist secret
 	}
 
 	config := &OCISourceConfig{
-		Reference:             ociSource.Image,
+		Reference:             ociSource.Reference,
 		CredentialsSecretName: secretName,
 	}
 

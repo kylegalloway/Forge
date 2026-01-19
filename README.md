@@ -18,7 +18,7 @@ Forge is a Kubernetes controller that brings Zarf package and UDS bundle operati
 ## Quick Example
 
 ```yaml
-apiVersion: forge.dev/v1alpha1
+apiVersion: forge.dev/v1alpha3
 kind: ZarfPackageJob
 metadata:
   name: build-and-deploy

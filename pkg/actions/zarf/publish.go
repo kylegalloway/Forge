@@ -12,7 +12,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog/v2"
 
-	zarfv1alpha1 "github.com/kylegalloway/forge/pkg/apis/zarf/v1alpha1"
+	zarfv1alpha3 "github.com/kylegalloway/forge/pkg/apis/zarf/v1alpha3"
 	"github.com/kylegalloway/forge/pkg/constants"
 	"github.com/kylegalloway/forge/pkg/destinations"
 	"github.com/kylegalloway/forge/pkg/sources"
@@ -36,7 +36,7 @@ func NewPublishHandler(kubeClient kubernetes.Interface, metrics *telemetry.Metri
 }
 
 // Execute performs a Publish action for the given ZarfPackageJob
-func (handler *PublishHandler) Execute(ctx context.Context, pkg *zarfv1alpha1.ZarfPackageJob, artifactPath string, artifactPVCName string) (*actions.ActionResult, error) {
+func (handler *PublishHandler) Execute(ctx context.Context, pkg *zarfv1alpha3.ZarfPackageJob, artifactPath string, artifactPVCName string) (*actions.ActionResult, error) {
 	klog.InfoS("Executing Zarf Package Publish action", "name", pkg.Name, "namespace", pkg.Namespace, "artifactPVC", artifactPVCName)
 
 	// Record publish started
@@ -72,7 +72,7 @@ func (handler *PublishHandler) Execute(ctx context.Context, pkg *zarfv1alpha1.Za
 }
 
 // createPublishJob creates a Kubernetes Job to publish a Zarf package
-func (handler *PublishHandler) createPublishJob(ctx context.Context, pkg *zarfv1alpha1.ZarfPackageJob, artifactPath string, artifactPVCName string) (*batchv1.Job, error) {
+func (handler *PublishHandler) createPublishJob(ctx context.Context, pkg *zarfv1alpha3.ZarfPackageJob, artifactPath string, artifactPVCName string) (*batchv1.Job, error) {
 	jobName := fmt.Sprintf("%s-publish", pkg.Name)
 
 	// If multi-action job, update artifactPath to use glob pattern for PVC location
@@ -100,7 +100,7 @@ func (handler *PublishHandler) createPublishJob(ctx context.Context, pkg *zarfv1
 
 	// Determine timeout and retry policy
 	timeoutStr := ""
-	var retryPolicy *zarfv1alpha1.RetryPolicy
+	var retryPolicy *zarfv1alpha3.RetryPolicy
 	if pkg.Spec.Publish != nil {
 		timeoutStr = pkg.Spec.Publish.Timeout
 		retryPolicy = pkg.Spec.Publish.Retry
@@ -109,7 +109,7 @@ func (handler *PublishHandler) createPublishJob(ctx context.Context, pkg *zarfv1
 
 	// Build Job using JobBuilder
 	builder := actions.NewJobBuilder(jobName, pkg.Namespace).
-		WithOwnerReference(pkg, zarfv1alpha1.SchemeGroupVersion.WithKind("ZarfPackageJob")).
+		WithOwnerReference(pkg, zarfv1alpha3.SchemeGroupVersion.WithKind("ZarfPackageJob")).
 		WithLabels(map[string]string{
 			"app":                  "forge",
 			"resource-type":        "zarfpackagejob",
@@ -133,8 +133,8 @@ func (handler *PublishHandler) createPublishJob(ctx context.Context, pkg *zarfv1
 		WithArtifactPVC(artifactPVCName)
 
 	// Add source credential volume if OCI source with credentials
-	if pkg.Spec.Source.Type == zarfv1alpha1.SourceTypeOCI && pkg.Spec.Source.OCI != nil && pkg.Spec.Source.OCI.CredentialsSecretRef != nil { // pragma: allowlist secret
-		builder.WithDockerConfigSecret(pkg.Spec.Source.OCI.CredentialsSecretRef.Name) // pragma: allowlist secret
+	if pkg.Spec.Source.Type == zarfv1alpha3.SourceTypeOCI && pkg.Spec.Source.OCI != nil && pkg.Spec.Source.OCI.CredentialRef != nil { // pragma: allowlist secret
+		builder.WithDockerConfigSecret(pkg.Spec.Source.OCI.CredentialRef.Name) // pragma: allowlist secret
 	}
 
 	// Build the job spec so we can apply destination-specific configuration
@@ -173,7 +173,7 @@ func (handler *PublishHandler) createPublishJob(ctx context.Context, pkg *zarfv1
 }
 
 // buildInitContainers creates init containers for artifact retrieval
-func (handler *PublishHandler) buildInitContainers(pkg *zarfv1alpha1.ZarfPackageJob) ([]corev1.Container, error) {
+func (handler *PublishHandler) buildInitContainers(pkg *zarfv1alpha3.ZarfPackageJob) ([]corev1.Container, error) {
 	sourceHandler, err := sources.New(pkg)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create source handler: %w", err)
@@ -193,7 +193,7 @@ func (handler *PublishHandler) buildInitContainers(pkg *zarfv1alpha1.ZarfPackage
 
 // getResources returns resource requirements for the job pod
 // Uses spec.resources if provided, otherwise falls back to sensible defaults
-func (handler *PublishHandler) getResources(pkg *zarfv1alpha1.ZarfPackageJob) corev1.ResourceRequirements {
+func (handler *PublishHandler) getResources(pkg *zarfv1alpha3.ZarfPackageJob) corev1.ResourceRequirements {
 	// If custom resources specified, use them
 	if pkg.Spec.Resources != nil {
 		return *pkg.Spec.Resources

@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/kylegalloway/forge/pkg/actions"
-	zarfv1alpha1 "github.com/kylegalloway/forge/pkg/apis/zarf/v1alpha1"
+	zarfv1alpha3 "github.com/kylegalloway/forge/pkg/apis/zarf/v1alpha3"
 	"github.com/kylegalloway/forge/pkg/constants"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -22,7 +22,7 @@ type S3SourceConfig struct {
 type S3Source struct{}
 
 // GetInitContainer returns an init container to download the artifact from S3
-func (source *S3Source) GetInitContainer(pkg *zarfv1alpha1.ZarfPackageJob) (*corev1.Container, error) {
+func (source *S3Source) GetInitContainer(pkg *zarfv1alpha3.ZarfPackageJob) (*corev1.Container, error) {
 	s3Source := pkg.Spec.Source.S3
 	if s3Source == nil {
 		return nil, fmt.Errorf("s3 source configuration is missing")
@@ -30,8 +30,8 @@ func (source *S3Source) GetInitContainer(pkg *zarfv1alpha1.ZarfPackageJob) (*cor
 
 	// Convert to common config
 	var secretName string
-	if s3Source.CredentialsSecretRef != nil { // pragma: allowlist secret
-		secretName = s3Source.CredentialsSecretRef.Name // pragma: allowlist secret
+	if s3Source.CredentialRef != nil { // pragma: allowlist secret
+		secretName = s3Source.CredentialRef.Name // pragma: allowlist secret
 	}
 
 	config := &S3SourceConfig{

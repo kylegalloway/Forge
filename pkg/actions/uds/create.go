@@ -15,7 +15,7 @@ import (
 	"k8s.io/klog/v2"
 
 	"github.com/kylegalloway/forge/pkg/actions"
-	udsv1alpha2 "github.com/kylegalloway/forge/pkg/apis/uds/v1alpha2"
+	udsv1alpha3 "github.com/kylegalloway/forge/pkg/apis/uds/v1alpha3"
 	"github.com/kylegalloway/forge/pkg/constants"
 	"github.com/kylegalloway/forge/pkg/sources"
 	"github.com/kylegalloway/forge/pkg/telemetry"
@@ -44,7 +44,7 @@ func NewCreateHandler(kubeClient kubernetes.Interface, metrics *telemetry.Metric
 // in the PVC so subsequent actions (Publish/Deploy) can access them without re-creating.
 //
 // This matches the Zarf Build handler pattern and enables efficient action chaining.
-func (handler *CreateHandler) Execute(ctx context.Context, bundle *udsv1alpha2.UDSBundleJob, artifactPVCName string) (*actions.ActionResult, error) {
+func (handler *CreateHandler) Execute(ctx context.Context, bundle *udsv1alpha3.UDSBundleJob, artifactPVCName string) (*actions.ActionResult, error) {
 
 	klog.InfoS("Executing UDS Bundle Create action", "name", bundle.Name, "namespace", bundle.Namespace, "artifactPVC", artifactPVCName)
 
@@ -81,7 +81,7 @@ func (handler *CreateHandler) Execute(ctx context.Context, bundle *udsv1alpha2.U
 }
 
 // createBundleJob creates a Kubernetes Job to create a UDS bundle
-func (handler *CreateHandler) createBundleJob(ctx context.Context, bundle *udsv1alpha2.UDSBundleJob, artifactPVCName string) (*batchv1.Job, error) {
+func (handler *CreateHandler) createBundleJob(ctx context.Context, bundle *udsv1alpha3.UDSBundleJob, artifactPVCName string) (*batchv1.Job, error) {
 	jobName := fmt.Sprintf("%s-create", bundle.Name)
 
 	// Build UDS CLI command
@@ -100,7 +100,7 @@ func (handler *CreateHandler) createBundleJob(ctx context.Context, bundle *udsv1
 	// Build Job using JobBuilder
 	builder := actions.NewJobBuilder(jobName, bundle.Namespace).
 		WithKubeClient(handler.kubeClient).
-		WithOwnerReference(bundle, udsv1alpha2.SchemeGroupVersion.WithKind("UDSBundleJob")).
+		WithOwnerReference(bundle, udsv1alpha3.SchemeGroupVersion.WithKind("UDSBundleJob")).
 		WithLabels(map[string]string{
 			"app":                  "forge",
 			"resource-type":        "udsbundlejob",
@@ -124,12 +124,12 @@ func (handler *CreateHandler) createBundleJob(ctx context.Context, bundle *udsv1
 		WithArtifactPVC(artifactPVCName)
 
 	// Add git credentials volume if needed
-	if bundle.Spec.Source.Type == udsv1alpha2.SourceTypeGit &&
+	if bundle.Spec.Source.Type == udsv1alpha3.SourceTypeGit &&
 		bundle.Spec.Source.Git != nil &&
-		bundle.Spec.Source.Git.CredentialsSecretRef != nil && // pragma: allowlist secret
+		bundle.Spec.Source.Git.CredentialRef != nil && // pragma: allowlist secret
 		!bundle.Spec.Source.Git.DisableCloneCredentials {
 
-		secretName := bundle.Spec.Source.Git.CredentialsSecretRef.Name // pragma: allowlist secret
+		secretName := bundle.Spec.Source.Git.CredentialRef.Name // pragma: allowlist secret
 		builder.WithCustomVolume(corev1.Volume{
 			Name: "git-creds",
 			VolumeSource: corev1.VolumeSource{
@@ -150,7 +150,7 @@ func (handler *CreateHandler) createBundleJob(ctx context.Context, bundle *udsv1
 }
 
 // buildUDSCommand builds the UDS CLI command for bundle creation
-func (handler *CreateHandler) buildUDSCommand(_ *udsv1alpha2.UDSBundleJob, artifactPVCName string) (string, string) {
+func (handler *CreateHandler) buildUDSCommand(_ *udsv1alpha3.UDSBundleJob, artifactPVCName string) (string, string) {
 	workingDir := constants.VolumeMountPathWorkspace
 
 	// Determine output directory based on whether we're using a PVC for multi-action workflows
@@ -171,9 +171,7 @@ func (handler *CreateHandler) buildUDSCommand(_ *udsv1alpha2.UDSBundleJob, artif
 }
 
 // buildInitContainers creates init containers for source retrieval
-//
-//nolint:staticcheck // SA1019: UDSBundleJob v1alpha1 must be supported until v0.10.0
-func (handler *CreateHandler) buildInitContainers(bundle *udsv1alpha2.UDSBundleJob) ([]corev1.Container, error) {
+func (handler *CreateHandler) buildInitContainers(bundle *udsv1alpha3.UDSBundleJob) ([]corev1.Container, error) {
 	// Use shared source handler logic from pkg/sources
 	container, err := sources.GetUDSInitContainer(bundle)
 	if err != nil {
@@ -188,7 +186,7 @@ func (handler *CreateHandler) buildInitContainers(bundle *udsv1alpha2.UDSBundleJ
 }
 
 // buildVolumes creates volumes for the create job
-func (handler *CreateHandler) buildVolumes(bundle *udsv1alpha2.UDSBundleJob) []corev1.Volume {
+func (handler *CreateHandler) buildVolumes(bundle *udsv1alpha3.UDSBundleJob) []corev1.Volume {
 	volumes := []corev1.Volume{
 		{
 			Name: constants.VolumeNameWorkspace,
@@ -205,12 +203,12 @@ func (handler *CreateHandler) buildVolumes(bundle *udsv1alpha2.UDSBundleJob) []c
 	}
 
 	// Add git credentials volume if needed  # pragma: allowlist secret
-	if bundle.Spec.Source.Type == udsv1alpha2.SourceTypeGit &&
+	if bundle.Spec.Source.Type == udsv1alpha3.SourceTypeGit &&
 		bundle.Spec.Source.Git != nil &&
-		bundle.Spec.Source.Git.CredentialsSecretRef != nil && // pragma: allowlist secret
+		bundle.Spec.Source.Git.CredentialRef != nil && // pragma: allowlist secret
 		!bundle.Spec.Source.Git.DisableCloneCredentials {
 
-		secretName := bundle.Spec.Source.Git.CredentialsSecretRef.Name // pragma: allowlist secret
+		secretName := bundle.Spec.Source.Git.CredentialRef.Name // pragma: allowlist secret
 		volumes = append(volumes, corev1.Volume{
 			Name: "git-creds",
 			VolumeSource: corev1.VolumeSource{
@@ -225,7 +223,7 @@ func (handler *CreateHandler) buildVolumes(bundle *udsv1alpha2.UDSBundleJob) []c
 }
 
 // getResources returns resource requirements for the bundle create job
-func (handler *CreateHandler) getResources(bundle *udsv1alpha2.UDSBundleJob) corev1.ResourceRequirements {
+func (handler *CreateHandler) getResources(bundle *udsv1alpha3.UDSBundleJob) corev1.ResourceRequirements {
 	// Use user-provided resources if specified
 	if bundle.Spec.Resources != nil {
 		return *bundle.Spec.Resources

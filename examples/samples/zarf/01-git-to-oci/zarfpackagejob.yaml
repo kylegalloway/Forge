@@ -35,7 +35,7 @@ data:
   .dockerconfigjson: eyJhdXRocyI6e319  # Replace with actual base64-encoded docker config
 
 ---
-apiVersion: forge.dev/v1alpha1
+apiVersion: forge.dev/v1alpha3
 kind: ZarfPackageJob
 metadata:
   name: git-to-oci-example
@@ -62,7 +62,7 @@ spec:
         registry: ghcr.io
         repository: myorg/packages/hello-git-to-oci
         tag: 1.0.0
-        credentialsSecretRef:
+        credentialRef:
           name: oci-registry-credentials
 
   resources:

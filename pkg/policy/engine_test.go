@@ -4,8 +4,9 @@ import (
 	"context"
 	"testing"
 
-	udsv1alpha2 "github.com/kylegalloway/forge/pkg/apis/uds/v1alpha2"
-	zarfv1alpha1 "github.com/kylegalloway/forge/pkg/apis/zarf/v1alpha1"
+	"github.com/kylegalloway/forge/pkg/apis/common"
+	udsv1alpha3 "github.com/kylegalloway/forge/pkg/apis/uds/v1alpha3"
+	zarfv1alpha3 "github.com/kylegalloway/forge/pkg/apis/zarf/v1alpha3"
 	"github.com/kylegalloway/forge/pkg/constants"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -16,14 +17,14 @@ func TestValidate_MissingServiceAccount(t *testing.T) {
 	client := fake.NewClientset()
 	engine := NewEngine(client)
 
-	pkg := &zarfv1alpha1.ZarfPackageJob{
+	pkg := &zarfv1alpha3.ZarfPackageJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-pkg",
 			Namespace: "default",
 		},
-		Spec: zarfv1alpha1.ZarfPackageJobSpec{
+		Spec: zarfv1alpha3.ZarfPackageJobSpec{
 			ServiceAccountName: "",
-			Action:             zarfv1alpha1.ActionBuild,
+			Action:             zarfv1alpha3.ActionBuild,
 		},
 	}
 
@@ -40,14 +41,14 @@ func TestValidate_ServiceAccountNotFound(t *testing.T) {
 	client := fake.NewClientset()
 	engine := NewEngine(client)
 
-	pkg := &zarfv1alpha1.ZarfPackageJob{
+	pkg := &zarfv1alpha3.ZarfPackageJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-pkg",
 			Namespace: "default",
 		},
-		Spec: zarfv1alpha1.ZarfPackageJobSpec{
+		Spec: zarfv1alpha3.ZarfPackageJobSpec{
 			ServiceAccountName: "nonexistent-sa",
-			Action:             zarfv1alpha1.ActionBuild,
+			Action:             zarfv1alpha3.ActionBuild,
 		},
 	}
 
@@ -71,17 +72,17 @@ func TestValidate_ActionNotAllowed(t *testing.T) {
 	client := fake.NewClientset(sa)
 	engine := NewEngine(client)
 
-	pkg := &zarfv1alpha1.ZarfPackageJob{
+	pkg := &zarfv1alpha3.ZarfPackageJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-pkg",
 			Namespace: "default",
 		},
-		Spec: zarfv1alpha1.ZarfPackageJobSpec{
+		Spec: zarfv1alpha3.ZarfPackageJobSpec{
 			ServiceAccountName: "test-sa",
-			Action:             zarfv1alpha1.ActionDeploy,
-			Source: zarfv1alpha1.PackageSource{
-				Type: zarfv1alpha1.SourceTypeGit,
-				Git: &zarfv1alpha1.GitSource{
+			Action:             zarfv1alpha3.ActionDeploy,
+			Source: zarfv1alpha3.PackageSource{
+				Type: zarfv1alpha3.SourceTypeGit,
+				Git: &zarfv1alpha3.GitSource{
 					URL: "https://github.com/test/repo",
 					Ref: "main",
 				},
@@ -113,17 +114,17 @@ func TestValidate_GitSourceAllowed(t *testing.T) {
 	client := fake.NewClientset(sa)
 	engine := NewEngine(client)
 
-	pkg := &zarfv1alpha1.ZarfPackageJob{
+	pkg := &zarfv1alpha3.ZarfPackageJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-pkg",
 			Namespace: "default",
 		},
-		Spec: zarfv1alpha1.ZarfPackageJobSpec{
+		Spec: zarfv1alpha3.ZarfPackageJobSpec{
 			ServiceAccountName: "test-sa",
-			Action:             zarfv1alpha1.ActionBuild,
-			Source: zarfv1alpha1.PackageSource{
-				Type: zarfv1alpha1.SourceTypeGit,
-				Git: &zarfv1alpha1.GitSource{
+			Action:             zarfv1alpha3.ActionBuild,
+			Source: zarfv1alpha3.PackageSource{
+				Type: zarfv1alpha3.SourceTypeGit,
+				Git: &zarfv1alpha3.GitSource{
 					URL: "https://github.com/myorg/myrepo",
 					Ref: "main",
 				},
@@ -152,17 +153,17 @@ func TestValidate_GitSourceNotAllowed(t *testing.T) {
 	client := fake.NewClientset(sa)
 	engine := NewEngine(client)
 
-	pkg := &zarfv1alpha1.ZarfPackageJob{
+	pkg := &zarfv1alpha3.ZarfPackageJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-pkg",
 			Namespace: "default",
 		},
-		Spec: zarfv1alpha1.ZarfPackageJobSpec{
+		Spec: zarfv1alpha3.ZarfPackageJobSpec{
 			ServiceAccountName: "test-sa",
-			Action:             zarfv1alpha1.ActionBuild,
-			Source: zarfv1alpha1.PackageSource{
-				Type: zarfv1alpha1.SourceTypeGit,
-				Git: &zarfv1alpha1.GitSource{
+			Action:             zarfv1alpha3.ActionBuild,
+			Source: zarfv1alpha3.PackageSource{
+				Type: zarfv1alpha3.SourceTypeGit,
+				Git: &zarfv1alpha3.GitSource{
 					URL: "https://github.com/other/repo",
 					Ref: "main",
 				},
@@ -191,17 +192,17 @@ func TestValidate_WildcardAllowsAll(t *testing.T) {
 	client := fake.NewClientset(sa)
 	engine := NewEngine(client)
 
-	pkg := &zarfv1alpha1.ZarfPackageJob{
+	pkg := &zarfv1alpha3.ZarfPackageJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-pkg",
 			Namespace: "default",
 		},
-		Spec: zarfv1alpha1.ZarfPackageJobSpec{
+		Spec: zarfv1alpha3.ZarfPackageJobSpec{
 			ServiceAccountName: "test-sa",
-			Action:             zarfv1alpha1.ActionBuildPublishDeploy,
-			Source: zarfv1alpha1.PackageSource{
-				Type: zarfv1alpha1.SourceTypeGit,
-				Git: &zarfv1alpha1.GitSource{
+			Action:             zarfv1alpha3.ActionBuildPublishDeploy,
+			Source: zarfv1alpha3.PackageSource{
+				Type: zarfv1alpha3.SourceTypeGit,
+				Git: &zarfv1alpha3.GitSource{
 					URL: "https://github.com/any/repo",
 					Ref: "main",
 				},
@@ -230,17 +231,17 @@ func TestValidate_S3Source(t *testing.T) {
 	client := fake.NewClientset(sa)
 	engine := NewEngine(client)
 
-	pkg := &zarfv1alpha1.ZarfPackageJob{
+	pkg := &zarfv1alpha3.ZarfPackageJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-pkg",
 			Namespace: "default",
 		},
-		Spec: zarfv1alpha1.ZarfPackageJobSpec{
+		Spec: zarfv1alpha3.ZarfPackageJobSpec{
 			ServiceAccountName: "test-sa",
-			Action:             zarfv1alpha1.ActionBuild,
-			Source: zarfv1alpha1.PackageSource{
-				Type: zarfv1alpha1.SourceTypeS3,
-				S3: &zarfv1alpha1.S3Source{
+			Action:             zarfv1alpha3.ActionBuild,
+			Source: zarfv1alpha3.PackageSource{
+				Type: zarfv1alpha3.SourceTypeS3,
+				S3: &zarfv1alpha3.S3Source{
 					Bucket: "my-bucket-prod",
 					Key:    "package.tar.zst",
 					Region: "us-west-2",
@@ -269,17 +270,17 @@ func TestValidate_LocalSourceDeniedByDefault(t *testing.T) {
 	client := fake.NewClientset(sa)
 	engine := NewEngine(client)
 
-	pkg := &zarfv1alpha1.ZarfPackageJob{
+	pkg := &zarfv1alpha3.ZarfPackageJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-pkg",
 			Namespace: "default",
 		},
-		Spec: zarfv1alpha1.ZarfPackageJobSpec{
+		Spec: zarfv1alpha3.ZarfPackageJobSpec{
 			ServiceAccountName: "test-sa",
-			Action:             zarfv1alpha1.ActionBuild,
-			Source: zarfv1alpha1.PackageSource{
-				Type: zarfv1alpha1.SourceTypeLocal,
-				Local: &zarfv1alpha1.LocalSource{
+			Action:             zarfv1alpha3.ActionBuild,
+			Source: zarfv1alpha3.PackageSource{
+				Type: zarfv1alpha3.SourceTypeLocal,
+				Local: &zarfv1alpha3.LocalSource{
 					Path:    "/tmp/package",
 					DevMode: true,
 				},
@@ -308,17 +309,17 @@ func TestValidate_LocalSourceAllowed(t *testing.T) {
 	client := fake.NewClientset(sa)
 	engine := NewEngine(client)
 
-	pkg := &zarfv1alpha1.ZarfPackageJob{
+	pkg := &zarfv1alpha3.ZarfPackageJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-pkg",
 			Namespace: "default",
 		},
-		Spec: zarfv1alpha1.ZarfPackageJobSpec{
+		Spec: zarfv1alpha3.ZarfPackageJobSpec{
 			ServiceAccountName: "test-sa",
-			Action:             zarfv1alpha1.ActionBuild,
-			Source: zarfv1alpha1.PackageSource{
-				Type: zarfv1alpha1.SourceTypeLocal,
-				Local: &zarfv1alpha1.LocalSource{
+			Action:             zarfv1alpha3.ActionBuild,
+			Source: zarfv1alpha3.PackageSource{
+				Type: zarfv1alpha3.SourceTypeLocal,
+				Local: &zarfv1alpha3.LocalSource{
 					Path:    "/tmp/package",
 					DevMode: true,
 				},
@@ -435,25 +436,25 @@ func TestValidate_PublishDestinationS3(t *testing.T) {
 	client := fake.NewClientset(sa)
 	engine := NewEngine(client)
 
-	pkg := &zarfv1alpha1.ZarfPackageJob{
+	pkg := &zarfv1alpha3.ZarfPackageJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-pkg",
 			Namespace: "default",
 		},
-		Spec: zarfv1alpha1.ZarfPackageJobSpec{
+		Spec: zarfv1alpha3.ZarfPackageJobSpec{
 			ServiceAccountName: "test-sa",
-			Action:             zarfv1alpha1.ActionPublish,
-			Source: zarfv1alpha1.PackageSource{
-				Type: zarfv1alpha1.SourceTypeGit,
-				Git: &zarfv1alpha1.GitSource{
+			Action:             zarfv1alpha3.ActionPublish,
+			Source: zarfv1alpha3.PackageSource{
+				Type: zarfv1alpha3.SourceTypeGit,
+				Git: &zarfv1alpha3.GitSource{
 					URL: "https://github.com/test/repo",
 					Ref: "main",
 				},
 			},
-			Publish: &zarfv1alpha1.PublishConfig{
-				Destination: zarfv1alpha1.PublishDestination{
-					Type: zarfv1alpha1.DestinationTypeS3,
-					S3: &zarfv1alpha1.S3Destination{
+			Publish: &zarfv1alpha3.PublishConfig{
+				Destination: zarfv1alpha3.PublishDestination{
+					Type: zarfv1alpha3.DestinationTypeS3,
+					S3: &zarfv1alpha3.S3Destination{
 						Bucket:    "my-bucket-prod",
 						KeyPrefix: "packages/",
 						Region:    "us-west-2",
@@ -485,25 +486,25 @@ func TestValidate_PublishDestinationS3NotAllowed(t *testing.T) {
 	client := fake.NewClientset(sa)
 	engine := NewEngine(client)
 
-	pkg := &zarfv1alpha1.ZarfPackageJob{
+	pkg := &zarfv1alpha3.ZarfPackageJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-pkg",
 			Namespace: "default",
 		},
-		Spec: zarfv1alpha1.ZarfPackageJobSpec{
+		Spec: zarfv1alpha3.ZarfPackageJobSpec{
 			ServiceAccountName: "test-sa",
-			Action:             zarfv1alpha1.ActionPublish,
-			Source: zarfv1alpha1.PackageSource{
-				Type: zarfv1alpha1.SourceTypeGit,
-				Git: &zarfv1alpha1.GitSource{
+			Action:             zarfv1alpha3.ActionPublish,
+			Source: zarfv1alpha3.PackageSource{
+				Type: zarfv1alpha3.SourceTypeGit,
+				Git: &zarfv1alpha3.GitSource{
 					URL: "https://github.com/test/repo",
 					Ref: "main",
 				},
 			},
-			Publish: &zarfv1alpha1.PublishConfig{
-				Destination: zarfv1alpha1.PublishDestination{
-					Type: zarfv1alpha1.DestinationTypeS3,
-					S3: &zarfv1alpha1.S3Destination{
+			Publish: &zarfv1alpha3.PublishConfig{
+				Destination: zarfv1alpha3.PublishDestination{
+					Type: zarfv1alpha3.DestinationTypeS3,
+					S3: &zarfv1alpha3.S3Destination{
 						Bucket: "other-bucket",
 						Region: "us-west-2",
 					},
@@ -537,25 +538,25 @@ func TestValidate_PublishDestinationOCI(t *testing.T) {
 	client := fake.NewClientset(sa)
 	engine := NewEngine(client)
 
-	pkg := &zarfv1alpha1.ZarfPackageJob{
+	pkg := &zarfv1alpha3.ZarfPackageJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-pkg",
 			Namespace: "default",
 		},
-		Spec: zarfv1alpha1.ZarfPackageJobSpec{
+		Spec: zarfv1alpha3.ZarfPackageJobSpec{
 			ServiceAccountName: "test-sa",
-			Action:             zarfv1alpha1.ActionPublish,
-			Source: zarfv1alpha1.PackageSource{
-				Type: zarfv1alpha1.SourceTypeGit,
-				Git: &zarfv1alpha1.GitSource{
+			Action:             zarfv1alpha3.ActionPublish,
+			Source: zarfv1alpha3.PackageSource{
+				Type: zarfv1alpha3.SourceTypeGit,
+				Git: &zarfv1alpha3.GitSource{
 					URL: "https://github.com/test/repo",
 					Ref: "main",
 				},
 			},
-			Publish: &zarfv1alpha1.PublishConfig{
-				Destination: zarfv1alpha1.PublishDestination{
-					Type: zarfv1alpha1.DestinationTypeOCI,
-					OCI: &zarfv1alpha1.OCIDestination{
+			Publish: &zarfv1alpha3.PublishConfig{
+				Destination: zarfv1alpha3.PublishDestination{
+					Type: zarfv1alpha3.DestinationTypeOCI,
+					OCI: &zarfv1alpha3.OCIDestination{
 						Registry:   "ghcr.io",
 						Repository: "test/packages",
 						Tag:        "v1.0.0",
@@ -587,25 +588,25 @@ func TestValidate_PublishDestinationOCINotAllowed(t *testing.T) {
 	client := fake.NewClientset(sa)
 	engine := NewEngine(client)
 
-	pkg := &zarfv1alpha1.ZarfPackageJob{
+	pkg := &zarfv1alpha3.ZarfPackageJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-pkg",
 			Namespace: "default",
 		},
-		Spec: zarfv1alpha1.ZarfPackageJobSpec{
+		Spec: zarfv1alpha3.ZarfPackageJobSpec{
 			ServiceAccountName: "test-sa",
-			Action:             zarfv1alpha1.ActionPublish,
-			Source: zarfv1alpha1.PackageSource{
-				Type: zarfv1alpha1.SourceTypeGit,
-				Git: &zarfv1alpha1.GitSource{
+			Action:             zarfv1alpha3.ActionPublish,
+			Source: zarfv1alpha3.PackageSource{
+				Type: zarfv1alpha3.SourceTypeGit,
+				Git: &zarfv1alpha3.GitSource{
 					URL: "https://github.com/test/repo",
 					Ref: "main",
 				},
 			},
-			Publish: &zarfv1alpha1.PublishConfig{
-				Destination: zarfv1alpha1.PublishDestination{
-					Type: zarfv1alpha1.DestinationTypeOCI,
-					OCI: &zarfv1alpha1.OCIDestination{
+			Publish: &zarfv1alpha3.PublishConfig{
+				Destination: zarfv1alpha3.PublishDestination{
+					Type: zarfv1alpha3.DestinationTypeOCI,
+					OCI: &zarfv1alpha3.OCIDestination{
 						Registry:   "docker.io",
 						Repository: "test/packages",
 						Tag:        "v1.0.0",
@@ -641,25 +642,25 @@ func TestValidate_PublishDestinationOCIWithRepositoryPattern(t *testing.T) {
 	engine := NewEngine(client)
 
 	// Test allowed repository
-	pkg := &zarfv1alpha1.ZarfPackageJob{
+	pkg := &zarfv1alpha3.ZarfPackageJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-pkg",
 			Namespace: "default",
 		},
-		Spec: zarfv1alpha1.ZarfPackageJobSpec{
+		Spec: zarfv1alpha3.ZarfPackageJobSpec{
 			ServiceAccountName: "test-sa",
-			Action:             zarfv1alpha1.ActionPublish,
-			Source: zarfv1alpha1.PackageSource{
-				Type: zarfv1alpha1.SourceTypeGit,
-				Git: &zarfv1alpha1.GitSource{
+			Action:             zarfv1alpha3.ActionPublish,
+			Source: zarfv1alpha3.PackageSource{
+				Type: zarfv1alpha3.SourceTypeGit,
+				Git: &zarfv1alpha3.GitSource{
 					URL: "https://github.com/test/repo",
 					Ref: "main",
 				},
 			},
-			Publish: &zarfv1alpha1.PublishConfig{
-				Destination: zarfv1alpha1.PublishDestination{
-					Type: zarfv1alpha1.DestinationTypeOCI,
-					OCI: &zarfv1alpha1.OCIDestination{
+			Publish: &zarfv1alpha3.PublishConfig{
+				Destination: zarfv1alpha3.PublishDestination{
+					Type: zarfv1alpha3.DestinationTypeOCI,
+					OCI: &zarfv1alpha3.OCIDestination{
 						Registry:   "ghcr.io",
 						Repository: "myorg/packages",
 						Tag:        "v1.0.0",
@@ -675,25 +676,25 @@ func TestValidate_PublishDestinationOCIWithRepositoryPattern(t *testing.T) {
 	}
 
 	// Test disallowed repository (different org)
-	pkg2 := &zarfv1alpha1.ZarfPackageJob{
+	pkg2 := &zarfv1alpha3.ZarfPackageJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-pkg-2",
 			Namespace: "default",
 		},
-		Spec: zarfv1alpha1.ZarfPackageJobSpec{
+		Spec: zarfv1alpha3.ZarfPackageJobSpec{
 			ServiceAccountName: "test-sa",
-			Action:             zarfv1alpha1.ActionPublish,
-			Source: zarfv1alpha1.PackageSource{
-				Type: zarfv1alpha1.SourceTypeGit,
-				Git: &zarfv1alpha1.GitSource{
+			Action:             zarfv1alpha3.ActionPublish,
+			Source: zarfv1alpha3.PackageSource{
+				Type: zarfv1alpha3.SourceTypeGit,
+				Git: &zarfv1alpha3.GitSource{
 					URL: "https://github.com/test/repo",
 					Ref: "main",
 				},
 			},
-			Publish: &zarfv1alpha1.PublishConfig{
-				Destination: zarfv1alpha1.PublishDestination{
-					Type: zarfv1alpha1.DestinationTypeOCI,
-					OCI: &zarfv1alpha1.OCIDestination{
+			Publish: &zarfv1alpha3.PublishConfig{
+				Destination: zarfv1alpha3.PublishDestination{
+					Type: zarfv1alpha3.DestinationTypeOCI,
+					OCI: &zarfv1alpha3.OCIDestination{
 						Registry:   "ghcr.io",
 						Repository: "otherorg/packages",
 						Tag:        "v1.0.0",
@@ -728,25 +729,25 @@ func TestValidate_PublishDestinationLocal(t *testing.T) {
 	client := fake.NewClientset(sa)
 	engine := NewEngine(client)
 
-	pkg := &zarfv1alpha1.ZarfPackageJob{
+	pkg := &zarfv1alpha3.ZarfPackageJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-pkg",
 			Namespace: "default",
 		},
-		Spec: zarfv1alpha1.ZarfPackageJobSpec{
+		Spec: zarfv1alpha3.ZarfPackageJobSpec{
 			ServiceAccountName: "test-sa",
-			Action:             zarfv1alpha1.ActionPublish,
-			Source: zarfv1alpha1.PackageSource{
-				Type: zarfv1alpha1.SourceTypeGit,
-				Git: &zarfv1alpha1.GitSource{
+			Action:             zarfv1alpha3.ActionPublish,
+			Source: zarfv1alpha3.PackageSource{
+				Type: zarfv1alpha3.SourceTypeGit,
+				Git: &zarfv1alpha3.GitSource{
 					URL: "https://github.com/test/repo",
 					Ref: "main",
 				},
 			},
-			Publish: &zarfv1alpha1.PublishConfig{
-				Destination: zarfv1alpha1.PublishDestination{
-					Type: zarfv1alpha1.DestinationTypeLocal,
-					Local: &zarfv1alpha1.LocalDestination{
+			Publish: &zarfv1alpha3.PublishConfig{
+				Destination: zarfv1alpha3.PublishDestination{
+					Type: zarfv1alpha3.DestinationTypeLocal,
+					Local: &zarfv1alpha3.LocalDestination{
 						Path:    "/tmp/output",
 						DevMode: true,
 					},
@@ -776,25 +777,25 @@ func TestValidate_PublishDestinationLocalNotAllowed(t *testing.T) {
 	client := fake.NewClientset(sa)
 	engine := NewEngine(client)
 
-	pkg := &zarfv1alpha1.ZarfPackageJob{
+	pkg := &zarfv1alpha3.ZarfPackageJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-pkg",
 			Namespace: "default",
 		},
-		Spec: zarfv1alpha1.ZarfPackageJobSpec{
+		Spec: zarfv1alpha3.ZarfPackageJobSpec{
 			ServiceAccountName: "test-sa",
-			Action:             zarfv1alpha1.ActionPublish,
-			Source: zarfv1alpha1.PackageSource{
-				Type: zarfv1alpha1.SourceTypeGit,
-				Git: &zarfv1alpha1.GitSource{
+			Action:             zarfv1alpha3.ActionPublish,
+			Source: zarfv1alpha3.PackageSource{
+				Type: zarfv1alpha3.SourceTypeGit,
+				Git: &zarfv1alpha3.GitSource{
 					URL: "https://github.com/test/repo",
 					Ref: "main",
 				},
 			},
-			Publish: &zarfv1alpha1.PublishConfig{
-				Destination: zarfv1alpha1.PublishDestination{
-					Type: zarfv1alpha1.DestinationTypeLocal,
-					Local: &zarfv1alpha1.LocalDestination{
+			Publish: &zarfv1alpha3.PublishConfig{
+				Destination: zarfv1alpha3.PublishDestination{
+					Type: zarfv1alpha3.DestinationTypeLocal,
+					Local: &zarfv1alpha3.LocalDestination{
 						Path: "/tmp/output",
 					},
 				},
@@ -827,22 +828,22 @@ func TestValidate_OCISource(t *testing.T) {
 	client := fake.NewClientset(sa)
 	engine := NewEngine(client)
 
-	pkg := &zarfv1alpha1.ZarfPackageJob{
+	pkg := &zarfv1alpha3.ZarfPackageJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-pkg",
 			Namespace: "default",
 		},
-		Spec: zarfv1alpha1.ZarfPackageJobSpec{
+		Spec: zarfv1alpha3.ZarfPackageJobSpec{
 			ServiceAccountName: "test-sa",
-			Action:             zarfv1alpha1.ActionDeploy,
-			Source: zarfv1alpha1.PackageSource{
-				Type: zarfv1alpha1.SourceTypeOCI,
-				OCI: &zarfv1alpha1.OCISource{
-					Image: "ghcr.io/test/package:v1.0.0",
+			Action:             zarfv1alpha3.ActionDeploy,
+			Source: zarfv1alpha3.PackageSource{
+				Type: zarfv1alpha3.SourceTypeOCI,
+				OCI: &zarfv1alpha3.OCISource{
+					Reference: "ghcr.io/test/package:v1.0.0",
 				},
 			},
-			Deploy: &zarfv1alpha1.DeployConfig{
-				Target:    zarfv1alpha1.DeployTargetInCluster,
+			Deploy: &zarfv1alpha3.DeployConfig{
+				Target:    zarfv1alpha3.DeployTargetInCluster,
 				Namespace: "default",
 			},
 		},
@@ -870,22 +871,22 @@ func TestValidate_OCISourceNotAllowed(t *testing.T) {
 	client := fake.NewClientset(sa)
 	engine := NewEngine(client)
 
-	pkg := &zarfv1alpha1.ZarfPackageJob{
+	pkg := &zarfv1alpha3.ZarfPackageJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-pkg",
 			Namespace: "default",
 		},
-		Spec: zarfv1alpha1.ZarfPackageJobSpec{
+		Spec: zarfv1alpha3.ZarfPackageJobSpec{
 			ServiceAccountName: "test-sa",
-			Action:             zarfv1alpha1.ActionDeploy,
-			Source: zarfv1alpha1.PackageSource{
-				Type: zarfv1alpha1.SourceTypeOCI,
-				OCI: &zarfv1alpha1.OCISource{
-					Image: "docker.io/test/package:v1.0.0",
+			Action:             zarfv1alpha3.ActionDeploy,
+			Source: zarfv1alpha3.PackageSource{
+				Type: zarfv1alpha3.SourceTypeOCI,
+				OCI: &zarfv1alpha3.OCISource{
+					Reference: "docker.io/test/package:v1.0.0",
 				},
 			},
-			Deploy: &zarfv1alpha1.DeployConfig{
-				Target:    zarfv1alpha1.DeployTargetInCluster,
+			Deploy: &zarfv1alpha3.DeployConfig{
+				Target:    zarfv1alpha3.DeployTargetInCluster,
 				Namespace: "default",
 			},
 		},
@@ -916,23 +917,23 @@ func TestValidate_DeployTargetAllowed(t *testing.T) {
 	client := fake.NewClientset(sa)
 	engine := NewEngine(client)
 
-	pkg := &zarfv1alpha1.ZarfPackageJob{
+	pkg := &zarfv1alpha3.ZarfPackageJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-pkg",
 			Namespace: "default",
 		},
-		Spec: zarfv1alpha1.ZarfPackageJobSpec{
+		Spec: zarfv1alpha3.ZarfPackageJobSpec{
 			ServiceAccountName: "test-sa",
-			Action:             zarfv1alpha1.ActionDeploy,
-			Source: zarfv1alpha1.PackageSource{
-				Type: zarfv1alpha1.SourceTypeGit,
-				Git: &zarfv1alpha1.GitSource{
+			Action:             zarfv1alpha3.ActionDeploy,
+			Source: zarfv1alpha3.PackageSource{
+				Type: zarfv1alpha3.SourceTypeGit,
+				Git: &zarfv1alpha3.GitSource{
 					URL: "https://github.com/test/repo",
 					Ref: "main",
 				},
 			},
-			Deploy: &zarfv1alpha1.DeployConfig{
-				Target:    zarfv1alpha1.DeployTargetInCluster,
+			Deploy: &zarfv1alpha3.DeployConfig{
+				Target:    zarfv1alpha3.DeployTargetInCluster,
 				Namespace: "default",
 			},
 		},
@@ -960,25 +961,25 @@ func TestValidate_DeployTargetNotAllowed(t *testing.T) {
 	client := fake.NewClientset(sa)
 	engine := NewEngine(client)
 
-	pkg := &zarfv1alpha1.ZarfPackageJob{
+	pkg := &zarfv1alpha3.ZarfPackageJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-pkg",
 			Namespace: "default",
 		},
-		Spec: zarfv1alpha1.ZarfPackageJobSpec{
+		Spec: zarfv1alpha3.ZarfPackageJobSpec{
 			ServiceAccountName: "test-sa",
-			Action:             zarfv1alpha1.ActionDeploy,
-			Source: zarfv1alpha1.PackageSource{
-				Type: zarfv1alpha1.SourceTypeGit,
-				Git: &zarfv1alpha1.GitSource{
+			Action:             zarfv1alpha3.ActionDeploy,
+			Source: zarfv1alpha3.PackageSource{
+				Type: zarfv1alpha3.SourceTypeGit,
+				Git: &zarfv1alpha3.GitSource{
 					URL: "https://github.com/test/repo",
 					Ref: "main",
 				},
 			},
-			Deploy: &zarfv1alpha1.DeployConfig{
-				Target: zarfv1alpha1.DeployTargetExternalCluster,
-				ExternalCluster: &zarfv1alpha1.ExternalClusterConfig{
-					KubeconfigSecretRef: zarfv1alpha1.SecretReference{ // pragma: allowlist secret
+			Deploy: &zarfv1alpha3.DeployConfig{
+				Target: zarfv1alpha3.DeployTargetExternalCluster,
+				ExternalCluster: &common.ExternalClusterConfig{
+					SecretRef: common.SecretReference{ // pragma: allowlist secret
 						Name: "external-kubeconfig",
 					},
 				},
@@ -1026,14 +1027,14 @@ func TestValidateUDSBundle_MissingServiceAccount(t *testing.T) {
 	client := fake.NewClientset()
 	engine := NewEngine(client)
 
-	bundle := &udsv1alpha2.UDSBundleJob{
+	bundle := &udsv1alpha3.UDSBundleJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-bundle",
 			Namespace: "default",
 		},
-		Spec: udsv1alpha2.UDSBundleJobSpec{
+		Spec: udsv1alpha3.UDSBundleJobSpec{
 			ServiceAccountName: "",
-			Action:             udsv1alpha2.ActionCreate,
+			Action:             udsv1alpha3.ActionCreate,
 		},
 	}
 
@@ -1050,14 +1051,14 @@ func TestValidateUDSBundle_ServiceAccountNotFound(t *testing.T) {
 	client := fake.NewClientset()
 	engine := NewEngine(client)
 
-	bundle := &udsv1alpha2.UDSBundleJob{
+	bundle := &udsv1alpha3.UDSBundleJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-bundle",
 			Namespace: "default",
 		},
-		Spec: udsv1alpha2.UDSBundleJobSpec{
+		Spec: udsv1alpha3.UDSBundleJobSpec{
 			ServiceAccountName: "nonexistent-sa",
-			Action:             udsv1alpha2.ActionCreate,
+			Action:             udsv1alpha3.ActionCreate,
 		},
 	}
 
@@ -1081,17 +1082,17 @@ func TestValidateUDSBundle_ActionNotAllowed(t *testing.T) {
 	client := fake.NewClientset(sa)
 	engine := NewEngine(client)
 
-	bundle := &udsv1alpha2.UDSBundleJob{
+	bundle := &udsv1alpha3.UDSBundleJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-bundle",
 			Namespace: "default",
 		},
-		Spec: udsv1alpha2.UDSBundleJobSpec{
+		Spec: udsv1alpha3.UDSBundleJobSpec{
 			ServiceAccountName: "test-sa",
-			Action:             udsv1alpha2.ActionDeploy,
-			Source: udsv1alpha2.PackageSource{
-				Type: udsv1alpha2.SourceTypeGit,
-				Git: &udsv1alpha2.GitSource{
+			Action:             udsv1alpha3.ActionDeploy,
+			Source: udsv1alpha3.PackageSource{
+				Type: udsv1alpha3.SourceTypeGit,
+				Git: &udsv1alpha3.GitSource{
 					URL: "https://github.com/test/repo",
 					Ref: "main",
 				},
@@ -1123,17 +1124,17 @@ func TestValidateUDSBundle_GitSourceAllowed(t *testing.T) {
 	client := fake.NewClientset(sa)
 	engine := NewEngine(client)
 
-	bundle := &udsv1alpha2.UDSBundleJob{
+	bundle := &udsv1alpha3.UDSBundleJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-bundle",
 			Namespace: "default",
 		},
-		Spec: udsv1alpha2.UDSBundleJobSpec{
+		Spec: udsv1alpha3.UDSBundleJobSpec{
 			ServiceAccountName: "test-sa",
-			Action:             udsv1alpha2.ActionCreate,
-			Source: udsv1alpha2.PackageSource{
-				Type: udsv1alpha2.SourceTypeGit,
-				Git: &udsv1alpha2.GitSource{
+			Action:             udsv1alpha3.ActionCreate,
+			Source: udsv1alpha3.PackageSource{
+				Type: udsv1alpha3.SourceTypeGit,
+				Git: &udsv1alpha3.GitSource{
 					URL: "https://github.com/test/repo",
 					Ref: "main",
 				},
@@ -1162,17 +1163,17 @@ func TestValidateUDSBundle_GitSourceNotAllowed(t *testing.T) {
 	client := fake.NewClientset(sa)
 	engine := NewEngine(client)
 
-	bundle := &udsv1alpha2.UDSBundleJob{
+	bundle := &udsv1alpha3.UDSBundleJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-bundle",
 			Namespace: "default",
 		},
-		Spec: udsv1alpha2.UDSBundleJobSpec{
+		Spec: udsv1alpha3.UDSBundleJobSpec{
 			ServiceAccountName: "test-sa",
-			Action:             udsv1alpha2.ActionCreate,
-			Source: udsv1alpha2.PackageSource{
-				Type: udsv1alpha2.SourceTypeGit,
-				Git: &udsv1alpha2.GitSource{
+			Action:             udsv1alpha3.ActionCreate,
+			Source: udsv1alpha3.PackageSource{
+				Type: udsv1alpha3.SourceTypeGit,
+				Git: &udsv1alpha3.GitSource{
 					URL: "https://github.com/forbidden/repo",
 					Ref: "main",
 				},
@@ -1205,24 +1206,24 @@ func TestValidateUDSBundle_S3SourceAllowed(t *testing.T) {
 	client := fake.NewClientset(sa)
 	engine := NewEngine(client)
 
-	bundle := &udsv1alpha2.UDSBundleJob{
+	bundle := &udsv1alpha3.UDSBundleJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-bundle",
 			Namespace: "default",
 		},
-		Spec: udsv1alpha2.UDSBundleJobSpec{
+		Spec: udsv1alpha3.UDSBundleJobSpec{
 			ServiceAccountName: "test-sa",
-			Action:             udsv1alpha2.ActionDeploy,
-			Source: udsv1alpha2.PackageSource{
-				Type: udsv1alpha2.SourceTypeS3,
-				S3: &udsv1alpha2.S3Source{
+			Action:             udsv1alpha3.ActionDeploy,
+			Source: udsv1alpha3.PackageSource{
+				Type: udsv1alpha3.SourceTypeS3,
+				S3: &udsv1alpha3.S3Source{
 					Bucket: "allowed-bucket",
 					Key:    "bundles/test.tar.zst",
 					Region: "us-east-1",
 				},
 			},
-			Deploy: &udsv1alpha2.DeployConfig{
-				Target:    udsv1alpha2.DeployTargetInCluster,
+			Deploy: &udsv1alpha3.DeployConfig{
+				Target:    udsv1alpha3.DeployTargetInCluster,
 				Namespace: "default",
 			},
 		},
@@ -1250,22 +1251,22 @@ func TestValidateUDSBundle_OCISourceAllowed(t *testing.T) {
 	client := fake.NewClientset(sa)
 	engine := NewEngine(client)
 
-	bundle := &udsv1alpha2.UDSBundleJob{
+	bundle := &udsv1alpha3.UDSBundleJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-bundle",
 			Namespace: "default",
 		},
-		Spec: udsv1alpha2.UDSBundleJobSpec{
+		Spec: udsv1alpha3.UDSBundleJobSpec{
 			ServiceAccountName: "test-sa",
-			Action:             udsv1alpha2.ActionDeploy,
-			Source: udsv1alpha2.PackageSource{
-				Type: udsv1alpha2.SourceTypeOCI,
-				OCI: &udsv1alpha2.OCISource{
+			Action:             udsv1alpha3.ActionDeploy,
+			Source: udsv1alpha3.PackageSource{
+				Type: udsv1alpha3.SourceTypeOCI,
+				OCI: &udsv1alpha3.OCISource{
 					Reference: "ghcr.io/test/bundle:v1.0.0",
 				},
 			},
-			Deploy: &udsv1alpha2.DeployConfig{
-				Target:    udsv1alpha2.DeployTargetInCluster,
+			Deploy: &udsv1alpha3.DeployConfig{
+				Target:    udsv1alpha3.DeployTargetInCluster,
 				Namespace: "default",
 			},
 		},
@@ -1293,25 +1294,25 @@ func TestValidateUDSBundle_PublishDestinationOCIAllowed(t *testing.T) {
 	client := fake.NewClientset(sa)
 	engine := NewEngine(client)
 
-	bundle := &udsv1alpha2.UDSBundleJob{
+	bundle := &udsv1alpha3.UDSBundleJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-bundle",
 			Namespace: "default",
 		},
-		Spec: udsv1alpha2.UDSBundleJobSpec{
+		Spec: udsv1alpha3.UDSBundleJobSpec{
 			ServiceAccountName: "test-sa",
-			Action:             udsv1alpha2.ActionPublish,
-			Source: udsv1alpha2.PackageSource{
-				Type: udsv1alpha2.SourceTypeGit,
-				Git: &udsv1alpha2.GitSource{
+			Action:             udsv1alpha3.ActionPublish,
+			Source: udsv1alpha3.PackageSource{
+				Type: udsv1alpha3.SourceTypeGit,
+				Git: &udsv1alpha3.GitSource{
 					URL: "https://github.com/test/repo",
 					Ref: "main",
 				},
 			},
-			Publish: &udsv1alpha2.PublishConfig{
-				Destination: udsv1alpha2.PublishDestination{
-					Type: udsv1alpha2.DestinationTypeOCI,
-					OCI: &udsv1alpha2.OCIDestination{
+			Publish: &udsv1alpha3.PublishConfig{
+				Destination: udsv1alpha3.PublishDestination{
+					Type: udsv1alpha3.DestinationTypeOCI,
+					OCI: &udsv1alpha3.OCIDestination{
 						Registry:   "ghcr.io",
 						Repository: "test/bundles",
 						Tag:        "v1.0.0",
@@ -1343,28 +1344,28 @@ func TestValidateUDSBundle_PublishDestinationS3Allowed(t *testing.T) {
 	client := fake.NewClientset(sa)
 	engine := NewEngine(client)
 
-	bundle := &udsv1alpha2.UDSBundleJob{
+	bundle := &udsv1alpha3.UDSBundleJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-bundle",
 			Namespace: "default",
 		},
-		Spec: udsv1alpha2.UDSBundleJobSpec{
+		Spec: udsv1alpha3.UDSBundleJobSpec{
 			ServiceAccountName: "test-sa",
-			Action:             udsv1alpha2.ActionPublish,
-			Source: udsv1alpha2.PackageSource{
-				Type: udsv1alpha2.SourceTypeGit,
-				Git: &udsv1alpha2.GitSource{
+			Action:             udsv1alpha3.ActionPublish,
+			Source: udsv1alpha3.PackageSource{
+				Type: udsv1alpha3.SourceTypeGit,
+				Git: &udsv1alpha3.GitSource{
 					URL: "https://github.com/test/repo",
 					Ref: "main",
 				},
 			},
-			Publish: &udsv1alpha2.PublishConfig{
-				Destination: udsv1alpha2.PublishDestination{
-					Type: udsv1alpha2.DestinationTypeS3,
-					S3: &udsv1alpha2.S3Destination{
-						Bucket: "publish-bucket",
-						Key:    "bundles/",
-						Region: "us-east-1",
+			Publish: &udsv1alpha3.PublishConfig{
+				Destination: udsv1alpha3.PublishDestination{
+					Type: udsv1alpha3.DestinationTypeS3,
+					S3: &udsv1alpha3.S3Destination{
+						Bucket:    "publish-bucket",
+						KeyPrefix: "bundles/",
+						Region:    "us-east-1",
 					},
 				},
 			},
@@ -1393,23 +1394,23 @@ func TestValidateUDSBundle_DeployTargetAllowed(t *testing.T) {
 	client := fake.NewClientset(sa)
 	engine := NewEngine(client)
 
-	bundle := &udsv1alpha2.UDSBundleJob{
+	bundle := &udsv1alpha3.UDSBundleJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-bundle",
 			Namespace: "default",
 		},
-		Spec: udsv1alpha2.UDSBundleJobSpec{
+		Spec: udsv1alpha3.UDSBundleJobSpec{
 			ServiceAccountName: "test-sa",
-			Action:             udsv1alpha2.ActionDeploy,
-			Source: udsv1alpha2.PackageSource{
-				Type: udsv1alpha2.SourceTypeGit,
-				Git: &udsv1alpha2.GitSource{
+			Action:             udsv1alpha3.ActionDeploy,
+			Source: udsv1alpha3.PackageSource{
+				Type: udsv1alpha3.SourceTypeGit,
+				Git: &udsv1alpha3.GitSource{
 					URL: "https://github.com/test/repo",
 					Ref: "main",
 				},
 			},
-			Deploy: &udsv1alpha2.DeployConfig{
-				Target:    udsv1alpha2.DeployTargetInCluster,
+			Deploy: &udsv1alpha3.DeployConfig{
+				Target:    udsv1alpha3.DeployTargetInCluster,
 				Namespace: "default",
 			},
 		},
@@ -1437,23 +1438,23 @@ func TestValidateUDSBundle_DeployTargetNotAllowed(t *testing.T) {
 	client := fake.NewClientset(sa)
 	engine := NewEngine(client)
 
-	bundle := &udsv1alpha2.UDSBundleJob{
+	bundle := &udsv1alpha3.UDSBundleJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-bundle",
 			Namespace: "default",
 		},
-		Spec: udsv1alpha2.UDSBundleJobSpec{
+		Spec: udsv1alpha3.UDSBundleJobSpec{
 			ServiceAccountName: "test-sa",
-			Action:             udsv1alpha2.ActionDeploy,
-			Source: udsv1alpha2.PackageSource{
-				Type: udsv1alpha2.SourceTypeGit,
-				Git: &udsv1alpha2.GitSource{
+			Action:             udsv1alpha3.ActionDeploy,
+			Source: udsv1alpha3.PackageSource{
+				Type: udsv1alpha3.SourceTypeGit,
+				Git: &udsv1alpha3.GitSource{
 					URL: "https://github.com/test/repo",
 					Ref: "main",
 				},
 			},
-			Deploy: &udsv1alpha2.DeployConfig{
-				Target: udsv1alpha2.DeployTargetExternalCluster,
+			Deploy: &udsv1alpha3.DeployConfig{
+				Target: udsv1alpha3.DeployTargetExternalCluster,
 			},
 		},
 	}
@@ -1484,33 +1485,33 @@ func TestValidateUDSBundle_CompleteWorkflow(t *testing.T) {
 	client := fake.NewClientset(sa)
 	engine := NewEngine(client)
 
-	bundle := &udsv1alpha2.UDSBundleJob{
+	bundle := &udsv1alpha3.UDSBundleJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-bundle",
 			Namespace: "default",
 		},
-		Spec: udsv1alpha2.UDSBundleJobSpec{
+		Spec: udsv1alpha3.UDSBundleJobSpec{
 			ServiceAccountName: "test-sa",
-			Action:             udsv1alpha2.ActionCreatePublishDeploy,
-			Source: udsv1alpha2.PackageSource{
-				Type: udsv1alpha2.SourceTypeGit,
-				Git: &udsv1alpha2.GitSource{
+			Action:             udsv1alpha3.ActionCreatePublishDeploy,
+			Source: udsv1alpha3.PackageSource{
+				Type: udsv1alpha3.SourceTypeGit,
+				Git: &udsv1alpha3.GitSource{
 					URL: "https://github.com/test/repo",
 					Ref: "main",
 				},
 			},
-			Publish: &udsv1alpha2.PublishConfig{
-				Destination: udsv1alpha2.PublishDestination{
-					Type: udsv1alpha2.DestinationTypeOCI,
-					OCI: &udsv1alpha2.OCIDestination{
+			Publish: &udsv1alpha3.PublishConfig{
+				Destination: udsv1alpha3.PublishDestination{
+					Type: udsv1alpha3.DestinationTypeOCI,
+					OCI: &udsv1alpha3.OCIDestination{
 						Registry:   "ghcr.io",
 						Repository: "test/bundles",
 						Tag:        "v1.0.0",
 					},
 				},
 			},
-			Deploy: &udsv1alpha2.DeployConfig{
-				Target:    udsv1alpha2.DeployTargetInCluster,
+			Deploy: &udsv1alpha3.DeployConfig{
+				Target:    udsv1alpha3.DeployTargetInCluster,
 				Namespace: "default",
 			},
 		},
@@ -1537,17 +1538,17 @@ func TestValidateUDSBundle_LocalSourceAllowed(t *testing.T) {
 	client := fake.NewClientset(sa)
 	engine := NewEngine(client)
 
-	bundle := &udsv1alpha2.UDSBundleJob{
+	bundle := &udsv1alpha3.UDSBundleJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-bundle",
 			Namespace: "default",
 		},
-		Spec: udsv1alpha2.UDSBundleJobSpec{
+		Spec: udsv1alpha3.UDSBundleJobSpec{
 			ServiceAccountName: "test-sa",
-			Action:             udsv1alpha2.ActionCreate,
-			Source: udsv1alpha2.PackageSource{
-				Type: udsv1alpha2.SourceTypeLocal,
-				Local: &udsv1alpha2.LocalSource{
+			Action:             udsv1alpha3.ActionCreate,
+			Source: udsv1alpha3.PackageSource{
+				Type: udsv1alpha3.SourceTypeLocal,
+				Local: &udsv1alpha3.LocalSource{
 					Path: "/tmp/bundle",
 				},
 			},
@@ -1574,17 +1575,17 @@ func TestValidateUDSBundle_LocalSourceNotAllowed(t *testing.T) {
 	client := fake.NewClientset(sa)
 	engine := NewEngine(client)
 
-	bundle := &udsv1alpha2.UDSBundleJob{
+	bundle := &udsv1alpha3.UDSBundleJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-bundle",
 			Namespace: "default",
 		},
-		Spec: udsv1alpha2.UDSBundleJobSpec{
+		Spec: udsv1alpha3.UDSBundleJobSpec{
 			ServiceAccountName: "test-sa",
-			Action:             udsv1alpha2.ActionCreate,
-			Source: udsv1alpha2.PackageSource{
-				Type: udsv1alpha2.SourceTypeLocal,
-				Local: &udsv1alpha2.LocalSource{
+			Action:             udsv1alpha3.ActionCreate,
+			Source: udsv1alpha3.PackageSource{
+				Type: udsv1alpha3.SourceTypeLocal,
+				Local: &udsv1alpha3.LocalSource{
 					Path: "/tmp/bundle",
 				},
 			},

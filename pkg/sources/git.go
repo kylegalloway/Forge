@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/kylegalloway/forge/pkg/actions"
-	zarfv1alpha1 "github.com/kylegalloway/forge/pkg/apis/zarf/v1alpha1"
+	zarfv1alpha3 "github.com/kylegalloway/forge/pkg/apis/zarf/v1alpha3"
 	"github.com/kylegalloway/forge/pkg/constants"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -23,7 +23,7 @@ type GitSourceConfig struct {
 type GitSource struct{}
 
 // GetInitContainer returns an init container to clone the git repository
-func (source *GitSource) GetInitContainer(pkg *zarfv1alpha1.ZarfPackageJob) (*corev1.Container, error) {
+func (source *GitSource) GetInitContainer(pkg *zarfv1alpha3.ZarfPackageJob) (*corev1.Container, error) {
 	gitSource := pkg.Spec.Source.Git
 	if gitSource == nil {
 		return nil, fmt.Errorf("git source configuration is missing")
@@ -31,8 +31,8 @@ func (source *GitSource) GetInitContainer(pkg *zarfv1alpha1.ZarfPackageJob) (*co
 
 	// Convert to common GitSourceConfig
 	var secretName string
-	if gitSource.CredentialsSecretRef != nil { // pragma: allowlist secret
-		secretName = gitSource.CredentialsSecretRef.Name // pragma: allowlist secret
+	if gitSource.CredentialRef != nil { // pragma: allowlist secret
+		secretName = gitSource.CredentialRef.Name // pragma: allowlist secret
 	}
 
 	config := &GitSourceConfig{

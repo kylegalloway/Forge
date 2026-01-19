@@ -187,7 +187,7 @@ Published artifacts can be stored in:
 Builds a package from a public Git repository.
 
 ```yaml
-apiVersion: forge.dev/v1alpha1
+apiVersion: forge.dev/v1alpha3
 kind: ZarfPackageJob
 metadata:
   name: build-example
@@ -235,7 +235,7 @@ build-example   Succeeded  45s
 Builds a package and immediately publishes it to an OCI registry.
 
 ```yaml
-apiVersion: forge.dev/v1alpha1
+apiVersion: forge.dev/v1alpha3
 kind: ZarfPackageJob
 metadata:
   name: build-publish-oci
@@ -256,7 +256,7 @@ spec:
         registry: ghcr.io
         repository: myuser/dos-games
         tag: 1.0.0
-        credentialsSecretRef:
+        credentialRef:
           name: oci-creds # Secret containing .dockerconfigjson
 ```
 
@@ -290,7 +290,7 @@ build-publish-oci    Succeeded  2m15s
 Deploys a package stored in an S3 bucket.
 
 ```yaml
-apiVersion: forge.dev/v1alpha1
+apiVersion: forge.dev/v1alpha3
 kind: ZarfPackageJob
 metadata:
   name: deploy-s3
@@ -304,7 +304,7 @@ spec:
       bucket: my-zarf-packages
       key: dos-games-v1.0.0.tar.zst
       region: us-east-1
-      credentialsSecretRef:
+      credentialRef:
         name: aws-creds # Secret with 'access-key-id' and 'secret-access-key' keys
   deploy:
     target: InCluster
@@ -347,7 +347,7 @@ Status:
 Creates a UDS bundle from a public Git repository containing a `uds-bundle.yaml` file.
 
 ```yaml
-apiVersion: forge.dev/v1alpha2
+apiVersion: forge.dev/v1alpha3
 kind: UDSBundleJob
 metadata:
   name: create-bundle
@@ -394,7 +394,7 @@ create-bundle    Succeeded  3m45s
 Creates a bundle and immediately publishes it to an OCI registry.
 
 ```yaml
-apiVersion: forge.dev/v1alpha2
+apiVersion: forge.dev/v1alpha3
 kind: UDSBundleJob
 metadata:
   name: build-publish-bundle
@@ -414,7 +414,7 @@ spec:
         registry: ghcr.io
         repository: myorg/bundles/my-platform
         tag: v1.0.0
-        credentialsSecretRef:
+        credentialRef:
           name: oci-registry-creds
 ```
 
@@ -448,7 +448,7 @@ build-publish-bundle   Succeeded  5m30s
 Deploys an existing UDS bundle from an OCI registry.
 
 ```yaml
-apiVersion: forge.dev/v1alpha2
+apiVersion: forge.dev/v1alpha3
 kind: UDSBundleJob
 metadata:
   name: deploy-bundle
@@ -460,7 +460,7 @@ spec:
     type: OCI
     oci:
       reference: ghcr.io/myorg/bundles/app-bundle:1.0.0
-      credentialsSecretRef:
+      credentialRef:
         name: oci-registry-creds
   deploy:
     target: InCluster
@@ -498,7 +498,7 @@ deploy-bundle   Succeeded  8m30s
 Deploys a bundle to a different cluster using a kubeconfig Secret.
 
 ```yaml
-apiVersion: forge.dev/v1alpha2
+apiVersion: forge.dev/v1alpha3
 kind: UDSBundleJob
 metadata:
   name: deploy-remote
@@ -550,7 +550,7 @@ udsbundlejob.forge.dev/deploy-remote created
 Publishes an existing bundle to an S3 bucket.
 
 ```yaml
-apiVersion: forge.dev/v1alpha2
+apiVersion: forge.dev/v1alpha3
 kind: UDSBundleJob
 metadata:
   name: publish-s3
@@ -570,7 +570,7 @@ spec:
         bucket: my-uds-bundles
         key: platform-v2.0.0.tar.zst
         region: us-east-1
-        credentialsSecretRef:
+        credentialRef:
           name: aws-s3-creds
 ```
 
@@ -1070,7 +1070,7 @@ If you cannot create job resources:
 | **Action Field** | `bundleAction` | `action` |
 | **Action Values** | `BundleActionCreate`, `BundleActionPublish`, etc. | `Create`, `Publish`, `Deploy` |
 | **Naming Convention** | Bundle-prefixed actions | Consistent with ZarfPackageJob |
-| **API Group** | `forge.dev/v1alpha1` | `forge.dev/v1alpha2` |
+| **API Group** | `forge.dev/v1alpha3` | `forge.dev/v1alpha3` |
 | **Deprecation** | Deprecated, removed in v0.10.0 | Active, recommended |
 
 ### Migration Example
@@ -1078,7 +1078,7 @@ If you cannot create job resources:
 **v1alpha1 (Old)**:
 
 ```yaml
-apiVersion: forge.dev/v1alpha1
+apiVersion: forge.dev/v1alpha3
 kind: UDSBundleJob
 metadata:
   name: my-bundle
@@ -1093,7 +1093,7 @@ spec:
 **v1alpha2 (New)**:
 
 ```yaml
-apiVersion: forge.dev/v1alpha2
+apiVersion: forge.dev/v1alpha3
 kind: UDSBundleJob
 metadata:
   name: my-bundle
@@ -1107,7 +1107,7 @@ spec:
 
 **Key changes**:
 
-1. `apiVersion: forge.dev/v1alpha1` → `apiVersion: forge.dev/v1alpha2`
+1. `apiVersion: forge.dev/v1alpha3` → `apiVersion: forge.dev/v1alpha3`
 2. `bundleAction: BundleActionCreate` → `action: Create`
 
 For a complete migration guide with automated conversion tools, see [V1ALPHA2_MIGRATION.md](../operations/V1ALPHA2_MIGRATION.md).

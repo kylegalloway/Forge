@@ -97,8 +97,8 @@ func TestZarfPackageJobSamples(t *testing.T) {
 
 			// Validate required fields
 			apiVersion := obj.GetAPIVersion()
-			if apiVersion != "forge.dev/v1alpha1" {
-				t.Errorf("Expected apiVersion 'forge.dev/v1alpha1', got '%s'", apiVersion)
+			if apiVersion != "forge.dev/v1alpha3" {
+				t.Errorf("Expected apiVersion 'forge.dev/v1alpha3', got '%s'", apiVersion)
 			}
 
 			kind := obj.GetKind()

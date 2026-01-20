@@ -69,6 +69,9 @@ const (
 	// VolumeMountPathArtifacts is the mount path for the artifacts volume.
 	VolumeMountPathArtifacts = "/artifacts"
 
+	// VolumeMountPathKubeconfig is the mount path for the kubeconfig volume.
+	VolumeMountPathKubeconfig = "/etc/kubeconfig"
+
 	// ContainerNameZarfBuild is the container name for Zarf build Jobs.
 	ContainerNameZarfBuild = "zarf-build"
 

@@ -149,7 +149,7 @@ func (m *GenericJobMonitor[T]) processJobStatus(ctx context.Context, job *batchv
 
 	for _, condition := range job.Status.Conditions {
 		if condition.Type == batchv1.JobComplete && condition.Status == corev1.ConditionTrue {
-			phase = "Completed"
+			phase = constants.PhaseCompleted
 			message = fmt.Sprintf("%s job %s completed successfully", action, job.Name)
 			completed = true
 			completionTime = condition.LastTransitionTime.DeepCopy()
@@ -190,11 +190,11 @@ func (m *GenericJobMonitor[T]) processJobStatus(ctx context.Context, job *batchv
 					// Update status to "Retrying"
 					opStatus := map[string]interface{}{}
 					opStatus[statusField] = map[string]interface{}{
-						"state":             "Retrying",
-						"retryCount":        currentRetryCount + 1,
-						"nextRetryTime":     metav1.NewTime(decision.RetryAt).Format(time.RFC3339),
-						"lastFailureReason": condition.Message,
-						"message":           decision.Reason,
+						constants.StatusKeyState:             constants.PhaseRetrying,
+						constants.StatusKeyRetryCount:        currentRetryCount + 1,
+						constants.StatusKeyNextRetryTime:     metav1.NewTime(decision.RetryAt).Format(time.RFC3339),
+						constants.StatusKeyLastFailureReason: condition.Message,
+						constants.StatusKeyMessage:           decision.Reason,
 					}
 
 					// Delete failed job so it can be recreated
@@ -203,12 +203,12 @@ func (m *GenericJobMonitor[T]) processJobStatus(ctx context.Context, job *batchv
 					}
 
 					// Update resource status
-					return m.statusUpdater(ctx, unstrObj, "Retrying", decision.Reason, opStatus)
+					return m.statusUpdater(ctx, unstrObj, constants.PhaseRetrying, decision.Reason, opStatus)
 				}
 			}
 
 			// Not retryable or max retries exhausted - mark as failed
-			phase = "Failed"
+			phase = constants.PhaseFailed
 			message = fmt.Sprintf("%s job %s failed: %s", action, job.Name, condition.Message)
 			completed = true
 			completionTime = condition.LastTransitionTime.DeepCopy()
@@ -243,13 +243,13 @@ func (m *GenericJobMonitor[T]) processJobStatus(ctx context.Context, job *batchv
 	// Build operation status
 	opStatus := map[string]interface{}{}
 	statusField := m.getStatusFieldName(action)
-	artifactLocation := "/workspace/package.tar.zst" // Default artifact location
+	artifactLocation := constants.DefaultArtifactPath // Default artifact location
 
 	opStatus[statusField] = map[string]interface{}{
-		"state":            phase,
-		"message":          message,
-		"completionTime":   completionTime.Format(time.RFC3339),
-		"artifactLocation": artifactLocation,
+		constants.StatusKeyState:            phase,
+		constants.StatusKeyMessage:          message,
+		constants.StatusKeyCompletionTime:   completionTime.Format(time.RFC3339),
+		constants.StatusKeyArtifactLocation: artifactLocation,
 	}
 
 	// Update resource status
@@ -258,7 +258,7 @@ func (m *GenericJobMonitor[T]) processJobStatus(ctx context.Context, job *batchv
 	}
 
 	// Handle resource adoption if job succeeded and action is deploy
-	if phase == "Completed" && action == constants.ActionDeploy {
+	if phase == constants.PhaseCompleted && action == constants.ActionDeploy {
 		if err := m.adoptDeployedResources(ctx, unstrObj); err != nil {
 			// Don't fail the deployment, just log warning
 			klog.ErrorS(err, "Failed to adopt resources", "resource", resourceName, "action", action)
@@ -266,7 +266,7 @@ func (m *GenericJobMonitor[T]) processJobStatus(ctx context.Context, job *batchv
 	}
 
 	// Handle action chaining if job succeeded
-	if phase == "Completed" {
+	if phase == constants.PhaseCompleted {
 		err := m.handleActionChaining(ctx, unstrObj, action, artifactLocation)
 		// If there's no next action or chaining failed, clean up PVC if needed
 		currentAction, ok := spec["action"].(string)
@@ -281,7 +281,7 @@ func (m *GenericJobMonitor[T]) processJobStatus(ctx context.Context, job *batchv
 	}
 
 	// If job failed, clean up PVC if needed
-	if phase == "Failed" {
+	if phase == constants.PhaseFailed {
 		m.cleanupArtifactPVCIfNeeded(ctx, unstrObj, resourceName)
 	}
 
@@ -294,9 +294,9 @@ func (m *GenericJobMonitor[T]) getStatusFieldName(action string) string {
 	case m.config.PrimaryAction:
 		return m.config.PrimaryStatusField
 	case constants.ActionPublish:
-		return "publishStatus"
+		return constants.StatusFieldPublish
 	case constants.ActionDeploy:
-		return "deployStatus"
+		return constants.StatusFieldDeploy
 	default:
 		return action + "Status"
 	}
@@ -410,9 +410,9 @@ func (m *GenericJobMonitor[T]) handleActionChaining(ctx context.Context, unstrOb
 		opStatus := map[string]interface{}{}
 		statusField := m.getStatusFieldName(nextAction)
 		opStatus[statusField] = map[string]interface{}{
-			"state":     result.Phase,
-			"message":   result.Message,
-			"startTime": result.StartTime.Format(time.RFC3339),
+			constants.StatusKeyState:   result.Phase,
+			constants.StatusKeyMessage: result.Message,
+			"startTime":                result.StartTime.Format(time.RFC3339),
 		}
 		return m.statusUpdater(ctx, unstrObj, result.Phase, result.Message, opStatus)
 	}
@@ -428,11 +428,11 @@ func (m *GenericJobMonitor[T]) determineNextAction(mainAction, completedAction s
 
 	switch mainAction {
 	case primaryAction + "Publish", "CreatePublish": // BuildPublish or CreatePublish
-		if completedAction == primaryAction || completedAction == "create" {
+		if completedAction == primaryAction || completedAction == constants.ActionCreate {
 			return constants.ActionPublish
 		}
 	case primaryAction + "Deploy", "CreateDeploy": // BuildDeploy or CreateDeploy
-		if completedAction == primaryAction || completedAction == "create" {
+		if completedAction == primaryAction || completedAction == constants.ActionCreate {
 			return constants.ActionDeploy
 		}
 	case "PublishDeploy":
@@ -441,7 +441,7 @@ func (m *GenericJobMonitor[T]) determineNextAction(mainAction, completedAction s
 		}
 	case primaryAction + "PublishDeploy", "CreatePublishDeploy": // BuildPublishDeploy or CreatePublishDeploy
 		switch completedAction {
-		case primaryAction, "create":
+		case primaryAction, constants.ActionCreate:
 			return constants.ActionPublish
 		case constants.ActionPublish:
 			return constants.ActionDeploy
@@ -484,15 +484,15 @@ func (m *GenericJobMonitor[T]) getRetryPolicy(obj *unstructured.Unstructured, ac
 	// Determine which config to check based on action
 	var configName string
 	switch action {
-	case "build":
-		configName = "build"
-	case "create":
+	case constants.ActionBuild:
+		configName = constants.ActionBuild
+	case constants.ActionCreate:
 		// Create doesn't have a config section in UDS, return nil
 		return nil, nil
 	case constants.ActionPublish:
-		configName = "publish"
+		configName = constants.ActionPublish
 	case constants.ActionDeploy:
-		configName = "deploy"
+		configName = constants.ActionDeploy
 	default:
 		return nil, nil
 	}
@@ -509,7 +509,7 @@ func (m *GenericJobMonitor[T]) getRetryPolicy(obj *unstructured.Unstructured, ac
 
 	// Determine resource type and parse accordingly
 	resourceType := m.config.ResourceType
-	if resourceType == "ZarfPackageJob" {
+	if resourceType == constants.ResourceTypeZarfPackageJob {
 		// Convert map to Zarf RetryPolicy
 		apiPolicy := &zarfv1alpha3.RetryPolicy{}
 		if maxRetries, ok := retryMap["maxRetries"].(int64); ok {
@@ -714,7 +714,7 @@ func (m *GenericJobMonitor[T]) adoptDeployedResources(ctx context.Context, obj *
 
 	discoverer := resources.NewDiscoverer(m.dynamicClient)
 
-	if resourceType == "ZarfPackageJob" {
+	if resourceType == constants.ResourceTypeZarfPackageJob {
 		// Convert map to Zarf ResourceSelector
 		selector := m.parseZarfResourceSelector(selectorMap)
 		discovered, err = discoverer.DiscoverZarfResources(ctx, selector, namespaces)

@@ -36,12 +36,12 @@ func NewGenericZarfController(
 
 	// Configure controller
 	config := ControllerConfig{
-		ResourceType:    "ZarfPackageJob",
+		ResourceType:    constants.ResourceTypeZarfPackageJob,
 		ResourceGVR:     constants.ZarfPackageJobGVR,
 		PrimaryAction:   constants.ActionBuild,
-		LabelSelector:   "app=forge",
+		LabelSelector:   constants.LabelApp + "=" + constants.LabelAppValueZarf,
 		SupportsPVC:     true,
-		StatusFieldName: "buildStatus",
+		StatusFieldName: constants.StatusFieldBuild,
 	}
 
 	return NewGenericController[*zarfv1alpha3.ZarfPackageJob](
@@ -81,12 +81,12 @@ func NewGenericUDSController(
 
 	// Configure controller
 	config := ControllerConfig{
-		ResourceType:    "UDSBundleJob",
+		ResourceType:    constants.ResourceTypeUDSBundleJob,
 		ResourceGVR:     constants.UDSBundleJobGVR,
 		PrimaryAction:   constants.ActionCreate,
-		LabelSelector:   "app=forge-uds",
+		LabelSelector:   constants.LabelApp + "=" + constants.LabelAppValueUDS,
 		SupportsPVC:     true, // Phase 4: PVC support enabled for multi-action workflows
-		StatusFieldName: "createStatus",
+		StatusFieldName: constants.StatusFieldCreate,
 	}
 
 	return NewGenericController[*udsv1alpha3.UDSBundleJob](

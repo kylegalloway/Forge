@@ -3,6 +3,8 @@ package controller
 import (
 	"fmt"
 
+	"github.com/kylegalloway/forge/pkg/constants"
+
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -34,7 +36,7 @@ func GetJobStatus(job *batchv1.Job, actionName string) (*JobStatus, error) {
 	}
 
 	status := &JobStatus{
-		Phase:     "Running",
+		Phase:     constants.PhaseRunning,
 		Message:   fmt.Sprintf("%s job %s is running", actionName, job.Name),
 		Completed: false,
 		StartTime: job.Status.StartTime,
@@ -43,7 +45,7 @@ func GetJobStatus(job *batchv1.Job, actionName string) (*JobStatus, error) {
 	// Check Job conditions
 	for _, condition := range job.Status.Conditions {
 		if condition.Type == batchv1.JobComplete && condition.Status == corev1.ConditionTrue {
-			status.Phase = "Completed"
+			status.Phase = constants.PhaseCompleted
 			status.Message = fmt.Sprintf("%s job %s completed successfully", actionName, job.Name)
 			status.Completed = true
 			status.CompletionTime = condition.LastTransitionTime.DeepCopy()
@@ -51,7 +53,7 @@ func GetJobStatus(job *batchv1.Job, actionName string) (*JobStatus, error) {
 		}
 
 		if condition.Type == batchv1.JobFailed && condition.Status == corev1.ConditionTrue {
-			status.Phase = "Failed"
+			status.Phase = constants.PhaseFailed
 			status.Message = fmt.Sprintf("%s job %s failed: %s", actionName, job.Name, condition.Message)
 			status.Completed = true
 			status.CompletionTime = condition.LastTransitionTime.DeepCopy()

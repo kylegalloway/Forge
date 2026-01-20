@@ -21,6 +21,7 @@ import (
 
 	"github.com/kylegalloway/forge/pkg/actions/common"
 	apiscommon "github.com/kylegalloway/forge/pkg/apis/common"
+	"github.com/kylegalloway/forge/pkg/constants"
 	"github.com/kylegalloway/forge/pkg/policy"
 	"github.com/kylegalloway/forge/pkg/telemetry"
 )
@@ -251,7 +252,7 @@ func (ctrl *GenericController[T]) handleObject(ctx context.Context, obj interfac
 
 		// Handle retry scheduling
 		switch phase {
-		case "Retrying":
+		case constants.PhaseRetrying:
 			if ctrl.shouldRetryNow(status) {
 				klog.InfoS("Retry time reached, dispatching action", "name", name)
 				// Fall through to dispatch action
@@ -259,7 +260,7 @@ func (ctrl *GenericController[T]) handleObject(ctx context.Context, obj interfac
 				klog.V(4).InfoS("Retry scheduled but not due yet", "name", name)
 				return nil
 			}
-		case "Completed", "Failed":
+		case constants.PhaseCompleted, constants.PhaseFailed:
 			// Resource in terminal state, skip
 			klog.V(4).InfoS("Resource already in terminal state, skipping", "name", name, "phase", phase)
 			return nil
@@ -460,7 +461,7 @@ func EnsureArtifactPVC(ctx context.Context, kubeClient kubernetes.Interface, nam
 			Name:      pvcName,
 			Namespace: namespace,
 			Labels: map[string]string{
-				"app":                        "forge",
+				constants.LabelApp:           constants.LabelAppValueZarf,
 				"forge.dev/artifact-storage": "true",
 				"forge.dev/managed-by":       "forge-controller",
 			},
@@ -489,7 +490,7 @@ func EnsureArtifactPVC(ctx context.Context, kubeClient kubernetes.Interface, nam
 // shouldRetryNow checks if the retry time has been reached for any operation in retry state
 func (ctrl *GenericController[T]) shouldRetryNow(status map[string]interface{}) bool {
 	// Check each operation status field for retry timing
-	statusFields := []string{"buildStatus", "createStatus", "publishStatus", "deployStatus"}
+	statusFields := []string{constants.StatusFieldBuild, constants.StatusFieldCreate, constants.StatusFieldPublish, constants.StatusFieldDeploy}
 
 	for _, field := range statusFields {
 		opStatus, ok := status[field].(map[string]interface{})
@@ -498,13 +499,13 @@ func (ctrl *GenericController[T]) shouldRetryNow(status map[string]interface{}) 
 		}
 
 		// Check if this operation is in retrying state
-		state, ok := opStatus["state"].(string)
-		if !ok || state != "Retrying" {
+		state, ok := opStatus[constants.StatusKeyState].(string)
+		if !ok || state != constants.PhaseRetrying {
 			continue
 		}
 
 		// Get next retry time
-		nextRetryTimeStr, ok := opStatus["nextRetryTime"].(string)
+		nextRetryTimeStr, ok := opStatus[constants.StatusKeyNextRetryTime].(string)
 		if !ok {
 			// No specific time set, retry immediately
 			return true

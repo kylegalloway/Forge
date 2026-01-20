@@ -89,6 +89,9 @@ const (
 
 	// ContainerNameUDSDeploy is the container name for UDS bundle deploy Jobs.
 	ContainerNameUDSDeploy = "uds-deploy"
+
+	// DefaultArtifactPath is the default path where built artifacts are stored.
+	DefaultArtifactPath = "/workspace/package.tar.zst"
 )
 
 // ZarfCLIImage is the container image for Zarf CLI operations.

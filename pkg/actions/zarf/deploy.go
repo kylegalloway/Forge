@@ -71,7 +71,7 @@ func (handler *DeployHandler) Execute(ctx context.Context, pkg *zarfv1alpha3.Zar
 
 	result := &actions.ActionResult{
 		JobName:   job.Name,
-		Phase:     "Running",
+		Phase:     constants.PhaseRunning,
 		Message:   fmt.Sprintf("Deploy job %s created", job.Name),
 		StartTime: metav1.Now(),
 		Completed: false,

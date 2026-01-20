@@ -66,7 +66,7 @@ func (handler *PublishHandler) Execute(ctx context.Context, bundle *udsv1alpha3.
 
 	result := &actions.ActionResult{
 		JobName:   job.Name,
-		Phase:     "Running",
+		Phase:     constants.PhaseRunning,
 		Message:   fmt.Sprintf("Bundle publish job %s created", job.Name),
 		StartTime: metav1.Now(),
 		Completed: false,

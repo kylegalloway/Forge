@@ -505,11 +505,11 @@ func (c *Client) ListJobs(ctx context.Context, namespace, jobType string) ([]Job
 		phase := "Unknown"
 		switch {
 		case job.Status.Succeeded > 0:
-			phase = "Completed"
+			phase = constants.PhaseCompleted
 		case job.Status.Failed > 0:
-			phase = "Failed"
+			phase = constants.PhaseFailed
 		case job.Status.Active > 0:
-			phase = "Running"
+			phase = constants.PhaseRunning
 		}
 
 		age := time.Since(job.CreationTimestamp.Time).Round(time.Second).String()

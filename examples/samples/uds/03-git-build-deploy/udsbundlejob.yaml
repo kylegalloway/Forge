@@ -44,11 +44,11 @@ spec:
 
   # Deploy configuration
   deploy:
-    # Automatically confirm deployment
-    confirm: true
+    # Deploy to the cluster where the controller is running
+    target: InCluster
 
-    # Deploy all packages
-    packages: []
+    # Deploy all components (empty means all)
+    components: []
 
   resources:
     requests:

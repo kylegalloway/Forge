@@ -52,6 +52,7 @@ spec:
     type: local
     local:
       path: /workspace/bundle  # Would be mounted from a PVC
+      devMode: true  # Required for local sources
 
   # Publish to S3 bucket
   publish:
@@ -59,7 +60,7 @@ spec:
       type: s3
       s3:
         bucket: my-uds-bundles
-        key: hello-local-to-s3-bundle/uds-bundle-hello-local-to-s3-bundle-amd64-1.0.0.tar.zst
+        keyPrefix: hello-local-to-s3-bundle/  # Artifact name is appended
         region: us-west-2
         credentialRef:
           name: bundle-s3-credentials

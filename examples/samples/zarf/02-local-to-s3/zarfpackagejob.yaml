@@ -52,6 +52,7 @@ spec:
     type: Local
     local:
       path: /workspace/package  # In practice, this would be mounted from a PVC
+      devMode: true  # Required for local sources
 
   # Publish to S3 bucket
   publish:
@@ -59,7 +60,7 @@ spec:
       type: S3
       s3:
         bucket: my-zarf-packages
-        key: hello-local-to-s3/zarf-package-hello-local-to-s3-amd64-1.0.0.tar.zst
+        keyPrefix: hello-local-to-s3/  # Artifact name is appended
         region: us-west-2
         credentialRef:
           name: s3-credentials

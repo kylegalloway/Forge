@@ -118,10 +118,10 @@ func (handler *PublishHandler) createPublishJob(ctx context.Context, pkg *zarfv1
 		WithKubeClient(handler.kubeClient).
 		WithOwnerReference(pkg, zarfv1alpha3.SchemeGroupVersion.WithKind("ZarfPackageJob")).
 		WithLabels(map[string]string{
-			"app":                  "forge",
+			constants.LabelApp:     constants.LabelAppValueZarf,
 			"resource-type":        "zarfpackagejob",
 			constants.LabelPackage: pkg.Name,
-			constants.LabelAction:  "publish",
+			constants.LabelAction:  constants.ActionPublish,
 		}).
 		WithContainerImage(constants.ZarfCLIImage).
 		WithContainerName(constants.ContainerNameZarfPublish).

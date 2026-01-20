@@ -111,10 +111,10 @@ func (handler *PublishHandler) createPublishJob(ctx context.Context, bundle *uds
 		WithKubeClient(handler.kubeClient).
 		WithOwnerReference(bundle, udsv1alpha3.SchemeGroupVersion.WithKind("UDSBundleJob")).
 		WithLabels(map[string]string{
-			"app":                  "forge",
+			constants.LabelApp:     constants.LabelAppValueUDS,
 			"resource-type":        "udsbundlejob",
 			constants.LabelPackage: bundle.Name,
-			constants.LabelAction:  "publish",
+			constants.LabelAction:  constants.ActionPublish,
 		}).
 		WithContainerImage(constants.UDSCLIImage).
 		WithContainerName(constants.ContainerNameUDSPublish).

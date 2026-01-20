@@ -111,10 +111,10 @@ func (handler *BuildHandler) createBuildJob(ctx context.Context, pkg *zarfv1alph
 		WithKubeClient(handler.kubeClient).
 		WithOwnerReference(pkg, zarfv1alpha3.SchemeGroupVersion.WithKind("ZarfPackageJob")).
 		WithLabels(map[string]string{
-			"app":                  "forge",
+			constants.LabelApp:     constants.LabelAppValueZarf,
 			"resource-type":        "zarfpackagejob",
 			constants.LabelPackage: pkg.Name,
-			constants.LabelAction:  "build",
+			constants.LabelAction:  constants.ActionBuild,
 		}).
 		WithContainerImage(constants.ZarfCLIImage).
 		WithContainerName(constants.ContainerNameZarfBuild).

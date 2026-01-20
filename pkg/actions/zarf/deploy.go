@@ -114,10 +114,10 @@ func (handler *DeployHandler) createDeployJob(ctx context.Context, pkg *zarfv1al
 	builder := actions.NewJobBuilder(jobName, pkg.Namespace).
 		WithOwnerReference(pkg, zarfv1alpha3.SchemeGroupVersion.WithKind("ZarfPackageJob")).
 		WithLabels(map[string]string{
-			"app":                  "forge",
+			constants.LabelApp:     constants.LabelAppValueZarf,
 			"resource-type":        "zarfpackagejob",
 			constants.LabelPackage: pkg.Name,
-			constants.LabelAction:  "deploy",
+			constants.LabelAction:  constants.ActionDeploy,
 		}).
 		WithContainerImage(constants.ZarfCLIImage).
 		WithContainerName(constants.ContainerNameZarfDeploy).

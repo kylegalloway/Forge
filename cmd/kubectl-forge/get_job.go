@@ -182,13 +182,13 @@ func (o *GetJobOptions) toJobDetails(job *batchv1.Job, pods []*corev1.Pod) JobDe
 	// Determine phase
 	switch {
 	case job.Status.Succeeded > 0:
-		details.Status.Phase = "Completed"
+		details.Status.Phase = constants.PhaseCompleted
 	case job.Status.Failed > 0:
-		details.Status.Phase = "Failed"
+		details.Status.Phase = constants.PhaseFailed
 	case job.Status.Active > 0:
-		details.Status.Phase = "Running"
+		details.Status.Phase = constants.PhaseRunning
 	default:
-		details.Status.Phase = "Pending"
+		details.Status.Phase = constants.PhasePending
 	}
 
 	// Pods
@@ -215,21 +215,21 @@ func (o *GetJobOptions) toJobDetails(job *batchv1.Job, pods []*corev1.Pod) JobDe
 		v := VolumeInfo{Name: vol.Name}
 		switch {
 		case vol.PersistentVolumeClaim != nil:
-			v.Type = "PersistentVolumeClaim"
+			v.Type = constants.VolumeTypePersistentVolumeClaim
 			v.ClaimName = vol.PersistentVolumeClaim.ClaimName
 		case vol.ConfigMap != nil:
-			v.Type = "ConfigMap"
+			v.Type = constants.VolumeTypeConfigMap
 			v.ClaimName = vol.ConfigMap.Name
 		case vol.Secret != nil: // pragma: allowlist secret
-			v.Type = "Secret" // pragma: allowlist secret
+			v.Type = constants.VolumeTypeSecret // pragma: allowlist secret
 			v.ClaimName = vol.Secret.SecretName
 		case vol.EmptyDir != nil:
-			v.Type = "EmptyDir"
+			v.Type = constants.VolumeTypeEmptyDir
 		case vol.HostPath != nil:
-			v.Type = "HostPath"
+			v.Type = constants.VolumeTypeHostPath
 			v.ClaimName = vol.HostPath.Path
 		default:
-			v.Type = "Other"
+			v.Type = constants.VolumeTypeOther
 		}
 		details.Volumes = append(details.Volumes, v)
 	}

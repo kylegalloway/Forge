@@ -23,6 +23,7 @@ import (
 
 	udsv1alpha3 "github.com/kylegalloway/forge/pkg/apis/uds/v1alpha3"
 	zarfv1alpha3 "github.com/kylegalloway/forge/pkg/apis/zarf/v1alpha3"
+	"github.com/kylegalloway/forge/pkg/constants"
 	"github.com/kylegalloway/forge/pkg/logging"
 	"github.com/kylegalloway/forge/pkg/webhook"
 )
@@ -178,9 +179,9 @@ func (ws *WebhookServer) serveValidate(w http.ResponseWriter, r *http.Request) {
 func (ws *WebhookServer) validate(ctx context.Context, request *admissionv1.AdmissionRequest) *admissionv1.AdmissionResponse {
 	// Determine resource type and route to appropriate validator
 	switch request.Kind.Kind {
-	case "ZarfPackageJob":
+	case constants.ResourceTypeZarfPackageJob:
 		return ws.validateZarfPackageJob(ctx, request)
-	case "UDSBundleJob":
+	case constants.ResourceTypeUDSBundleJob:
 		return ws.validateUDSBundleJob(ctx, request)
 	default:
 		return &admissionv1.AdmissionResponse{

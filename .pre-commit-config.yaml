@@ -20,7 +20,7 @@ repos:
       - id: mixed-line-ending
         args: ['--fix=lf']
       - id: detect-private-key
-        exclude: '^(config/samples/|docs/)'
+        exclude: '^(config/samples/|docs/|examples/)'
 
   # Go formatting
   - repo: https://github.com/dnephin/pre-commit-golang
@@ -49,7 +49,7 @@ repos:
     hooks:
       - id: detect-secrets
         args: ['--baseline', '.secrets.baseline']
-        exclude: '^(go\.sum|\.secrets\.baseline)$'
+        exclude: '^(go\.sum|\.secrets\.baseline|examples/)'
 
   # Markdown linting
   - repo: https://github.com/DavidAnson/markdownlint-cli2

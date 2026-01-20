@@ -1,0 +1,467 @@
+# Credentials Showcase - UDSBundleJob Examples
+#
+# This file demonstrates various credential combinations for UDSBundleJobs.
+# See secrets.yaml for the corresponding secret definitions.
+#
+# Examples:
+# 1. Private Git repo -> OCI registry (Git + OCI creds)
+# 2. Private Git repo -> S3 bucket (Git + S3 creds)
+# 3. OCI source -> OCI destination (OCI creds for both)
+# 4. S3 source -> Deploy to external cluster (S3 + Kubeconfig creds)
+# 5. Full pipeline: Git -> Create -> Publish to OCI -> Deploy to external cluster
+
+---
+# =============================================================================
+# EXAMPLE 1: Private Git -> OCI Registry
+# =============================================================================
+# Credentials used:
+# - Git token for cloning private repository containing uds-bundle.yaml
+# - Registry credentials for pulling Zarf packages during bundle creation
+# - OCI registry credentials for publishing the bundle
+
+apiVersion: forge.dev/v1alpha3
+kind: UDSBundleJob
+metadata:
+  name: example-git-to-oci
+  namespace: forge-jobs
+spec:
+  serviceAccountName: credentials-showcase-sa
+  action: CreatePublish
+
+  source:
+    type: Git
+    git:
+      url: https://github.com/myorg/private-uds-bundles
+      ref: main
+      path: bundles/platform
+      credentialRef:
+        name: git-token-credentials
+
+  create:
+    timeout: "2h"
+    # NEW: Registry credentials for pulling Zarf packages referenced in uds-bundle.yaml
+    # during 'uds create'. Use this when your bundle references packages from
+    # private registries like registry1.dso.mil, private ECR, etc.
+    registryCredentialRef:
+      name: oci-multi-registry-credentials
+
+  publish:
+    destination:
+      type: OCI
+      oci:
+        registry: ghcr.io
+        repository: myorg/bundles/platform
+        tag: "1.0.0"
+        credentialRef:
+          name: oci-publish-credentials
+    timeout: "30m"
+
+---
+# =============================================================================
+# EXAMPLE 2: Private Git -> S3 Bucket (EnvVar credentials - default)
+# =============================================================================
+# Credentials used:
+# - Git SSH key for cloning private repository
+# - S3 credentials (EnvVar type) for publishing bundle artifacts
+#
+# EnvVar is the default type - secret contains 'access-key-id' and 'secret-access-key'
+
+apiVersion: forge.dev/v1alpha3
+kind: UDSBundleJob
+metadata:
+  name: example-git-to-s3-envvar
+  namespace: forge-jobs
+spec:
+  serviceAccountName: credentials-showcase-sa
+  action: CreatePublish
+
+  source:
+    type: Git
+    git:
+      url: https://gitlab.example.com/infra/uds-bundles
+      ref: v2.0.0
+      path: "."
+      credentialRef:
+        name: git-ssh-credentials
+
+  create:
+    timeout: "2h"
+
+  publish:
+    destination:
+      type: S3
+      s3:
+        bucket: my-artifacts-bucket
+        keyPrefix: uds-bundles/platform/
+        region: us-west-2
+        credentialRef:
+          # EnvVar is the default type (can be omitted)
+          type: EnvVar
+          name: s3-credentials-envvar
+    timeout: "30m"
+
+---
+# =============================================================================
+# EXAMPLE 2b: S3 with File-based credentials
+# =============================================================================
+# Use a mounted AWS credentials file instead of env vars.
+# Useful when you need multiple profiles or session tokens.
+
+apiVersion: forge.dev/v1alpha3
+kind: UDSBundleJob
+metadata:
+  name: example-s3-file-credentials
+  namespace: forge-jobs
+spec:
+  serviceAccountName: credentials-showcase-sa
+  action: CreatePublish
+
+  source:
+    type: Git
+    git:
+      url: https://github.com/myorg/bundles
+      ref: main
+      credentialRef:
+        name: git-token-credentials
+
+  create:
+    timeout: "2h"
+
+  publish:
+    destination:
+      type: S3
+      s3:
+        bucket: my-artifacts-bucket
+        keyPrefix: bundles/
+        region: us-west-2
+        credentialRef:
+          # File type mounts ~/.aws/credentials
+          type: File
+          name: s3-credentials-file
+          # Optional: specify the key in the secret (default: "credentials")
+          key: credentials
+    timeout: "30m"
+
+---
+# =============================================================================
+# EXAMPLE 2c: S3 with Node-level credentials (IRSA/Instance Profile)
+# =============================================================================
+# For EKS clusters with IRSA or EC2 instances with IAM roles.
+# No secret needed - AWS SDK uses node-level credentials automatically.
+
+apiVersion: forge.dev/v1alpha3
+kind: UDSBundleJob
+metadata:
+  name: example-s3-node-credentials
+  namespace: forge-jobs
+spec:
+  serviceAccountName: credentials-showcase-sa
+  action: CreatePublish
+
+  source:
+    type: Git
+    git:
+      url: https://github.com/myorg/bundles
+      ref: main
+      credentialRef:
+        name: git-token-credentials
+
+  create:
+    timeout: "2h"
+
+  publish:
+    destination:
+      type: S3
+      s3:
+        bucket: my-artifacts-bucket
+        keyPrefix: bundles/
+        region: us-west-2
+        credentialRef:
+          # Node type uses IRSA/instance profile - no secret needed
+          type: Node
+    timeout: "30m"
+
+---
+# =============================================================================
+# EXAMPLE 3: OCI Source -> OCI Destination
+# =============================================================================
+# Credentials used:
+# - OCI credentials for pulling source bundle
+# - OCI credentials for publishing (can be same or different registry)
+#
+# Use case: Promoting a bundle from staging registry to production registry
+
+apiVersion: forge.dev/v1alpha3
+kind: UDSBundleJob
+metadata:
+  name: example-oci-to-oci
+  namespace: forge-jobs
+spec:
+  serviceAccountName: credentials-showcase-sa
+  action: Publish
+
+  # Pull pre-built bundle from source registry
+  source:
+    type: OCI
+    oci:
+      reference: registry.example.com/uds-bundles/platform:v1.0.0
+      credentialRef:
+        name: oci-source-credentials
+
+  # Publish to production registry
+  publish:
+    destination:
+      type: OCI
+      oci:
+        registry: ghcr.io
+        repository: myorg/production/platform
+        tag: "v1.0.0"
+        credentialRef:
+          name: oci-publish-credentials
+    timeout: "15m"
+
+---
+# =============================================================================
+# EXAMPLE 4: S3 Source -> Deploy to External Cluster
+# =============================================================================
+# Credentials used:
+# - S3 credentials for fetching the bundle
+# - Kubeconfig for deploying to external cluster
+
+apiVersion: forge.dev/v1alpha3
+kind: UDSBundleJob
+metadata:
+  name: example-s3-to-external-deploy
+  namespace: forge-jobs
+spec:
+  serviceAccountName: credentials-showcase-sa
+  action: Deploy
+
+  # Fetch bundle from S3 (using EnvVar credentials, the default)
+  source:
+    type: S3
+    s3:
+      bucket: my-artifacts-bucket
+      key: uds-bundles/platform/uds-bundle-platform-amd64-1.0.0.tar.zst
+      region: us-west-2
+      credentialRef:
+        # Can also use type: File or type: Node
+        name: s3-credentials-envvar
+
+  # Deploy to external staging cluster
+  deploy:
+    target: ExternalCluster
+    externalCluster:
+      secretRef:
+        name: staging-cluster-kubeconfig
+      key: kubeconfig
+    variables:
+      ENVIRONMENT: "staging"
+      DOMAIN: "staging.example.com"
+    timeout: "1h"
+
+---
+# =============================================================================
+# EXAMPLE 5: Full Pipeline - Git -> Create -> OCI -> External Deploy
+# =============================================================================
+# Credentials used:
+# - Git token for cloning
+# - OCI credentials for publishing
+# - Kubeconfig for external deployment
+#
+# This demonstrates a complete CI/CD pipeline in a single job.
+
+apiVersion: forge.dev/v1alpha3
+kind: UDSBundleJob
+metadata:
+  name: example-full-pipeline
+  namespace: forge-jobs
+spec:
+  serviceAccountName: credentials-showcase-sa
+  action: CreatePublishDeploy
+
+  # Clone uds-bundle.yaml from private Git repository
+  source:
+    type: Git
+    git:
+      url: https://github.com/myorg/uds-platform
+      ref: release/v3.0
+      path: bundles/core
+      credentialRef:
+        name: git-token-credentials
+
+  create:
+    timeout: "3h"
+    retry:
+      maxRetries: 2
+      initialBackoff: "1m"
+
+  # Publish to OCI registry
+  publish:
+    destination:
+      type: OCI
+      oci:
+        registry: ghcr.io
+        repository: myorg/bundles/core
+        tag: "3.0.0"
+        credentialRef:
+          name: oci-publish-credentials
+    timeout: "30m"
+    retry:
+      maxRetries: 3
+      initialBackoff: "30s"
+
+  # Deploy to production cluster
+  deploy:
+    target: ExternalCluster
+    externalCluster:
+      secretRef:
+        name: prod-cluster-kubeconfig
+      key: kubeconfig
+      context: prod-context
+    variables:
+      ENVIRONMENT: "production"
+      DOMAIN: "example.com"
+      ENABLE_HA: "true"
+    timeout: "2h"
+    retry:
+      maxRetries: 2
+
+  # Resource requirements for the job pods
+  resources:
+    requests:
+      cpu: "2"
+      memory: 4Gi
+    limits:
+      cpu: "8"
+      memory: 16Gi
+
+---
+# =============================================================================
+# EXAMPLE 6: MinIO (S3-Compatible) Source and Destination
+# =============================================================================
+# Credentials used:
+# - MinIO credentials for both source and destination
+#
+# Use case: Air-gapped or on-premises environments using MinIO
+
+apiVersion: forge.dev/v1alpha3
+kind: UDSBundleJob
+metadata:
+  name: example-minio-workflow
+  namespace: forge-jobs
+spec:
+  serviceAccountName: credentials-showcase-sa
+  action: CreatePublish
+
+  source:
+    type: S3
+    s3:
+      bucket: source-bundles
+      key: definitions/platform/
+      region: us-east-1
+      endpoint: https://minio.internal.example.com
+      credentialRef:
+        name: minio-credentials
+
+  create:
+    timeout: "2h"
+
+  publish:
+    destination:
+      type: S3
+      s3:
+        bucket: built-bundles
+        keyPrefix: releases/platform/
+        region: us-east-1
+        endpoint: https://minio.internal.example.com
+        credentialRef:
+          name: minio-credentials
+    timeout: "30m"
+
+---
+# =============================================================================
+# EXAMPLE 7: In-Cluster Deploy (No External Kubeconfig)
+# =============================================================================
+# Credentials used:
+# - OCI credentials for pulling the bundle
+# - No kubeconfig needed - deploys to same cluster where Forge runs
+
+apiVersion: forge.dev/v1alpha3
+kind: UDSBundleJob
+metadata:
+  name: example-in-cluster-deploy
+  namespace: forge-jobs
+spec:
+  serviceAccountName: credentials-showcase-sa
+  action: Deploy
+
+  source:
+    type: OCI
+    oci:
+      reference: ghcr.io/myorg/bundles/dev-tools:v1.0.0
+      credentialRef:
+        name: oci-publish-credentials
+
+  deploy:
+    target: InCluster
+    namespace: dev-tools
+    variables:
+      DOMAIN: "dev.internal.example.com"
+    timeout: "30m"
+
+---
+# =============================================================================
+# EXAMPLE 8: Multi-Registry Bundle Creation
+# =============================================================================
+# Credentials used:
+# - Git credentials for cloning the bundle definition
+# - Multi-registry OCI credentials for pulling component packages from multiple sources
+#   (The bundle may reference packages from ghcr.io, registry1.dso.mil, etc.)
+#
+# Note: When creating a bundle, UDS needs access to all registries referenced
+# in the uds-bundle.yaml to pull component packages.
+
+apiVersion: forge.dev/v1alpha3
+kind: UDSBundleJob
+metadata:
+  name: example-multi-registry-create
+  namespace: forge-jobs
+spec:
+  serviceAccountName: credentials-showcase-sa
+  action: CreatePublish
+
+  source:
+    type: Git
+    git:
+      url: https://github.com/myorg/uds-bundles
+      ref: main
+      path: bundles/swf  # Software Factory bundle pulling from multiple registries
+      credentialRef:
+        name: git-token-credentials
+
+  create:
+    timeout: "4h"  # Longer timeout for bundles with many packages
+
+  publish:
+    destination:
+      type: OCI
+      oci:
+        registry: ghcr.io
+        repository: myorg/bundles/swf
+        tag: "1.0.0"
+        # Multi-registry creds needed during create for pulling component packages
+        # and during publish for pushing the final bundle
+        credentialRef:
+          name: oci-multi-registry-credentials
+    timeout: "45m"
+
+  resources:
+    requests:
+      cpu: "2"
+      memory: 8Gi
+      ephemeral-storage: 50Gi
+    limits:
+      cpu: "8"
+      memory: 32Gi
+      ephemeral-storage: 100Gi

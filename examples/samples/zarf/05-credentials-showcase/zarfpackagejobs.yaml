@@ -1,0 +1,412 @@
+# Credentials Showcase - ZarfPackageJob Examples
+#
+# This file demonstrates various credential combinations for ZarfPackageJobs.
+# See secrets.yaml for the corresponding secret definitions.
+#
+# Examples:
+# 1. Private Git repo -> OCI registry (Git + OCI creds)
+# 2. Private Git repo -> S3 bucket (Git + S3 creds)
+# 3. OCI source -> OCI destination (OCI creds for both)
+# 4. S3 source -> Deploy to external cluster (S3 + Kubeconfig creds)
+# 5. Full pipeline: Git -> Build -> Publish to OCI -> Deploy to external cluster
+
+---
+# =============================================================================
+# EXAMPLE 1: Private Git -> OCI Registry
+# =============================================================================
+# Credentials used:
+# - Git token for cloning private repository
+# - Registry credentials for pulling images during build (from private Docker Hub)
+# - OCI registry credentials for publishing
+
+apiVersion: forge.dev/v1alpha3
+kind: ZarfPackageJob
+metadata:
+  name: example-git-to-oci
+  namespace: forge-jobs
+spec:
+  serviceAccountName: credentials-showcase-sa
+  action: BuildPublish
+
+  source:
+    type: Git
+    git:
+      url: https://github.com/myorg/private-zarf-packages
+      ref: main
+      path: packages/my-app
+      credentialRef:
+        name: git-token-credentials
+
+  build:
+    timeout: "1h"
+    # NEW: Registry credentials for pulling images referenced in zarf.yaml
+    # during 'zarf package create'. Use this when your zarf.yaml pulls from
+    # private registries like Docker Hub, ECR, GCR, etc.
+    registryCredentialRef:
+      name: oci-multi-registry-credentials
+
+  publish:
+    destination:
+      type: OCI
+      oci:
+        registry: ghcr.io
+        repository: myorg/packages/my-app
+        tag: "1.0.0"
+        credentialRef:
+          name: oci-publish-credentials
+    timeout: "30m"
+
+---
+# =============================================================================
+# EXAMPLE 2: Private Git -> S3 Bucket (EnvVar credentials - default)
+# =============================================================================
+# Credentials used:
+# - Git SSH key for cloning private repository
+# - S3 credentials (EnvVar type) for publishing artifacts
+#
+# EnvVar is the default type - secret contains 'access-key-id' and 'secret-access-key'
+
+apiVersion: forge.dev/v1alpha3
+kind: ZarfPackageJob
+metadata:
+  name: example-git-to-s3-envvar
+  namespace: forge-jobs
+spec:
+  serviceAccountName: credentials-showcase-sa
+  action: BuildPublish
+
+  source:
+    type: Git
+    git:
+      url: https://gitlab.example.com/infra/zarf-packages
+      ref: v2.0.0
+      path: "."
+      credentialRef:
+        name: git-ssh-credentials
+
+  build:
+    timeout: "2h"
+
+  publish:
+    destination:
+      type: S3
+      s3:
+        bucket: my-artifacts-bucket
+        keyPrefix: zarf-packages/my-app/
+        region: us-west-2
+        credentialRef:
+          # EnvVar is the default type (can be omitted)
+          type: EnvVar
+          name: s3-credentials-envvar
+    timeout: "30m"
+
+---
+# =============================================================================
+# EXAMPLE 2b: S3 with File-based credentials
+# =============================================================================
+# Use a mounted AWS credentials file instead of env vars.
+# Useful when you need multiple profiles or session tokens.
+
+apiVersion: forge.dev/v1alpha3
+kind: ZarfPackageJob
+metadata:
+  name: example-s3-file-credentials
+  namespace: forge-jobs
+spec:
+  serviceAccountName: credentials-showcase-sa
+  action: BuildPublish
+
+  source:
+    type: Git
+    git:
+      url: https://github.com/myorg/packages
+      ref: main
+      credentialRef:
+        name: git-token-credentials
+
+  build:
+    timeout: "1h"
+
+  publish:
+    destination:
+      type: S3
+      s3:
+        bucket: my-artifacts-bucket
+        keyPrefix: packages/
+        region: us-west-2
+        credentialRef:
+          # File type mounts ~/.aws/credentials
+          type: File
+          name: s3-credentials-file
+          # Optional: specify the key in the secret (default: "credentials")
+          key: credentials
+    timeout: "30m"
+
+---
+# =============================================================================
+# EXAMPLE 2c: S3 with Node-level credentials (IRSA/Instance Profile)
+# =============================================================================
+# For EKS clusters with IRSA or EC2 instances with IAM roles.
+# No secret needed - AWS SDK uses node-level credentials automatically.
+
+apiVersion: forge.dev/v1alpha3
+kind: ZarfPackageJob
+metadata:
+  name: example-s3-node-credentials
+  namespace: forge-jobs
+spec:
+  serviceAccountName: credentials-showcase-sa
+  action: BuildPublish
+
+  source:
+    type: Git
+    git:
+      url: https://github.com/myorg/packages
+      ref: main
+      credentialRef:
+        name: git-token-credentials
+
+  build:
+    timeout: "1h"
+
+  publish:
+    destination:
+      type: S3
+      s3:
+        bucket: my-artifacts-bucket
+        keyPrefix: packages/
+        region: us-west-2
+        credentialRef:
+          # Node type uses IRSA/instance profile - no secret needed
+          type: Node
+    timeout: "30m"
+
+---
+# =============================================================================
+# EXAMPLE 3: OCI Source -> OCI Destination
+# =============================================================================
+# Credentials used:
+# - OCI credentials for pulling source package
+# - OCI credentials for publishing (can be same or different registry)
+
+apiVersion: forge.dev/v1alpha3
+kind: ZarfPackageJob
+metadata:
+  name: example-oci-to-oci
+  namespace: forge-jobs
+spec:
+  serviceAccountName: credentials-showcase-sa
+  action: Publish
+
+  # Pull pre-built package from source registry
+  source:
+    type: OCI
+    oci:
+      reference: registry.example.com/zarf-packages/base-app:v1.0.0
+      credentialRef:
+        name: oci-source-credentials
+
+  # Publish to different registry (e.g., promoting to production)
+  publish:
+    destination:
+      type: OCI
+      oci:
+        registry: ghcr.io
+        repository: myorg/production/base-app
+        tag: "v1.0.0"
+        credentialRef:
+          name: oci-publish-credentials
+    timeout: "15m"
+
+---
+# =============================================================================
+# EXAMPLE 4: S3 Source -> Deploy to External Cluster
+# =============================================================================
+# Credentials used:
+# - S3 credentials for fetching the package
+# - Kubeconfig for deploying to external cluster
+
+apiVersion: forge.dev/v1alpha3
+kind: ZarfPackageJob
+metadata:
+  name: example-s3-to-external-deploy
+  namespace: forge-jobs
+spec:
+  serviceAccountName: credentials-showcase-sa
+  action: Deploy
+
+  # Fetch package from S3 (using EnvVar credentials, the default)
+  source:
+    type: S3
+    s3:
+      bucket: my-artifacts-bucket
+      key: zarf-packages/my-app/zarf-package-my-app-amd64-1.0.0.tar.zst
+      region: us-west-2
+      credentialRef:
+        # Can also use type: File or type: Node
+        name: s3-credentials-envvar
+
+  # Deploy to external staging cluster
+  deploy:
+    target: ExternalCluster
+    namespace: my-app
+    externalCluster:
+      secretRef:
+        name: staging-cluster-kubeconfig
+      key: kubeconfig
+    variables:
+      ENVIRONMENT: "staging"
+      LOG_LEVEL: "debug"
+    timeout: "45m"
+
+---
+# =============================================================================
+# EXAMPLE 5: Full Pipeline - Git -> Build -> OCI -> External Deploy
+# =============================================================================
+# Credentials used:
+# - Git token for cloning
+# - OCI credentials for publishing
+# - Kubeconfig for external deployment
+#
+# This demonstrates a complete CI/CD pipeline in a single job.
+
+apiVersion: forge.dev/v1alpha3
+kind: ZarfPackageJob
+metadata:
+  name: example-full-pipeline
+  namespace: forge-jobs
+spec:
+  serviceAccountName: credentials-showcase-sa
+  action: BuildPublishDeploy
+
+  # Clone from private Git repository
+  source:
+    type: Git
+    git:
+      url: https://github.com/myorg/application-packages
+      ref: release/v3.0
+      path: packages/frontend
+      credentialRef:
+        name: git-token-credentials
+
+  build:
+    timeout: "2h"
+    retry:
+      maxRetries: 2
+      initialBackoff: "1m"
+
+  # Publish to OCI registry
+  publish:
+    destination:
+      type: OCI
+      oci:
+        registry: ghcr.io
+        repository: myorg/packages/frontend
+        tag: "3.0.0"
+        credentialRef:
+          name: oci-publish-credentials
+    timeout: "30m"
+    retry:
+      maxRetries: 3
+      initialBackoff: "30s"
+
+  # Deploy to production cluster
+  deploy:
+    target: ExternalCluster
+    namespace: frontend
+    externalCluster:
+      secretRef:
+        name: prod-cluster-kubeconfig
+      key: kubeconfig
+      context: prod-context
+    variables:
+      ENVIRONMENT: "production"
+      REPLICAS: "3"
+      LOG_LEVEL: "info"
+    timeout: "1h"
+    retry:
+      maxRetries: 2
+
+  # Resource requirements for the job pods
+  resources:
+    requests:
+      cpu: "1"
+      memory: 2Gi
+    limits:
+      cpu: "4"
+      memory: 8Gi
+
+---
+# =============================================================================
+# EXAMPLE 6: MinIO (S3-Compatible) Source and Destination
+# =============================================================================
+# Credentials used:
+# - MinIO credentials for both source and destination
+
+apiVersion: forge.dev/v1alpha3
+kind: ZarfPackageJob
+metadata:
+  name: example-minio-workflow
+  namespace: forge-jobs
+spec:
+  serviceAccountName: credentials-showcase-sa
+  action: BuildPublish
+
+  source:
+    type: S3
+    s3:
+      bucket: source-packages
+      key: definitions/my-app/
+      region: us-east-1
+      endpoint: https://minio.internal.example.com
+      credentialRef:
+        name: minio-credentials
+
+  build:
+    timeout: "1h"
+
+  publish:
+    destination:
+      type: S3
+      s3:
+        bucket: built-packages
+        keyPrefix: releases/my-app/
+        region: us-east-1
+        endpoint: https://minio.internal.example.com
+        credentialRef:
+          name: minio-credentials
+    timeout: "30m"
+
+---
+# =============================================================================
+# EXAMPLE 7: In-Cluster Deploy (No External Kubeconfig)
+# =============================================================================
+# Credentials used:
+# - OCI credentials for pulling the package
+# - No kubeconfig needed - deploys to same cluster where Forge runs
+
+apiVersion: forge.dev/v1alpha3
+kind: ZarfPackageJob
+metadata:
+  name: example-in-cluster-deploy
+  namespace: forge-jobs
+spec:
+  serviceAccountName: credentials-showcase-sa
+  action: Deploy
+
+  source:
+    type: OCI
+    oci:
+      reference: ghcr.io/myorg/packages/internal-tool:v1.0.0
+      credentialRef:
+        name: oci-publish-credentials
+
+  deploy:
+    target: InCluster
+    namespace: internal-tools
+    components:
+      - core
+      - monitoring
+    variables:
+      DOMAIN: "internal.example.com"
+    timeout: "30m"

@@ -105,6 +105,10 @@ type UDSBundleJobSpec struct {
 	// +kubebuilder:validation:Required
 	Source PackageSource `json:"source"`
 
+	// Create defines configuration for bundle creation (optional)
+	// +optional
+	Create *CreateConfig `json:"create,omitempty"`
+
 	// Publish defines where to publish the bundle artifact (optional)
 	// +optional
 	Publish *PublishConfig `json:"publish,omitempty"`
@@ -274,6 +278,18 @@ type RetryPolicy struct {
 	// If empty, all failures are retryable
 	// +optional
 	RetryableErrors []string `json:"retryableErrors,omitempty"`
+}
+
+// CreateConfig defines configuration for bundle creation
+type CreateConfig struct {
+	// Timeout for the create operation
+	// +optional
+	// +kubebuilder:default="1h"
+	Timeout string `json:"timeout,omitempty"`
+
+	// Retry policy for create failures
+	// +optional
+	Retry *RetryPolicy `json:"retry,omitempty"`
 }
 
 // PublishConfig defines where and how to publish bundle artifacts

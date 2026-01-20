@@ -517,6 +517,10 @@ type OperationStatus struct {
 	// +optional
 	ArtifactLocation string `json:"artifactLocation,omitempty"`
 
+	// JobName is the Kubernetes Job name for this operation
+	// +optional
+	JobName string `json:"jobName,omitempty"`
+
 	// RetryCount tracks number of retry attempts
 	// +optional
 	RetryCount int32 `json:"retryCount,omitempty"`

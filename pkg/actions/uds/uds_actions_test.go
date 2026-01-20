@@ -916,3 +916,62 @@ func TestBuildVolumes(t *testing.T) {
 		})
 	}
 }
+
+func TestDeployHandlerExecute_ExternalClusterWithContext(t *testing.T) {
+	kubeClient := kubefake.NewClientset()
+	dynamicClient := fake.NewSimpleDynamicClient(runtime.NewScheme())
+	handler := NewDeployHandler(kubeClient, dynamicClient, testhelpers.MustNewMetrics(), telemetry.NewTracer())
+
+	bundle := &udsv1alpha3.UDSBundleJob{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-deploy-external-context",
+			Namespace: "default",
+		},
+		Spec: udsv1alpha3.UDSBundleJobSpec{
+			ServiceAccountName: "test-sa",
+			Action:             udsv1alpha3.ActionDeploy,
+			Source: udsv1alpha3.PackageSource{
+				Type: udsv1alpha3.SourceTypeLocal,
+				Local: &udsv1alpha3.LocalSource{
+					Path:    "/tmp/bundle.tar.zst",
+					DevMode: true,
+				},
+			},
+			Deploy: &udsv1alpha3.DeployConfig{
+				Target: udsv1alpha3.DeployTargetExternalCluster,
+				ExternalCluster: &common.ExternalClusterConfig{
+					SecretRef: common.SecretReference{ // pragma: allowlist secret
+						Name: "external-kubeconfig",
+					},
+					Context: "production-cluster",
+				},
+			},
+		},
+	}
+
+	result, err := handler.Execute(context.Background(), bundle, "", "")
+	if err != nil {
+		t.Fatalf("Execute() unexpected error = %v", err)
+	}
+	if result == nil {
+		t.Fatal("Execute() returned nil result")
+	}
+
+	// Verify the job was created
+	job, err := kubeClient.BatchV1().Jobs("default").Get(context.Background(), result.JobName, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Failed to get job: %v", err)
+	}
+
+	// Verify the command includes the context flag
+	container := job.Spec.Template.Spec.Containers[0]
+	cmdArgs := container.Args[0]
+	if !strings.Contains(cmdArgs, "--kubeconfig-context production-cluster") {
+		t.Errorf("Expected command to contain '--kubeconfig-context production-cluster', got: %s", cmdArgs)
+	}
+
+	// Verify kubeconfig is exported
+	if !strings.Contains(cmdArgs, "export KUBECONFIG=") {
+		t.Errorf("Expected command to export KUBECONFIG, got: %s", cmdArgs)
+	}
+}

@@ -191,6 +191,10 @@ func (handler *DeployHandler) buildDeployCommand(bundle *udsv1alpha3.UDSBundleJo
 	// Add kubeconfig for external cluster
 	if deploy.Target == udsv1alpha3.DeployTargetExternalCluster {
 		cmd = fmt.Sprintf("export KUBECONFIG=%s/kubeconfig && ", constants.VolumeMountPathKubeconfig) + cmd
+		// Add context flag if specified
+		if deploy.ExternalCluster != nil && deploy.ExternalCluster.Context != "" {
+			cmd += fmt.Sprintf(" --kubeconfig-context %s", deploy.ExternalCluster.Context)
+		}
 	}
 
 	return cmd

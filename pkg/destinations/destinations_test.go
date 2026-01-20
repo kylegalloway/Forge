@@ -191,7 +191,7 @@ func TestS3DestinationGetJobConfiguration(t *testing.T) {
 							S3: &zarfv1alpha3.S3Destination{
 								Bucket: "my-bucket",
 								Region: "us-east-1",
-								CredentialRef: &common.SecretReference{
+								CredentialRef: &common.AWSCredentialRef{
 									Name: "aws-creds",
 								},
 							},

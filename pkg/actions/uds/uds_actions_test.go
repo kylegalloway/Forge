@@ -654,7 +654,7 @@ func TestGetUDSJobConfiguration(t *testing.T) {
 						Bucket:    "my-bucket",
 						KeyPrefix: "bundles/",
 						Region:    "us-west-2",
-						CredentialRef: &common.SecretReference{
+						CredentialRef: &common.AWSCredentialRef{
 							Name: "s3-creds",
 						},
 					},

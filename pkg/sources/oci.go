@@ -58,7 +58,7 @@ func BuildOCIInitContainer(config *OCISourceConfig, runAsUser int64) (*corev1.Co
 
 	if config.CredentialsSecretName != "" { // pragma: allowlist secret
 		volumeMounts = append(volumeMounts, corev1.VolumeMount{
-			Name:      "source-docker-config",
+			Name:      "docker-config",
 			MountPath: "/home/nonroot/.docker",
 			ReadOnly:  true,
 		})

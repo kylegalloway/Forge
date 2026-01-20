@@ -3,7 +3,9 @@ package destinations
 import (
 	"fmt"
 
+	"github.com/kylegalloway/forge/pkg/apis/common"
 	udsv1alpha3 "github.com/kylegalloway/forge/pkg/apis/uds/v1alpha3"
+	"github.com/kylegalloway/forge/pkg/constants"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -97,32 +99,76 @@ func GetUDSJobConfiguration(bundle *udsv1alpha3.UDSBundleJob) (*JobConfig, error
 				})
 			}
 
-			// Add AWS credentials from secret if provided
+			// Add AWS credentials based on type
 			if dest.S3.CredentialRef != nil { // pragma: allowlist secret
-				config.Env = append(config.Env,
-					corev1.EnvVar{
-						Name: "AWS_ACCESS_KEY_ID",
-						ValueFrom: &corev1.EnvVarSource{
-							SecretKeyRef: &corev1.SecretKeySelector{ // pragma: allowlist secret
-								LocalObjectReference: corev1.LocalObjectReference{
-									Name: dest.S3.CredentialRef.Name, // pragma: allowlist secret
+				credType := dest.S3.CredentialRef.Type // pragma: allowlist secret
+				if credType == "" {
+					// Default to EnvVar for backward compatibility
+					credType = common.AWSCredentialTypeEnvVar
+				}
+
+				switch credType {
+				case common.AWSCredentialTypeEnvVar:
+					// Load credentials from secret as environment variables
+					if dest.S3.CredentialRef.Name != "" { // pragma: allowlist secret
+						config.Env = append(config.Env,
+							corev1.EnvVar{
+								Name: "AWS_ACCESS_KEY_ID",
+								ValueFrom: &corev1.EnvVarSource{
+									SecretKeyRef: &corev1.SecretKeySelector{ // pragma: allowlist secret
+										LocalObjectReference: corev1.LocalObjectReference{
+											Name: dest.S3.CredentialRef.Name, // pragma: allowlist secret
+										},
+										Key: "access-key-id",
+									},
 								},
-								Key: "access-key-id",
 							},
-						},
-					},
-					corev1.EnvVar{
-						Name: "AWS_SECRET_ACCESS_KEY", // pragma: allowlist secret
-						ValueFrom: &corev1.EnvVarSource{
-							SecretKeyRef: &corev1.SecretKeySelector{ // pragma: allowlist secret
-								LocalObjectReference: corev1.LocalObjectReference{
-									Name: dest.S3.CredentialRef.Name, // pragma: allowlist secret
+							corev1.EnvVar{
+								Name: "AWS_SECRET_ACCESS_KEY", // pragma: allowlist secret
+								ValueFrom: &corev1.EnvVarSource{
+									SecretKeyRef: &corev1.SecretKeySelector{ // pragma: allowlist secret
+										LocalObjectReference: corev1.LocalObjectReference{
+											Name: dest.S3.CredentialRef.Name, // pragma: allowlist secret
+										},
+										Key: "secret-access-key", // pragma: allowlist secret
+									},
 								},
-								Key: "secret-access-key", // pragma: allowlist secret
 							},
-						},
-					},
-				)
+						)
+					}
+
+				case common.AWSCredentialTypeFile:
+					// Mount credentials file from secret
+					if dest.S3.CredentialRef.Name != "" { // pragma: allowlist secret
+						key := dest.S3.CredentialRef.Key
+						if key == "" {
+							key = "credentials" // Default key
+						}
+						config.Volumes = append(config.Volumes, corev1.Volume{
+							Name: constants.VolumeNameAWSCredentials,
+							VolumeSource: corev1.VolumeSource{
+								Secret: &corev1.SecretVolumeSource{
+									SecretName: dest.S3.CredentialRef.Name, // pragma: allowlist secret
+									Items: []corev1.KeyToPath{
+										{
+											Key:  key,
+											Path: "credentials",
+										},
+									},
+								},
+							},
+						})
+						config.VolumeMounts = append(config.VolumeMounts, corev1.VolumeMount{
+							Name:      constants.VolumeNameAWSCredentials,
+							MountPath: "/home/nonroot/.aws",
+							ReadOnly:  true,
+						})
+					}
+
+				case common.AWSCredentialTypeNode:
+					// No credentials needed - AWS SDK will use node-level credentials
+					// (IRSA, instance profile, etc.)
+				}
 			}
 		}
 

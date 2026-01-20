@@ -51,8 +51,8 @@ manifests: controller-gen ## Generate CRD manifests
 	$(CONTROLLER_GEN) crd:crdVersions=v1 paths=./pkg/apis/... output:crd:artifacts:config=chart/forge/crds
 
 .PHONY: generate
-generate: ## Generate API deepcopy code.
-	go generate ./pkg/apis/...
+generate: controller-gen ## Generate API deepcopy code.
+	$(CONTROLLER_GEN) object paths=./pkg/apis/...
 
 .PHONY: fmt
 fmt: ## Run go fmt against code.

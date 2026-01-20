@@ -317,7 +317,7 @@ func TestS3SourceGetInitContainer(t *testing.T) {
 							Bucket: "my-bucket",
 							Key:    "packages/test.tar.zst",
 							Region: "us-east-1",
-							CredentialRef: &common.SecretReference{
+							CredentialRef: &common.AWSCredentialRef{
 								Name: "aws-creds",
 							},
 						},

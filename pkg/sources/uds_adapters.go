@@ -41,18 +41,12 @@ func GetUDSInitContainer(bundle *udsv1alpha3.UDSBundleJob) (*corev1.Container, e
 			return nil, fmt.Errorf("s3 source configuration is missing")
 		}
 
-		// Convert UDS S3Source to common S3SourceConfig
-		var secretName string
-		if s3Source.CredentialRef != nil { // pragma: allowlist secret
-			secretName = s3Source.CredentialRef.Name // pragma: allowlist secret
-		}
-
 		config := &S3SourceConfig{
-			Bucket:                s3Source.Bucket,
-			Key:                   s3Source.Key,
-			Region:                s3Source.Region,
-			Endpoint:              s3Source.Endpoint,
-			CredentialsSecretName: secretName,
+			Bucket:        s3Source.Bucket,
+			Key:           s3Source.Key,
+			Region:        s3Source.Region,
+			Endpoint:      s3Source.Endpoint,
+			CredentialRef: s3Source.CredentialRef, // pragma: allowlist secret
 		}
 
 		// Use common builder with UDS UID

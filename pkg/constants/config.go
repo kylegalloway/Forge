@@ -60,6 +60,9 @@ const (
 	// VolumeNameArtifacts is the name of the artifacts volume.
 	VolumeNameArtifacts = "artifacts"
 
+	// VolumeNameAWSCredentials is the name of the AWS credentials volume.
+	VolumeNameAWSCredentials = "aws-credentials"
+
 	// VolumeMountPathWorkspace is the mount path for the workspace volume.
 	VolumeMountPathWorkspace = "/workspace"
 

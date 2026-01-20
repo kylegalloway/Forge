@@ -220,9 +220,13 @@ type S3Source struct {
 	// +optional
 	Endpoint string `json:"endpoint,omitempty"`
 
-	// CredentialRef references a Secret containing AWS credentials
+	// CredentialRef references AWS credentials for S3 access
+	// Supports three modes:
+	// - EnvVar (default): Secret with 'access-key-id' and 'secret-access-key' keys
+	// - File: Secret with 'credentials' key containing AWS credentials file
+	// - Node: Use node-level credentials (IRSA, instance profile) - no secret needed
 	// +optional
-	CredentialRef *common.SecretReference `json:"credentialRef,omitempty"`
+	CredentialRef *common.AWSCredentialRef `json:"credentialRef,omitempty"`
 }
 
 // OCISource defines an OCI registry source
@@ -290,6 +294,13 @@ type CreateConfig struct {
 	// Retry policy for create failures
 	// +optional
 	Retry *RetryPolicy `json:"retry,omitempty"`
+
+	// RegistryCredentialRef references a Secret with registry credentials for pulling
+	// Zarf packages during bundle creation. This is needed when your uds-bundle.yaml
+	// references packages from private OCI registries.
+	// Secret should be type kubernetes.io/dockerconfigjson
+	// +optional
+	RegistryCredentialRef *common.SecretReference `json:"registryCredentialRef,omitempty"`
 }
 
 // PublishConfig defines where and how to publish bundle artifacts
@@ -345,9 +356,13 @@ type S3Destination struct {
 	// +optional
 	Endpoint string `json:"endpoint,omitempty"`
 
-	// CredentialRef references a Secret containing AWS credentials
+	// CredentialRef references AWS credentials for S3 access
+	// Supports three modes:
+	// - EnvVar (default): Secret with 'access-key-id' and 'secret-access-key' keys
+	// - File: Secret with 'credentials' key containing AWS credentials file
+	// - Node: Use node-level credentials (IRSA, instance profile) - no secret needed
 	// +optional
-	CredentialRef *common.SecretReference `json:"credentialRef,omitempty"`
+	CredentialRef *common.AWSCredentialRef `json:"credentialRef,omitempty"`
 }
 
 // OCIDestination defines an OCI registry destination

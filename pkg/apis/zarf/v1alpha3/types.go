@@ -222,10 +222,13 @@ type S3Source struct {
 	// +optional
 	Endpoint string `json:"endpoint,omitempty"`
 
-	// CredentialRef references a Secret with AWS credentials
-	// Secret should contain 'access-key-id' and 'secret-access-key'
+	// CredentialRef references AWS credentials for S3 access
+	// Supports three modes:
+	// - EnvVar (default): Secret with 'access-key-id' and 'secret-access-key' keys
+	// - File: Secret with 'credentials' key containing AWS credentials file
+	// - Node: Use node-level credentials (IRSA, instance profile) - no secret needed
 	// +optional
-	CredentialRef *common.SecretReference `json:"credentialRef,omitempty"`
+	CredentialRef *common.AWSCredentialRef `json:"credentialRef,omitempty"`
 }
 
 // OCISource defines an OCI registry source
@@ -294,6 +297,13 @@ type BuildConfig struct {
 	// Retry policy for build failures
 	// +optional
 	Retry *RetryPolicy `json:"retry,omitempty"`
+
+	// RegistryCredentialRef references a Secret with registry credentials for pulling
+	// images during the build. This is needed when your zarf.yaml references images
+	// from private registries (e.g., Docker Hub, private registries).
+	// Secret should be type kubernetes.io/dockerconfigjson
+	// +optional
+	RegistryCredentialRef *common.SecretReference `json:"registryCredentialRef,omitempty"`
 }
 
 // PublishConfig defines where and how to publish packages
@@ -349,9 +359,13 @@ type S3Destination struct {
 	// +optional
 	Endpoint string `json:"endpoint,omitempty"`
 
-	// CredentialRef references a Secret with AWS credentials
+	// CredentialRef references AWS credentials for S3 access
+	// Supports three modes:
+	// - EnvVar (default): Secret with 'access-key-id' and 'secret-access-key' keys
+	// - File: Secret with 'credentials' key containing AWS credentials file
+	// - Node: Use node-level credentials (IRSA, instance profile) - no secret needed
 	// +optional
-	CredentialRef *common.SecretReference `json:"credentialRef,omitempty"`
+	CredentialRef *common.AWSCredentialRef `json:"credentialRef,omitempty"`
 }
 
 // OCIDestination defines OCI registry publish configuration

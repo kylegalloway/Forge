@@ -145,6 +145,13 @@ func (handler *DeployHandler) createDeployJob(ctx context.Context, pkg *zarfv1al
 		builder.WithDockerConfigSecret(pkg.Spec.Source.OCI.CredentialRef.Name) // pragma: allowlist secret
 	}
 
+	// Add S3 credentials volume if S3 source with file credentials
+	if pkg.Spec.Source.Type == zarfv1alpha3.SourceTypeS3 && pkg.Spec.Source.S3 != nil {
+		if vol := sources.GetS3CredentialVolume(pkg.Spec.Source.S3.CredentialRef); vol != nil { // pragma: allowlist secret
+			builder.WithCustomVolume(*vol)
+		}
+	}
+
 	// Build the job spec so we can apply additional configuration
 	job := builder.Build()
 

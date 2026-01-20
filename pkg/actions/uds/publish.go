@@ -13,6 +13,8 @@ import (
 	"github.com/kylegalloway/forge/pkg/actions"
 	udsv1alpha3 "github.com/kylegalloway/forge/pkg/apis/uds/v1alpha3"
 	"github.com/kylegalloway/forge/pkg/constants"
+	"github.com/kylegalloway/forge/pkg/destinations"
+	"github.com/kylegalloway/forge/pkg/sources"
 	"github.com/kylegalloway/forge/pkg/telemetry"
 )
 
@@ -83,17 +85,26 @@ func (handler *PublishHandler) createPublishJob(ctx context.Context, bundle *uds
 		return nil, err
 	}
 
-	// Build env vars
-	envVars := handler.buildEnvVars(bundle)
-
-	// Get retry policy from publish config
-	var retryPolicy *udsv1alpha3.RetryPolicy
-	if bundle.Spec.Publish != nil {
-		retryPolicy = bundle.Spec.Publish.Retry
+	// Get job configuration (volumes, env vars) from shared destination adapters
+	jobConfig, err := destinations.GetUDSJobConfiguration(bundle)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get job configuration: %w", err)
 	}
 
-	// Use default timeout for publish operations
-	activeDeadlineSeconds := int64(constants.DefaultPublishTimeout)
+	// Build init containers for artifact retrieval (for standalone publish)
+	initContainers, err := handler.buildInitContainers(bundle)
+	if err != nil {
+		return nil, fmt.Errorf("failed to build init containers: %w", err)
+	}
+
+	// Get timeout and retry policy from publish config
+	timeoutStr := ""
+	var retryPolicy *udsv1alpha3.RetryPolicy
+	if bundle.Spec.Publish != nil {
+		timeoutStr = bundle.Spec.Publish.Timeout
+		retryPolicy = bundle.Spec.Publish.Retry
+	}
+	activeDeadlineSeconds := actions.ParseTimeoutWithDefault(timeoutStr, constants.DefaultPublishTimeout)
 
 	// Build Job using JobBuilder
 	builder := actions.NewJobBuilder(jobName, bundle.Namespace).
@@ -117,179 +128,60 @@ func (handler *PublishHandler) createPublishJob(ctx context.Context, bundle *uds
 		WithUDSRetryPolicy(retryPolicy).
 		WithActiveDeadlineSeconds(activeDeadlineSeconds).
 		WithTTLSecondsAfterFinished(3600).
+		WithInitContainers(initContainers).
 		WithWorkspaceVolume().
-		WithArtifactPVC(artifactPVCName)
+		WithArtifactPVC(artifactPVCName).
+		WithServiceAccountName(bundle.Spec.ServiceAccountName).
+		WithPodSecurityContext(actions.NonRootPodSecurityContextWithUID(constants.DefaultUDSUID)).
+		WithContainerSecurityContext(actions.NonRootSecurityContextWithUID(constants.DefaultUDSUID))
 
-	// Build the job spec
-	job := builder.Build()
-
-	// Set ServiceAccount and SecurityContexts
-	job.Spec.Template.Spec.ServiceAccountName = bundle.Spec.ServiceAccountName
-	job.Spec.Template.Spec.SecurityContext = actions.NonRootPodSecurityContextWithUID(constants.DefaultUDSUID)
-	if len(job.Spec.Template.Spec.Containers) > 0 {
-		job.Spec.Template.Spec.Containers[0].SecurityContext = actions.NonRootSecurityContextWithUID(constants.DefaultUDSUID)
-		// Set env vars (including those with ValueFrom for secrets)
-		job.Spec.Template.Spec.Containers[0].Env = envVars
+	// Apply destination-specific configuration (volumes, env vars) from shared adapters
+	if jobConfig != nil {
+		for _, vol := range jobConfig.Volumes {
+			builder.WithCustomVolume(vol)
+		}
+		for _, mount := range jobConfig.VolumeMounts {
+			builder.WithCustomVolumeMount(mount)
+		}
+		for _, env := range jobConfig.Env {
+			builder.WithCustomEnvVar(env)
+		}
 	}
 
-	// Add credential volumes if needed
-	handler.addCredentialVolumes(bundle, job)
-
-	// Check if job already exists
-	existingJob, err := handler.kubeClient.BatchV1().Jobs(bundle.Namespace).Get(ctx, jobName, metav1.GetOptions{})
-	if err == nil {
-		klog.V(2).InfoS("Job already exists, reusing", "name", bundle.Name, "job", jobName)
-		return existingJob, nil
-	}
-
-	// Create the job
-	createdJob, err := handler.kubeClient.BatchV1().Jobs(bundle.Namespace).Create(ctx, job, metav1.CreateOptions{})
+	// Create or get the job
+	job, err := builder.CreateOrGet(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create job: %w", err)
 	}
 
-	return createdJob, nil
+	return job, nil
 }
 
-// buildPublishCommand builds the UDS CLI publish command
+// buildPublishCommand builds the UDS CLI publish command using shared destination adapters
 func (handler *PublishHandler) buildPublishCommand(bundle *udsv1alpha3.UDSBundleJob, artifactPath string) (string, error) {
-	dest := bundle.Spec.Publish.Destination
-
 	// Determine bundle path - use artifactPath if provided (multi-action workflow),
 	// otherwise search workspace for bundle (standalone publish)
-	var bundlePath string
-	if artifactPath != "" {
-		bundlePath = artifactPath
-	} else {
+	bundlePath := artifactPath
+	if bundlePath == "" {
 		bundlePath = constants.VolumeMountPathWorkspace + "/uds-bundle-*.tar.zst"
 	}
 
-	switch dest.Type {
-	case udsv1alpha3.DestinationTypeOCI:
-		if dest.OCI == nil {
-			return "", fmt.Errorf("OCI destination configuration is required")
-		}
-		// UDS publish command for OCI registry
-		ociRef := fmt.Sprintf("%s/%s:%s", dest.OCI.Registry, dest.OCI.Repository, dest.OCI.Tag)
-		return fmt.Sprintf("uds publish %s %s", bundlePath, ociRef), nil
-
-	case udsv1alpha3.DestinationTypeS3:
-		if dest.S3 == nil {
-			return "", fmt.Errorf("S3 destination configuration is required")
-		}
-		// For S3, we'll use AWS CLI to upload
-		s3Path := fmt.Sprintf("s3://%s/%s", dest.S3.Bucket, dest.S3.KeyPrefix)
-		return fmt.Sprintf("aws s3 cp %s %s", bundlePath, s3Path), nil
-
-	case udsv1alpha3.DestinationTypeLocal:
-		// Local destination - just echo success
-		return fmt.Sprintf("echo 'Bundle artifact stored locally at %s'", bundlePath), nil
-
-	default:
-		return "", fmt.Errorf("unsupported destination type: %s", dest.Type)
-	}
+	// Use shared destination adapter to generate the publish command
+	return destinations.GetUDSPublishCommand(bundle, bundlePath)
 }
 
-// buildEnvVars builds environment variables for the publish job
-func (handler *PublishHandler) buildEnvVars(bundle *udsv1alpha3.UDSBundleJob) []corev1.EnvVar {
-	envVars := []corev1.EnvVar{}
-
-	dest := bundle.Spec.Publish.Destination
-
-	// S3 configuration
-	if dest.Type == udsv1alpha3.DestinationTypeS3 && dest.S3 != nil {
-		if dest.S3.Region != "" {
-			envVars = append(envVars, corev1.EnvVar{
-				Name:  "AWS_REGION",
-				Value: dest.S3.Region,
-			})
-		}
-		if dest.S3.Endpoint != "" {
-			envVars = append(envVars, corev1.EnvVar{
-				Name:  "AWS_ENDPOINT_URL",
-				Value: dest.S3.Endpoint,
-			})
-		}
-
-		// Add AWS credentials from secret if provided
-		// Uses same key names as S3 sources: 'access-key-id' and 'secret-access-key'
-		if dest.S3.CredentialRef != nil { // pragma: allowlist secret
-			envVars = append(envVars,
-				corev1.EnvVar{
-					Name: "AWS_ACCESS_KEY_ID",
-					ValueFrom: &corev1.EnvVarSource{
-						SecretKeyRef: &corev1.SecretKeySelector{ // pragma: allowlist secret
-							LocalObjectReference: corev1.LocalObjectReference{
-								Name: dest.S3.CredentialRef.Name, // pragma: allowlist secret
-							},
-							Key: "access-key-id",
-						},
-					},
-				},
-				corev1.EnvVar{
-					Name: "AWS_SECRET_ACCESS_KEY", // pragma: allowlist secret
-					ValueFrom: &corev1.EnvVarSource{
-						SecretKeyRef: &corev1.SecretKeySelector{ // pragma: allowlist secret
-							LocalObjectReference: corev1.LocalObjectReference{
-								Name: dest.S3.CredentialRef.Name, // pragma: allowlist secret
-							},
-							Key: "secret-access-key", // pragma: allowlist secret
-						},
-					},
-				},
-			)
-		}
+// buildInitContainers creates init containers for artifact retrieval (for standalone publish)
+func (handler *PublishHandler) buildInitContainers(bundle *udsv1alpha3.UDSBundleJob) ([]corev1.Container, error) {
+	container, err := sources.GetUDSInitContainer(bundle)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get init container: %w", err)
 	}
 
-	return envVars
-}
-
-// addCredentialVolumes adds credential volumes for OCI registries
-func (handler *PublishHandler) addCredentialVolumes(bundle *udsv1alpha3.UDSBundleJob, job *batchv1.Job) {
-	dest := bundle.Spec.Publish.Destination
-
-	// Add docker-config volume for OCI registries
-	if dest.Type == udsv1alpha3.DestinationTypeOCI && dest.OCI != nil && dest.OCI.CredentialRef != nil { // pragma: allowlist secret
-		// Ensure the job has at least one container before accessing Containers[0]
-		if len(job.Spec.Template.Spec.Containers) == 0 {
-			klog.ErrorS(nil, "Job has no containers, cannot add credential volumes", "job", job.Name)
-			return
-		}
-
-		job.Spec.Template.Spec.Volumes = append(job.Spec.Template.Spec.Volumes, corev1.Volume{
-			Name: "docker-config",
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{ // pragma: allowlist secret
-					SecretName: dest.OCI.CredentialRef.Name, // pragma: allowlist secret
-					Items: []corev1.KeyToPath{
-						{
-							Key:  ".dockerconfigjson",
-							Path: "config.json",
-						},
-					},
-				},
-			},
-		})
-
-		// Add volume mount to container
-		job.Spec.Template.Spec.Containers[0].VolumeMounts = append(
-			job.Spec.Template.Spec.Containers[0].VolumeMounts,
-			corev1.VolumeMount{
-				Name:      "docker-config",
-				MountPath: "/.docker",
-				ReadOnly:  true,
-			},
-		)
-
-		// Set DOCKER_CONFIG env var
-		job.Spec.Template.Spec.Containers[0].Env = append(
-			job.Spec.Template.Spec.Containers[0].Env,
-			corev1.EnvVar{
-				Name:  "DOCKER_CONFIG",
-				Value: "/.docker",
-			},
-		)
+	if container == nil {
+		return nil, nil
 	}
+
+	return []corev1.Container{*container}, nil
 }
 
 // getResources returns resource requirements for the publish job

@@ -154,10 +154,12 @@ func (handler *DeployHandler) createDeployJob(ctx context.Context, pkg *zarfv1al
 	// Add kubeconfig volume for external cluster deploys
 	if pkg.Spec.Deploy.Target == zarfv1alpha3.DeployTargetExternalCluster {
 		kubeconfigSecretName := ""
+		kubeconfigKey := ""
 		if pkg.Spec.Deploy.ExternalCluster != nil && pkg.Spec.Deploy.ExternalCluster.SecretRef.Name != "" { // pragma: allowlist secret
 			kubeconfigSecretName = pkg.Spec.Deploy.ExternalCluster.SecretRef.Name // pragma: allowlist secret
+			kubeconfigKey = pkg.Spec.Deploy.ExternalCluster.Key
 		}
-		actions.AddKubeconfigVolume(job, kubeconfigSecretName)
+		actions.AddKubeconfigVolume(job, kubeconfigSecretName, kubeconfigKey)
 	}
 
 	// Check if job already exists
@@ -197,7 +199,7 @@ func (handler *DeployHandler) buildDeployCommand(pkg *zarfv1alpha3.ZarfPackageJo
 
 	// External cluster needs kubeconfig
 	if deploy.Target == zarfv1alpha3.DeployTargetExternalCluster {
-		cmd = fmt.Sprintf("export KUBECONFIG=/kubeconfig/config && %s", cmd)
+		cmd = fmt.Sprintf("export KUBECONFIG=%s/kubeconfig && %s", constants.VolumeMountPathKubeconfig, cmd)
 		if deploy.ExternalCluster != nil && deploy.ExternalCluster.Context != "" {
 			cmd = fmt.Sprintf("%s --kubeconfig-context=%s", cmd, deploy.ExternalCluster.Context)
 		}

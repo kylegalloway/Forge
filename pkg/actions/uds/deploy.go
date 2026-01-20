@@ -126,42 +126,34 @@ func (handler *DeployHandler) createDeployJob(ctx context.Context, bundle *udsv1
 		WithActiveDeadlineSeconds(activeDeadlineSeconds).
 		WithTTLSecondsAfterFinished(3600).
 		WithWorkspaceVolume().
-		WithArtifactPVC(artifactPVCName)
+		WithArtifactPVC(artifactPVCName).
+		WithServiceAccountName(bundle.Spec.ServiceAccountName).
+		WithPodSecurityContext(actions.NonRootPodSecurityContextWithUID(constants.DefaultUDSUID)).
+		WithContainerSecurityContext(actions.NonRootSecurityContextWithUID(constants.DefaultUDSUID))
 
 	// Add env vars
 	for _, envVar := range envVars {
 		builder.WithEnvVar(envVar.Name, envVar.Value)
 	}
 
-	// Build the job spec
-	job := builder.Build()
-
-	// Set ServiceAccount and SecurityContexts
-	job.Spec.Template.Spec.ServiceAccountName = bundle.Spec.ServiceAccountName
-	job.Spec.Template.Spec.SecurityContext = actions.NonRootPodSecurityContextWithUID(constants.DefaultUDSUID)
-	if len(job.Spec.Template.Spec.Containers) > 0 {
-		job.Spec.Template.Spec.Containers[0].SecurityContext = actions.NonRootSecurityContextWithUID(constants.DefaultUDSUID)
-	}
-
 	// Add kubeconfig volume for external cluster deployment
 	if bundle.Spec.Deploy.Target == udsv1alpha3.DeployTargetExternalCluster {
-		handler.addKubeconfigVolume(bundle, job)
+		kubeconfigSecretName := ""
+		kubeconfigKey := ""
+		if bundle.Spec.Deploy.ExternalCluster != nil && bundle.Spec.Deploy.ExternalCluster.SecretRef.Name != "" { // pragma: allowlist secret
+			kubeconfigSecretName = bundle.Spec.Deploy.ExternalCluster.SecretRef.Name // pragma: allowlist secret
+			kubeconfigKey = bundle.Spec.Deploy.ExternalCluster.Key
+		}
+		builder.WithKubeconfigVolume(kubeconfigSecretName, kubeconfigKey)
 	}
 
-	// Check if job already exists
-	existingJob, err := handler.kubeClient.BatchV1().Jobs(bundle.Namespace).Get(ctx, jobName, metav1.GetOptions{})
-	if err == nil {
-		klog.V(2).InfoS("Job already exists, reusing", "name", bundle.Name, "job", jobName)
-		return existingJob, nil
-	}
-
-	// Create the job
-	createdJob, err := handler.kubeClient.BatchV1().Jobs(bundle.Namespace).Create(ctx, job, metav1.CreateOptions{})
+	// Create or get the job
+	job, err := builder.CreateOrGet(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create job: %w", err)
 	}
 
-	return createdJob, nil
+	return job, nil
 }
 
 // buildDeployCommand builds the UDS CLI deploy command
@@ -198,7 +190,7 @@ func (handler *DeployHandler) buildDeployCommand(bundle *udsv1alpha3.UDSBundleJo
 
 	// Add kubeconfig for external cluster
 	if deploy.Target == udsv1alpha3.DeployTargetExternalCluster {
-		cmd = "export KUBECONFIG=/etc/kubeconfig/kubeconfig && " + cmd
+		cmd = fmt.Sprintf("export KUBECONFIG=%s/kubeconfig && ", constants.VolumeMountPathKubeconfig) + cmd
 	}
 
 	return cmd
@@ -217,50 +209,6 @@ func (handler *DeployHandler) buildEnvVars(bundle *udsv1alpha3.UDSBundleJob) []c
 	}
 
 	return envVars
-}
-
-// addKubeconfigVolume adds kubeconfig volume and mount for external cluster deployment
-func (handler *DeployHandler) addKubeconfigVolume(bundle *udsv1alpha3.UDSBundleJob, job *batchv1.Job) {
-	if bundle.Spec.Deploy.ExternalCluster == nil || bundle.Spec.Deploy.ExternalCluster.SecretRef.Name == "" { // pragma: allowlist secret
-		return
-	}
-
-	// Ensure the job has at least one container before accessing Containers[0]
-	if len(job.Spec.Template.Spec.Containers) == 0 {
-		klog.ErrorS(nil, "Job has no containers, cannot add kubeconfig volume", "job", job.Name)
-		return
-	}
-
-	kubeconfigKey := "kubeconfig"
-	if bundle.Spec.Deploy.ExternalCluster.Key != "" {
-		kubeconfigKey = bundle.Spec.Deploy.ExternalCluster.Key
-	}
-
-	// Add kubeconfig volume
-	job.Spec.Template.Spec.Volumes = append(job.Spec.Template.Spec.Volumes, corev1.Volume{
-		Name: "kubeconfig",
-		VolumeSource: corev1.VolumeSource{
-			Secret: &corev1.SecretVolumeSource{ // pragma: allowlist secret
-				SecretName: bundle.Spec.Deploy.ExternalCluster.SecretRef.Name, // pragma: allowlist secret
-				Items: []corev1.KeyToPath{
-					{
-						Key:  kubeconfigKey,
-						Path: "kubeconfig",
-					},
-				},
-			},
-		},
-	})
-
-	// Add volume mount to container
-	job.Spec.Template.Spec.Containers[0].VolumeMounts = append(
-		job.Spec.Template.Spec.Containers[0].VolumeMounts,
-		corev1.VolumeMount{
-			Name:      "kubeconfig",
-			MountPath: "/etc/kubeconfig",
-			ReadOnly:  true,
-		},
-	)
 }
 
 // getResources returns resource requirements for the deploy job

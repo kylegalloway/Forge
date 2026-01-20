@@ -14,27 +14,31 @@ import (
 
 	udsv1alpha3 "github.com/kylegalloway/forge/pkg/apis/uds/v1alpha3"
 	zarfv1alpha3 "github.com/kylegalloway/forge/pkg/apis/zarf/v1alpha3"
+	"github.com/kylegalloway/forge/pkg/constants"
 )
 
 // JobBuilder provides a fluent interface for building Kubernetes Jobs
 // with common patterns used across Zarf and UDS action handlers.
 type JobBuilder struct {
-	job             *batchv1.Job
-	initContainers  []corev1.Container
-	volumes         []corev1.Volume
-	volumeMounts    []corev1.VolumeMount
-	envVars         []corev1.EnvVar
-	containerImage  string
-	containerName   string
-	command         []string
-	args            []string
-	workingDir      string
-	resources       corev1.ResourceRequirements
-	nodeSelector    map[string]string
-	affinity        *corev1.Affinity
-	tolerations     []corev1.Toleration
-	artifactPVCName string
-	kubeClient      kubernetes.Interface
+	job                      *batchv1.Job
+	initContainers           []corev1.Container
+	volumes                  []corev1.Volume
+	volumeMounts             []corev1.VolumeMount
+	envVars                  []corev1.EnvVar
+	containerImage           string
+	containerName            string
+	command                  []string
+	args                     []string
+	workingDir               string
+	resources                corev1.ResourceRequirements
+	nodeSelector             map[string]string
+	affinity                 *corev1.Affinity
+	tolerations              []corev1.Toleration
+	artifactPVCName          string
+	kubeClient               kubernetes.Interface
+	podSecurityContext       *corev1.PodSecurityContext
+	containerSecurityContext *corev1.SecurityContext
+	serviceAccountName       string
 }
 
 // NewJobBuilder creates a new JobBuilder with basic metadata.
@@ -268,12 +272,73 @@ func (b *JobBuilder) WithCustomVolumeMount(mount corev1.VolumeMount) *JobBuilder
 	return b
 }
 
-// WithEnvVar adds an environment variable.
+// WithEnvVar adds an environment variable with a simple name/value.
 func (b *JobBuilder) WithEnvVar(name, value string) *JobBuilder {
 	b.envVars = append(b.envVars, corev1.EnvVar{
 		Name:  name,
 		Value: value,
 	})
+	return b
+}
+
+// WithCustomEnvVar adds a full environment variable (supports ValueFrom for secrets).
+func (b *JobBuilder) WithCustomEnvVar(env corev1.EnvVar) *JobBuilder {
+	b.envVars = append(b.envVars, env)
+	return b
+}
+
+// WithKubeconfigVolume adds a kubeconfig secret volume and mount for external cluster deployment.
+// If secretName is empty, nothing is added. If key is empty, defaults to "kubeconfig".
+func (b *JobBuilder) WithKubeconfigVolume(secretName, key string) *JobBuilder {
+	if secretName == "" {
+		return b
+	}
+
+	if key == "" {
+		key = "kubeconfig"
+	}
+
+	// Add volume
+	b.volumes = append(b.volumes, corev1.Volume{
+		Name: "kubeconfig",
+		VolumeSource: corev1.VolumeSource{
+			Secret: &corev1.SecretVolumeSource{
+				SecretName: secretName,
+				Items: []corev1.KeyToPath{
+					{
+						Key:  key,
+						Path: "kubeconfig",
+					},
+				},
+			},
+		},
+	})
+
+	// Add volume mount
+	b.volumeMounts = append(b.volumeMounts, corev1.VolumeMount{
+		Name:      "kubeconfig",
+		MountPath: constants.VolumeMountPathKubeconfig,
+		ReadOnly:  true,
+	})
+
+	return b
+}
+
+// WithPodSecurityContext sets the pod-level security context.
+func (b *JobBuilder) WithPodSecurityContext(ctx *corev1.PodSecurityContext) *JobBuilder {
+	b.podSecurityContext = ctx
+	return b
+}
+
+// WithContainerSecurityContext sets the container-level security context.
+func (b *JobBuilder) WithContainerSecurityContext(ctx *corev1.SecurityContext) *JobBuilder {
+	b.containerSecurityContext = ctx
+	return b
+}
+
+// WithServiceAccountName sets the service account name for the pod.
+func (b *JobBuilder) WithServiceAccountName(name string) *JobBuilder {
+	b.serviceAccountName = name
 	return b
 }
 
@@ -320,6 +385,12 @@ func NonRootPodSecurityContextWithUID(uid int64) *corev1.PodSecurityContext {
 
 // Build constructs the final Job specification.
 func (b *JobBuilder) Build() *batchv1.Job {
+	// Use custom container security context if provided, otherwise use default
+	containerSecCtx := b.containerSecurityContext
+	if containerSecCtx == nil {
+		containerSecCtx = NonRootSecurityContext()
+	}
+
 	// Build the main container
 	container := corev1.Container{
 		Name:            b.containerName,
@@ -329,8 +400,14 @@ func (b *JobBuilder) Build() *batchv1.Job {
 		WorkingDir:      b.workingDir,
 		VolumeMounts:    b.volumeMounts,
 		Env:             b.envVars,
-		SecurityContext: NonRootSecurityContext(),
+		SecurityContext: containerSecCtx,
 		Resources:       b.resources,
+	}
+
+	// Use custom pod security context if provided, otherwise use default
+	podSecCtx := b.podSecurityContext
+	if podSecCtx == nil {
+		podSecCtx = NonRootPodSecurityContext()
 	}
 
 	// Build the pod template
@@ -339,14 +416,15 @@ func (b *JobBuilder) Build() *batchv1.Job {
 			Labels: b.job.Labels,
 		},
 		Spec: corev1.PodSpec{
-			RestartPolicy:   corev1.RestartPolicyNever,
-			InitContainers:  b.initContainers,
-			Containers:      []corev1.Container{container},
-			Volumes:         b.volumes,
-			SecurityContext: NonRootPodSecurityContext(),
-			NodeSelector:    b.nodeSelector,
-			Affinity:        b.affinity,
-			Tolerations:     b.tolerations,
+			RestartPolicy:      corev1.RestartPolicyNever,
+			ServiceAccountName: b.serviceAccountName,
+			InitContainers:     b.initContainers,
+			Containers:         []corev1.Container{container},
+			Volumes:            b.volumes,
+			SecurityContext:    podSecCtx,
+			NodeSelector:       b.nodeSelector,
+			Affinity:           b.affinity,
+			Tolerations:        b.tolerations,
 		},
 	}
 
@@ -467,8 +545,10 @@ func ParseTimeoutWithDefault(timeoutStr string, defaultSeconds int64) int64 {
 
 // AddKubeconfigVolume adds a kubeconfig secret volume to a Job.
 // Returns early if kubeconfigSecretName is empty or Job has no containers.
+// The kubeconfigKey parameter specifies which key in the secret contains the kubeconfig data.
+// If kubeconfigKey is empty, defaults to "kubeconfig".
 // Used by deploy handlers to mount external cluster kubeconfig into deploy jobs.
-func AddKubeconfigVolume(job *batchv1.Job, kubeconfigSecretName string) {
+func AddKubeconfigVolume(job *batchv1.Job, kubeconfigSecretName, kubeconfigKey string) {
 	if kubeconfigSecretName == "" {
 		return
 	}
@@ -478,22 +558,33 @@ func AddKubeconfigVolume(job *batchv1.Job, kubeconfigSecretName string) {
 		return
 	}
 
-	// Add volume - mounts entire secret
+	// Default key if not specified
+	if kubeconfigKey == "" {
+		kubeconfigKey = "kubeconfig"
+	}
+
+	// Add volume - mounts specific key from secret
 	job.Spec.Template.Spec.Volumes = append(job.Spec.Template.Spec.Volumes, corev1.Volume{
 		Name: "kubeconfig",
 		VolumeSource: corev1.VolumeSource{
 			Secret: &corev1.SecretVolumeSource{
 				SecretName: kubeconfigSecretName,
+				Items: []corev1.KeyToPath{
+					{
+						Key:  kubeconfigKey,
+						Path: "kubeconfig",
+					},
+				},
 			},
 		},
 	})
 
-	// Add volume mount
+	// Add volume mount to standardized path
 	job.Spec.Template.Spec.Containers[0].VolumeMounts = append(
 		job.Spec.Template.Spec.Containers[0].VolumeMounts,
 		corev1.VolumeMount{
 			Name:      "kubeconfig",
-			MountPath: "/kubeconfig",
+			MountPath: constants.VolumeMountPathKubeconfig,
 			ReadOnly:  true,
 		},
 	)

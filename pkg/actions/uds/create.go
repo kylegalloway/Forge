@@ -93,9 +93,14 @@ func (handler *CreateHandler) createBundleJob(ctx context.Context, bundle *udsv1
 		return nil, fmt.Errorf("failed to build init containers: %w", err)
 	}
 
-	// Use default timeout and no retry policy for create operations
-	// (create doesn't have a config section in UDSBundleJobSpec)
-	activeDeadlineSeconds := int64(constants.DefaultCreateTimeout)
+	// Determine timeout and retry policy from Create config
+	timeoutStr := ""
+	var retryPolicy *udsv1alpha3.RetryPolicy
+	if bundle.Spec.Create != nil {
+		timeoutStr = bundle.Spec.Create.Timeout
+		retryPolicy = bundle.Spec.Create.Retry
+	}
+	activeDeadlineSeconds := actions.ParseTimeoutWithDefault(timeoutStr, constants.DefaultCreateTimeout)
 
 	// Build Job using JobBuilder
 	builder := actions.NewJobBuilder(jobName, bundle.Namespace).
@@ -116,7 +121,7 @@ func (handler *CreateHandler) createBundleJob(ctx context.Context, bundle *udsv1
 		WithNodeSelector(bundle.Spec.NodeSelector).
 		WithAffinity(bundle.Spec.Affinity).
 		WithTolerations(bundle.Spec.Tolerations).
-		WithUDSRetryPolicy(nil).
+		WithUDSRetryPolicy(retryPolicy).
 		WithActiveDeadlineSeconds(activeDeadlineSeconds).
 		WithTTLSecondsAfterFinished(3600).
 		WithInitContainers(initContainers).

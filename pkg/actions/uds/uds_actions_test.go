@@ -16,6 +16,7 @@ import (
 	"github.com/kylegalloway/forge/pkg/apis/common"
 	udsv1alpha3 "github.com/kylegalloway/forge/pkg/apis/uds/v1alpha3"
 	testhelpers "github.com/kylegalloway/forge/pkg/controller/testing"
+	"github.com/kylegalloway/forge/pkg/destinations"
 	"github.com/kylegalloway/forge/pkg/telemetry"
 )
 
@@ -554,21 +555,17 @@ func TestGetResources(t *testing.T) {
 }
 
 func TestAddKubeconfigVolume(t *testing.T) {
-	handler := &DeployHandler{}
-
 	tests := []struct {
-		name   string
-		bundle *udsv1alpha3.UDSBundleJob
-		job    *batchv1.Job
-		want   int // number of volumes expected
+		name       string
+		secretName string
+		secretKey  string
+		job        *batchv1.Job
+		want       int // number of volumes expected
 	}{
 		{
-			name: "no kubeconfig",
-			bundle: &udsv1alpha3.UDSBundleJob{
-				Spec: udsv1alpha3.UDSBundleJobSpec{
-					Deploy: &udsv1alpha3.DeployConfig{},
-				},
-			},
+			name:       "no kubeconfig",
+			secretName: "",
+			secretKey:  "",
 			job: &batchv1.Job{
 				Spec: batchv1.JobSpec{
 					Template: corev1.PodTemplateSpec{
@@ -584,19 +581,9 @@ func TestAddKubeconfigVolume(t *testing.T) {
 			want: 0,
 		},
 		{
-			name: "with kubeconfig",
-			bundle: &udsv1alpha3.UDSBundleJob{
-				Spec: udsv1alpha3.UDSBundleJobSpec{
-					Deploy: &udsv1alpha3.DeployConfig{
-						ExternalCluster: &common.ExternalClusterConfig{
-							SecretRef: common.SecretReference{
-								Name: "my-kubeconfig",
-							},
-							Key: "config",
-						},
-					},
-				},
-			},
+			name:       "with kubeconfig",
+			secretName: "my-kubeconfig",
+			secretKey:  "config",
 			job: &batchv1.Job{
 				Spec: batchv1.JobSpec{
 					Template: corev1.PodTemplateSpec{
@@ -615,39 +602,28 @@ func TestAddKubeconfigVolume(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			handler.addKubeconfigVolume(tt.bundle, tt.job)
+			actions.AddKubeconfigVolume(tt.job, tt.secretName, tt.secretKey)
 			if len(tt.job.Spec.Template.Spec.Volumes) != tt.want {
-				t.Errorf("addKubeconfigVolume() volumes = %v, want %v", len(tt.job.Spec.Template.Spec.Volumes), tt.want)
+				t.Errorf("AddKubeconfigVolume() volumes = %v, want %v", len(tt.job.Spec.Template.Spec.Volumes), tt.want)
 			}
 			if tt.want > 0 && len(tt.job.Spec.Template.Spec.Containers[0].VolumeMounts) != 1 {
-				t.Errorf("addKubeconfigVolume() volume mounts = %v, want 1", len(tt.job.Spec.Template.Spec.Containers[0].VolumeMounts))
+				t.Errorf("AddKubeconfigVolume() volume mounts = %v, want 1", len(tt.job.Spec.Template.Spec.Containers[0].VolumeMounts))
 			}
 		})
 	}
 }
 
-func TestAddCredentialVolumes(t *testing.T) {
-	handler := &PublishHandler{}
-
-	job := &batchv1.Job{
-		Spec: batchv1.JobSpec{
-			Template: corev1.PodTemplateSpec{
-				Spec: corev1.PodSpec{
-					Volumes: []corev1.Volume{},
-					Containers: []corev1.Container{
-						{VolumeMounts: []corev1.VolumeMount{}},
-					},
-				},
-			},
-		},
-	}
-
-	bundle := &udsv1alpha3.UDSBundleJob{
+func TestGetUDSJobConfiguration(t *testing.T) {
+	// Test OCI credentials
+	bundleOCI := &udsv1alpha3.UDSBundleJob{
 		Spec: udsv1alpha3.UDSBundleJobSpec{
 			Publish: &udsv1alpha3.PublishConfig{
 				Destination: udsv1alpha3.PublishDestination{
 					Type: udsv1alpha3.DestinationTypeOCI,
 					OCI: &udsv1alpha3.OCIDestination{
+						Registry:   "registry.example.com",
+						Repository: "test/bundle",
+						Tag:        "v1.0.0",
 						CredentialRef: &common.SecretReference{
 							Name: "oci-creds",
 						},
@@ -657,34 +633,27 @@ func TestAddCredentialVolumes(t *testing.T) {
 		},
 	}
 
-	handler.addCredentialVolumes(bundle, job)
-	if len(job.Spec.Template.Spec.Volumes) != 1 {
-		t.Errorf("addCredentialVolumes() volumes = %v, want 1", len(job.Spec.Template.Spec.Volumes))
+	config, err := destinations.GetUDSJobConfiguration(bundleOCI)
+	if err != nil {
+		t.Fatalf("GetUDSJobConfiguration() error = %v", err)
 	}
-	if len(job.Spec.Template.Spec.Containers[0].VolumeMounts) != 1 {
-		t.Errorf("addCredentialVolumes() volume mounts = %v, want 1", len(job.Spec.Template.Spec.Containers[0].VolumeMounts))
+	if len(config.Volumes) != 1 {
+		t.Errorf("GetUDSJobConfiguration() OCI volumes = %v, want 1", len(config.Volumes))
+	}
+	if len(config.VolumeMounts) != 1 {
+		t.Errorf("GetUDSJobConfiguration() OCI volume mounts = %v, want 1", len(config.VolumeMounts))
 	}
 
 	// Test S3 credentials
-	job2 := &batchv1.Job{
-		Spec: batchv1.JobSpec{
-			Template: corev1.PodTemplateSpec{
-				Spec: corev1.PodSpec{
-					Volumes: []corev1.Volume{},
-					Containers: []corev1.Container{
-						{VolumeMounts: []corev1.VolumeMount{}},
-					},
-				},
-			},
-		},
-	}
-
-	bundle2 := &udsv1alpha3.UDSBundleJob{
+	bundleS3 := &udsv1alpha3.UDSBundleJob{
 		Spec: udsv1alpha3.UDSBundleJobSpec{
 			Publish: &udsv1alpha3.PublishConfig{
 				Destination: udsv1alpha3.PublishDestination{
 					Type: udsv1alpha3.DestinationTypeS3,
 					S3: &udsv1alpha3.S3Destination{
+						Bucket:    "my-bucket",
+						KeyPrefix: "bundles/",
+						Region:    "us-west-2",
 						CredentialRef: &common.SecretReference{
 							Name: "s3-creds",
 						},
@@ -694,10 +663,17 @@ func TestAddCredentialVolumes(t *testing.T) {
 		},
 	}
 
-	handler.addCredentialVolumes(bundle2, job2)
-	// S3 credentials are not added as volumes by this function
-	if len(job2.Spec.Template.Spec.Volumes) != 0 {
-		t.Errorf("addCredentialVolumes() S3 volumes = %v, want 0 (S3 uses env vars, not volumes)", len(job2.Spec.Template.Spec.Volumes))
+	configS3, err := destinations.GetUDSJobConfiguration(bundleS3)
+	if err != nil {
+		t.Fatalf("GetUDSJobConfiguration() S3 error = %v", err)
+	}
+	// S3 credentials are added as env vars, not volumes
+	if len(configS3.Volumes) != 0 {
+		t.Errorf("GetUDSJobConfiguration() S3 volumes = %v, want 0 (S3 uses env vars)", len(configS3.Volumes))
+	}
+	// Should have AWS_REGION and 2 credential env vars
+	if len(configS3.Env) < 3 {
+		t.Errorf("GetUDSJobConfiguration() S3 env vars = %v, want >= 3", len(configS3.Env))
 	}
 }
 

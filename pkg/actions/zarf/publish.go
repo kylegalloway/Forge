@@ -107,8 +107,15 @@ func (handler *PublishHandler) createPublishJob(ctx context.Context, pkg *zarfv1
 	}
 	activeDeadlineSeconds := actions.ParseTimeoutWithDefault(timeoutStr, constants.DefaultPublishTimeout)
 
+	// Get destination job configuration (volumes, env vars, etc.)
+	jobConfig, err := destHandler.GetJobConfiguration(pkg)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get job configuration: %w", err)
+	}
+
 	// Build Job using JobBuilder
 	builder := actions.NewJobBuilder(jobName, pkg.Namespace).
+		WithKubeClient(handler.kubeClient).
 		WithOwnerReference(pkg, zarfv1alpha3.SchemeGroupVersion.WithKind("ZarfPackageJob")).
 		WithLabels(map[string]string{
 			"app":                  "forge",
@@ -137,39 +144,26 @@ func (handler *PublishHandler) createPublishJob(ctx context.Context, pkg *zarfv1
 		builder.WithDockerConfigSecret(pkg.Spec.Source.OCI.CredentialRef.Name) // pragma: allowlist secret
 	}
 
-	// Build the job spec so we can apply destination-specific configuration
-	job := builder.Build()
-
 	// Apply destination-specific configuration (volumes, env vars, etc.)
-	jobConfig, err := destHandler.GetJobConfiguration(pkg)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get job configuration: %w", err)
-	}
-
 	if jobConfig != nil {
-		if len(job.Spec.Template.Spec.Containers) == 0 {
-			return nil, fmt.Errorf("job has no containers, cannot apply job configuration")
+		for _, vol := range jobConfig.Volumes {
+			builder.WithCustomVolume(vol)
 		}
-		job.Spec.Template.Spec.Volumes = append(job.Spec.Template.Spec.Volumes, jobConfig.Volumes...)
-		job.Spec.Template.Spec.Containers[0].VolumeMounts = append(job.Spec.Template.Spec.Containers[0].VolumeMounts, jobConfig.VolumeMounts...)
-		job.Spec.Template.Spec.Containers[0].Env = append(job.Spec.Template.Spec.Containers[0].Env, jobConfig.Env...)
-		job.Spec.Template.Spec.Containers[0].EnvFrom = append(job.Spec.Template.Spec.Containers[0].EnvFrom, jobConfig.EnvFrom...)
+		for _, mount := range jobConfig.VolumeMounts {
+			builder.WithCustomVolumeMount(mount)
+		}
+		for _, env := range jobConfig.Env {
+			builder.WithCustomEnvVar(env)
+		}
 	}
 
-	// Check if job already exists
-	existingJob, err := handler.kubeClient.BatchV1().Jobs(pkg.Namespace).Get(ctx, jobName, metav1.GetOptions{})
-	if err == nil {
-		klog.V(2).InfoS("Job already exists, reusing", "name", pkg.Name, "job", jobName)
-		return existingJob, nil
-	}
-
-	// Create the job
-	createdJob, err := handler.kubeClient.BatchV1().Jobs(pkg.Namespace).Create(ctx, job, metav1.CreateOptions{})
+	// Create or get the job
+	job, err := builder.CreateOrGet(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create job: %w", err)
 	}
 
-	return createdJob, nil
+	return job, nil
 }
 
 // buildInitContainers creates init containers for artifact retrieval

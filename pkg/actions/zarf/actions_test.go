@@ -11,6 +11,7 @@ import (
 
 	"github.com/kylegalloway/forge/pkg/apis/common"
 	zarfv1alpha3 "github.com/kylegalloway/forge/pkg/apis/zarf/v1alpha3"
+	"github.com/kylegalloway/forge/pkg/constants"
 	testhelpers "github.com/kylegalloway/forge/pkg/controller/testing"
 	"github.com/kylegalloway/forge/pkg/telemetry"
 )
@@ -327,8 +328,8 @@ func TestDeployHandlerExecute_ExternalCluster(t *testing.T) {
 	for _, mount := range job.Spec.Template.Spec.Containers[0].VolumeMounts {
 		if mount.Name == "kubeconfig" {
 			foundMount = true
-			if mount.MountPath != "/kubeconfig" || !mount.ReadOnly {
-				t.Error("Kubeconfig volume mount not configured correctly")
+			if mount.MountPath != constants.VolumeMountPathKubeconfig || !mount.ReadOnly {
+				t.Errorf("Kubeconfig volume mount not configured correctly: got %s, want %s", mount.MountPath, constants.VolumeMountPathKubeconfig)
 			}
 			break
 		}

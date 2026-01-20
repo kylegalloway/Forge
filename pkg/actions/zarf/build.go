@@ -193,15 +193,5 @@ func (handler *BuildHandler) getResources(pkg *zarfv1alpha3.ZarfPackageJob) core
 
 	// Default resources for build jobs
 	// Standardized with UDS Create (both create artifacts)
-	// Higher resources account for compilation, compression, and artifact creation
-	return corev1.ResourceRequirements{
-		Requests: corev1.ResourceList{
-			corev1.ResourceCPU:    actions.MustParseQuantity("500m"),
-			corev1.ResourceMemory: actions.MustParseQuantity("1Gi"),
-		},
-		Limits: corev1.ResourceList{
-			corev1.ResourceCPU:    actions.MustParseQuantity("2000m"),
-			corev1.ResourceMemory: actions.MustParseQuantity("4Gi"),
-		},
-	}
+	return actions.BuildResourceRequirements()
 }

@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/kylegalloway/forge/pkg/constants"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -67,14 +69,14 @@ func (t *Tracker) RecordFailure(_ context.Context, currentRetryCount int32, erro
 // BuildRetryStatus creates the status map for a retry decision
 func BuildRetryStatus(decision *RetryDecision, currentRetryCount int32, errorMessage string) map[string]interface{} {
 	status := map[string]interface{}{
-		"state":             "Retrying",
-		"retryCount":        currentRetryCount + 1,
-		"lastFailureReason": errorMessage,
+		constants.StatusKeyState:             constants.PhaseRetrying,
+		constants.StatusKeyRetryCount:        currentRetryCount + 1,
+		constants.StatusKeyLastFailureReason: errorMessage,
 	}
 
 	if decision.ShouldRetry {
 		retryTime := metav1.NewTime(decision.RetryAt)
-		status["nextRetryTime"] = retryTime.Format(time.RFC3339)
+		status[constants.StatusKeyNextRetryTime] = retryTime.Format(time.RFC3339)
 	}
 
 	return status

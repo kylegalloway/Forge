@@ -270,13 +270,13 @@ func (ctrl *GenericController[T]) handleObject(ctx context.Context, obj interfac
 	// Policy validation
 	if err := ctrl.validatePolicy(ctx, resource); err != nil {
 		klog.ErrorS(err, "Policy validation failed", "name", name)
-		return ctrl.updateResourceStatus(ctx, unstrObj, "Failed", fmt.Sprintf("Policy validation failed: %v", err))
+		return ctrl.updateResourceStatus(ctx, unstrObj, constants.PhaseFailed, fmt.Sprintf("Policy validation failed: %v", err))
 	}
 
 	// Action dispatch
 	if err := ctrl.dispatchAction(ctx, resource); err != nil {
 		klog.ErrorS(err, "Action dispatch failed", "name", name, "action", resource.GetAction())
-		return ctrl.updateResourceStatus(ctx, unstrObj, "Failed", fmt.Sprintf("Action failed: %v", err))
+		return ctrl.updateResourceStatus(ctx, unstrObj, constants.PhaseFailed, fmt.Sprintf("Action failed: %v", err))
 	}
 
 	return nil

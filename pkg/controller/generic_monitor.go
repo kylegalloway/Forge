@@ -402,7 +402,7 @@ func (m *GenericJobMonitor[T]) handleActionChaining(ctx context.Context, unstrOb
 
 	if err != nil {
 		klog.ErrorS(err, "Failed to execute next action", "resource", resource.GetName(), "action", nextAction)
-		return m.statusUpdater(ctx, unstrObj, "Failed", fmt.Sprintf("Failed to execute %s: %v", nextAction, err), nil)
+		return m.statusUpdater(ctx, unstrObj, constants.PhaseFailed, fmt.Sprintf("Failed to execute %s: %v", nextAction, err), nil)
 	}
 
 	if result != nil {

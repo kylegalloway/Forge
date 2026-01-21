@@ -59,16 +59,22 @@ func BuildOCIInitContainer(config *OCISourceConfig, runAsUser int64) (*corev1.Co
 	if config.CredentialsSecretName != "" { // pragma: allowlist secret
 		volumeMounts = append(volumeMounts, corev1.VolumeMount{
 			Name:      "docker-config",
-			MountPath: "/home/nonroot/.docker",
+			MountPath: constants.HomePathTmp + "/.docker",
 			ReadOnly:  true,
 		})
 	}
 
 	return &corev1.Container{
-		Name:         "oci-pull",
-		Image:        "gcr.io/go-containerregistry/crane:latest",
-		Command:      []string{"/bin/sh", "-c"},
-		Args:         []string{pullCmd},
+		Name:    "oci-pull",
+		Image:   "gcr.io/go-containerregistry/crane:latest",
+		Command: []string{"/bin/sh", "-c"},
+		Args:    []string{pullCmd},
+		Env: []corev1.EnvVar{
+			{
+				Name:  "HOME",
+				Value: constants.HomePathTmp,
+			},
+		},
 		VolumeMounts: volumeMounts,
 		SecurityContext: &corev1.SecurityContext{
 			RunAsNonRoot:             actions.Ptr(true),

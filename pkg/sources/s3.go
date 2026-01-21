@@ -62,7 +62,12 @@ func BuildS3InitContainer(config *S3SourceConfig, runAsUser int64) (*corev1.Cont
 			s3Path, constants.VolumeMountPathWorkspace, config.Region)
 	}
 
-	env := []corev1.EnvVar{}
+	env := []corev1.EnvVar{
+		{
+			Name:  "HOME",
+			Value: constants.HomePathTmp,
+		},
+	}
 	volumeMounts := []corev1.VolumeMount{
 		{
 			Name:      constants.VolumeNameWorkspace,
@@ -113,7 +118,7 @@ func BuildS3InitContainer(config *S3SourceConfig, runAsUser int64) (*corev1.Cont
 			if config.CredentialRef.Name != "" { // pragma: allowlist secret
 				volumeMounts = append(volumeMounts, corev1.VolumeMount{
 					Name:      constants.VolumeNameAWSCredentials,
-					MountPath: "/home/nonroot/.aws",
+					MountPath: constants.HomePathTmp + "/.aws",
 					ReadOnly:  true,
 				})
 				// Note: The volume must be added by the job builder using

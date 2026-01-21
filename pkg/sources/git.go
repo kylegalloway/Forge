@@ -72,6 +72,12 @@ func BuildGitInitContainer(config *GitSourceConfig, runAsUser int64) (*corev1.Co
 		Image:   "alpine/git:latest",
 		Command: []string{"/bin/sh", "-c"},
 		Args:    []string{cloneCmd},
+		Env: []corev1.EnvVar{
+			{
+				Name:  "HOME",
+				Value: constants.HomePathTmp,
+			},
+		},
 		VolumeMounts: []corev1.VolumeMount{
 			{
 				Name:      "workspace",
@@ -99,8 +105,7 @@ func BuildGitInitContainer(config *GitSourceConfig, runAsUser int64) (*corev1.Co
 
 		// Setup command to configure credentials
 		// #nosec G101 - This is a shell script template, not a hardcoded credential
-		setupCmd := `
-if [ -f /etc/git-secret/ssh-key ]; then
+		setupCmd := `if [ -f /etc/git-secret/ssh-key ]; then
   mkdir -p ~/.ssh
   cp /etc/git-secret/ssh-key ~/.ssh/id_rsa
   chmod 600 ~/.ssh/id_rsa
@@ -110,8 +115,7 @@ elif [ -f /etc/git-secret/token ]; then
   token=$(cat /etc/git-secret/token)
   echo "https://oauth2:${token}@github.com" > ~/.git-credentials
   echo "https://oauth2:${token}@gitlab.com" >> ~/.git-credentials
-fi
-`
+fi`
 		// Prepend setup to clone command
 		cloneCmd = fmt.Sprintf("%s && %s", setupCmd, cloneCmd)
 		container.Args = []string{cloneCmd}

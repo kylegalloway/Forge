@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/kylegalloway/forge/pkg/actions"
+	"github.com/kylegalloway/forge/pkg/apis/common"
 	zarfv1alpha3 "github.com/kylegalloway/forge/pkg/apis/zarf/v1alpha3"
 	"github.com/kylegalloway/forge/pkg/constants"
 	corev1 "k8s.io/api/core/v1"
@@ -91,8 +92,8 @@ func BuildGitInitContainer(config *GitSourceConfig, runAsUser int64) (*corev1.Co
 	if config.CredentialsSecretName != "" && !config.DisableCloneCredentials { // pragma: allowlist secret
 		// Mount secret to /etc/git-secret  # pragma: allowlist secret
 		container.VolumeMounts = append(container.VolumeMounts, corev1.VolumeMount{
-			Name:      "git-creds",
-			MountPath: "/etc/git-secret",
+			Name:      constants.VolumeNameGitCredentials,
+			MountPath: constants.VolumeMountPathGitCredentials,
 			ReadOnly:  true,
 		})
 
@@ -117,4 +118,21 @@ fi
 	}
 
 	return container, nil
+}
+
+// GetGitCredentialVolume returns the volume for Git credential mounting.
+// Returns nil if no credentials are needed (credRef is nil or DisableCloneCredentials is true).
+func GetGitCredentialVolume(credRef *common.SecretReference, disableCloneCredentials bool) *corev1.Volume { // pragma: allowlist secret
+	if credRef == nil || credRef.Name == "" || disableCloneCredentials {
+		return nil
+	}
+
+	return &corev1.Volume{
+		Name: constants.VolumeNameGitCredentials,
+		VolumeSource: corev1.VolumeSource{
+			Secret: &corev1.SecretVolumeSource{
+				SecretName: credRef.Name,
+			},
+		},
+	}
 }

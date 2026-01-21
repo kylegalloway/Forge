@@ -129,20 +129,10 @@ func (handler *CreateHandler) createBundleJob(ctx context.Context, bundle *udsv1
 		WithArtifactPVC(artifactPVCName)
 
 	// Add git credentials volume if needed
-	if bundle.Spec.Source.Type == udsv1alpha3.SourceTypeGit &&
-		bundle.Spec.Source.Git != nil &&
-		bundle.Spec.Source.Git.CredentialRef != nil && // pragma: allowlist secret
-		!bundle.Spec.Source.Git.DisableCloneCredentials {
-
-		secretName := bundle.Spec.Source.Git.CredentialRef.Name // pragma: allowlist secret
-		builder.WithCustomVolume(corev1.Volume{
-			Name: "git-creds",
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName: secretName,
-				},
-			},
-		})
+	if bundle.Spec.Source.Type == udsv1alpha3.SourceTypeGit && bundle.Spec.Source.Git != nil {
+		if vol := sources.GetGitCredentialVolume(bundle.Spec.Source.Git.CredentialRef, bundle.Spec.Source.Git.DisableCloneCredentials); vol != nil { // pragma: allowlist secret
+			builder.WithCustomVolume(*vol)
+		}
 	}
 
 	// Add docker-config volume if OCI source with credentials
@@ -155,6 +145,11 @@ func (handler *CreateHandler) createBundleJob(ctx context.Context, bundle *udsv1
 		if vol := sources.GetS3CredentialVolume(bundle.Spec.Source.S3.CredentialRef); vol != nil { // pragma: allowlist secret
 			builder.WithCustomVolume(*vol)
 		}
+	}
+
+	// Add registry credentials for pulling Zarf packages during bundle creation
+	if bundle.Spec.Create != nil && bundle.Spec.Create.RegistryCredentialRef != nil { // pragma: allowlist secret
+		builder.WithRegistryCredentials(bundle.Spec.Create.RegistryCredentialRef.Name, constants.VolumeMountPathDockerConfigUDS) // pragma: allowlist secret
 	}
 
 	// Create or get the job
@@ -219,21 +214,11 @@ func (handler *CreateHandler) buildVolumes(bundle *udsv1alpha3.UDSBundleJob) []c
 		},
 	}
 
-	// Add git credentials volume if needed  # pragma: allowlist secret
-	if bundle.Spec.Source.Type == udsv1alpha3.SourceTypeGit &&
-		bundle.Spec.Source.Git != nil &&
-		bundle.Spec.Source.Git.CredentialRef != nil && // pragma: allowlist secret
-		!bundle.Spec.Source.Git.DisableCloneCredentials {
-
-		secretName := bundle.Spec.Source.Git.CredentialRef.Name // pragma: allowlist secret
-		volumes = append(volumes, corev1.Volume{
-			Name: "git-creds",
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName: secretName,
-				},
-			},
-		})
+	// Add git credentials volume if needed
+	if bundle.Spec.Source.Type == udsv1alpha3.SourceTypeGit && bundle.Spec.Source.Git != nil {
+		if vol := sources.GetGitCredentialVolume(bundle.Spec.Source.Git.CredentialRef, bundle.Spec.Source.Git.DisableCloneCredentials); vol != nil { // pragma: allowlist secret
+			volumes = append(volumes, *vol)
+		}
 	}
 
 	return volumes

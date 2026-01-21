@@ -160,6 +160,13 @@ func (handler *PublishHandler) createPublishJob(ctx context.Context, bundle *uds
 		}
 	}
 
+	// Add git credentials volume if Git source with credentials
+	if bundle.Spec.Source.Type == udsv1alpha3.SourceTypeGit && bundle.Spec.Source.Git != nil {
+		if vol := sources.GetGitCredentialVolume(bundle.Spec.Source.Git.CredentialRef, bundle.Spec.Source.Git.DisableCloneCredentials); vol != nil { // pragma: allowlist secret
+			builder.WithCustomVolume(*vol)
+		}
+	}
+
 	// Create or get the job
 	job, err := builder.CreateOrGet(ctx)
 	if err != nil {

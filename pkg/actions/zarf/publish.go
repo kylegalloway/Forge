@@ -151,6 +151,13 @@ func (handler *PublishHandler) createPublishJob(ctx context.Context, pkg *zarfv1
 		}
 	}
 
+	// Add git credentials volume if Git source with credentials
+	if pkg.Spec.Source.Type == zarfv1alpha3.SourceTypeGit && pkg.Spec.Source.Git != nil {
+		if vol := sources.GetGitCredentialVolume(pkg.Spec.Source.Git.CredentialRef, pkg.Spec.Source.Git.DisableCloneCredentials); vol != nil { // pragma: allowlist secret
+			builder.WithCustomVolume(*vol)
+		}
+	}
+
 	// Apply destination-specific configuration (volumes, env vars, etc.)
 	if jobConfig != nil {
 		for _, vol := range jobConfig.Volumes {

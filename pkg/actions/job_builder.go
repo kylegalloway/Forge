@@ -239,6 +239,8 @@ func (b *JobBuilder) WithArtifactPVC(pvcName string) *JobBuilder {
 }
 
 // WithDockerConfigSecret adds a docker config secret volume.
+// Note: This only adds the volume, not a mount. Used for init containers that define their own mounts.
+// For main container registry credentials, use WithRegistryCredentials instead.
 func (b *JobBuilder) WithDockerConfigSecret(secretName string) *JobBuilder {
 	if secretName == "" {
 		return b
@@ -256,6 +258,35 @@ func (b *JobBuilder) WithDockerConfigSecret(secretName string) *JobBuilder {
 				},
 			},
 		},
+	})
+	return b
+}
+
+// WithRegistryCredentials adds a registry credentials volume and mounts it to the main container.
+// This is used for pulling images during build/create operations.
+// The mountPath should be the docker config directory for the container user (e.g., /home/zarf/.docker).
+func (b *JobBuilder) WithRegistryCredentials(secretName, mountPath string) *JobBuilder {
+	if secretName == "" {
+		return b
+	}
+	b.volumes = append(b.volumes, corev1.Volume{
+		Name: constants.VolumeNameRegistryCredentials,
+		VolumeSource: corev1.VolumeSource{
+			Secret: &corev1.SecretVolumeSource{
+				SecretName: secretName,
+				Items: []corev1.KeyToPath{
+					{
+						Key:  ".dockerconfigjson",
+						Path: "config.json",
+					},
+				},
+			},
+		},
+	})
+	b.volumeMounts = append(b.volumeMounts, corev1.VolumeMount{
+		Name:      constants.VolumeNameRegistryCredentials,
+		MountPath: mountPath,
+		ReadOnly:  true,
 	})
 	return b
 }

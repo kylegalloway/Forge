@@ -467,6 +467,72 @@ func TestLocalSourceGetInitContainer(t *testing.T) {
 	}
 }
 
+func TestGetGitCredentialVolume(t *testing.T) {
+	tests := []struct {
+		name                    string
+		credRef                 *common.SecretReference
+		disableCloneCredentials bool
+		wantNil                 bool
+		wantSecretName          string
+	}{
+		{
+			name:                    "nil credential ref",
+			credRef:                 nil,
+			disableCloneCredentials: false,
+			wantNil:                 true,
+		},
+		{
+			name: "empty secret name",
+			credRef: &common.SecretReference{
+				Name: "",
+			},
+			disableCloneCredentials: false,
+			wantNil:                 true,
+		},
+		{
+			name: "credentials disabled",
+			credRef: &common.SecretReference{
+				Name: "git-creds",
+			},
+			disableCloneCredentials: true,
+			wantNil:                 true,
+		},
+		{
+			name: "valid credentials",
+			credRef: &common.SecretReference{
+				Name: "my-git-secret",
+			},
+			disableCloneCredentials: false,
+			wantNil:                 false,
+			wantSecretName:          "my-git-secret",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			vol := GetGitCredentialVolume(tt.credRef, tt.disableCloneCredentials)
+			if tt.wantNil {
+				if vol != nil {
+					t.Errorf("GetGitCredentialVolume() = %v, want nil", vol)
+				}
+				return
+			}
+			if vol == nil {
+				t.Fatal("GetGitCredentialVolume() returned nil, want non-nil")
+			}
+			if vol.Name != "git-creds" {
+				t.Errorf("Volume name = %s, want git-creds", vol.Name)
+			}
+			if vol.Secret == nil { // pragma: allowlist secret
+				t.Fatal("Volume secret source is nil")
+			}
+			if vol.Secret.SecretName != tt.wantSecretName { // pragma: allowlist secret
+				t.Errorf("Secret name = %s, want %s", vol.Secret.SecretName, tt.wantSecretName)
+			}
+		})
+	}
+}
+
 func TestPtr(t *testing.T) {
 	// Test the ptr helper function
 	intVal := 42

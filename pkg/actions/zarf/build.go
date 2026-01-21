@@ -144,6 +144,18 @@ func (handler *BuildHandler) createBuildJob(ctx context.Context, pkg *zarfv1alph
 		}
 	}
 
+	// Add git credentials volume if Git source with credentials
+	if pkg.Spec.Source.Type == zarfv1alpha3.SourceTypeGit && pkg.Spec.Source.Git != nil {
+		if vol := sources.GetGitCredentialVolume(pkg.Spec.Source.Git.CredentialRef, pkg.Spec.Source.Git.DisableCloneCredentials); vol != nil { // pragma: allowlist secret
+			builder.WithCustomVolume(*vol)
+		}
+	}
+
+	// Add registry credentials for pulling images during build
+	if pkg.Spec.Build != nil && pkg.Spec.Build.RegistryCredentialRef != nil { // pragma: allowlist secret
+		builder.WithRegistryCredentials(pkg.Spec.Build.RegistryCredentialRef.Name, constants.VolumeMountPathDockerConfig) // pragma: allowlist secret
+	}
+
 	// Create or get the job
 	job, err := builder.CreateOrGet(ctx)
 	if err != nil {

@@ -152,6 +152,13 @@ func (handler *DeployHandler) createDeployJob(ctx context.Context, pkg *zarfv1al
 		}
 	}
 
+	// Add git credentials volume if Git source with credentials
+	if pkg.Spec.Source.Type == zarfv1alpha3.SourceTypeGit && pkg.Spec.Source.Git != nil {
+		if vol := sources.GetGitCredentialVolume(pkg.Spec.Source.Git.CredentialRef, pkg.Spec.Source.Git.DisableCloneCredentials); vol != nil { // pragma: allowlist secret
+			builder.WithCustomVolume(*vol)
+		}
+	}
+
 	// Build the job spec so we can apply additional configuration
 	job := builder.Build()
 

@@ -16,6 +16,7 @@ import (
 	udsv1alpha3 "github.com/kylegalloway/forge/pkg/apis/uds/v1alpha3"
 	"github.com/kylegalloway/forge/pkg/constants"
 	"github.com/kylegalloway/forge/pkg/resources"
+	"github.com/kylegalloway/forge/pkg/sources"
 	"github.com/kylegalloway/forge/pkg/telemetry"
 )
 
@@ -94,6 +95,12 @@ func (handler *DeployHandler) createDeployJob(ctx context.Context, bundle *udsv1
 	// Build env vars
 	envVars := handler.buildEnvVars(bundle)
 
+	// Build init containers for artifact retrieval (if needed)
+	initContainers, err := handler.buildInitContainers(bundle)
+	if err != nil {
+		return nil, fmt.Errorf("failed to build init containers: %w", err)
+	}
+
 	// Determine timeout and retry policy - use Deploy config if specified
 	timeoutStr := ""
 	var retryPolicy *udsv1alpha3.RetryPolicy
@@ -125,6 +132,7 @@ func (handler *DeployHandler) createDeployJob(ctx context.Context, bundle *udsv1
 		WithUDSRetryPolicy(retryPolicy).
 		WithActiveDeadlineSeconds(activeDeadlineSeconds).
 		WithTTLSecondsAfterFinished(3600).
+		WithInitContainers(initContainers).
 		WithWorkspaceVolume().
 		WithArtifactPVC(artifactPVCName).
 		WithServiceAccountName(bundle.Spec.ServiceAccountName).
@@ -134,6 +142,25 @@ func (handler *DeployHandler) createDeployJob(ctx context.Context, bundle *udsv1
 	// Add env vars
 	for _, envVar := range envVars {
 		builder.WithEnvVar(envVar.Name, envVar.Value)
+	}
+
+	// Add source credential volume if OCI source with credentials
+	if bundle.Spec.Source.Type == udsv1alpha3.SourceTypeOCI && bundle.Spec.Source.OCI != nil && bundle.Spec.Source.OCI.CredentialRef != nil { // pragma: allowlist secret
+		builder.WithDockerConfigSecret(bundle.Spec.Source.OCI.CredentialRef.Name) // pragma: allowlist secret
+	}
+
+	// Add S3 credentials volume if S3 source with file credentials
+	if bundle.Spec.Source.Type == udsv1alpha3.SourceTypeS3 && bundle.Spec.Source.S3 != nil {
+		if vol := sources.GetS3CredentialVolume(bundle.Spec.Source.S3.CredentialRef); vol != nil { // pragma: allowlist secret
+			builder.WithCustomVolume(*vol)
+		}
+	}
+
+	// Add git credentials volume if Git source with credentials
+	if bundle.Spec.Source.Type == udsv1alpha3.SourceTypeGit && bundle.Spec.Source.Git != nil {
+		if vol := sources.GetGitCredentialVolume(bundle.Spec.Source.Git.CredentialRef, bundle.Spec.Source.Git.DisableCloneCredentials); vol != nil { // pragma: allowlist secret
+			builder.WithCustomVolume(*vol)
+		}
 	}
 
 	// Add kubeconfig volume for external cluster deployment
@@ -213,6 +240,20 @@ func (handler *DeployHandler) buildEnvVars(bundle *udsv1alpha3.UDSBundleJob) []c
 	}
 
 	return envVars
+}
+
+// buildInitContainers creates init containers for artifact retrieval
+func (handler *DeployHandler) buildInitContainers(bundle *udsv1alpha3.UDSBundleJob) ([]corev1.Container, error) {
+	container, err := sources.GetUDSInitContainer(bundle)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get init container: %w", err)
+	}
+
+	if container == nil {
+		return nil, nil
+	}
+
+	return []corev1.Container{*container}, nil
 }
 
 // getResources returns resource requirements for the deploy job

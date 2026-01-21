@@ -63,6 +63,21 @@ const (
 	// VolumeNameAWSCredentials is the name of the AWS credentials volume.
 	VolumeNameAWSCredentials = "aws-credentials"
 
+	// VolumeNameGitCredentials is the name of the git credentials volume.
+	VolumeNameGitCredentials = "git-creds"
+
+	// VolumeMountPathGitCredentials is the mount path for the git credentials volume.
+	VolumeMountPathGitCredentials = "/etc/git-secret" // #nosec G101 -- This is a path constant, not a credential // pragma: allowlist secret
+
+	// VolumeNameRegistryCredentials is the name of the registry credentials volume for image pulls.
+	VolumeNameRegistryCredentials = "registry-creds"
+
+	// VolumeMountPathDockerConfig is the mount path for docker config (registry credentials).
+	VolumeMountPathDockerConfig = "/home/zarf/.docker"
+
+	// VolumeMountPathDockerConfigUDS is the mount path for docker config for UDS containers.
+	VolumeMountPathDockerConfigUDS = "/home/uds/.docker"
+
 	// VolumeMountPathWorkspace is the mount path for the workspace volume.
 	VolumeMountPathWorkspace = "/workspace"
 

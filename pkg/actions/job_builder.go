@@ -312,6 +312,13 @@ func (b *JobBuilder) WithEnvVar(name, value string) *JobBuilder {
 	return b
 }
 
+// WithHomeDir sets the HOME environment variable for the container.
+// This is required for containers running as non-root users to ensure
+// tools like git, docker, and aws-cli can write to their config directories.
+func (b *JobBuilder) WithHomeDir(home string) *JobBuilder {
+	return b.WithEnvVar("HOME", home)
+}
+
 // WithCustomEnvVar adds a full environment variable (supports ValueFrom for secrets).
 func (b *JobBuilder) WithCustomEnvVar(env corev1.EnvVar) *JobBuilder {
 	b.envVars = append(b.envVars, env)

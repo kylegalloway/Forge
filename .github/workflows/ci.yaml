@@ -84,9 +84,11 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        target:
-          - cmd/controller
-          - cmd/webhook
+        include:
+          - target: controller
+            path: cmd/controller
+          - target: webhook
+            path: cmd/webhook
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -98,13 +100,13 @@ jobs:
           cache: true
 
       - name: Build ${{ matrix.target }}
-        run: go build -v -o bin/$(basename ${{ matrix.target }}) ./${{ matrix.target }}
+        run: go build -v -o bin/${{ matrix.target }} ./${{ matrix.path }}
 
       - name: Upload binary
         uses: actions/upload-artifact@v4
         with:
-          name: $(basename ${{ matrix.target }})
-          path: bin/$(basename ${{ matrix.target }})
+          name: ${{ matrix.target }}
+          path: bin/${{ matrix.target }}
 
   docker:
     name: Docker Build

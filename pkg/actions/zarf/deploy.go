@@ -124,6 +124,7 @@ func (handler *DeployHandler) createDeployJob(ctx context.Context, pkg *zarfv1al
 		WithCommand([]string{"/bin/sh", "-c"}).
 		WithArgs([]string{deployCmd}).
 		WithWorkingDir(constants.VolumeMountPathWorkspace).
+		WithHomeDir(constants.HomePathZarf).
 		WithResources(handler.getResources(pkg)).
 		WithNodeSelector(pkg.Spec.NodeSelector).
 		WithAffinity(pkg.Spec.Affinity).

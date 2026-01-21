@@ -128,6 +128,7 @@ func (handler *PublishHandler) createPublishJob(ctx context.Context, pkg *zarfv1
 		WithCommand([]string{"/bin/sh", "-c"}).
 		WithArgs([]string{publishCmd}).
 		WithWorkingDir(constants.VolumeMountPathWorkspace).
+		WithHomeDir(constants.HomePathZarf).
 		WithResources(handler.getResources(pkg)).
 		WithNodeSelector(pkg.Spec.NodeSelector).
 		WithAffinity(pkg.Spec.Affinity).

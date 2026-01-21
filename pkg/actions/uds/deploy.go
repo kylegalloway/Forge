@@ -125,6 +125,7 @@ func (handler *DeployHandler) createDeployJob(ctx context.Context, bundle *udsv1
 		WithCommand([]string{"/bin/sh", "-c"}).
 		WithArgs([]string{udsCmd}).
 		WithWorkingDir(constants.VolumeMountPathWorkspace).
+		WithHomeDir(constants.HomePathUDS).
 		WithResources(handler.getResources(bundle)).
 		WithNodeSelector(bundle.Spec.NodeSelector).
 		WithAffinity(bundle.Spec.Affinity).

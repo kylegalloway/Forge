@@ -117,6 +117,7 @@ func (handler *CreateHandler) createBundleJob(ctx context.Context, bundle *udsv1
 		WithCommand([]string{"/bin/sh", "-c"}).
 		WithArgs([]string{udsCmd}).
 		WithWorkingDir(workingDir).
+		WithHomeDir(constants.HomePathZarf).
 		WithResources(handler.getResources(bundle)).
 		WithNodeSelector(bundle.Spec.NodeSelector).
 		WithAffinity(bundle.Spec.Affinity).

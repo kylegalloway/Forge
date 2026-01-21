@@ -121,6 +121,7 @@ func (handler *PublishHandler) createPublishJob(ctx context.Context, bundle *uds
 		WithCommand([]string{"/bin/sh", "-c"}).
 		WithArgs([]string{udsCmd}).
 		WithWorkingDir(constants.VolumeMountPathWorkspace).
+		WithHomeDir(constants.HomePathUDS).
 		WithResources(handler.getResources(bundle)).
 		WithNodeSelector(bundle.Spec.NodeSelector).
 		WithAffinity(bundle.Spec.Affinity).

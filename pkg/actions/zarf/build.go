@@ -121,6 +121,7 @@ func (handler *BuildHandler) createBuildJob(ctx context.Context, pkg *zarfv1alph
 		WithCommand([]string{"/bin/sh", "-c"}).
 		WithArgs([]string{zarfCmd}).
 		WithWorkingDir(workingDir).
+		WithHomeDir(constants.HomePathZarf).
 		WithResources(handler.getResources(pkg)).
 		WithNodeSelector(pkg.Spec.NodeSelector).
 		WithAffinity(pkg.Spec.Affinity).

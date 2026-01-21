@@ -20,10 +20,23 @@ env:
   REGISTRY: ghcr.io
 
 jobs:
-  release:
-    name: Build, Attest, and Release
+  # Prepare shared configuration
+  prepare:
+    name: Prepare Release
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      full_version: ${{ steps.version.outputs.full_version }}
+      controller_repo: ${{ steps.repo.outputs.controller }}
+      webhook_repo: ${{ steps.repo.outputs.webhook }}
+      zarf_cli_repo: ${{ steps.repo.outputs.zarf_cli }}
+      uds_cli_repo: ${{ steps.repo.outputs.uds_cli }}
+      zarf_version: ${{ steps.cli-versions.outputs.zarf_version }}
+      uds_version: ${{ steps.cli-versions.outputs.uds_version }}
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
       - name: Prepare repository names
         id: repo
         run: |
@@ -31,20 +44,6 @@ jobs:
           echo "webhook=ghcr.io/${{ github.repository }}/forge-webhook" | tr '[:upper:]' '[:lower:]' >> $GITHUB_OUTPUT
           echo "zarf_cli=ghcr.io/${{ github.repository }}/zarf-cli" | tr '[:upper:]' '[:lower:]' >> $GITHUB_OUTPUT
           echo "uds_cli=ghcr.io/${{ github.repository }}/uds-cli" | tr '[:upper:]' '[:lower:]' >> $GITHUB_OUTPUT
-
-      - name: Checkout code
-        uses: actions/checkout@v6
-        with:
-          fetch-depth: 0  # Full history for SLSA provenance
-
-      - name: Set up Go
-        uses: actions/setup-go@v6
-        with:
-          go-version-file: go.mod
-          cache: true
-
-      - name: Run tests
-        run: go test -v -race ./pkg/...
 
       - name: Set version from tag
         id: version
@@ -64,38 +63,139 @@ jobs:
           UDS_VERSION=$(grep -E '^ARG UDS_VERSION=' images/uds-cli/Dockerfile | cut -d= -f2)
           echo "zarf_version=${ZARF_VERSION}" >> $GITHUB_OUTPUT
           echo "uds_version=${UDS_VERSION}" >> $GITHUB_OUTPUT
-          echo "Extracted Zarf CLI version: ${ZARF_VERSION}"
-          echo "Extracted UDS CLI version: ${UDS_VERSION}"
 
-      # Build binaries with reproducible builds
-      - name: Build binaries
+  # Run tests
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Run tests
+        run: go test -v -race ./pkg/...
+
+  # Build binaries in parallel
+  build-binaries:
+    name: Build Binaries
+    runs-on: ubuntu-latest
+    needs: [prepare, test]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Build binaries (parallel)
         run: |
-          VERSION="${{ steps.version.outputs.version }}"
+          VERSION="${{ needs.prepare.outputs.version }}"
           COMMIT="${{ github.sha }}"
           LDFLAGS="-s -w -X main.version=${VERSION} -X main.commit=${COMMIT}"
 
-          # Linux
-          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags="${LDFLAGS}" -o bin/controller-linux-amd64 ./cmd/controller
-          CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -trimpath -ldflags="${LDFLAGS}" -o bin/controller-linux-arm64 ./cmd/controller
-          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags="${LDFLAGS}" -o bin/webhook-linux-amd64 ./cmd/webhook
-          CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -trimpath -ldflags="${LDFLAGS}" -o bin/webhook-linux-arm64 ./cmd/webhook
+          mkdir -p bin
 
-          # Darwin (macOS)
-          CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -trimpath -ldflags="${LDFLAGS}" -o bin/controller-darwin-amd64 ./cmd/controller
-          CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -trimpath -ldflags="${LDFLAGS}" -o bin/controller-darwin-arm64 ./cmd/controller
-          CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -trimpath -ldflags="${LDFLAGS}" -o bin/webhook-darwin-amd64 ./cmd/webhook
-          CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -trimpath -ldflags="${LDFLAGS}" -o bin/webhook-darwin-arm64 ./cmd/webhook
+          # Build all binaries in parallel
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags="${LDFLAGS}" -o bin/controller-linux-amd64 ./cmd/controller &
+          CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -trimpath -ldflags="${LDFLAGS}" -o bin/controller-linux-arm64 ./cmd/controller &
+          CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -trimpath -ldflags="${LDFLAGS}" -o bin/controller-darwin-amd64 ./cmd/controller &
+          CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -trimpath -ldflags="${LDFLAGS}" -o bin/controller-darwin-arm64 ./cmd/controller &
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags="${LDFLAGS}" -o bin/webhook-linux-amd64 ./cmd/webhook &
+          CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -trimpath -ldflags="${LDFLAGS}" -o bin/webhook-linux-arm64 ./cmd/webhook &
+          CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -trimpath -ldflags="${LDFLAGS}" -o bin/webhook-darwin-amd64 ./cmd/webhook &
+          CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -trimpath -ldflags="${LDFLAGS}" -o bin/webhook-darwin-arm64 ./cmd/webhook &
 
-      # Generate SBOMs for binaries
+          # Wait for all builds to complete
+          wait
+
       - name: Install Syft
         uses: anchore/sbom-action/download-syft@v0.15.0
 
       - name: Generate SBOMs
         run: |
-          syft packages bin/controller-linux-amd64 --output spdx-json=controller-sbom.spdx.json --output cyclonedx-json=controller-sbom.cdx.json
-          syft packages bin/webhook-linux-amd64 --output spdx-json=webhook-sbom.spdx.json --output cyclonedx-json=webhook-sbom.cdx.json
+          syft packages bin/controller-linux-amd64 --output spdx-json=controller-sbom.spdx.json --output cyclonedx-json=controller-sbom.cdx.json &
+          syft packages bin/webhook-linux-amd64 --output spdx-json=webhook-sbom.spdx.json --output cyclonedx-json=webhook-sbom.cdx.json &
+          wait
 
-      # Docker setup
+      - name: Upload binaries artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: binaries
+          path: bin/
+          retention-days: 1
+
+      - name: Upload SBOMs artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sboms
+          path: |
+            *.spdx.json
+            *.cdx.json
+          retention-days: 1
+
+  # Build container images in parallel using matrix
+  build-images:
+    name: Build ${{ matrix.image }} Image
+    runs-on: ubuntu-latest
+    needs: [prepare, test]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: controller
+            context: .
+            file: Dockerfile
+            target: controller
+            repo_key: controller_repo
+            tags_type: semver
+          - image: webhook
+            context: .
+            file: Dockerfile
+            target: webhook
+            repo_key: webhook_repo
+            tags_type: semver
+          - image: zarf-cli
+            context: ./images/zarf-cli
+            file: ./images/zarf-cli/Dockerfile
+            target: ""
+            repo_key: zarf_cli_repo
+            tags_type: cli
+            cli_version_key: zarf_version
+          - image: uds-cli
+            context: ./images/uds-cli
+            file: ./images/uds-cli/Dockerfile
+            target: ""
+            repo_key: uds_cli_repo
+            tags_type: cli
+            cli_version_key: uds_version
+    outputs:
+      controller-digest: ${{ steps.set-output.outputs.controller-digest }}
+      webhook-digest: ${{ steps.set-output.outputs.webhook-digest }}
+      zarf-cli-digest: ${{ steps.set-output.outputs.zarf-cli-digest }}
+      uds-cli-digest: ${{ steps.set-output.outputs.uds-cli-digest }}
+      controller-tags: ${{ steps.set-output.outputs.controller-tags }}
+      webhook-tags: ${{ steps.set-output.outputs.webhook-tags }}
+      zarf-cli-tags: ${{ steps.set-output.outputs.zarf-cli-tags }}
+      uds-cli-tags: ${{ steps.set-output.outputs.uds-cli-tags }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
 
@@ -109,265 +209,247 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # Extract metadata for images
-      - name: Extract metadata for controller
-        id: meta-controller
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ steps.repo.outputs.controller }}
-          tags: |
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=semver,pattern={{major}}
-            type=sha
-
-      - name: Extract metadata for webhook
-        id: meta-webhook
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ steps.repo.outputs.webhook }}
-          tags: |
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=semver,pattern={{major}}
-            type=sha
-
-      - name: Extract metadata for zarf-cli
-        id: meta-zarf-cli
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ steps.repo.outputs.zarf_cli }}
-          tags: |
-            type=raw,value=${{ steps.cli-versions.outputs.zarf_version }}
-            type=sha
-
-      - name: Extract metadata for uds-cli
-        id: meta-uds-cli
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ steps.repo.outputs.uds_cli }}
-          tags: |
-            type=raw,value=${{ steps.cli-versions.outputs.uds_version }}
-            type=sha
-
-      # Build and push images with attestation
-      - name: Build and push controller image
-        id: build-controller
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: Dockerfile
-          target: controller
-          platforms: linux/amd64,linux/arm64
-          push: true
-          tags: ${{ steps.meta-controller.outputs.tags }}
-          labels: ${{ steps.meta-controller.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-          provenance: true  # SLSA provenance
-          sbom: true        # Attach SBOM
-
-      - name: Build and push webhook image
-        id: build-webhook
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: Dockerfile
-          target: webhook
-          platforms: linux/amd64,linux/arm64
-          push: true
-          tags: ${{ steps.meta-webhook.outputs.tags }}
-          labels: ${{ steps.meta-webhook.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-          provenance: true
-          sbom: true
-
-      - name: Build and push zarf-cli image
-        id: build-zarf-cli
-        uses: docker/build-push-action@v6
-        with:
-          context: ./images/zarf-cli
-          file: ./images/zarf-cli/Dockerfile
-          platforms: linux/amd64,linux/arm64
-          push: true
-          tags: ${{ steps.meta-zarf-cli.outputs.tags }}
-          labels: ${{ steps.meta-zarf-cli.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-          provenance: true
-          sbom: true
-
-      - name: Build and push uds-cli image
-        id: build-uds-cli
-        uses: docker/build-push-action@v6
-        with:
-          context: ./images/uds-cli
-          file: ./images/uds-cli/Dockerfile
-          platforms: linux/amd64,linux/arm64
-          push: true
-          tags: ${{ steps.meta-uds-cli.outputs.tags }}
-          labels: ${{ steps.meta-uds-cli.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-          provenance: true
-          sbom: true
-
-      # Generate Docker build summary for all images
-      - name: Generate Docker Build Summary
+      - name: Get repository name
+        id: repo-name
         run: |
-          cat >> $GITHUB_STEP_SUMMARY << 'EOF'
-          ## 🐳 Docker Images Built
+          case "${{ matrix.repo_key }}" in
+            controller_repo) echo "repo=${{ needs.prepare.outputs.controller_repo }}" >> $GITHUB_OUTPUT ;;
+            webhook_repo) echo "repo=${{ needs.prepare.outputs.webhook_repo }}" >> $GITHUB_OUTPUT ;;
+            zarf_cli_repo) echo "repo=${{ needs.prepare.outputs.zarf_cli_repo }}" >> $GITHUB_OUTPUT ;;
+            uds_cli_repo) echo "repo=${{ needs.prepare.outputs.uds_cli_repo }}" >> $GITHUB_OUTPUT ;;
+          esac
 
-          ### Controller Image
-          **Image:** `${{ steps.repo.outputs.controller }}`
-          **Digest:** `${{ steps.build-controller.outputs.digest }}`
-          **Platforms:** `linux/amd64`, `linux/arm64`
+      - name: Get CLI version (for CLI images)
+        id: cli-version
+        if: matrix.tags_type == 'cli'
+        run: |
+          case "${{ matrix.cli_version_key }}" in
+            zarf_version) echo "version=${{ needs.prepare.outputs.zarf_version }}" >> $GITHUB_OUTPUT ;;
+            uds_version) echo "version=${{ needs.prepare.outputs.uds_version }}" >> $GITHUB_OUTPUT ;;
+          esac
 
-          **Tags:**
-          ${{ steps.meta-controller.outputs.tags }}
+      - name: Extract metadata (semver)
+        id: meta-semver
+        if: matrix.tags_type == 'semver'
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ steps.repo-name.outputs.repo }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=sha
 
-          ### Webhook Image
-          **Image:** `${{ steps.repo.outputs.webhook }}`
-          **Digest:** `${{ steps.build-webhook.outputs.digest }}`
-          **Platforms:** `linux/amd64`, `linux/arm64`
+      - name: Extract metadata (cli)
+        id: meta-cli
+        if: matrix.tags_type == 'cli'
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ steps.repo-name.outputs.repo }}
+          tags: |
+            type=raw,value=${{ steps.cli-version.outputs.version }}
+            type=sha
 
-          **Tags:**
-          ${{ steps.meta-webhook.outputs.tags }}
+      - name: Determine tags and labels
+        id: meta
+        run: |
+          if [ "${{ matrix.tags_type }}" = "semver" ]; then
+            echo "tags<<EOF" >> $GITHUB_OUTPUT
+            echo "${{ steps.meta-semver.outputs.tags }}" >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+            echo "labels<<EOF" >> $GITHUB_OUTPUT
+            echo "${{ steps.meta-semver.outputs.labels }}" >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+          else
+            echo "tags<<EOF" >> $GITHUB_OUTPUT
+            echo "${{ steps.meta-cli.outputs.tags }}" >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+            echo "labels<<EOF" >> $GITHUB_OUTPUT
+            echo "${{ steps.meta-cli.outputs.labels }}" >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+          fi
 
-          ### Zarf CLI Image
-          **Image:** `${{ steps.repo.outputs.zarf_cli }}`
-          **Digest:** `${{ steps.build-zarf-cli.outputs.digest }}`
-          **Platforms:** `linux/amd64`, `linux/arm64`
+      - name: Build and push image
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.file }}
+          target: ${{ matrix.target || '' }}
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=${{ matrix.image }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.image }}
+          provenance: true
+          sbom: true
 
-          **Tags:**
-          ${{ steps.meta-zarf-cli.outputs.tags }}
+      - name: Set output for downstream jobs
+        id: set-output
+        run: |
+          echo "${{ matrix.image }}-digest=${{ steps.build.outputs.digest }}" >> $GITHUB_OUTPUT
+          echo "${{ matrix.image }}-tags<<EOF" >> $GITHUB_OUTPUT
+          echo "${{ steps.meta.outputs.tags }}" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
 
-          ### UDS CLI Image
-          **Image:** `${{ steps.repo.outputs.uds_cli }}`
-          **Digest:** `${{ steps.build-uds-cli.outputs.digest }}`
-          **Platforms:** `linux/amd64`, `linux/arm64`
+      - name: Save digest to file
+        run: |
+          mkdir -p /tmp/digests
+          echo "${{ steps.build.outputs.digest }}" > /tmp/digests/${{ matrix.image }}
+          echo "${{ steps.meta.outputs.tags }}" > /tmp/digests/${{ matrix.image }}-tags
 
-          **Tags:**
-          ${{ steps.meta-uds-cli.outputs.tags }}
+      - name: Upload digest artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: digest-${{ matrix.image }}
+          path: /tmp/digests/
+          retention-days: 1
 
-          ---
-          **Provenance:** ✅ SLSA Build Level 3
-          **SBOM:** ✅ Attached
-          **Signed:** ✅ Cosign (keyless OIDC)
-          EOF
+  # Sign and attest images (after all builds complete)
+  sign-and-attest:
+    name: Sign and Attest Images
+    runs-on: ubuntu-latest
+    needs: [prepare, build-binaries, build-images]
+    steps:
+      - name: Download SBOM artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: sboms
 
-      # Install Cosign for signing
+      - name: Download all digest artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: digest-*
+          merge-multiple: true
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Install Cosign
         uses: sigstore/cosign-installer@v3.3.0
 
-      # Sign images (keyless with OIDC)
-      - name: Sign controller image
-        env:
-          DIGEST: ${{ steps.build-controller.outputs.digest }}
+      - name: Load digests
+        id: digests
         run: |
-          cosign sign --yes "${{ steps.repo.outputs.controller }}@${DIGEST}"
+          echo "controller=$(cat controller)" >> $GITHUB_OUTPUT
+          echo "webhook=$(cat webhook)" >> $GITHUB_OUTPUT
+          echo "zarf_cli=$(cat zarf-cli)" >> $GITHUB_OUTPUT
+          echo "uds_cli=$(cat uds-cli)" >> $GITHUB_OUTPUT
 
-      - name: Sign webhook image
-        env:
-          DIGEST: ${{ steps.build-webhook.outputs.digest }}
+      - name: Sign all images (parallel)
         run: |
-          cosign sign --yes "${{ steps.repo.outputs.webhook }}@${DIGEST}"
+          cosign sign --yes "${{ needs.prepare.outputs.controller_repo }}@${{ steps.digests.outputs.controller }}" &
+          cosign sign --yes "${{ needs.prepare.outputs.webhook_repo }}@${{ steps.digests.outputs.webhook }}" &
+          cosign sign --yes "${{ needs.prepare.outputs.zarf_cli_repo }}@${{ steps.digests.outputs.zarf_cli }}" &
+          cosign sign --yes "${{ needs.prepare.outputs.uds_cli_repo }}@${{ steps.digests.outputs.uds_cli }}" &
+          wait
 
-      - name: Sign zarf-cli image
-        env:
-          DIGEST: ${{ steps.build-zarf-cli.outputs.digest }}
-        run: |
-          cosign sign --yes "${{ steps.repo.outputs.zarf_cli }}@${DIGEST}"
-
-      - name: Sign uds-cli image
-        env:
-          DIGEST: ${{ steps.build-uds-cli.outputs.digest }}
-        run: |
-          cosign sign --yes "${{ steps.repo.outputs.uds_cli }}@${DIGEST}"
-
-      # Attest SBOMs to images
-      - name: Attest SBOM for controller
-        env:
-          DIGEST: ${{ steps.build-controller.outputs.digest }}
+      - name: Attest SBOMs (parallel)
         run: |
           cosign attest --yes \
             --predicate controller-sbom.spdx.json \
             --type spdx \
-            "${{ steps.repo.outputs.controller }}@${DIGEST}"
-
-      - name: Attest SBOM for webhook
-        env:
-          DIGEST: ${{ steps.build-webhook.outputs.digest }}
-        run: |
+            "${{ needs.prepare.outputs.controller_repo }}@${{ steps.digests.outputs.controller }}" &
           cosign attest --yes \
             --predicate webhook-sbom.spdx.json \
             --type spdx \
-            "${{ steps.repo.outputs.webhook }}@${DIGEST}"
+            "${{ needs.prepare.outputs.webhook_repo }}@${{ steps.digests.outputs.webhook }}" &
+          wait
 
-      # Vulnerability scanning
-      - name: Scan controller image
+  # Scan images in parallel using matrix
+  scan-images:
+    name: Scan ${{ matrix.image }} Image
+    runs-on: ubuntu-latest
+    needs: [prepare, build-images]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: controller
+            repo_key: controller_repo
+          - image: webhook
+            repo_key: webhook_repo
+          - image: zarf-cli
+            repo_key: zarf_cli_repo
+          - image: uds-cli
+            repo_key: uds_cli_repo
+    steps:
+      - name: Download digest artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: digest-${{ matrix.image }}
+
+      - name: Load digest
+        id: digest
+        run: echo "digest=$(cat ${{ matrix.image }})" >> $GITHUB_OUTPUT
+
+      - name: Get repository name
+        id: repo-name
+        run: |
+          case "${{ matrix.repo_key }}" in
+            controller_repo) echo "repo=${{ needs.prepare.outputs.controller_repo }}" >> $GITHUB_OUTPUT ;;
+            webhook_repo) echo "repo=${{ needs.prepare.outputs.webhook_repo }}" >> $GITHUB_OUTPUT ;;
+            zarf_cli_repo) echo "repo=${{ needs.prepare.outputs.zarf_cli_repo }}" >> $GITHUB_OUTPUT ;;
+            uds_cli_repo) echo "repo=${{ needs.prepare.outputs.uds_cli_repo }}" >> $GITHUB_OUTPUT ;;
+          esac
+
+      - name: Scan image
         uses: aquasecurity/trivy-action@master
         continue-on-error: true
         env:
           TRIVY_USERNAME: ${{ github.actor }}
           TRIVY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
         with:
-          image-ref: ${{ steps.repo.outputs.controller }}@${{ steps.build-controller.outputs.digest }}
+          image-ref: ${{ steps.repo-name.outputs.repo }}@${{ steps.digest.outputs.digest }}
           format: 'sarif'
-          output: 'controller-trivy-results.sarif'
+          output: '${{ matrix.image }}-trivy-results.sarif'
 
-      - name: Scan webhook image
-        uses: aquasecurity/trivy-action@master
-        continue-on-error: true
-        env:
-          TRIVY_USERNAME: ${{ github.actor }}
-          TRIVY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+      - name: Upload Trivy results
+        uses: actions/upload-artifact@v4
         with:
-          image-ref: ${{ steps.repo.outputs.webhook }}@${{ steps.build-webhook.outputs.digest }}
-          format: 'sarif'
-          output: 'webhook-trivy-results.sarif'
+          name: trivy-${{ matrix.image }}
+          path: ${{ matrix.image }}-trivy-results.sarif
+          retention-days: 1
 
-      - name: Scan zarf-cli image
-        uses: aquasecurity/trivy-action@master
-        continue-on-error: true
-        env:
-          TRIVY_USERNAME: ${{ github.actor }}
-          TRIVY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+  # Upload all security results
+  upload-security-results:
+    name: Upload Security Results
+    runs-on: ubuntu-latest
+    needs: scan-images
+    if: always()
+    steps:
+      - name: Download all Trivy artifacts
+        uses: actions/download-artifact@v4
         with:
-          image-ref: ${{ steps.repo.outputs.zarf_cli }}@${{ steps.build-zarf-cli.outputs.digest }}
-          format: 'sarif'
-          output: 'zarf-cli-trivy-results.sarif'
-
-      - name: Scan uds-cli image
-        uses: aquasecurity/trivy-action@master
-        continue-on-error: true
-        env:
-          TRIVY_USERNAME: ${{ github.actor }}
-          TRIVY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          image-ref: ${{ steps.repo.outputs.uds_cli }}@${{ steps.build-uds-cli.outputs.digest }}
-          format: 'sarif'
-          output: 'uds-cli-trivy-results.sarif'
+          pattern: trivy-*
+          merge-multiple: true
 
       - name: Upload Trivy results to GitHub Security
         uses: github/codeql-action/upload-sarif@v4
-        if: always()
         continue-on-error: true
         with:
-          sarif_file: |
-            controller-trivy-results.sarif
-            webhook-trivy-results.sarif
-            zarf-cli-trivy-results.sarif
-            uds-cli-trivy-results.sarif
+          sarif_file: .
 
-      # Package Helm chart
+  # Package Helm chart (can run in parallel with image builds)
+  package-helm:
+    name: Package Helm Chart
+    runs-on: ubuntu-latest
+    needs: [prepare]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
       - name: Install Helm
         uses: azure/setup-helm@v4
 
       - name: Package Helm chart
         run: |
-          VERSION="${{ steps.version.outputs.version }}"
+          VERSION="${{ needs.prepare.outputs.version }}"
           helm package chart/forge \
             --version "${VERSION}" \
             --app-version "${VERSION}" \
@@ -376,47 +458,82 @@ jobs:
       - name: Create Helm repository index
         run: |
           helm repo index . \
-            --url "https://github.com/${{ github.repository }}/releases/download/${{ steps.version.outputs.full_version }}"
+            --url "https://github.com/${{ github.repository }}/releases/download/${{ needs.prepare.outputs.full_version }}"
 
-      # Generate release notes
-      - name: Generate attestation summary
+      - name: Upload Helm artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: helm
+          path: |
+            forge-*.tgz
+            index.yaml
+          retention-days: 1
+
+  # Create release (after all builds and signing complete)
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    needs: [prepare, build-binaries, build-images, sign-and-attest, scan-images, package-helm]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Download binaries
+        uses: actions/download-artifact@v4
+        with:
+          name: binaries
+          path: bin/
+
+      - name: Download SBOMs
+        uses: actions/download-artifact@v4
+        with:
+          name: sboms
+
+      - name: Download Helm artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: helm
+
+      - name: Download all digest artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: digest-*
+          merge-multiple: true
+
+      - name: Load digests and tags
+        id: digests
+        run: |
+          echo "controller=$(cat controller)" >> $GITHUB_OUTPUT
+          echo "webhook=$(cat webhook)" >> $GITHUB_OUTPUT
+          echo "zarf_cli=$(cat zarf-cli)" >> $GITHUB_OUTPUT
+          echo "uds_cli=$(cat uds-cli)" >> $GITHUB_OUTPUT
+
+      - name: Generate release notes
         run: |
           cat << EOF > RELEASE_NOTES.md
-          # 🔐 Forge Release ${{ steps.version.outputs.full_version }}
+          # 🔐 Forge Release ${{ needs.prepare.outputs.full_version }}
 
           ## Container Images
 
           ### Controller
           \`\`\`
-          ${{ steps.repo.outputs.controller }}@${{ steps.build-controller.outputs.digest }}
+          ${{ needs.prepare.outputs.controller_repo }}@${{ steps.digests.outputs.controller }}
           \`\`\`
-
-          **Tags:**
-          $(echo "${{ steps.meta-controller.outputs.tags }}" | sed 's/^/- /')
 
           ### Webhook
           \`\`\`
-          ${{ steps.repo.outputs.webhook }}@${{ steps.build-webhook.outputs.digest }}
+          ${{ needs.prepare.outputs.webhook_repo }}@${{ steps.digests.outputs.webhook }}
           \`\`\`
-
-          **Tags:**
-          $(echo "${{ steps.meta-webhook.outputs.tags }}" | sed 's/^/- /')
 
           ### Zarf CLI
           \`\`\`
-          ${{ steps.repo.outputs.zarf_cli }}@${{ steps.build-zarf-cli.outputs.digest }}
+          ${{ needs.prepare.outputs.zarf_cli_repo }}@${{ steps.digests.outputs.zarf_cli }}
           \`\`\`
-
-          **Tags:**
-          $(echo "${{ steps.meta-zarf-cli.outputs.tags }}" | sed 's/^/- /')
 
           ### UDS CLI
           \`\`\`
-          ${{ steps.repo.outputs.uds_cli }}@${{ steps.build-uds-cli.outputs.digest }}
+          ${{ needs.prepare.outputs.uds_cli_repo }}@${{ steps.digests.outputs.uds_cli }}
           \`\`\`
-
-          **Tags:**
-          $(echo "${{ steps.meta-uds-cli.outputs.tags }}" | sed 's/^/- /')
 
           ## Helm Chart
 
@@ -424,12 +541,12 @@ jobs:
           \`\`\`bash
           helm repo add forge https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}
           helm repo update
-          helm install forge forge/forge --version ${{ steps.version.outputs.version }}
+          helm install forge forge/forge --version ${{ needs.prepare.outputs.version }}
           \`\`\`
 
           Or install directly from release:
           \`\`\`bash
-          helm install forge https://github.com/${{ github.repository }}/releases/download/${{ steps.version.outputs.full_version }}/forge-${{ steps.version.outputs.version }}.tgz
+          helm install forge https://github.com/${{ github.repository }}/releases/download/${{ needs.prepare.outputs.full_version }}/forge-${{ needs.prepare.outputs.version }}.tgz
           \`\`\`
 
           ## Security Attestations
@@ -439,7 +556,7 @@ jobs:
           cosign verify \\
             --certificate-identity-regexp="https://github.com/${{ github.repository }}" \\
             --certificate-oidc-issuer="https://token.actions.githubusercontent.com" \\
-            ${{ steps.repo.outputs.controller }}@${{ steps.build-controller.outputs.digest }}
+            ${{ needs.prepare.outputs.controller_repo }}@${{ steps.digests.outputs.controller }}
           \`\`\`
 
           ### Verify SBOM Attestation
@@ -448,12 +565,12 @@ jobs:
             --certificate-identity-regexp="https://github.com/${{ github.repository }}" \\
             --certificate-oidc-issuer="https://token.actions.githubusercontent.com" \\
             --type spdx \\
-            ${{ steps.repo.outputs.controller }}@${{ steps.build-controller.outputs.digest }}
+            ${{ needs.prepare.outputs.controller_repo }}@${{ steps.digests.outputs.controller }}
           \`\`\`
 
           ### Download SBOM
           \`\`\`bash
-          cosign download sbom ${{ steps.repo.outputs.controller }}@${{ steps.build-controller.outputs.digest }}
+          cosign download sbom ${{ needs.prepare.outputs.controller_repo }}@${{ steps.digests.outputs.controller }}
           \`\`\`
 
           ## SLSA Provenance
@@ -475,23 +592,63 @@ jobs:
           Binary checksums available in release artifacts.
           EOF
 
-      # Create GitHub Release
+      - name: Generate Docker Build Summary
+        run: |
+          cat >> $GITHUB_STEP_SUMMARY << 'EOF'
+          ## 🐳 Docker Images Built
+
+          ### Controller Image
+          **Image:** `${{ needs.prepare.outputs.controller_repo }}`
+          **Digest:** `${{ steps.digests.outputs.controller }}`
+          **Platforms:** `linux/amd64`, `linux/arm64`
+
+          ### Webhook Image
+          **Image:** `${{ needs.prepare.outputs.webhook_repo }}`
+          **Digest:** `${{ steps.digests.outputs.webhook }}`
+          **Platforms:** `linux/amd64`, `linux/arm64`
+
+          ### Zarf CLI Image
+          **Image:** `${{ needs.prepare.outputs.zarf_cli_repo }}`
+          **Digest:** `${{ steps.digests.outputs.zarf_cli }}`
+          **Platforms:** `linux/amd64`, `linux/arm64`
+
+          ### UDS CLI Image
+          **Image:** `${{ needs.prepare.outputs.uds_cli_repo }}`
+          **Digest:** `${{ steps.digests.outputs.uds_cli }}`
+          **Platforms:** `linux/amd64`, `linux/arm64`
+
+          ---
+          **Provenance:** ✅ SLSA Build Level 3
+          **SBOM:** ✅ Attached
+          **Signed:** ✅ Cosign (keyless OIDC)
+          EOF
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ steps.version.outputs.full_version }}
+          tag_name: ${{ needs.prepare.outputs.full_version }}
           body_path: RELEASE_NOTES.md
           files: |
             bin/*
             *.spdx.json
             *.cdx.json
-            forge-${{ steps.version.outputs.version }}.tgz
+            forge-${{ needs.prepare.outputs.version }}.tgz
             index.yaml
           generate_release_notes: true
           draft: false
           prerelease: false
 
-      # Publish to GitHub Pages (optional - for Helm repository)
+  # Publish to GitHub Pages
+  publish-helm:
+    name: Publish Helm Chart
+    runs-on: ubuntu-latest
+    needs: [prepare, release]
+    steps:
+      - name: Download Helm artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: helm
+
       - name: Checkout gh-pages
         uses: actions/checkout@v6
         with:
@@ -499,18 +656,16 @@ jobs:
           path: gh-pages
           token: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+
       - name: Update Helm repository on gh-pages
         run: |
-          # Copy chart package to gh-pages
-          cp forge-${{ steps.version.outputs.version }}.tgz gh-pages/
-
-          # Regenerate index with all charts
+          cp forge-*.tgz gh-pages/
           cd gh-pages
           helm repo index . --url "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}"
-
-          # Commit and push
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add .
-          git commit -m "Release Helm chart ${{ steps.version.outputs.version }}" || true
+          git commit -m "Release Helm chart ${{ needs.prepare.outputs.version }}" || true
           git push origin gh-pages

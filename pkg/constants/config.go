@@ -90,6 +90,15 @@ const (
 	// VolumeMountPathKubeconfig is the mount path for the kubeconfig volume.
 	VolumeMountPathKubeconfig = "/etc/kubeconfig"
 
+	// HomePathZarf is the home directory for Zarf containers (UID 1000).
+	HomePathZarf = "/home/zarf"
+
+	// HomePathUDS is the home directory for UDS containers (UID 65532).
+	HomePathUDS = "/home/uds"
+
+	// HomePathTmp is the home directory for init containers where no real home exists.
+	HomePathTmp = "/tmp"
+
 	// ContainerNameZarfBuild is the container name for Zarf build Jobs.
 	ContainerNameZarfBuild = "zarf-build"
 

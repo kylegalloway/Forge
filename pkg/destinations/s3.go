@@ -97,7 +97,7 @@ func (destination *S3Destination) GetJobConfiguration(pkg *zarfv1alpha3.ZarfPack
 				})
 				config.VolumeMounts = append(config.VolumeMounts, corev1.VolumeMount{
 					Name:      constants.VolumeNameAWSCredentials,
-					MountPath: "/home/zarf/.aws",
+					MountPath: constants.HomePathZarf + "/.aws",
 					ReadOnly:  true,
 				})
 			}

@@ -160,7 +160,7 @@ func GetUDSJobConfiguration(bundle *udsv1alpha3.UDSBundleJob) (*JobConfig, error
 						})
 						config.VolumeMounts = append(config.VolumeMounts, corev1.VolumeMount{
 							Name:      constants.VolumeNameAWSCredentials,
-							MountPath: "/home/nonroot/.aws",
+							MountPath: constants.HomePathUDS + "/.aws",
 							ReadOnly:  true,
 						})
 					}

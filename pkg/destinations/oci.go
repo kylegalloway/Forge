@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	zarfv1alpha3 "github.com/kylegalloway/forge/pkg/apis/zarf/v1alpha3"
+	"github.com/kylegalloway/forge/pkg/constants"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -47,7 +48,7 @@ func (destination *OCIDestination) GetJobConfiguration(pkg *zarfv1alpha3.ZarfPac
 
 		config.VolumeMounts = append(config.VolumeMounts, corev1.VolumeMount{
 			Name:      "registry-creds",
-			MountPath: "/home/zarf/.docker",
+			MountPath: constants.VolumeMountPathDockerConfig,
 			ReadOnly:  true,
 		})
 	}

@@ -553,3 +553,76 @@ func TestPtr(t *testing.T) {
 		t.Errorf("Expected *ptr = %s, got %s", strVal, *strPtr)
 	}
 }
+
+func TestExtractGitHost(t *testing.T) {
+	tests := []struct {
+		name     string
+		gitURL   string
+		wantHost string
+	}{
+		{
+			name:     "HTTPS GitHub URL",
+			gitURL:   "https://github.com/user/repo.git",
+			wantHost: "github.com",
+		},
+		{
+			name:     "HTTPS GitLab URL",
+			gitURL:   "https://gitlab.com/user/repo.git",
+			wantHost: "gitlab.com",
+		},
+		{
+			name:     "HTTPS private GitLab instance",
+			gitURL:   "https://gitlab.mycompany.com/team/project.git",
+			wantHost: "gitlab.mycompany.com",
+		},
+		{
+			name:     "HTTPS Bitbucket URL",
+			gitURL:   "https://bitbucket.org/user/repo.git",
+			wantHost: "bitbucket.org",
+		},
+		{
+			name:     "HTTPS with port",
+			gitURL:   "https://git.internal.io:8443/repo.git",
+			wantHost: "git.internal.io:8443",
+		},
+		{
+			name:     "SSH GitHub URL",
+			gitURL:   "git@github.com:user/repo.git",
+			wantHost: "github.com",
+		},
+		{
+			name:     "SSH GitLab URL",
+			gitURL:   "git@gitlab.com:user/repo.git",
+			wantHost: "gitlab.com",
+		},
+		{
+			name:     "SSH private instance",
+			gitURL:   "git@git.mycompany.io:team/project.git",
+			wantHost: "git.mycompany.io",
+		},
+		{
+			name:     "HTTPS without .git suffix",
+			gitURL:   "https://github.com/user/repo",
+			wantHost: "github.com",
+		},
+		{
+			name:     "empty URL falls back to github.com",
+			gitURL:   "",
+			wantHost: "github.com",
+		},
+		{
+			name:     "malformed URL falls back to github.com",
+			gitURL:   "not-a-valid-url",
+			wantHost: "github.com",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := extractGitHost(tt.gitURL)
+			if got != tt.wantHost {
+				t.Errorf("extractGitHost(%q) = %q, want %q", tt.gitURL, got, tt.wantHost)
+			}
+		})
+	}
+}

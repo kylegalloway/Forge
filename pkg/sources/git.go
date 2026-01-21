@@ -3,6 +3,8 @@ package sources
 
 import (
 	"fmt"
+	"net/url"
+	"strings"
 
 	"github.com/kylegalloway/forge/pkg/actions"
 	"github.com/kylegalloway/forge/pkg/apis/common"
@@ -104,8 +106,9 @@ func BuildGitInitContainer(config *GitSourceConfig, runAsUser int64) (*corev1.Co
 		})
 
 		// Setup command to configure credentials
+		// Extract host from URL to support any git server (GitHub, GitLab, Bitbucket, private instances, etc.)
 		// #nosec G101 - This is a shell script template, not a hardcoded credential
-		setupCmd := `if [ -f /etc/git-secret/ssh-key ]; then
+		setupCmd := fmt.Sprintf(`if [ -f /etc/git-secret/ssh-key ]; then
   mkdir -p ~/.ssh
   cp /etc/git-secret/ssh-key ~/.ssh/id_rsa
   chmod 600 ~/.ssh/id_rsa
@@ -113,9 +116,8 @@ func BuildGitInitContainer(config *GitSourceConfig, runAsUser int64) (*corev1.Co
 elif [ -f /etc/git-secret/token ]; then
   git config --global credential.helper store
   token=$(cat /etc/git-secret/token)
-  echo "https://oauth2:${token}@github.com" > ~/.git-credentials
-  echo "https://oauth2:${token}@gitlab.com" >> ~/.git-credentials
-fi`
+  echo "https://oauth2:${token}@%s" > ~/.git-credentials
+fi`, extractGitHost(config.URL))
 		// Prepend setup to clone command
 		cloneCmd = fmt.Sprintf("%s && %s", setupCmd, cloneCmd)
 		container.Args = []string{cloneCmd}
@@ -139,4 +141,26 @@ func GetGitCredentialVolume(credRef *common.SecretReference, disableCloneCredent
 			},
 		},
 	}
+}
+
+// extractGitHost extracts the hostname from a git URL.
+// Supports both HTTPS URLs (https://github.com/user/repo) and
+// SSH URLs (git@github.com:user/repo).
+// Returns "github.com" as fallback if parsing fails.
+func extractGitHost(gitURL string) string {
+	// Handle SSH URLs: git@github.com:user/repo.git
+	if hostPart, found := strings.CutPrefix(gitURL, "git@"); found {
+		// Extract host between @ and :
+		if idx := strings.Index(hostPart, ":"); idx > 0 {
+			return hostPart[:idx]
+		}
+	}
+
+	// Handle HTTPS URLs: https://github.com/user/repo.git
+	if parsed, err := url.Parse(gitURL); err == nil && parsed.Host != "" {
+		return parsed.Host
+	}
+
+	// Fallback to github.com
+	return "github.com"
 }

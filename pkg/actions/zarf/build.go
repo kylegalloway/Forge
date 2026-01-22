@@ -167,7 +167,7 @@ func (handler *BuildHandler) createBuildJob(ctx context.Context, pkg *zarfv1alph
 }
 
 // buildZarfCommand builds the zarf CLI command based on package source
-func (handler *BuildHandler) buildZarfCommand(_ *zarfv1alpha3.ZarfPackageJob, artifactPVCName string) (string, string) {
+func (handler *BuildHandler) buildZarfCommand(pkg *zarfv1alpha3.ZarfPackageJob, artifactPVCName string) (string, string) {
 	workingDir := constants.VolumeMountPathWorkspace
 
 	// Build command - output to /artifacts if PVC exists, otherwise /output
@@ -179,6 +179,13 @@ func (handler *BuildHandler) buildZarfCommand(_ *zarfv1alpha3.ZarfPackageJob, ar
 	} else {
 		// Standalone build: output to EmptyDir
 		cmd = "zarf package create . --confirm --output-directory " + constants.VolumeMountPathOutput
+	}
+
+	// Add variables if specified in Build config
+	if pkg.Spec.Build != nil {
+		for key, value := range pkg.Spec.Build.Variables {
+			cmd = fmt.Sprintf("%s --set %s=%s", cmd, key, value)
+		}
 	}
 
 	return cmd, workingDir

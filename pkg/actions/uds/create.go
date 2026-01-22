@@ -163,7 +163,7 @@ func (handler *CreateHandler) createBundleJob(ctx context.Context, bundle *udsv1
 }
 
 // buildUDSCommand builds the UDS CLI command for bundle creation
-func (handler *CreateHandler) buildUDSCommand(_ *udsv1alpha3.UDSBundleJob, artifactPVCName string) (string, string) {
+func (handler *CreateHandler) buildUDSCommand(bundle *udsv1alpha3.UDSBundleJob, artifactPVCName string) (string, string) {
 	workingDir := constants.VolumeMountPathWorkspace
 
 	// Determine output directory based on whether we're using a PVC for multi-action workflows
@@ -179,6 +179,13 @@ func (handler *CreateHandler) buildUDSCommand(_ *udsv1alpha3.UDSBundleJob, artif
 	// UDS bundle create command
 	// Assumes uds-bundle.yaml is in the workspace root
 	cmd := "uds create . --confirm --output-directory " + outputDir
+
+	// Add variables if specified in Create config
+	if bundle.Spec.Create != nil {
+		for key, value := range bundle.Spec.Create.Variables {
+			cmd = fmt.Sprintf("%s --set %s=%s", cmd, key, value)
+		}
+	}
 
 	return cmd, workingDir
 }

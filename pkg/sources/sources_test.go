@@ -560,45 +560,94 @@ func TestExtractGitHost(t *testing.T) {
 		gitURL   string
 		wantHost string
 	}{
+		// Public Git Hosting Services
 		{
-			name:     "HTTPS GitHub URL",
+			name:     "GitHub HTTPS",
 			gitURL:   "https://github.com/user/repo.git",
 			wantHost: "github.com",
 		},
 		{
-			name:     "HTTPS GitLab URL",
+			name:     "GitLab HTTPS",
 			gitURL:   "https://gitlab.com/user/repo.git",
 			wantHost: "gitlab.com",
 		},
 		{
-			name:     "HTTPS private GitLab instance",
-			gitURL:   "https://gitlab.mycompany.com/team/project.git",
-			wantHost: "gitlab.mycompany.com",
-		},
-		{
-			name:     "HTTPS Bitbucket URL",
+			name:     "Bitbucket HTTPS",
 			gitURL:   "https://bitbucket.org/user/repo.git",
 			wantHost: "bitbucket.org",
 		},
 		{
-			name:     "HTTPS with port",
-			gitURL:   "https://git.internal.io:8443/repo.git",
-			wantHost: "git.internal.io:8443",
+			name:     "Azure DevOps HTTPS",
+			gitURL:   "https://dev.azure.com/org/project/_git/repo",
+			wantHost: "dev.azure.com",
 		},
 		{
-			name:     "SSH GitHub URL",
+			name:     "AWS CodeCommit",
+			gitURL:   "https://git-codecommit.us-east-1.amazonaws.com/v1/repos/myrepo",
+			wantHost: "git-codecommit.us-east-1.amazonaws.com",
+		},
+
+		// Self-hosted instances
+		{
+			name:     "Gitea with port",
+			gitURL:   "http://gitea.local:3000/user/repo.git",
+			wantHost: "gitea.local:3000",
+		},
+		{
+			name:     "GitLab self-hosted",
+			gitURL:   "https://gitlab.mycompany.com/team/project.git",
+			wantHost: "gitlab.mycompany.com",
+		},
+		{
+			name:     "GitLab self-hosted with port",
+			gitURL:   "https://gitlab.internal.io:8443/repo.git",
+			wantHost: "gitlab.internal.io:8443",
+		},
+		{
+			name:     "Bitbucket Server",
+			gitURL:   "https://bitbucket.mycompany.com/scm/project/repo.git",
+			wantHost: "bitbucket.mycompany.com",
+		},
+		{
+			name:     "Gogs self-hosted",
+			gitURL:   "https://gogs.example.org/user/repo.git",
+			wantHost: "gogs.example.org",
+		},
+
+		// SSH URLs (SCP-style)
+		{
+			name:     "GitHub SSH",
 			gitURL:   "git@github.com:user/repo.git",
 			wantHost: "github.com",
 		},
 		{
-			name:     "SSH GitLab URL",
+			name:     "GitLab SSH",
 			gitURL:   "git@gitlab.com:user/repo.git",
 			wantHost: "gitlab.com",
 		},
 		{
-			name:     "SSH private instance",
+			name:     "Self-hosted SSH",
 			gitURL:   "git@git.mycompany.io:team/project.git",
 			wantHost: "git.mycompany.io",
+		},
+
+		// SSH URLs (ssh:// protocol)
+		{
+			name:     "SSH protocol URL",
+			gitURL:   "ssh://git@github.com/user/repo.git",
+			wantHost: "github.com",
+		},
+		{
+			name:     "SSH protocol with port",
+			gitURL:   "ssh://git@git.example.com:2222/user/repo.git",
+			wantHost: "git.example.com",
+		},
+
+		// Edge cases
+		{
+			name:     "HTTP (insecure)",
+			gitURL:   "http://internal-git.corp/repo.git",
+			wantHost: "internal-git.corp",
 		},
 		{
 			name:     "HTTPS without .git suffix",
@@ -606,14 +655,36 @@ func TestExtractGitHost(t *testing.T) {
 			wantHost: "github.com",
 		},
 		{
-			name:     "empty URL falls back to github.com",
-			gitURL:   "",
-			wantHost: "github.com",
+			name:     "IP address",
+			gitURL:   "http://192.168.1.100/repo.git",
+			wantHost: "192.168.1.100",
 		},
 		{
-			name:     "malformed URL falls back to github.com",
+			name:     "IP address with port",
+			gitURL:   "http://192.168.1.100:8080/repo.git",
+			wantHost: "192.168.1.100:8080",
+		},
+		{
+			name:     "localhost",
+			gitURL:   "http://localhost:3000/user/repo.git",
+			wantHost: "localhost:3000",
+		},
+
+		// Failure cases - returns empty string
+		{
+			name:     "empty URL returns empty",
+			gitURL:   "",
+			wantHost: "",
+		},
+		{
+			name:     "malformed URL returns empty",
 			gitURL:   "not-a-valid-url",
-			wantHost: "github.com",
+			wantHost: "",
+		},
+		{
+			name:     "partial git@ URL returns empty",
+			gitURL:   "git@",
+			wantHost: "",
 		},
 	}
 
@@ -622,6 +693,173 @@ func TestExtractGitHost(t *testing.T) {
 			got := extractGitHost(tt.gitURL)
 			if got != tt.wantHost {
 				t.Errorf("extractGitHost(%q) = %q, want %q", tt.gitURL, got, tt.wantHost)
+			}
+		})
+	}
+}
+
+func TestExtractGitScheme(t *testing.T) {
+	tests := []struct {
+		name       string
+		gitURL     string
+		wantScheme string
+	}{
+		// HTTPS URLs
+		{
+			name:       "GitHub HTTPS",
+			gitURL:     "https://github.com/user/repo.git",
+			wantScheme: "https",
+		},
+		{
+			name:       "GitLab HTTPS",
+			gitURL:     "https://gitlab.com/user/repo.git",
+			wantScheme: "https",
+		},
+		{
+			name:       "HTTPS with port",
+			gitURL:     "https://git.example.com:8443/repo.git",
+			wantScheme: "https",
+		},
+
+		// HTTP URLs
+		{
+			name:       "Gitea HTTP",
+			gitURL:     "http://gitea.local:3000/user/repo.git",
+			wantScheme: "http",
+		},
+		{
+			name:       "Internal HTTP",
+			gitURL:     "http://internal-git.corp/repo.git",
+			wantScheme: "http",
+		},
+		{
+			name:       "localhost HTTP",
+			gitURL:     "http://localhost:3000/user/repo.git",
+			wantScheme: "http",
+		},
+
+		// SSH URLs - should return https for credential file
+		{
+			name:       "SSH SCP-style returns https",
+			gitURL:     "git@github.com:user/repo.git",
+			wantScheme: "https",
+		},
+		{
+			name:       "SSH protocol returns https",
+			gitURL:     "ssh://git@github.com/user/repo.git",
+			wantScheme: "https",
+		},
+		{
+			name:       "SSH with port returns https",
+			gitURL:     "ssh://git@git.example.com:2222/repo.git",
+			wantScheme: "https",
+		},
+
+		// Edge cases
+		{
+			name:       "empty URL defaults to https",
+			gitURL:     "",
+			wantScheme: "https",
+		},
+		{
+			name:       "malformed URL defaults to https",
+			gitURL:     "not-a-valid-url",
+			wantScheme: "https",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := extractGitScheme(tt.gitURL)
+			if got != tt.wantScheme {
+				t.Errorf("extractGitScheme(%q) = %q, want %q", tt.gitURL, got, tt.wantScheme)
+			}
+		})
+	}
+}
+
+func TestBuildGitInitContainerCredentialCommand(t *testing.T) {
+	// Test that the generated init container command handles various git servers correctly
+	tests := []struct {
+		name           string
+		url            string
+		wantScheme     string
+		wantHost       string
+		wantURLEncode  bool // Should contain URL encoding function
+		wantSSHSetup   bool // Should contain SSH setup
+		wantCredHelper bool // Should contain credential helper setup
+	}{
+		{
+			name:           "GitHub HTTPS with credentials",
+			url:            "https://github.com/user/repo.git",
+			wantScheme:     "https",
+			wantHost:       "github.com",
+			wantURLEncode:  true,
+			wantCredHelper: true,
+		},
+		{
+			name:           "Gitea HTTP with credentials",
+			url:            "http://gitea.local:3000/user/repo.git",
+			wantScheme:     "http",
+			wantHost:       "gitea.local:3000",
+			wantURLEncode:  true,
+			wantCredHelper: true,
+		},
+		{
+			name:         "SSH URL with credentials",
+			url:          "git@github.com:user/repo.git",
+			wantScheme:   "https",
+			wantHost:     "github.com",
+			wantSSHSetup: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			config := &GitSourceConfig{
+				URL:                   tt.url,
+				Ref:                   "main",
+				CredentialsSecretName: "test-creds",
+			}
+
+			container, err := BuildGitInitContainer(config, 1000)
+			if err != nil {
+				t.Fatalf("BuildGitInitContainer() error = %v", err)
+			}
+
+			if len(container.Args) == 0 {
+				t.Fatal("Container has no args")
+			}
+
+			cmd := container.Args[0]
+
+			// Verify scheme is correct in credential file
+			if tt.wantCredHelper {
+				expectedCredLine := tt.wantScheme + "://"
+				if !containsString(cmd, expectedCredLine) {
+					t.Errorf("Command should contain %q for credential file", expectedCredLine)
+				}
+			}
+
+			// Verify host is correct in credential file
+			if tt.wantHost != "" && tt.wantCredHelper {
+				if !containsString(cmd, tt.wantHost) {
+					t.Errorf("Command should contain host %q", tt.wantHost)
+				}
+			}
+
+			// Verify URL encoding function is present
+			if tt.wantURLEncode {
+				if !containsString(cmd, "urlencode") {
+					t.Error("Command should contain urlencode function for credential encoding")
+				}
+			}
+
+			// Verify SSH setup for SSH URLs
+			if tt.wantSSHSetup {
+				if !containsString(cmd, "ssh-key") {
+					t.Error("Command should reference ssh-key for SSH URLs")
+				}
 			}
 		})
 	}

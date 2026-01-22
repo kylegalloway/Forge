@@ -72,7 +72,11 @@ func (m *KubeManager) validate(cred *Credential) error {
 		if _, hasToken := cred.Data["token"]; hasToken {
 			return nil
 		}
-		return fmt.Errorf("git secret must contain 'ssh-key' or 'token'")
+		// Support 'password' as alternative to 'token' for basic auth servers (Gitea, GitLab self-hosted, etc.)
+		if _, hasPassword := cred.Data["password"]; hasPassword {
+			return nil
+		}
+		return fmt.Errorf("git secret must contain 'ssh-key', 'token', or 'password'")
 
 	case TypeS3:
 		if _, ok := cred.Data["access-key-id"]; !ok {

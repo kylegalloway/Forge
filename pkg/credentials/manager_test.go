@@ -61,6 +61,33 @@ func TestGetSecret_Git_Token(t *testing.T) {
 	}
 }
 
+// TestGetSecret_Git_Password tests that 'password' is accepted as a valid credential key
+// for basic auth servers like Gitea, GitLab self-hosted, Bitbucket Server, etc.
+func TestGetSecret_Git_Password(t *testing.T) {
+	secret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "git-creds",
+			Namespace: "default",
+		},
+		Data: map[string][]byte{
+			"username": []byte("testuser"),
+			"password": []byte("testpass123"),
+		},
+	}
+
+	client := fake.NewClientset(secret)
+	manager := NewManager(client)
+
+	cred, err := manager.GetSecret(context.Background(), "default", "git-creds", TypeGit)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if string(cred.Data["password"]) != "testpass123" {
+		t.Errorf("unexpected password value")
+	}
+}
+
 func TestGetSecret_Git_Invalid(t *testing.T) {
 	secret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
@@ -68,7 +95,7 @@ func TestGetSecret_Git_Invalid(t *testing.T) {
 			Namespace: "default",
 		},
 		Data: map[string][]byte{
-			"password": []byte("wrong-key"),
+			"username": []byte("only-username"),
 		},
 	}
 
@@ -80,7 +107,7 @@ func TestGetSecret_Git_Invalid(t *testing.T) {
 		t.Fatal("expected error for invalid git secret, got nil")
 	}
 
-	if err.Error() != "invalid secret default/git-creds: git secret must contain 'ssh-key' or 'token'" {
+	if err.Error() != "invalid secret default/git-creds: git secret must contain 'ssh-key', 'token', or 'password'" {
 		t.Errorf("unexpected error message: %v", err)
 	}
 }

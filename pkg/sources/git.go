@@ -106,18 +106,64 @@ func BuildGitInitContainer(config *GitSourceConfig, runAsUser int64) (*corev1.Co
 		})
 
 		// Setup command to configure credentials
-		// Extract host from URL to support any git server (GitHub, GitLab, Bitbucket, private instances, etc.)
+		// Extract host and scheme from URL to support any git server (GitHub, GitLab, Bitbucket, private instances, etc.)
+		// Supports multiple auth modes:
+		// 1. SSH key: uses ssh-key file for SSH URLs
+		// 2. Token/password auth: uses username+token/password or oauth2+token for HTTPS URLs
+		//
+		// The script handles:
+		// - URL encoding of credentials (special chars like @, :, /, %, etc.)
+		// - Both 'token' and 'password' secret keys
+		// - Optional username (defaults to 'oauth2' for OAuth-style tokens)
+		// - Non-standard ports (included in host matching)
+		//
 		// #nosec G101 - This is a shell script template, not a hardcoded credential
-		setupCmd := fmt.Sprintf(`if [ -f /etc/git-secret/ssh-key ]; then
+		scheme := extractGitScheme(config.URL)
+		host := extractGitHost(config.URL)
+
+		// If host extraction failed, we can't set up credentials properly
+		// The clone will proceed without stored credentials (may prompt or fail)
+		if host == "" {
+			host = "UNKNOWN_HOST"
+		}
+
+		// URL encoding function for shell - encodes characters that break git credential URLs
+		// Must encode: % (first!), then @, :, /, space, and other special chars
+		// Using awk for reliable encoding across different shell environments
+		urlEncodeFunc := `urlencode() { printf '%s' "$1" | awk '
+BEGIN { for(i=0;i<256;i++) ord[sprintf("%c",i)]=i }
+{ n=split($0,c,""); for(i=1;i<=n;i++) {
+    ch=c[i]
+    if(ch ~ /[A-Za-z0-9._~-]/) printf "%s",ch
+    else printf "%%%02X",ord[ch]
+  }
+}'
+}`
+
+		setupCmd := fmt.Sprintf(`%s
+if [ -f /etc/git-secret/ssh-key ]; then
   mkdir -p ~/.ssh
   cp /etc/git-secret/ssh-key ~/.ssh/id_rsa
   chmod 600 ~/.ssh/id_rsa
   echo "StrictHostKeyChecking no" >> ~/.ssh/config
-elif [ -f /etc/git-secret/token ]; then
+  echo "UserKnownHostsFile /dev/null" >> ~/.ssh/config
+elif [ -f /etc/git-secret/token ] || [ -f /etc/git-secret/password ]; then
   git config --global credential.helper store
-  token=$(cat /etc/git-secret/token)
-  echo "https://oauth2:${token}@%s" > ~/.git-credentials
-fi`, extractGitHost(config.URL))
+  # Support both 'token' and 'password' secret keys
+  if [ -f /etc/git-secret/token ]; then
+    cred=$(cat /etc/git-secret/token)
+  else
+    cred=$(cat /etc/git-secret/password)
+  fi
+  encoded_cred=$(urlencode "$cred")
+  if [ -f /etc/git-secret/username ]; then
+    raw_user=$(cat /etc/git-secret/username)
+    encoded_user=$(urlencode "$raw_user")
+    echo "%s://${encoded_user}:${encoded_cred}@%s" > ~/.git-credentials
+  else
+    echo "%s://oauth2:${encoded_cred}@%s" > ~/.git-credentials
+  fi
+fi`, urlEncodeFunc, scheme, host, scheme, host)
 		// Prepend setup to clone command
 		cloneCmd = fmt.Sprintf("%s && %s", setupCmd, cloneCmd)
 		container.Args = []string{cloneCmd}
@@ -143,24 +189,55 @@ func GetGitCredentialVolume(credRef *common.SecretReference, disableCloneCredent
 	}
 }
 
-// extractGitHost extracts the hostname from a git URL.
-// Supports both HTTPS URLs (https://github.com/user/repo) and
-// SSH URLs (git@github.com:user/repo).
-// Returns "github.com" as fallback if parsing fails.
+// extractGitScheme extracts the URL scheme (http or https) from a git URL.
+// Returns "https" as fallback if parsing fails or for SSH URLs.
+func extractGitScheme(gitURL string) string {
+	// Handle SSH URLs - they don't have a scheme, default to https
+	if strings.HasPrefix(gitURL, "git@") || strings.HasPrefix(gitURL, "ssh://") {
+		return "https"
+	}
+
+	// Handle HTTP/HTTPS URLs
+	if parsed, err := url.Parse(gitURL); err == nil && parsed.Scheme != "" {
+		return parsed.Scheme
+	}
+
+	// Fallback to https
+	return "https"
+}
+
+// extractGitHost extracts the hostname (including port if present) from a git URL.
+// Supports multiple URL formats:
+//   - HTTPS: https://github.com/user/repo, https://git.example.com:8443/repo
+//   - SSH: git@github.com:user/repo, ssh://git@host:22/repo
+//   - HTTP: http://gitea.local:3000/user/repo
+//
+// Returns empty string if parsing fails (caller should handle this case).
 func extractGitHost(gitURL string) string {
-	// Handle SSH URLs: git@github.com:user/repo.git
+	// Handle ssh:// URLs: ssh://git@host:port/path
+	if strings.HasPrefix(gitURL, "ssh://") {
+		if parsed, err := url.Parse(gitURL); err == nil && parsed.Host != "" {
+			// parsed.Host includes port if present, but we need just the hostname
+			// for SSH, the port is for SSH connection, not for credential matching
+			return parsed.Hostname()
+		}
+	}
+
+	// Handle SCP-style SSH URLs: git@github.com:user/repo.git
 	if hostPart, found := strings.CutPrefix(gitURL, "git@"); found {
-		// Extract host between @ and :
+		// Extract host between @ and : (the : separates host from path in SCP syntax)
 		if idx := strings.Index(hostPart, ":"); idx > 0 {
 			return hostPart[:idx]
 		}
 	}
 
-	// Handle HTTPS URLs: https://github.com/user/repo.git
+	// Handle HTTP/HTTPS URLs: https://github.com/user/repo.git
+	// Note: parsed.Host includes port if present (e.g., "gitea.local:3000")
+	// This is correct for credential matching - git matches on host:port
 	if parsed, err := url.Parse(gitURL); err == nil && parsed.Host != "" {
 		return parsed.Host
 	}
 
-	// Fallback to github.com
-	return "github.com"
+	// Return empty string on parse failure - caller must handle this
+	return ""
 }

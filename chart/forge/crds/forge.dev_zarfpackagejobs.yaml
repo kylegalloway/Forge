@@ -989,6 +989,23 @@ spec:
                 description: Build defines configuration for building the package
                   (optional)
                 properties:
+                  registryCredentialRef:
+                    description: |-
+                      RegistryCredentialRef references a Secret with registry credentials for pulling
+                      images during the build. This is needed when your zarf.yaml references images
+                      from private registries (e.g., Docker Hub, private registries).
+                      Secret should be type kubernetes.io/dockerconfigjson
+                    properties:
+                      name:
+                        description: Name is the name of the secret
+                        type: string
+                      namespace:
+                        description: Namespace of the secret. Defaults to the namespace
+                          of the referencing resource.
+                        type: string
+                    required:
+                    - name
+                    type: object
                   retry:
                     description: Retry policy for build failures
                     properties:
@@ -1236,18 +1253,40 @@ spec:
                             description: Bucket name
                             type: string
                           credentialRef:
-                            description: CredentialRef references a Secret with AWS
-                              credentials
+                            description: |-
+                              CredentialRef references AWS credentials for S3 access
+                              Supports three modes:
+                              - EnvVar (default): Secret with 'access-key-id' and 'secret-access-key' keys
+                              - File: Secret with 'credentials' key containing AWS credentials file
+                              - Node: Use node-level credentials (IRSA, instance profile) - no secret needed
                             properties:
+                              key:
+                                default: credentials
+                                description: |-
+                                  Key is the key within the secret containing the credentials file
+                                  Only used when Type is File. Defaults to "credentials"
+                                type: string
                               name:
-                                description: Name is the name of the secret
+                                description: |-
+                                  Name is the name of the secret containing credentials
+                                  Required for EnvVar and File types, ignored for Node type
                                 type: string
                               namespace:
                                 description: Namespace of the secret. Defaults to
                                   the namespace of the referencing resource.
                                 type: string
-                            required:
-                            - name
+                              type:
+                                default: EnvVar
+                                description: |-
+                                  Type specifies how credentials are loaded
+                                  - EnvVar: Load from secret keys as environment variables (default)
+                                  - File: Mount secret as AWS credentials file
+                                  - Node: Use node-level credentials (IRSA, instance profile) - no secret needed
+                                enum:
+                                - EnvVar
+                                - File
+                                - Node
+                                type: string
                             type: object
                           endpoint:
                             description: Endpoint for S3-compatible storage
@@ -1428,7 +1467,7 @@ spec:
                         type: string
                       url:
                         description: URL of the Git repository
-                        pattern: ^https://.*
+                        pattern: ^https?://.*
                         type: string
                     required:
                     - url
@@ -1481,18 +1520,39 @@ spec:
                         type: string
                       credentialRef:
                         description: |-
-                          CredentialRef references a Secret with AWS credentials
-                          Secret should contain 'access-key-id' and 'secret-access-key'
+                          CredentialRef references AWS credentials for S3 access
+                          Supports three modes:
+                          - EnvVar (default): Secret with 'access-key-id' and 'secret-access-key' keys
+                          - File: Secret with 'credentials' key containing AWS credentials file
+                          - Node: Use node-level credentials (IRSA, instance profile) - no secret needed
                         properties:
+                          key:
+                            default: credentials
+                            description: |-
+                              Key is the key within the secret containing the credentials file
+                              Only used when Type is File. Defaults to "credentials"
+                            type: string
                           name:
-                            description: Name is the name of the secret
+                            description: |-
+                              Name is the name of the secret containing credentials
+                              Required for EnvVar and File types, ignored for Node type
                             type: string
                           namespace:
                             description: Namespace of the secret. Defaults to the
                               namespace of the referencing resource.
                             type: string
-                        required:
-                        - name
+                          type:
+                            default: EnvVar
+                            description: |-
+                              Type specifies how credentials are loaded
+                              - EnvVar: Load from secret keys as environment variables (default)
+                              - File: Mount secret as AWS credentials file
+                              - Node: Use node-level credentials (IRSA, instance profile) - no secret needed
+                            enum:
+                            - EnvVar
+                            - File
+                            - Node
+                            type: string
                         type: object
                       endpoint:
                         description: Endpoint for S3-compatible storage (e.g., MinIO)
@@ -1586,6 +1646,9 @@ spec:
                     description: CompletionTime when the operation completed
                     format: date-time
                     type: string
+                  jobName:
+                    description: JobName is the Kubernetes Job name for this operation
+                    type: string
                   lastFailureReason:
                     description: LastFailureReason from most recent failure
                     type: string
@@ -1619,6 +1682,9 @@ spec:
                   completionTime:
                     description: CompletionTime when the operation completed
                     format: date-time
+                    type: string
+                  jobName:
+                    description: JobName is the Kubernetes Job name for this operation
                     type: string
                   lastFailureReason:
                     description: LastFailureReason from most recent failure
@@ -1668,6 +1734,9 @@ spec:
                   completionTime:
                     description: CompletionTime when the operation completed
                     format: date-time
+                    type: string
+                  jobName:
+                    description: JobName is the Kubernetes Job name for this operation
                     type: string
                   lastFailureReason:
                     description: LastFailureReason from most recent failure

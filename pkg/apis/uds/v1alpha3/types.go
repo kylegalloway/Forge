@@ -179,7 +179,7 @@ type PackageSource struct {
 type GitSource struct {
 	// URL of the Git repository
 	// +kubebuilder:validation:Required
-	// +kubebuilder:validation:Pattern=`^https://.*`
+	// +kubebuilder:validation:Pattern=`^https?://.*`
 	URL string `json:"url"`
 
 	// Ref specifies the branch, tag, or commit to checkout

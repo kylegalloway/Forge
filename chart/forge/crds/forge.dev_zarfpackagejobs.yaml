@@ -1046,6 +1046,13 @@ spec:
                     default: 1h
                     description: Timeout for the build operation
                     type: string
+                  variables:
+                    additionalProperties:
+                      type: string
+                    description: |-
+                      Variables are Zarf variables to set during package creation
+                      These are passed as --set KEY=VALUE flags to 'zarf package create'
+                    type: object
                 type: object
               deploy:
                 description: Deploy defines how to deploy the package (required if

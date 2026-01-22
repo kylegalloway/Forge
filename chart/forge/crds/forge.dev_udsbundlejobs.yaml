@@ -1044,6 +1044,13 @@ spec:
                     default: 1h
                     description: Timeout for the create operation
                     type: string
+                  variables:
+                    additionalProperties:
+                      type: string
+                    description: |-
+                      Variables are UDS variables to set during bundle creation
+                      These are passed as --set KEY=VALUE flags to 'uds create'
+                    type: object
                 type: object
               deploy:
                 description: Deploy defines deployment configuration (optional)

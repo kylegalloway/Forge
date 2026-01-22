@@ -20,6 +20,11 @@ func (destination *S3Destination) GetPublishCommand(pkg *zarfv1alpha3.ZarfPackag
 	}
 
 	s3Path := fmt.Sprintf("s3://%s/%s", s3Config.Bucket, s3Config.KeyPrefix)
+
+	// Build command with optional endpoint for S3-compatible storage (MinIO, etc.)
+	if s3Config.Endpoint != "" {
+		return fmt.Sprintf("aws s3 cp %s %s --endpoint-url %s --region %s", artifactPath, s3Path, s3Config.Endpoint, s3Config.Region), nil
+	}
 	return fmt.Sprintf("aws s3 cp %s %s --region %s", artifactPath, s3Path, s3Config.Region), nil
 }
 

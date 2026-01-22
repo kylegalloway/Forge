@@ -99,6 +99,7 @@ func TestS3DestinationGetPublishCommand(t *testing.T) {
 		pkg          *zarfv1alpha3.ZarfPackageJob
 		artifactPath string
 		wantErr      bool
+		wantContains string // optional: check command contains this string
 	}{
 		{
 			name: "basic s3 upload",
@@ -122,6 +123,32 @@ func TestS3DestinationGetPublishCommand(t *testing.T) {
 			},
 			artifactPath: "/workspace/test.tar.zst",
 			wantErr:      false,
+			wantContains: "--region us-east-1",
+		},
+		{
+			name: "s3-compatible storage with endpoint (MinIO)",
+			pkg: &zarfv1alpha3.ZarfPackageJob{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-pkg",
+					Namespace: "default",
+				},
+				Spec: zarfv1alpha3.ZarfPackageJobSpec{
+					Publish: &zarfv1alpha3.PublishConfig{
+						Destination: zarfv1alpha3.PublishDestination{
+							Type: zarfv1alpha3.DestinationTypeS3,
+							S3: &zarfv1alpha3.S3Destination{
+								Bucket:    "my-bucket",
+								KeyPrefix: "packages/",
+								Region:    "us-east-1",
+								Endpoint:  "http://minio.local:9000",
+							},
+						},
+					},
+				},
+			},
+			artifactPath: "/workspace/test.tar.zst",
+			wantErr:      false,
+			wantContains: "--endpoint-url http://minio.local:9000",
 		},
 		{
 			name: "missing s3 config",
@@ -154,8 +181,21 @@ func TestS3DestinationGetPublishCommand(t *testing.T) {
 			if !tt.wantErr && cmd == "" {
 				t.Error("GetPublishCommand() returned empty command")
 			}
+			if tt.wantContains != "" && !containsString(cmd, tt.wantContains) {
+				t.Errorf("GetPublishCommand() = %q, want to contain %q", cmd, tt.wantContains)
+			}
 		})
 	}
+}
+
+// containsString checks if s contains substr
+func containsString(s, substr string) bool {
+	for i := 0; i <= len(s)-len(substr); i++ {
+		if s[i:i+len(substr)] == substr {
+			return true
+		}
+	}
+	return false
 }
 
 func TestS3DestinationGetJobConfiguration(t *testing.T) {

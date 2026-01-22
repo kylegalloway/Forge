@@ -32,7 +32,15 @@ func GetUDSPublishCommand(bundle *udsv1alpha3.UDSBundleJob, artifactPath string)
 		}
 		// For S3, we use AWS CLI to upload the bundle
 		s3Path := fmt.Sprintf("s3://%s/%s", dest.S3.Bucket, dest.S3.KeyPrefix)
-		return fmt.Sprintf("aws s3 cp %s %s", artifactPath, s3Path), nil
+		// Build command with optional endpoint and region for S3-compatible storage (MinIO, etc.)
+		cmd := fmt.Sprintf("aws s3 cp %s %s", artifactPath, s3Path)
+		if dest.S3.Endpoint != "" {
+			cmd += fmt.Sprintf(" --endpoint-url %s", dest.S3.Endpoint)
+		}
+		if dest.S3.Region != "" {
+			cmd += fmt.Sprintf(" --region %s", dest.S3.Region)
+		}
+		return cmd, nil
 
 	case udsv1alpha3.DestinationTypeLocal:
 		// Local destination - just echo success for dev/testing

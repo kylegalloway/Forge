@@ -301,6 +301,11 @@ type CreateConfig struct {
 	// Secret should be type kubernetes.io/dockerconfigjson
 	// +optional
 	RegistryCredentialRef *common.SecretReference `json:"registryCredentialRef,omitempty"`
+
+	// Variables are UDS variables to set during bundle creation
+	// These are passed as --set KEY=VALUE flags to 'uds create'
+	// +optional
+	Variables map[string]string `json:"variables,omitempty"`
 }
 
 // PublishConfig defines where and how to publish bundle artifacts

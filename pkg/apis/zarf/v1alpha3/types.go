@@ -304,6 +304,11 @@ type BuildConfig struct {
 	// Secret should be type kubernetes.io/dockerconfigjson
 	// +optional
 	RegistryCredentialRef *common.SecretReference `json:"registryCredentialRef,omitempty"`
+
+	// Variables are Zarf variables to set during package creation
+	// These are passed as --set KEY=VALUE flags to 'zarf package create'
+	// +optional
+	Variables map[string]string `json:"variables,omitempty"`
 }
 
 // PublishConfig defines where and how to publish packages

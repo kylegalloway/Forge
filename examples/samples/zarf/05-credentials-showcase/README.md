@@ -11,11 +11,19 @@ This example demonstrates all credential types supported by Forge for ZarfPackag
 
 | Type | Secret Format | Keys | Used For |
 |------|---------------|------|----------|
-| Git (token) | Opaque | `token` | Cloning private repositories |
-| Git (SSH) | Opaque | `ssh-key` | Cloning private repositories |
-| OCI Registry | `kubernetes.io/dockerconfigjson` | `.dockerconfigjson` | Pulling/pushing packages |
-| S3 | Opaque | `access-key-id`, `secret-access-key` | Pulling/pushing from S3 |
+| Git (token) | Opaque | `token` | GitHub, GitLab.com (OAuth-style) |
+| Git (username+token) | Opaque | `username`, `token` | Gitea, GitLab self-hosted, Bitbucket Server |
+| Git (username+password) | Opaque | `username`, `password` | Self-hosted servers with basic auth |
+| Git (SSH) | Opaque | `ssh-key` | Any git server with SSH access |
+| OCI Registry | `kubernetes.io/dockerconfigjson` | `.dockerconfigjson` | Any Docker-compatible registry |
+| S3 | Opaque | `access-key-id`, `secret-access-key` | AWS S3 and S3-compatible (MinIO, Ceph) |
 | Kubeconfig | Opaque | `kubeconfig` | Deploying to external clusters |
+
+### Git Authentication Modes
+
+- **OAuth-style** (GitHub, GitLab.com): Use `token` only - username defaults to `oauth2`
+- **Basic auth** (Gitea, GitLab self-hosted, Bitbucket Server): Use `username` + `token` or `password`
+- **SSH**: Use `ssh-key` for any server supporting SSH
 
 ## Examples
 

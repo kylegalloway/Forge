@@ -47,7 +47,7 @@ kubectl forge list --type uds
 ```
 
 **Output:**
-```
+```txt
 NAME                  TYPE   ACTION   PHASE       AGE
 my-package-build      zarf   Build    Completed   5m
 my-bundle-create      uds    Create   Running     2m

@@ -178,7 +178,68 @@ Both Zarf packages and UDS bundles can be sourced from:
 Published artifacts can be stored in:
 
 - **OCI**: Push to OCI registries (GHCR, Harbor, Artifactory, etc.)
-- **S3**: Upload to S3-compatible storage
+- **S3**: Upload to S3-compatible storage (AWS S3, MinIO, Ceph, etc.)
+
+### Credential Configuration
+
+Forge supports credentials for private repositories and registries. All credential types work with any host, not just major public providers.
+
+#### Git Credentials
+
+| Server Type | Secret Keys | Example |
+|-------------|-------------|---------|
+| GitHub, GitLab.com | `token` | OAuth-style authentication |
+| Gitea, GitLab self-hosted, Bitbucket Server | `username` + `token` | Basic auth with token |
+| Self-hosted (password auth) | `username` + `password` | Basic auth with password |
+| Any server with SSH | `ssh-key` | SSH key authentication |
+
+**Example: Private Git repository with basic auth (Gitea, GitLab self-hosted)**
+
+```yaml
+# Secret for self-hosted git server
+apiVersion: v1
+kind: Secret
+metadata:
+  name: gitea-creds
+type: Opaque
+stringData:
+  username: "myuser"
+  token: "my-access-token"  # or use 'password' key
+---
+# ZarfPackageJob referencing the credentials
+apiVersion: forge.dev/v1alpha3
+kind: ZarfPackageJob
+metadata:
+  name: build-from-gitea
+spec:
+  serviceAccountName: default
+  action: Build
+  source:
+    type: Git
+    git:
+      url: http://gitea.internal:3000/myorg/repo.git
+      ref: main
+      credentialRef:
+        name: gitea-creds
+```
+
+#### S3 Credentials
+
+S3 sources and destinations support custom endpoints for S3-compatible storage (MinIO, Ceph, etc.):
+
+```yaml
+source:
+  type: S3
+  s3:
+    bucket: my-bucket
+    key: packages/app.tar.zst
+    region: us-east-1
+    endpoint: http://minio.internal:9000  # Optional: for S3-compatible storage
+    credentialRef:
+      name: s3-creds
+```
+
+See `examples/samples/zarf/05-credentials-showcase/` for complete credential examples.
 
 ## Zarf Package Examples
 

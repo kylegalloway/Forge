@@ -12,7 +12,7 @@ repos:
         exclude: '^go\.(mod|sum)$'
       - id: check-yaml
         args: ['--unsafe']  # Allow custom YAML tags for Kubernetes
-        exclude: '^(config/samples/|webhook/deploy/|config/namespace-templates/|chart/forge/templates/)'
+        exclude: '^(examples/samples/zarf/01-git-to-oci/chart/templates/|chart/forge/templates/)'
       - id: check-added-large-files
         args: ['--maxkb=1000']
       - id: check-merge-conflict
@@ -20,9 +20,53 @@ repos:
       - id: mixed-line-ending
         args: ['--fix=lf']
       - id: detect-private-key
-        exclude: '^(config/samples/|docs/|examples/)'
+        exclude: '^(docs/|examples/)'
 
-  # Go formatting
+  # YAML linting
+  - repo: https://github.com/adrienverge/yamllint
+    rev: v1.35.1
+    hooks:
+      - id: yamllint
+        args: ['-c', '.config/yamllint.yaml']
+        exclude: '^(examples/samples/zarf/01-git-to-oci/chart/templates/|chart/forge/templates/)'
+
+  # Dockerfile linting
+  - repo: https://github.com/hadolint/hadolint
+    rev: v2.12.0
+    hooks:
+      - id: hadolint
+        args: ['--ignore', 'DL3018', '--ignore', 'DL3008']
+
+  # Markdown linting
+  - repo: https://github.com/DavidAnson/markdownlint-cli2
+    rev: v0.19.0 # Use the latest stable version
+    hooks:
+      - id: markdownlint-cli2
+        args: ["--config", ".config/.markdownlint-cli2.yaml"]
+
+  # Security scanning
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.5.0
+    hooks:
+      - id: detect-secrets
+        args: ['--baseline', '.secrets.baseline']
+        exclude: '^(go\.sum|\.secrets\.baseline|examples/|docs/rca/|docs/development/)'
+
+  # Shell script linting
+  - repo: https://github.com/shellcheck-py/shellcheck-py
+    rev: v0.10.0.1
+    hooks:
+      - id: shellcheck
+        args: ['--severity=warning']
+
+  # Go linting
+  - repo: https://github.com/golangci/golangci-lint
+    rev: v2.7.2
+    hooks:
+      - id: golangci-lint
+        args: ['--config=.config/golangci.yaml', '--timeout=10m']
+
+  # Golang formatting and checks
   - repo: https://github.com/dnephin/pre-commit-golang
     rev: v0.5.1
     hooks:
@@ -35,50 +79,6 @@ repos:
         args: ['./cmd/controller', './cmd/webhook']
       - id: go-unit-tests
         args: ['./pkg/...']
-
-  # Go linting
-  - repo: https://github.com/golangci/golangci-lint
-    rev: v2.7.2
-    hooks:
-      - id: golangci-lint
-        args: ['--config=.config/golangci.yaml', '--timeout=10m']
-
-  # Security scanning
-  - repo: https://github.com/Yelp/detect-secrets
-    rev: v1.5.0
-    hooks:
-      - id: detect-secrets
-        args: ['--baseline', '.secrets.baseline']
-        exclude: '^(go\.sum|\.secrets\.baseline|examples/)'
-
-  # Markdown linting
-  - repo: https://github.com/DavidAnson/markdownlint-cli2
-    rev: v0.19.0 # Use the latest stable version
-    hooks:
-      - id: markdownlint-cli2
-        args: ["--config", ".config/.markdownlint-cli2.yaml"]
-
-  # YAML linting
-  - repo: https://github.com/adrienverge/yamllint
-    rev: v1.35.1
-    hooks:
-      - id: yamllint
-        args: ['-c', '.config/yamllint.yaml']
-        exclude: '^(config/samples/|webhook/deploy/|config/namespace-templates/)'
-
-  # Dockerfile linting
-  - repo: https://github.com/hadolint/hadolint
-    rev: v2.12.0
-    hooks:
-      - id: hadolint
-        args: ['--ignore', 'DL3018', '--ignore', 'DL3008']
-
-  # Shell script linting
-  - repo: https://github.com/shellcheck-py/shellcheck-py
-    rev: v0.10.0.1
-    hooks:
-      - id: shellcheck
-        args: ['--severity=warning']
 
   # Git commit message linting
   - repo: https://github.com/jorisroovers/gitlint

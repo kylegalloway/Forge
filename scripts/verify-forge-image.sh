@@ -118,8 +118,10 @@ verify_provenance() {
         echo -e "${GREEN}✓ SLSA provenance verified${NC}"
 
         # Extract key information
-        local builder=$(cat /tmp/provenance.json | jq -r '.payload' | base64 -d | jq -r '.predicate.builder.id' 2>/dev/null || echo "unknown")
-        local build_type=$(cat /tmp/provenance.json | jq -r '.payload' | base64 -d | jq -r '.predicate.buildType' 2>/dev/null || echo "unknown")
+        local builder
+        builder=$(cat /tmp/provenance.json | jq -r '.payload' | base64 -d | jq -r '.predicate.builder.id' 2>/dev/null || echo "unknown")
+        local build_type
+        build_type=$(cat /tmp/provenance.json | jq -r '.payload' | base64 -d | jq -r '.predicate.buildType' 2>/dev/null || echo "unknown")
 
         echo "  - Builder: ${builder}"
         echo "  - Build Type: ${build_type}"
@@ -139,7 +141,8 @@ inspect_sbom() {
         echo -e "${GREEN}✓ SBOM downloaded${NC}"
 
         # Count packages
-        local pkg_count=$(cat /tmp/sbom.json | jq '[.packages[]? | select(.name)] | length' 2>/dev/null || echo "0")
+        local pkg_count
+        pkg_count=$(cat /tmp/sbom.json | jq '[.packages[]? | select(.name)] | length' 2>/dev/null || echo "0")
         echo "  - Packages: ${pkg_count}"
 
         # Show top 5 packages

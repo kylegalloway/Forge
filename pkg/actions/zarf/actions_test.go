@@ -657,3 +657,148 @@ func TestDeployHandlerExecute_ExternalClusterWithContext(t *testing.T) {
 		t.Errorf("Expected 1 job, got %d", len(jobs.Items))
 	}
 }
+
+func TestBuildHandlerBuildZarfCommand(t *testing.T) {
+	handler := &BuildHandler{}
+
+	tests := []struct {
+		name            string
+		pkg             *zarfv1alpha3.ZarfPackageJob
+		artifactPVCName string
+		wantContains    []string
+		wantNotContains []string
+	}{
+		{
+			name: "basic build without variables",
+			pkg: &zarfv1alpha3.ZarfPackageJob{
+				Spec: zarfv1alpha3.ZarfPackageJobSpec{
+					Source: zarfv1alpha3.PackageSource{
+						Type: zarfv1alpha3.SourceTypeGit,
+						Git: &zarfv1alpha3.GitSource{
+							URL: "https://github.com/test/repo",
+						},
+					},
+				},
+			},
+			artifactPVCName: "",
+			wantContains:    []string{"zarf package create", "--confirm", "--output-directory"},
+			wantNotContains: []string{"--set"},
+		},
+		{
+			name: "build with single variable",
+			pkg: &zarfv1alpha3.ZarfPackageJob{
+				Spec: zarfv1alpha3.ZarfPackageJobSpec{
+					Source: zarfv1alpha3.PackageSource{
+						Type: zarfv1alpha3.SourceTypeGit,
+						Git: &zarfv1alpha3.GitSource{
+							URL: "https://github.com/test/repo",
+						},
+					},
+					Build: &zarfv1alpha3.BuildConfig{
+						Variables: map[string]string{
+							"IMAGE_TAG": "v1.2.3",
+						},
+					},
+				},
+			},
+			artifactPVCName: "",
+			wantContains:    []string{"zarf package create", "--set IMAGE_TAG=v1.2.3"},
+		},
+		{
+			name: "build with multiple variables",
+			pkg: &zarfv1alpha3.ZarfPackageJob{
+				Spec: zarfv1alpha3.ZarfPackageJobSpec{
+					Source: zarfv1alpha3.PackageSource{
+						Type: zarfv1alpha3.SourceTypeGit,
+						Git: &zarfv1alpha3.GitSource{
+							URL: "https://github.com/test/repo",
+						},
+					},
+					Build: &zarfv1alpha3.BuildConfig{
+						Variables: map[string]string{
+							"IMAGE_TAG": "v1.2.3",
+							"REGISTRY":  "ghcr.io/myorg",
+						},
+					},
+				},
+			},
+			artifactPVCName: "",
+			wantContains:    []string{"zarf package create", "--set IMAGE_TAG=v1.2.3", "--set REGISTRY=ghcr.io/myorg"},
+		},
+		{
+			name: "build with PVC and variables",
+			pkg: &zarfv1alpha3.ZarfPackageJob{
+				Spec: zarfv1alpha3.ZarfPackageJobSpec{
+					Source: zarfv1alpha3.PackageSource{
+						Type: zarfv1alpha3.SourceTypeGit,
+						Git: &zarfv1alpha3.GitSource{
+							URL: "https://github.com/test/repo",
+						},
+					},
+					Build: &zarfv1alpha3.BuildConfig{
+						Variables: map[string]string{
+							"VERSION": "2.0.0",
+						},
+					},
+				},
+			},
+			artifactPVCName: "my-pvc",
+			wantContains:    []string{"zarf package create", constants.VolumeMountPathArtifacts, "--set VERSION=2.0.0"},
+		},
+		{
+			name: "build with empty variables map",
+			pkg: &zarfv1alpha3.ZarfPackageJob{
+				Spec: zarfv1alpha3.ZarfPackageJobSpec{
+					Source: zarfv1alpha3.PackageSource{
+						Type: zarfv1alpha3.SourceTypeGit,
+						Git: &zarfv1alpha3.GitSource{
+							URL: "https://github.com/test/repo",
+						},
+					},
+					Build: &zarfv1alpha3.BuildConfig{
+						Variables: map[string]string{},
+					},
+				},
+			},
+			artifactPVCName: "",
+			wantContains:    []string{"zarf package create"},
+			wantNotContains: []string{"--set"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cmd, workingDir := handler.buildZarfCommand(tt.pkg, tt.artifactPVCName)
+
+			if workingDir != constants.VolumeMountPathWorkspace {
+				t.Errorf("buildZarfCommand() workingDir = %v, want %v", workingDir, constants.VolumeMountPathWorkspace)
+			}
+
+			for _, want := range tt.wantContains {
+				if !containsSubstring(cmd, want) {
+					t.Errorf("buildZarfCommand() cmd = %q, want to contain %q", cmd, want)
+				}
+			}
+
+			for _, notWant := range tt.wantNotContains {
+				if containsSubstring(cmd, notWant) {
+					t.Errorf("buildZarfCommand() cmd = %q, should not contain %q", cmd, notWant)
+				}
+			}
+		})
+	}
+}
+
+func containsSubstring(s, substr string) bool {
+	return len(s) >= len(substr) && (s == substr || len(substr) == 0 ||
+		(len(s) > 0 && len(substr) > 0 && findSubstring(s, substr)))
+}
+
+func findSubstring(s, substr string) bool {
+	for i := 0; i <= len(s)-len(substr); i++ {
+		if s[i:i+len(substr)] == substr {
+			return true
+		}
+	}
+	return false
+}

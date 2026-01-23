@@ -54,6 +54,12 @@ spec:
       ref: main
       path: examples/samples/zarf/01-git-to-oci
 
+  # Build configuration with variables
+  # Variables are passed as --set flags to 'zarf package create'
+  build:
+    variables:
+      REPLICA_COUNT: "3"
+
   # Publish to OCI registry
   publish:
     destination:

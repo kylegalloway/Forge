@@ -4,6 +4,11 @@ metadata:
   description: Example package built from Git source and published to OCI registry
   version: 1.0.0
 
+variables:
+  - name: REPLICA_COUNT
+    description: Number of replicas for the hello-world deployment
+    default: "1"
+
 components:
   - name: hello-world
     required: true

@@ -102,6 +102,43 @@ kubectl get pods -n forge-system
 
 For additional deployment options and configurations, see [DEPLOYMENT.md](DEPLOYMENT.md).
 
+### kubectl-forge CLI Plugin
+
+The `kubectl-forge` plugin provides developer-friendly commands for working with Forge jobs. Install it to simplify common workflows like listing jobs, debugging failures, and downloading artifacts.
+
+**Installation**:
+
+```bash
+# Build from source
+make build-kubectl-forge
+
+# Copy to your PATH
+cp bin/kubectl-forge /usr/local/bin/
+```
+
+**Quick Reference**:
+
+| Command | Description |
+|---------|-------------|
+| `kubectl forge status` | Check Forge system health (controller, webhook, CRDs) |
+| `kubectl forge list` | List all Forge jobs |
+| `kubectl forge list --watch` | Watch jobs with live updates |
+| `kubectl forge diagnose <job>` | Diagnose problems with a job |
+| `kubectl forge get job <job>` | Get detailed job information |
+| `kubectl forge get logs <job>` | Get logs from a job's pods |
+| `kubectl forge get pods <job>` | List pods for a job |
+| `kubectl forge get events <job>` | Get events for a job |
+| `kubectl forge download <job>` | Download artifacts from a completed job |
+| `kubectl forge debug <job>` | Debug a failed or running job |
+| `kubectl forge debug <job> --all-pods` | Debug all pods in a multi-pod job |
+| `kubectl forge cancel <job>` | Cancel a running job |
+| `kubectl forge retry <job>` | Retry a failed job |
+| `kubectl forge retry --all-failed` | Retry all failed jobs in namespace |
+| `kubectl forge logs controller` | Get controller logs (for operators) |
+| `kubectl forge logs webhook` | Get webhook logs (for operators) |
+
+See [kubectl-forge Reference](#kubectl-forge-reference) for detailed usage.
+
 ### Deployment Modes
 
 Forge supports two deployment modes depending on your cluster permissions and security requirements.
@@ -180,6 +217,98 @@ Published artifacts can be stored in:
 - **OCI**: Push to OCI registries (GHCR, Harbor, Artifactory, etc.)
 - **S3**: Upload to S3-compatible storage (AWS S3, MinIO, Ceph, etc.)
 
+### Variables
+
+Both Zarf packages and UDS bundles support passing variables during build/create and deploy operations. Variables are passed as `--set KEY=VALUE` flags to the underlying CLI commands.
+
+#### Zarf Package Variables
+
+**Build Variables** (`spec.build.variables`):
+Variables passed to `zarf package create` during the build phase.
+
+```yaml
+apiVersion: forge.dev/v1alpha3
+kind: ZarfPackageJob
+metadata:
+  name: build-with-vars
+spec:
+  action: Build
+  source:
+    type: Git
+    git:
+      url: https://github.com/myorg/my-package
+      ref: main
+  build:
+    variables:
+      IMAGE_TAG: "v1.2.3"
+      REGISTRY: "ghcr.io/myorg"
+```
+
+**Deploy Variables** (`spec.deploy.variables`):
+Variables passed to `zarf package deploy` during the deploy phase.
+
+```yaml
+apiVersion: forge.dev/v1alpha3
+kind: ZarfPackageJob
+metadata:
+  name: deploy-with-vars
+spec:
+  action: Deploy
+  source:
+    type: OCI
+    oci:
+      reference: ghcr.io/myorg/my-package:1.0.0
+  deploy:
+    target: InCluster
+    variables:
+      REPLICAS: "3"
+      LOG_LEVEL: "debug"
+```
+
+#### UDS Bundle Variables
+
+**Create Variables** (`spec.create.variables`):
+Variables passed to `uds create` during the bundle creation phase.
+
+```yaml
+apiVersion: forge.dev/v1alpha3
+kind: UDSBundleJob
+metadata:
+  name: create-with-vars
+spec:
+  action: Create
+  source:
+    type: Git
+    git:
+      url: https://github.com/myorg/my-bundle
+      ref: main
+  create:
+    variables:
+      BUNDLE_VERSION: "2.0.0"
+      ENVIRONMENT: "production"
+```
+
+**Deploy Variables** (`spec.deploy.variables`):
+Variables passed to `uds deploy` during the bundle deploy phase.
+
+```yaml
+apiVersion: forge.dev/v1alpha3
+kind: UDSBundleJob
+metadata:
+  name: deploy-with-vars
+spec:
+  action: Deploy
+  source:
+    type: OCI
+    oci:
+      reference: ghcr.io/myorg/my-bundle:1.0.0
+  deploy:
+    target: InCluster
+    variables:
+      DOMAIN: "example.com"
+      ENABLE_MONITORING: "true"
+```
+
 ### Credential Configuration
 
 Forge supports credentials for private repositories and registries. All credential types work with any host, not just major public providers.
@@ -245,7 +374,7 @@ See `examples/samples/zarf/05-credentials-showcase/` for complete credential exa
 
 ### 1. Build a Package from Git
 
-Builds a package from a public Git repository.
+Builds a package from a public Git repository with build-time variables.
 
 ```yaml
 apiVersion: forge.dev/v1alpha3
@@ -262,6 +391,10 @@ spec:
       url: https://github.com/stefanprodan/podinfo.git
       ref: 6.7.0
       path: charts/podinfo
+  # Optional: Pass variables to zarf package create
+  build:
+    variables:
+      IMAGE_TAG: "6.7.0"
 ```
 
 Apply with:
@@ -405,7 +538,7 @@ Status:
 
 ### 1. Create a Bundle from Git
 
-Creates a UDS bundle from a public Git repository containing a `uds-bundle.yaml` file.
+Creates a UDS bundle from a public Git repository containing a `uds-bundle.yaml` file with create-time variables.
 
 ```yaml
 apiVersion: forge.dev/v1alpha3
@@ -421,6 +554,10 @@ spec:
     git:
       url: https://github.com/prometheus/prometheus
       ref: v2.45.0
+  # Optional: Pass variables to uds create
+  create:
+    variables:
+      BUNDLE_VERSION: "2.45.0"
 ```
 
 Apply with:
@@ -1172,6 +1309,265 @@ spec:
 2. `bundleAction: BundleActionCreate` → `action: Create`
 
 For a complete migration guide with automated conversion tools, see [V1ALPHA2_MIGRATION.md](../operations/V1ALPHA2_MIGRATION.md).
+
+## kubectl-forge Reference
+
+The kubectl-forge CLI plugin provides commands for managing and debugging Forge jobs.
+
+### System Commands
+
+#### `kubectl forge status`
+
+Check the overall health of the Forge system.
+
+```bash
+# Check system status
+kubectl forge status
+
+# Output in JSON for scripting
+kubectl forge status --output json
+```
+
+**Output includes**:
+- Controller deployment status and pod health
+- Webhook deployment status and TLS certificate expiry
+- CRD installation status
+- Jobs summary (pending, running, completed, failed, retrying)
+- Warnings about stuck or problematic jobs
+
+#### `kubectl forge logs controller|webhook`
+
+Get logs from Forge system components.
+
+```bash
+# Get controller logs
+kubectl forge logs controller
+
+# Get webhook logs with error filtering
+kubectl forge logs webhook --errors
+
+# Follow logs in real-time
+kubectl forge logs controller --follow
+
+# Get logs from last 10 minutes
+kubectl forge logs controller --since 10m
+
+# Get logs from all replicas
+kubectl forge logs webhook --all
+```
+
+### Job Management Commands
+
+#### `kubectl forge list`
+
+List all Forge jobs.
+
+```bash
+# List jobs in current namespace
+kubectl forge list
+
+# List jobs across all namespaces
+kubectl forge list --all-namespaces
+
+# Filter by job type
+kubectl forge list --type zarf
+kubectl forge list --type uds
+
+# Watch for changes
+kubectl forge list --watch
+```
+
+#### `kubectl forge cancel`
+
+Cancel a running or pending job.
+
+```bash
+# Cancel a job
+kubectl forge cancel my-package-build
+
+# Cancel and delete the artifact PVC
+kubectl forge cancel my-package-build --delete-pvc
+
+# Skip confirmation
+kubectl forge cancel my-package-build --force
+```
+
+#### `kubectl forge retry`
+
+Retry a failed job by triggering a new execution.
+
+```bash
+# Retry a specific failed job
+kubectl forge retry my-package-build
+
+# Retry all failed jobs in the namespace
+kubectl forge retry --all-failed
+
+# Skip confirmation
+kubectl forge retry my-package-build --force
+```
+
+### Diagnostic Commands
+
+#### `kubectl forge diagnose`
+
+Automatically diagnose problems with a job.
+
+```bash
+# Diagnose a job
+kubectl forge diagnose my-package-build
+
+# Show all events (not just warnings)
+kubectl forge diagnose my-package-build --verbose
+
+# Show more log lines
+kubectl forge diagnose my-package-build --logs-lines 50
+
+# Output for scripting
+kubectl forge diagnose my-package-build --output json
+```
+
+**Checks performed**:
+- Job status and phase
+- Pod health (OOMKilled, CrashLoopBackOff, ImagePullBackOff, etc.)
+- Warning events
+- Container logs from failed pods
+- Scheduling issues and resource constraints
+
+**Example output**:
+
+```text
+Job: my-package-build (zarfpackagejob)
+Namespace: default
+Action: Build
+Phase: Failed
+Age: 5m
+
+--- Problems Found ---
+X Pod/my-package-build-abc123 Container/build: OOMKilled
+  Container was killed due to out of memory
+
+--- Warning Events ---
+! [2m] OOMKilled: Container build exceeded memory limit
+
+--- Container Logs ---
+==> my-package-build-abc123/build <==
+Building package...
+Error: out of memory while compiling large component
+
+--- Suggestions ---
+* Increase memory limit in the job spec or reduce memory usage in the build
+```
+
+#### `kubectl forge get job`
+
+Get detailed information about a job.
+
+```bash
+# Get job details
+kubectl forge get job my-package-build
+
+# Output in JSON or YAML
+kubectl forge get job my-package-build --output json
+kubectl forge get job my-package-build --output yaml
+```
+
+#### `kubectl forge get logs`
+
+Get logs from a job's pods.
+
+```bash
+# Get logs
+kubectl forge get logs my-package-build
+
+# Follow logs in real-time
+kubectl forge get logs my-package-build --follow
+
+# Get logs from a specific container
+kubectl forge get logs my-package-build --container zarf-build
+
+# Get logs from all containers
+kubectl forge get logs my-package-build --all-containers
+
+# Get last 100 lines
+kubectl forge get logs my-package-build --tail 100
+
+# Get logs from last 5 minutes
+kubectl forge get logs my-package-build --since 300
+
+# Save logs to a file
+kubectl forge get logs my-package-build --save build.log
+```
+
+#### `kubectl forge get pods`
+
+List pods associated with a job.
+
+```bash
+# List pods
+kubectl forge get pods my-package-build
+
+# Show all pods (including completed)
+kubectl forge get pods my-package-build --show-all
+
+# Output in JSON or YAML
+kubectl forge get pods my-package-build --output json
+```
+
+#### `kubectl forge get events`
+
+Get Kubernetes events for a job.
+
+```bash
+# Get warning events
+kubectl forge get events my-package-build
+
+# Get all events (including Normal)
+kubectl forge get events my-package-build --all
+
+# Output in JSON or YAML
+kubectl forge get events my-package-build --output json
+```
+
+### Artifact Commands
+
+#### `kubectl forge download`
+
+Download artifacts from a completed job.
+
+```bash
+# Download artifacts to current directory
+kubectl forge download my-package-build
+
+# Download to specific directory
+kubectl forge download my-package-build --output-dir ./artifacts
+
+# Download all files (not just final artifacts)
+kubectl forge download my-package-build --all
+```
+
+### Debug Commands
+
+#### `kubectl forge debug`
+
+Debug a failed or running job by exec'ing into the pod.
+
+```bash
+# Debug a running job
+kubectl forge debug my-package-build
+
+# Debug a failed job (creates debug pod with workspace)
+kubectl forge debug my-package-build --failed
+
+# Use a specific shell
+kubectl forge debug my-package-build --shell /bin/bash
+
+# Use a custom debug image
+kubectl forge debug my-package-build --debug-image ubuntu:22.04
+
+# Keep the debug pod after exit
+kubectl forge debug my-package-build --preserve-pod
+```
 
 ## Additional Resources
 

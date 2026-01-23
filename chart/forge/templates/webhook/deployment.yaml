@@ -28,7 +28,7 @@ spec:
       serviceAccountName: {{ include "forge.serviceAccountName" . }}-webhook
       containers:
       - name: webhook
-        image: "{{ .Values.webhook.image.repository }}:{{ .Values.webhook.image.tag }}"
+        image: "{{ .Values.webhook.image.repository }}:{{ .Values.webhook.image.tag | default .Chart.AppVersion }}"
         imagePullPolicy: {{ .Values.webhook.image.pullPolicy }}
         ports:
         - containerPort: 8443

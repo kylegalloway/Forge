@@ -353,39 +353,49 @@ securityContext:
 
 ### Phase 1 (Critical - Do First)
 
-- [ ] Add `automountServiceAccountToken` to all pods
+- [ ] Add `automountServiceAccountToken` to all Helm-deployed pods
 - [ ] Add `readOnlyRootFilesystem: true` to all containers
 - [ ] Add `/tmp` emptyDir mount to job containers
 - [ ] Add seccomp profiles to all init containers
 
 ### Phase 2 (Before Release)
 
-- [ ] Replace `:latest` tags with pinned versions
+- [ ] Replace `:latest` tags with pinned versions in job builders
 - [ ] Add image configuration to values.yaml
 - [ ] Add imagePullPolicy configuration
 
-### Phase 3 (Production Hardening)
+### Phase 3 (kubectl-forge Fixes)
+
+- [ ] Pin download pod image: `busybox:latest` → `busybox:1.36` (`pkg/kubectl/client.go:179`)
+- [ ] Pin debug pod default image: `busybox:latest` → `busybox:1.36` (`cmd/kubectl-forge/debug.go:75`)
+- [ ] Add `automountServiceAccountToken: false` to download pod (`pkg/kubectl/client.go:165`)
+- [ ] Add `automountServiceAccountToken: false` to debug pod (`pkg/kubectl/client.go:444`)
+- [ ] Add `/tmp` emptyDir to debug pod for writable scratch space
+- [ ] Optional: Add `--writable-root` flag for escape-hatch debugging
+
+### Phase 4 (Production Hardening)
 
 - [ ] Enable network policies by default
 - [ ] Add job-specific network policy
 - [ ] Document allowed egress destinations
 
-### Phase 4 (Cluster Integration)
+### Phase 5 (Cluster Integration)
 
 - [ ] Add namespace template with PSS labels
 - [ ] Document PSS compatibility
 - [ ] Add Kyverno policy exception examples
 
-### Phase 5 (Polish)
+### Phase 6 (Polish)
 
 - [ ] Add emptyDir size limits
 - [ ] Add configurable limits in values.yaml
 
-### Phase 6 (Documentation)
+### Phase 7 (Documentation)
 
 - [ ] Document UID requirements
 - [ ] Add UID override option
 - [ ] Create Kyverno exception policy examples
+- [ ] Document debugging limitations with `readOnlyRootFilesystem`
 
 ---
 

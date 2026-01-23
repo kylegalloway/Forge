@@ -20,6 +20,8 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/remotecommand"
 
+	"golang.org/x/term"
+
 	udsv1alpha3 "github.com/kylegalloway/forge/pkg/apis/uds/v1alpha3"
 	zarfv1alpha3 "github.com/kylegalloway/forge/pkg/apis/zarf/v1alpha3"
 	"github.com/kylegalloway/forge/pkg/constants"
@@ -93,11 +95,29 @@ func (c *Client) FindJob(ctx context.Context, namespace, jobName string) (*batch
 
 // FindArtifactPVC finds the artifact PVC for a job
 // Returns PVC name or empty string if not found
-func (c *Client) FindArtifactPVC(_ context.Context, job *batchv1.Job) (string, error) {
-	// Get the job's pod template volumes
+func (c *Client) FindArtifactPVC(ctx context.Context, job *batchv1.Job) (string, error) {
+	// First, try to find PVC by label (preferred method)
+	pvcList, err := c.kubeClient.CoreV1().PersistentVolumeClaims(job.Namespace).List(ctx, metav1.ListOptions{
+		LabelSelector: "forge.dev/artifact-storage=true",
+	})
+	if err == nil && len(pvcList.Items) > 0 {
+		// Find PVC that matches a volume in this job
+		jobPVCs := make(map[string]bool)
+		for _, volume := range job.Spec.Template.Spec.Volumes {
+			if volume.PersistentVolumeClaim != nil {
+				jobPVCs[volume.PersistentVolumeClaim.ClaimName] = true
+			}
+		}
+		for _, pvc := range pvcList.Items {
+			if jobPVCs[pvc.Name] {
+				return pvc.Name, nil
+			}
+		}
+	}
+
+	// Fallback: check job's volumes for PVC with "artifact" in name
 	for _, volume := range job.Spec.Template.Spec.Volumes {
 		if volume.PersistentVolumeClaim != nil {
-			// Check if this looks like an artifact PVC (contains "artifact" in name)
 			if strings.Contains(volume.PersistentVolumeClaim.ClaimName, "artifact") {
 				return volume.PersistentVolumeClaim.ClaimName, nil
 			}
@@ -373,10 +393,11 @@ func (c *Client) ExecIntoPod(ctx context.Context, pod *corev1.Pod, container, sh
 		return err
 	}
 
-	// Make stdin a TTY
+	// Make stdin a TTY with terminal size detection
 	t := &TTY{
 		In:  streams.In,
 		Out: streams.Out,
+		FD:  int(os.Stdout.Fd()),
 	}
 
 	sizeQueue := t.MonitorSize(t.GetSize())
@@ -471,6 +492,15 @@ func (c *Client) DeletePod(ctx context.Context, pod *corev1.Pod) error {
 	return c.kubeClient.CoreV1().Pods(pod.Namespace).Delete(ctx, pod.Name, metav1.DeleteOptions{})
 }
 
+// DeleteJob deletes a Kubernetes Job
+func (c *Client) DeleteJob(ctx context.Context, namespace, name string, propagationPolicy *metav1.DeletionPropagation) error {
+	opts := metav1.DeleteOptions{}
+	if propagationPolicy != nil {
+		opts.PropagationPolicy = propagationPolicy
+	}
+	return c.kubeClient.BatchV1().Jobs(namespace).Delete(ctx, name, opts)
+}
+
 // ListJobs lists Forge jobs (ZarfPackageJobs and UDSBundleJobs)
 func (c *Client) ListJobs(ctx context.Context, namespace, jobType string) ([]JobInfo, error) {
 	var jobs []JobInfo
@@ -480,7 +510,7 @@ func (c *Client) ListJobs(ctx context.Context, namespace, jobType string) ([]Job
 	// and filter by Forge labels.
 
 	listOptions := metav1.ListOptions{
-		LabelSelector: "app=forge",
+		LabelSelector: fmt.Sprintf("app in (%s,%s)", constants.LabelAppValueZarf, constants.LabelAppValueUDS),
 	}
 
 	jobList, err := c.kubeClient.BatchV1().Jobs(namespace).List(ctx, listOptions)
@@ -656,10 +686,23 @@ func (c *Client) GetJobEvents(ctx context.Context, namespace, jobName string, al
 type TTY struct {
 	In  io.Reader
 	Out io.Writer
+	FD  int // File descriptor for terminal size detection
 }
 
 // GetSize returns the current terminal size
 func (t *TTY) GetSize() *remotecommand.TerminalSize {
+	// Try to get actual terminal size
+	if t.FD > 0 {
+		width, height, err := term.GetSize(t.FD)
+		if err == nil && width > 0 && height > 0 {
+			//nolint:gosec // G115: terminal dimensions are bounded by reasonable screen sizes
+			return &remotecommand.TerminalSize{
+				Width:  uint16(width),
+				Height: uint16(height),
+			}
+		}
+	}
+	// Fallback to default size
 	return &remotecommand.TerminalSize{
 		Width:  80,
 		Height: 24,
@@ -668,8 +711,7 @@ func (t *TTY) GetSize() *remotecommand.TerminalSize {
 
 // MonitorSize returns a channel that sends terminal size updates
 func (t *TTY) MonitorSize(initial *remotecommand.TerminalSize) remotecommand.TerminalSizeQueue {
-	// Simple implementation - just return initial size
-	return &fixedSizeQueue{size: initial}
+	return &dynamicSizeQueue{tty: t, lastSize: initial}
 }
 
 // Safe executes a function with terminal setup
@@ -677,13 +719,24 @@ func (t *TTY) Safe(fn func() error) error {
 	return fn()
 }
 
-type fixedSizeQueue struct {
-	size *remotecommand.TerminalSize
+type dynamicSizeQueue struct {
+	tty      *TTY
+	lastSize *remotecommand.TerminalSize
 }
 
-// Next returns the terminal size
-func (s *fixedSizeQueue) Next() *remotecommand.TerminalSize {
-	return s.size
+// Next returns the terminal size, blocking until size changes or context is done
+func (s *dynamicSizeQueue) Next() *remotecommand.TerminalSize {
+	// Get current size
+	size := s.tty.GetSize()
+
+	// If size changed, return new size
+	if s.lastSize == nil || size.Width != s.lastSize.Width || size.Height != s.lastSize.Height {
+		s.lastSize = size
+		return size
+	}
+
+	// Return nil to indicate no change (caller should handle this)
+	return nil
 }
 
 // boolPtr returns a pointer to a bool value

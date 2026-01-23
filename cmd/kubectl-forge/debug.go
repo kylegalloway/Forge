@@ -8,6 +8,7 @@ import (
 
 	"github.com/kylegalloway/forge/pkg/kubectl"
 	"github.com/spf13/cobra"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 )
 
@@ -23,6 +24,8 @@ type DebugOptions struct {
 	PreservePod   bool
 	DebugImage    string
 	CopyWorkspace bool
+	AllPods       bool
+	PodIndex      int
 }
 
 // NewDebugCommand creates the debug subcommand
@@ -71,6 +74,8 @@ automatic cleanup and keep pods around for debugging.`,
 	cmd.Flags().BoolVar(&o.PreservePod, "preserve-pod", false, "Keep the debug pod after exit")
 	cmd.Flags().StringVar(&o.DebugImage, "debug-image", "busybox:latest", "Image to use for debug pod")
 	cmd.Flags().BoolVar(&o.CopyWorkspace, "copy-workspace", false, "Create debug pod with workspace volume mounted")
+	cmd.Flags().BoolVar(&o.AllPods, "all-pods", false, "Debug all pods in sequence (for multi-pod jobs)")
+	cmd.Flags().IntVar(&o.PodIndex, "pod-index", 0, "Index of pod to debug (0-based, when multiple pods exist)")
 
 	return cmd
 }
@@ -111,12 +116,46 @@ func (o *DebugOptions) Run(ctx context.Context) error {
 		return fmt.Errorf("no pods found for job %s", o.JobName)
 	}
 
-	// Use the first pod found (typically there's only one per job)
-	pod := pods[0]
-	//nolint:errcheck // Writing to stdout in CLI context
-	fmt.Fprintf(o.IOStreams.Out, "Found pod: %s (status: %s)\n", pod.Name, pod.Status.Phase)
+	// Show available pods if there are multiple
+	if len(pods) > 1 {
+		//nolint:errcheck // Writing to stdout in CLI context
+		fmt.Fprintf(o.IOStreams.Out, "Found %d pods:\n", len(pods))
+		for i, p := range pods {
+			//nolint:errcheck // Writing to stdout in CLI context
+			fmt.Fprintf(o.IOStreams.Out, "  [%d] %s (status: %s)\n", i, p.Name, p.Status.Phase)
+		}
+	}
 
-	// If pod is failed and copyWorkspace is requested, create debug pod
+	// If --all-pods, debug each pod in sequence
+	if o.AllPods && len(pods) > 1 {
+		for i, pod := range pods {
+			//nolint:errcheck // Writing to stdout in CLI context
+			fmt.Fprintf(o.IOStreams.Out, "\n=== Debugging pod %d/%d: %s ===\n", i+1, len(pods), pod.Name)
+			if err := o.debugPod(ctx, client, pod); err != nil {
+				//nolint:errcheck // Writing to stderr in CLI context
+				fmt.Fprintf(o.IOStreams.ErrOut, "Warning: failed to debug pod %s: %v\n", pod.Name, err)
+			}
+			if i < len(pods)-1 {
+				//nolint:errcheck // Writing to stdout in CLI context
+				fmt.Fprintf(o.IOStreams.Out, "\nPress Enter to continue to next pod (or Ctrl+C to exit)...")
+				//nolint:errcheck,gosec // Best effort read from user input
+				fmt.Fscanln(o.IOStreams.In)
+			}
+		}
+		return nil
+	}
+
+	// Select single pod based on index
+	if o.PodIndex >= len(pods) {
+		return fmt.Errorf("pod index %d out of range (only %d pods available)", o.PodIndex, len(pods))
+	}
+	pod := pods[o.PodIndex]
+
+	return o.debugPod(ctx, client, pod)
+}
+
+func (o *DebugOptions) debugPod(ctx context.Context, client *kubectl.Client, pod *corev1.Pod) error {
+	// If copyWorkspace is requested, create debug pod
 	if o.CopyWorkspace {
 		//nolint:errcheck // Writing to stdout in CLI context
 		fmt.Fprintf(o.IOStreams.Out, "Creating debug pod with workspace access...\n")
@@ -160,7 +199,7 @@ func (o *DebugOptions) Run(ctx context.Context) error {
 	fmt.Fprintf(o.IOStreams.Out, "---\n")
 
 	// Exec into the pod
-	err = client.ExecIntoPod(ctx, pod, containerName, o.Shell, o.IOStreams)
+	err := client.ExecIntoPod(ctx, pod, containerName, o.Shell, o.IOStreams)
 	if err != nil {
 		return fmt.Errorf("failed to exec into pod: %w", err)
 	}

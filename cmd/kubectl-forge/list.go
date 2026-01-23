@@ -5,7 +5,10 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"os/signal"
+	"syscall"
 	"text/tabwriter"
+	"time"
 
 	"github.com/kylegalloway/forge/pkg/kubectl"
 	"github.com/spf13/cobra"
@@ -19,6 +22,8 @@ type ListOptions struct {
 
 	AllNamespaces bool
 	JobType       string
+	Watch         bool
+	WatchInterval time.Duration
 }
 
 // NewListCommand creates the list subcommand
@@ -45,7 +50,10 @@ Shows job name, type, action, phase, and age for each job.`,
   kubectl forge list --type zarf
 
   # List only UDS bundle jobs
-  kubectl forge list --type uds`,
+  kubectl forge list --type uds
+
+  # Watch jobs with live updates
+  kubectl forge list --watch`,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			return o.Run(cmd.Context())
 		},
@@ -53,6 +61,8 @@ Shows job name, type, action, phase, and age for each job.`,
 
 	cmd.Flags().BoolVarP(&o.AllNamespaces, "all-namespaces", "A", false, "List jobs across all namespaces")
 	cmd.Flags().StringVarP(&o.JobType, "type", "t", "all", "Filter by job type (zarf, uds, all)")
+	cmd.Flags().BoolVarP(&o.Watch, "watch", "w", false, "Watch for changes and update the display")
+	cmd.Flags().DurationVar(&o.WatchInterval, "watch-interval", 2*time.Second, "Interval between updates when watching")
 
 	return cmd
 }
@@ -71,10 +81,71 @@ func (o *ListOptions) Run(ctx context.Context) error {
 		namespace = ""
 	}
 
+	if o.Watch {
+		return o.runWatch(ctx, client, namespace)
+	}
+
+	return o.printJobs(ctx, client, namespace)
+}
+
+func (o *ListOptions) runWatch(ctx context.Context, client *kubectl.Client, namespace string) error {
+	// Set up signal handling for clean exit
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+	defer signal.Stop(sigCh)
+
+	ticker := time.NewTicker(o.WatchInterval)
+	defer ticker.Stop()
+
+	// Print initial state
+	o.clearScreen()
+	if err := o.printJobs(ctx, client, namespace); err != nil {
+		return err
+	}
+
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-sigCh:
+			//nolint:errcheck // Writing to stdout in CLI context
+			fmt.Fprintln(o.IOStreams.Out)
+			return nil
+		case <-ticker.C:
+			o.clearScreen()
+			if err := o.printJobs(ctx, client, namespace); err != nil {
+				//nolint:errcheck // Writing to stderr in CLI context
+				fmt.Fprintf(o.IOStreams.ErrOut, "Error: %v\n", err)
+			}
+		}
+	}
+}
+
+func (o *ListOptions) clearScreen() {
+	// ANSI escape codes to clear screen and move cursor to top-left
+	//nolint:errcheck // Writing to stdout in CLI context
+	fmt.Fprint(o.IOStreams.Out, "\033[2J\033[H")
+}
+
+func (o *ListOptions) printJobs(ctx context.Context, client *kubectl.Client, namespace string) error {
 	// List jobs
 	jobs, err := client.ListJobs(ctx, namespace, o.JobType)
 	if err != nil {
 		return fmt.Errorf("failed to list jobs: %w", err)
+	}
+
+	// Create color writer for phase colorization
+	colors := NewColorWriter(o.IOStreams.Out)
+
+	if o.Watch {
+		//nolint:errcheck // Writing to stdout in CLI context
+		fmt.Fprintf(o.IOStreams.Out, "Every %s: kubectl forge list", o.WatchInterval)
+		if o.AllNamespaces {
+			//nolint:errcheck // Writing to stdout in CLI context
+			fmt.Fprintf(o.IOStreams.Out, " --all-namespaces")
+		}
+		//nolint:errcheck // Writing to stdout in CLI context
+		fmt.Fprintf(o.IOStreams.Out, "    %s\n\n", time.Now().Format(time.RFC1123))
 	}
 
 	if len(jobs) == 0 {
@@ -85,10 +156,6 @@ func (o *ListOptions) Run(ctx context.Context) error {
 
 	// Print results in table format
 	w := tabwriter.NewWriter(o.IOStreams.Out, 0, 0, 3, ' ', 0)
-	defer func() {
-		//nolint:errcheck,gosec // Flushing output in CLI context
-		w.Flush()
-	}()
 
 	// Header
 	if o.AllNamespaces {
@@ -101,16 +168,19 @@ func (o *ListOptions) Run(ctx context.Context) error {
 
 	// Rows
 	for _, job := range jobs {
+		phase := colors.Phase(job.Phase)
 		if o.AllNamespaces {
 			//nolint:errcheck // Writing to stdout in CLI context
 			fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\n",
-				job.Namespace, job.Name, job.Type, job.Action, job.Phase, job.Age)
+				job.Namespace, job.Name, job.Type, job.Action, phase, job.Age)
 		} else {
 			//nolint:errcheck // Writing to stdout in CLI context
 			fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n",
-				job.Name, job.Type, job.Action, job.Phase, job.Age)
+				job.Name, job.Type, job.Action, phase, job.Age)
 		}
 	}
 
+	//nolint:errcheck,gosec // Flushing output in CLI context
+	w.Flush()
 	return nil
 }

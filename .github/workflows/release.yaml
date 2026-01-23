@@ -447,6 +447,12 @@ jobs:
       - name: Install Helm
         uses: azure/setup-helm@v4
 
+      - name: Update values.yaml with release version
+        run: |
+          VERSION="${{ needs.prepare.outputs.version }}"
+          # Update controller and webhook image tags to use the release version
+          sed -i 's/tag: ""/tag: "'"${VERSION}"'"/' chart/forge/values.yaml
+
       - name: Package Helm chart
         run: |
           VERSION="${{ needs.prepare.outputs.version }}"

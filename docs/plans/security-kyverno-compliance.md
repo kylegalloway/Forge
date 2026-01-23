@@ -441,11 +441,55 @@ spec:
 
 ---
 
+## Impact on kubectl-forge Debugging
+
+### Current State
+
+The kubectl-forge download and debug pods are **already compliant** with most security requirements:
+
+```go
+// pkg/kubectl/client.go - Both pods already have:
+ReadOnlyRootFilesystem: true
+AllowPrivilegeEscalation: false
+Capabilities: Drop ALL
+SeccompProfile: RuntimeDefault
+```
+
+### Potential Debugging Limitations
+
+| Scenario | Impact | Mitigation |
+|----------|--------|------------|
+| Exec into job pod with `readOnlyRootFilesystem` | Can't install tools (`apt-get`, `apk add`) | Writable `/tmp`, `/home/zarf`, `/workspace` mounts |
+| Debug pod (`--copy-workspace`) | Same as above | Writable volume mounts available |
+| Download pod | No impact - only reads files | N/A |
+
+### Required Fixes for kubectl-forge
+
+1. **Pin image versions** in `pkg/kubectl/client.go`:
+   - Download pod: `busybox:latest` → `busybox:1.36`
+   - Debug pod default: `busybox:latest` → `busybox:1.36`
+
+2. **Add `automountServiceAccountToken: false`** to both pods (they don't need API access)
+
+3. **Add `/tmp` emptyDir** to debug pod for tool caching
+
+### Optional: Debug Mode Flag
+
+For cases where users need a fully writable filesystem for debugging, consider adding:
+
+```bash
+kubectl forge debug my-job --writable-root
+```
+
+This would create a debug pod without `readOnlyRootFilesystem`, but would require a Kyverno exception.
+
+---
+
 ## Risk Assessment
 
 | Change | Risk | Mitigation |
 |--------|------|------------|
-| `readOnlyRootFilesystem` | Medium - may break CLI tools | Test thoroughly, add writable mounts |
+| `readOnlyRootFilesystem` | Medium - limits debugging | Writable mounts for /tmp, /home, /workspace |
 | EmptyDir size limits | Low - may cause OOM | Set generous limits, make configurable |
 | Network policies | Medium - may break external access | Document required egress, make configurable |
 | Image pinning | Low - maintenance burden | Automate version updates via Renovate/Dependabot |

@@ -26,6 +26,7 @@ spec:
         {{- include "forge.webhook.selectorLabels" . | nindent 8 }}
     spec:
       serviceAccountName: {{ include "forge.serviceAccountName" . }}-webhook
+      automountServiceAccountToken: true  # Webhook needs API access
       containers:
       - name: webhook
         image: "{{ .Values.webhook.image.repository }}:{{ .Values.webhook.image.tag | default .Chart.AppVersion }}"
@@ -70,6 +71,7 @@ spec:
           runAsNonRoot: true
           runAsUser: 65532
           allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
           capabilities:
             drop:
             - ALL

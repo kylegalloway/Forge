@@ -24,6 +24,7 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       serviceAccountName: {{ include "forge.serviceAccountName" . }}
+      automountServiceAccountToken: true  # Controller needs API access
       securityContext:
         {{- toYaml .Values.controller.podSecurityContext | nindent 8 }}
       containers:
@@ -41,6 +42,12 @@ spec:
           value: "{{ .Values.zarfCLI.image.repository }}:{{ .Values.zarfCLI.image.tag }}"
         - name: FORGE_UDS_CLI_IMAGE
           value: "{{ .Values.udsCLI.image.repository }}:{{ .Values.udsCLI.image.tag }}"
+        - name: FORGE_GIT_CLONE_IMAGE
+          value: "{{ .Values.initContainerImages.gitClone }}"
+        - name: FORGE_AWS_CLI_IMAGE
+          value: "{{ .Values.initContainerImages.awsCli }}"
+        - name: FORGE_CRANE_IMAGE
+          value: "{{ .Values.initContainerImages.crane }}"
         ports:
         - name: metrics
           containerPort: 8080

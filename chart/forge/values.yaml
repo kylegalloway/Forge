@@ -171,6 +171,13 @@ udsCLI:
     tag: v0.27.21
     pullPolicy: IfNotPresent
 
+# Init container images for source fetching
+initContainerImages:
+  gitClone: alpine/git:v2.43.0
+  awsCli: amazon/aws-cli:2.15.0
+  crane: gcr.io/go-containerregistry/crane:v0.19.0
+  pullPolicy: IfNotPresent
+
 # Service Account configuration
 serviceAccount:
   # Specifies whether a service account should be created
@@ -198,7 +205,7 @@ leaderElection:
 # Network policies
 networkPolicies:
   # Enable network policies (recommended for production)
-  enabled: false
+  enabled: true
 
   # Controller network policy
   controller:

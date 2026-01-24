@@ -73,6 +73,7 @@ spec:
         app.kubernetes.io/component: cabundle-patcher
     spec:
       serviceAccountName: {{ include "forge.fullname" . }}-cabundle-patcher
+      automountServiceAccountToken: true  # Needs to patch webhook config
       restartPolicy: OnFailure
       securityContext:
         runAsNonRoot: true
@@ -95,6 +96,7 @@ spec:
           runAsNonRoot: true
           runAsUser: 65532
           allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
           capabilities:
             drop:
             - ALL

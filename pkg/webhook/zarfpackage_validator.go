@@ -22,6 +22,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/kylegalloway/forge/pkg/actions/validation"
 	zarfv1alpha3 "github.com/kylegalloway/forge/pkg/apis/zarf/v1alpha3"
 	"github.com/kylegalloway/forge/pkg/audit"
 	"github.com/kylegalloway/forge/pkg/constants"
@@ -69,6 +70,14 @@ func (validator *ZarfPackageJobValidator) ValidateZarfPackageJob(ctx context.Con
 
 	// Validate source permissions
 	if err := validator.validateSource(sa, &pkg.Spec.Source); err != nil {
+		if auditErr := validator.auditTrail.RecordJobValidationFailed(ctx, "ZarfPackageJob", pkg.Namespace, pkg.Name, pkg.Spec.ServiceAccountName, err.Error()); auditErr != nil {
+			klog.V(4).ErrorS(auditErr, "Failed to record audit event")
+		}
+		return err
+	}
+
+	// Validate extraArgs for command injection
+	if err := validator.validateExtraArgs(&pkg.Spec); err != nil {
 		if auditErr := validator.auditTrail.RecordJobValidationFailed(ctx, "ZarfPackageJob", pkg.Namespace, pkg.Name, pkg.Spec.ServiceAccountName, err.Error()); auditErr != nil {
 			klog.V(4).ErrorS(auditErr, "Failed to record audit event")
 		}
@@ -304,6 +313,32 @@ func getAnnotation(sa *corev1.ServiceAccount, key string) string {
 		return ""
 	}
 	return sa.Annotations[key]
+}
+
+// validateExtraArgs validates all extraArgs fields for command injection
+func (validator *ZarfPackageJobValidator) validateExtraArgs(spec *zarfv1alpha3.ZarfPackageJobSpec) error {
+	// Validate build.extraArgs
+	if spec.Build != nil && len(spec.Build.ExtraArgs) > 0 {
+		if err := validation.ValidateExtraArgs(spec.Build.ExtraArgs); err != nil {
+			return fmt.Errorf("build.extraArgs: %w", err)
+		}
+	}
+
+	// Validate deploy.extraArgs
+	if spec.Deploy != nil && len(spec.Deploy.ExtraArgs) > 0 {
+		if err := validation.ValidateExtraArgs(spec.Deploy.ExtraArgs); err != nil {
+			return fmt.Errorf("deploy.extraArgs: %w", err)
+		}
+	}
+
+	// Validate publish.extraArgs
+	if spec.Publish != nil && len(spec.Publish.ExtraArgs) > 0 {
+		if err := validation.ValidateExtraArgs(spec.Publish.ExtraArgs); err != nil {
+			return fmt.Errorf("publish.extraArgs: %w", err)
+		}
+	}
+
+	return nil
 }
 
 // matchesGlob checks if a string matches a glob pattern

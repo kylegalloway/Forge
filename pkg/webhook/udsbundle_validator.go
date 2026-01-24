@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/kylegalloway/forge/pkg/actions/validation"
 	udsv1alpha3 "github.com/kylegalloway/forge/pkg/apis/uds/v1alpha3"
 	"github.com/kylegalloway/forge/pkg/audit"
 	"github.com/kylegalloway/forge/pkg/constants"
@@ -68,6 +69,14 @@ func (validator *UDSBundleJobValidator) ValidateUDSBundleJob(ctx context.Context
 
 	// Validate source permissions
 	if err := validator.validateSource(sa, &bundle.Spec.Source); err != nil {
+		if auditErr := validator.auditTrail.RecordJobValidationFailed(ctx, "UDSBundleJob", bundle.Namespace, bundle.Name, bundle.Spec.ServiceAccountName, err.Error()); auditErr != nil {
+			klog.V(4).ErrorS(auditErr, "Failed to record audit event")
+		}
+		return err
+	}
+
+	// Validate extraArgs for command injection
+	if err := validator.validateExtraArgs(&bundle.Spec); err != nil {
 		if auditErr := validator.auditTrail.RecordJobValidationFailed(ctx, "UDSBundleJob", bundle.Namespace, bundle.Name, bundle.Spec.ServiceAccountName, err.Error()); auditErr != nil {
 			klog.V(4).ErrorS(auditErr, "Failed to record audit event")
 		}
@@ -295,4 +304,30 @@ func (validator *UDSBundleJobValidator) validateDeploy(sa *corev1.ServiceAccount
 	}
 
 	return fmt.Errorf("deploy target %s is not allowed by ServiceAccount %s (allowed: %s)", deploy.Target, sa.Name, allowedTargets)
+}
+
+// validateExtraArgs validates all extraArgs fields for command injection
+func (validator *UDSBundleJobValidator) validateExtraArgs(spec *udsv1alpha3.UDSBundleJobSpec) error {
+	// Validate create.extraArgs
+	if spec.Create != nil && len(spec.Create.ExtraArgs) > 0 {
+		if err := validation.ValidateExtraArgs(spec.Create.ExtraArgs); err != nil {
+			return fmt.Errorf("create.extraArgs: %w", err)
+		}
+	}
+
+	// Validate deploy.extraArgs
+	if spec.Deploy != nil && len(spec.Deploy.ExtraArgs) > 0 {
+		if err := validation.ValidateExtraArgs(spec.Deploy.ExtraArgs); err != nil {
+			return fmt.Errorf("deploy.extraArgs: %w", err)
+		}
+	}
+
+	// Validate publish.extraArgs
+	if spec.Publish != nil && len(spec.Publish.ExtraArgs) > 0 {
+		if err := validation.ValidateExtraArgs(spec.Publish.ExtraArgs); err != nil {
+			return fmt.Errorf("publish.extraArgs: %w", err)
+		}
+	}
+
+	return nil
 }

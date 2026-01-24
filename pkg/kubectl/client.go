@@ -163,7 +163,8 @@ func (c *Client) DownloadFromPVC(ctx context.Context, namespace, pvcName, output
 			},
 		},
 		Spec: corev1.PodSpec{
-			RestartPolicy: corev1.RestartPolicyNever,
+			RestartPolicy:                corev1.RestartPolicyNever,
+			AutomountServiceAccountToken: boolPtr(false),
 			SecurityContext: &corev1.PodSecurityContext{
 				RunAsNonRoot: boolPtr(true),
 				RunAsUser:    int64Ptr(65534),
@@ -176,7 +177,7 @@ func (c *Client) DownloadFromPVC(ctx context.Context, namespace, pvcName, output
 			Containers: []corev1.Container{
 				{
 					Name:    "download",
-					Image:   "busybox:latest",
+					Image:   "busybox:1.36",
 					Command: []string{"/bin/sh", "-c", "sleep 3600"},
 					SecurityContext: &corev1.SecurityContext{
 						AllowPrivilegeEscalation: boolPtr(false),
@@ -432,6 +433,18 @@ func (c *Client) CreateDebugPod(ctx context.Context, originalPod *corev1.Pod, de
 		}
 	}
 
+	// Add /tmp emptyDir for writable temp space (needed with readOnlyRootFilesystem)
+	volumes = append(volumes, corev1.Volume{
+		Name: "tmp",
+		VolumeSource: corev1.VolumeSource{
+			EmptyDir: &corev1.EmptyDirVolumeSource{},
+		},
+	})
+	volumeMounts = append(volumeMounts, corev1.VolumeMount{
+		Name:      "tmp",
+		MountPath: "/tmp",
+	})
+
 	debugPod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      debugPodName,
@@ -442,7 +455,8 @@ func (c *Client) CreateDebugPod(ctx context.Context, originalPod *corev1.Pod, de
 			},
 		},
 		Spec: corev1.PodSpec{
-			RestartPolicy: corev1.RestartPolicyNever,
+			RestartPolicy:                corev1.RestartPolicyNever,
+			AutomountServiceAccountToken: boolPtr(false),
 			SecurityContext: &corev1.PodSecurityContext{
 				RunAsNonRoot: boolPtr(true),
 				RunAsUser:    int64Ptr(65534),

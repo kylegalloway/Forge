@@ -72,7 +72,7 @@ automatic cleanup and keep pods around for debugging.`,
 	cmd.Flags().StringVarP(&o.Container, "container", "c", "", "Container name (for multi-container pods)")
 	cmd.Flags().StringVar(&o.Shell, "shell", "/bin/sh", "Shell to use for exec")
 	cmd.Flags().BoolVar(&o.PreservePod, "preserve-pod", false, "Keep the debug pod after exit")
-	cmd.Flags().StringVar(&o.DebugImage, "debug-image", "busybox:latest", "Image to use for debug pod")
+	cmd.Flags().StringVar(&o.DebugImage, "debug-image", "busybox:1.36", "Image to use for debug pod")
 	cmd.Flags().BoolVar(&o.CopyWorkspace, "copy-workspace", false, "Create debug pod with workspace volume mounted")
 	cmd.Flags().BoolVar(&o.AllPods, "all-pods", false, "Debug all pods in sequence (for multi-pod jobs)")
 	cmd.Flags().IntVar(&o.PodIndex, "pod-index", 0, "Index of pod to debug (0-based, when multiple pods exist)")

@@ -7,6 +7,7 @@ import (
 
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/kubernetes"
@@ -189,18 +190,25 @@ func (b *JobBuilder) WithInitContainers(containers []corev1.Container) *JobBuild
 }
 
 // WithWorkspaceVolume adds workspace and output EmptyDir volumes.
+// Volumes have size limits for Kyverno/PSS compliance: 10Gi for workspace, 10Gi for output.
 func (b *JobBuilder) WithWorkspaceVolume() *JobBuilder {
+	workspaceSizeLimit := resource.MustParse("10Gi")
+	outputSizeLimit := resource.MustParse("10Gi")
 	b.volumes = append(b.volumes,
 		corev1.Volume{
 			Name: "workspace",
 			VolumeSource: corev1.VolumeSource{
-				EmptyDir: &corev1.EmptyDirVolumeSource{},
+				EmptyDir: &corev1.EmptyDirVolumeSource{
+					SizeLimit: &workspaceSizeLimit,
+				},
 			},
 		},
 		corev1.Volume{
 			Name: "output",
 			VolumeSource: corev1.VolumeSource{
-				EmptyDir: &corev1.EmptyDirVolumeSource{},
+				EmptyDir: &corev1.EmptyDirVolumeSource{
+					SizeLimit: &outputSizeLimit,
+				},
 			},
 		},
 	)
@@ -393,6 +401,7 @@ func NonRootSecurityContextWithUID(uid int64) *corev1.SecurityContext {
 		RunAsNonRoot:             Ptr(true),
 		RunAsUser:                Ptr(uid),
 		AllowPrivilegeEscalation: Ptr(false),
+		ReadOnlyRootFilesystem:   Ptr(true),
 		Capabilities: &corev1.Capabilities{
 			Drop: []corev1.Capability{"ALL"},
 		},
@@ -429,6 +438,22 @@ func (b *JobBuilder) Build() *batchv1.Job {
 		containerSecCtx = NonRootSecurityContext()
 	}
 
+	// Add /tmp emptyDir volume for containers with readOnlyRootFilesystem
+	// This allows tools to write temporary files (required for Kyverno/PSS compliance)
+	tmpSizeLimit := resource.MustParse("1Gi")
+	b.volumes = append(b.volumes, corev1.Volume{
+		Name: "tmp",
+		VolumeSource: corev1.VolumeSource{
+			EmptyDir: &corev1.EmptyDirVolumeSource{
+				SizeLimit: &tmpSizeLimit,
+			},
+		},
+	})
+	b.volumeMounts = append(b.volumeMounts, corev1.VolumeMount{
+		Name:      "tmp",
+		MountPath: "/tmp",
+	})
+
 	// Build the main container
 	container := corev1.Container{
 		Name:            b.containerName,
@@ -448,21 +473,27 @@ func (b *JobBuilder) Build() *batchv1.Job {
 		podSecCtx = NonRootPodSecurityContext()
 	}
 
+	// Determine automountServiceAccountToken based on whether a service account is specified
+	// Only mount the token if a service account is explicitly provided (needed for RBAC)
+	// Otherwise, disable it for security (Kyverno/PSS compliance)
+	automountToken := b.serviceAccountName != ""
+
 	// Build the pod template
 	b.job.Spec.Template = corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
 			Labels: b.job.Labels,
 		},
 		Spec: corev1.PodSpec{
-			RestartPolicy:      corev1.RestartPolicyNever,
-			ServiceAccountName: b.serviceAccountName,
-			InitContainers:     b.initContainers,
-			Containers:         []corev1.Container{container},
-			Volumes:            b.volumes,
-			SecurityContext:    podSecCtx,
-			NodeSelector:       b.nodeSelector,
-			Affinity:           b.affinity,
-			Tolerations:        b.tolerations,
+			RestartPolicy:                corev1.RestartPolicyNever,
+			ServiceAccountName:           b.serviceAccountName,
+			AutomountServiceAccountToken: &automountToken,
+			InitContainers:               b.initContainers,
+			Containers:                   []corev1.Container{container},
+			Volumes:                      b.volumes,
+			SecurityContext:              podSecCtx,
+			NodeSelector:                 b.nodeSelector,
+			Affinity:                     b.affinity,
+			Tolerations:                  b.tolerations,
 		},
 	}
 

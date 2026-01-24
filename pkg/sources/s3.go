@@ -133,7 +133,7 @@ func BuildS3InitContainer(config *S3SourceConfig, runAsUser int64) (*corev1.Cont
 
 	return &corev1.Container{
 		Name:         "s3-download",
-		Image:        "amazon/aws-cli:latest",
+		Image:        constants.ImageAWSCLI,
 		Command:      []string{"/bin/sh", "-c"},
 		Args:         []string{downloadCmd},
 		Env:          env,
@@ -142,8 +142,12 @@ func BuildS3InitContainer(config *S3SourceConfig, runAsUser int64) (*corev1.Cont
 			RunAsNonRoot:             actions.Ptr(true),
 			RunAsUser:                actions.Ptr(runAsUser),
 			AllowPrivilegeEscalation: actions.Ptr(false),
+			ReadOnlyRootFilesystem:   actions.Ptr(true),
 			Capabilities: &corev1.Capabilities{
 				Drop: []corev1.Capability{"ALL"},
+			},
+			SeccompProfile: &corev1.SeccompProfile{
+				Type: corev1.SeccompProfileTypeRuntimeDefault,
 			},
 		},
 	}, nil

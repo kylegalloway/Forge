@@ -66,7 +66,7 @@ func BuildOCIInitContainer(config *OCISourceConfig, runAsUser int64) (*corev1.Co
 
 	return &corev1.Container{
 		Name:    "oci-pull",
-		Image:   "gcr.io/go-containerregistry/crane:latest",
+		Image:   constants.ImageCrane,
 		Command: []string{"/bin/sh", "-c"},
 		Args:    []string{pullCmd},
 		Env: []corev1.EnvVar{
@@ -80,8 +80,12 @@ func BuildOCIInitContainer(config *OCISourceConfig, runAsUser int64) (*corev1.Co
 			RunAsNonRoot:             actions.Ptr(true),
 			RunAsUser:                actions.Ptr(runAsUser),
 			AllowPrivilegeEscalation: actions.Ptr(false),
+			ReadOnlyRootFilesystem:   actions.Ptr(true),
 			Capabilities: &corev1.Capabilities{
 				Drop: []corev1.Capability{"ALL"},
+			},
+			SeccompProfile: &corev1.SeccompProfile{
+				Type: corev1.SeccompProfileTypeRuntimeDefault,
 			},
 		},
 	}, nil

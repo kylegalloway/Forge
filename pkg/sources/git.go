@@ -71,7 +71,7 @@ func BuildGitInitContainer(config *GitSourceConfig, runAsUser int64) (*corev1.Co
 
 	container := &corev1.Container{
 		Name:    "git-clone",
-		Image:   "alpine/git:latest",
+		Image:   constants.ImageGitClone,
 		Command: []string{"/bin/sh", "-c"},
 		Args:    []string{cloneCmd},
 		Env: []corev1.EnvVar{
@@ -90,8 +90,12 @@ func BuildGitInitContainer(config *GitSourceConfig, runAsUser int64) (*corev1.Co
 			RunAsNonRoot:             actions.Ptr(true),
 			RunAsUser:                actions.Ptr(runAsUser),
 			AllowPrivilegeEscalation: actions.Ptr(false),
+			ReadOnlyRootFilesystem:   actions.Ptr(true),
 			Capabilities: &corev1.Capabilities{
 				Drop: []corev1.Capability{"ALL"},
+			},
+			SeccompProfile: &corev1.SeccompProfile{
+				Type: corev1.SeccompProfileTypeRuntimeDefault,
 			},
 		},
 	}

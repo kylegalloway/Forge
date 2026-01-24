@@ -13,6 +13,7 @@ import (
 	"k8s.io/klog/v2"
 
 	"github.com/kylegalloway/forge/pkg/actions"
+	"github.com/kylegalloway/forge/pkg/actions/validation"
 	udsv1alpha3 "github.com/kylegalloway/forge/pkg/apis/uds/v1alpha3"
 	"github.com/kylegalloway/forge/pkg/constants"
 	"github.com/kylegalloway/forge/pkg/resources"
@@ -90,7 +91,10 @@ func (handler *DeployHandler) createDeployJob(ctx context.Context, bundle *udsv1
 	jobName := fmt.Sprintf("%s-deploy", bundle.Name)
 
 	// Build UDS CLI deploy command
-	udsCmd := handler.buildDeployCommand(bundle, artifactPath)
+	udsCmd, err := handler.buildDeployCommand(bundle, artifactPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to build deploy command: %w", err)
+	}
 
 	// Build env vars
 	envVars := handler.buildEnvVars(bundle)
@@ -185,7 +189,7 @@ func (handler *DeployHandler) createDeployJob(ctx context.Context, bundle *udsv1
 }
 
 // buildDeployCommand builds the UDS CLI deploy command
-func (handler *DeployHandler) buildDeployCommand(bundle *udsv1alpha3.UDSBundleJob, artifactPath string) string {
+func (handler *DeployHandler) buildDeployCommand(bundle *udsv1alpha3.UDSBundleJob, artifactPath string) (string, error) {
 	deploy := bundle.Spec.Deploy
 
 	// Determine bundle path - use artifactPath if provided (multi-action workflow),
@@ -216,6 +220,23 @@ func (handler *DeployHandler) buildDeployCommand(bundle *udsv1alpha3.UDSBundleJo
 		cmd += fmt.Sprintf(" --set %s=%s", key, value)
 	}
 
+	// Structured flags
+	if deploy.Insecure {
+		cmd += " --insecure"
+	}
+	if deploy.Retries != nil {
+		cmd += fmt.Sprintf(" --retries=%d", *deploy.Retries)
+	}
+
+	// ExtraArgs (validated and shell-escaped)
+	if len(deploy.ExtraArgs) > 0 {
+		var err error
+		cmd, err = validation.AppendExtraArgs(cmd, deploy.ExtraArgs)
+		if err != nil {
+			return "", fmt.Errorf("invalid extraArgs: %w", err)
+		}
+	}
+
 	// Add kubeconfig for external cluster
 	if deploy.Target == udsv1alpha3.DeployTargetExternalCluster {
 		cmd = fmt.Sprintf("export KUBECONFIG=%s/kubeconfig && ", constants.VolumeMountPathKubeconfig) + cmd
@@ -225,7 +246,7 @@ func (handler *DeployHandler) buildDeployCommand(bundle *udsv1alpha3.UDSBundleJo
 		}
 	}
 
-	return cmd
+	return cmd, nil
 }
 
 // buildEnvVars builds environment variables for the deploy job

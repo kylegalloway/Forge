@@ -481,7 +481,10 @@ func TestCreateHandlerBuildUDSCommand(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Test without PVC (standalone create)
-			cmd, workingDir := handler.buildUDSCommand(tt.bundle, "")
+			cmd, workingDir, err := handler.buildUDSCommand(tt.bundle, "")
+			if err != nil {
+				t.Fatalf("buildUDSCommand() unexpected error: %v", err)
+			}
 			if workingDir != tt.wantDir {
 				t.Errorf("buildUDSCommand() workingDir = %v, want %v", workingDir, tt.wantDir)
 			}
@@ -1086,7 +1089,10 @@ func TestCreateHandlerBuildUDSCommandWithVariables(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cmd, workingDir := handler.buildUDSCommand(tt.bundle, tt.artifactPVCName)
+			cmd, workingDir, err := handler.buildUDSCommand(tt.bundle, tt.artifactPVCName)
+			if err != nil {
+				t.Fatalf("buildUDSCommand() unexpected error: %v", err)
+			}
 
 			if workingDir != "/workspace" {
 				t.Errorf("buildUDSCommand() workingDir = %v, want /workspace", workingDir)

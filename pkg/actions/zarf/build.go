@@ -15,6 +15,7 @@ import (
 	"k8s.io/klog/v2"
 
 	"github.com/kylegalloway/forge/pkg/actions"
+	"github.com/kylegalloway/forge/pkg/actions/validation"
 	zarfv1alpha3 "github.com/kylegalloway/forge/pkg/apis/zarf/v1alpha3"
 	"github.com/kylegalloway/forge/pkg/constants"
 	"github.com/kylegalloway/forge/pkg/sources"
@@ -89,7 +90,10 @@ func (handler *BuildHandler) createBuildJob(ctx context.Context, pkg *zarfv1alph
 	jobName := fmt.Sprintf("%s-build", pkg.Name)
 
 	// Build zarf command based on source type and artifact PVC
-	zarfCmd, workingDir := handler.buildZarfCommand(pkg, artifactPVCName)
+	zarfCmd, workingDir, err := handler.buildZarfCommand(pkg, artifactPVCName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to build zarf command: %w", err)
+	}
 
 	// Build init containers
 	initContainers, err := handler.buildInitContainers(pkg)
@@ -167,7 +171,7 @@ func (handler *BuildHandler) createBuildJob(ctx context.Context, pkg *zarfv1alph
 }
 
 // buildZarfCommand builds the zarf CLI command based on package source
-func (handler *BuildHandler) buildZarfCommand(pkg *zarfv1alpha3.ZarfPackageJob, artifactPVCName string) (string, string) {
+func (handler *BuildHandler) buildZarfCommand(pkg *zarfv1alpha3.ZarfPackageJob, artifactPVCName string) (string, string, error) {
 	workingDir := constants.VolumeMountPathWorkspace
 
 	// Build command - output to /artifacts if PVC exists, otherwise /output
@@ -181,14 +185,37 @@ func (handler *BuildHandler) buildZarfCommand(pkg *zarfv1alpha3.ZarfPackageJob, 
 		cmd = "zarf package create . --confirm --output-directory " + constants.VolumeMountPathOutput
 	}
 
-	// Add variables if specified in Build config
+	// Add structured flags and variables if specified in Build config
 	if pkg.Spec.Build != nil {
-		for key, value := range pkg.Spec.Build.Variables {
+		build := pkg.Spec.Build
+
+		// Structured flags
+		if build.Flavor != "" {
+			cmd = fmt.Sprintf("%s --flavor %s", cmd, build.Flavor)
+		}
+		if build.Architecture != "" {
+			cmd = fmt.Sprintf("%s --architecture %s", cmd, build.Architecture)
+		}
+		if build.SkipSBOM {
+			cmd = fmt.Sprintf("%s --skip-sbom", cmd)
+		}
+
+		// Variables
+		for key, value := range build.Variables {
 			cmd = fmt.Sprintf("%s --set %s=%s", cmd, key, value)
+		}
+
+		// ExtraArgs (validated and shell-escaped)
+		if len(build.ExtraArgs) > 0 {
+			var err error
+			cmd, err = validation.AppendExtraArgs(cmd, build.ExtraArgs)
+			if err != nil {
+				return "", "", fmt.Errorf("invalid extraArgs: %w", err)
+			}
 		}
 	}
 
-	return cmd, workingDir
+	return cmd, workingDir, nil
 }
 
 // buildInitContainers creates init containers for source artifact retrieval

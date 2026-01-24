@@ -768,7 +768,10 @@ func TestBuildHandlerBuildZarfCommand(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cmd, workingDir := handler.buildZarfCommand(tt.pkg, tt.artifactPVCName)
+			cmd, workingDir, err := handler.buildZarfCommand(tt.pkg, tt.artifactPVCName)
+			if err != nil {
+				t.Fatalf("buildZarfCommand() unexpected error: %v", err)
+			}
 
 			if workingDir != constants.VolumeMountPathWorkspace {
 				t.Errorf("buildZarfCommand() workingDir = %v, want %v", workingDir, constants.VolumeMountPathWorkspace)

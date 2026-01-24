@@ -15,6 +15,7 @@ import (
 	"k8s.io/klog/v2"
 
 	"github.com/kylegalloway/forge/pkg/actions"
+	"github.com/kylegalloway/forge/pkg/actions/validation"
 	udsv1alpha3 "github.com/kylegalloway/forge/pkg/apis/uds/v1alpha3"
 	"github.com/kylegalloway/forge/pkg/constants"
 	"github.com/kylegalloway/forge/pkg/sources"
@@ -85,7 +86,10 @@ func (handler *CreateHandler) createBundleJob(ctx context.Context, bundle *udsv1
 	jobName := fmt.Sprintf("%s-create", bundle.Name)
 
 	// Build UDS CLI command
-	udsCmd, workingDir := handler.buildUDSCommand(bundle, artifactPVCName)
+	udsCmd, workingDir, err := handler.buildUDSCommand(bundle, artifactPVCName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to build UDS command: %w", err)
+	}
 
 	// Build init containers for source retrieval
 	initContainers, err := handler.buildInitContainers(bundle)
@@ -163,7 +167,7 @@ func (handler *CreateHandler) createBundleJob(ctx context.Context, bundle *udsv1
 }
 
 // buildUDSCommand builds the UDS CLI command for bundle creation
-func (handler *CreateHandler) buildUDSCommand(bundle *udsv1alpha3.UDSBundleJob, artifactPVCName string) (string, string) {
+func (handler *CreateHandler) buildUDSCommand(bundle *udsv1alpha3.UDSBundleJob, artifactPVCName string) (string, string, error) {
 	workingDir := constants.VolumeMountPathWorkspace
 
 	// Determine output directory based on whether we're using a PVC for multi-action workflows
@@ -180,14 +184,37 @@ func (handler *CreateHandler) buildUDSCommand(bundle *udsv1alpha3.UDSBundleJob, 
 	// Assumes uds-bundle.yaml is in the workspace root
 	cmd := "uds create . --confirm --output-directory " + outputDir
 
-	// Add variables if specified in Create config
+	// Add structured flags and variables if specified in Create config
 	if bundle.Spec.Create != nil {
-		for key, value := range bundle.Spec.Create.Variables {
+		create := bundle.Spec.Create
+
+		// Structured flags
+		if create.Flavor != "" {
+			cmd = fmt.Sprintf("%s --flavor %s", cmd, create.Flavor)
+		}
+		if create.Architecture != "" {
+			cmd = fmt.Sprintf("%s --architecture %s", cmd, create.Architecture)
+		}
+		if create.SkipSBOM {
+			cmd = fmt.Sprintf("%s --skip-sbom", cmd)
+		}
+
+		// Variables
+		for key, value := range create.Variables {
 			cmd = fmt.Sprintf("%s --set %s=%s", cmd, key, value)
+		}
+
+		// ExtraArgs (validated and shell-escaped)
+		if len(create.ExtraArgs) > 0 {
+			var err error
+			cmd, err = validation.AppendExtraArgs(cmd, create.ExtraArgs)
+			if err != nil {
+				return "", "", fmt.Errorf("invalid extraArgs: %w", err)
+			}
 		}
 	}
 
-	return cmd, workingDir
+	return cmd, workingDir, nil
 }
 
 // buildInitContainers creates init containers for source retrieval

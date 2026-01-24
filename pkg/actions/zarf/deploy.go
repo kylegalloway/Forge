@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/kylegalloway/forge/pkg/actions"
+	"github.com/kylegalloway/forge/pkg/actions/validation"
 	"github.com/kylegalloway/forge/pkg/resources"
 
 	batchv1 "k8s.io/api/batch/v1"
@@ -90,7 +91,10 @@ func (handler *DeployHandler) createDeployJob(ctx context.Context, pkg *zarfv1al
 	}
 
 	// Build deploy command based on target
-	deployCmd := handler.buildDeployCommand(pkg, artifactPath)
+	deployCmd, err := handler.buildDeployCommand(pkg, artifactPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to build deploy command: %w", err)
+	}
 
 	// Build init containers for artifact retrieval (if needed)
 	initContainers, err := handler.buildInitContainers(pkg, artifactPath)
@@ -194,7 +198,7 @@ func (handler *DeployHandler) createDeployJob(ctx context.Context, pkg *zarfv1al
 }
 
 // buildDeployCommand builds the zarf deploy command
-func (handler *DeployHandler) buildDeployCommand(pkg *zarfv1alpha3.ZarfPackageJob, artifactPath string) string {
+func (handler *DeployHandler) buildDeployCommand(pkg *zarfv1alpha3.ZarfPackageJob, artifactPath string) (string, error) {
 	deploy := pkg.Spec.Deploy
 
 	// Base command
@@ -212,6 +216,26 @@ func (handler *DeployHandler) buildDeployCommand(pkg *zarfv1alpha3.ZarfPackageJo
 		cmd = fmt.Sprintf("%s --set %s=%s", cmd, key, value)
 	}
 
+	// Structured flags
+	if deploy.AdoptExistingResources {
+		cmd = fmt.Sprintf("%s --adopt-existing-resources", cmd)
+	}
+	if deploy.SkipWebhooks {
+		cmd = fmt.Sprintf("%s --skip-webhooks", cmd)
+	}
+	if deploy.Retries != nil {
+		cmd = fmt.Sprintf("%s --retries=%d", cmd, *deploy.Retries)
+	}
+
+	// ExtraArgs (validated and shell-escaped)
+	if len(deploy.ExtraArgs) > 0 {
+		var err error
+		cmd, err = validation.AppendExtraArgs(cmd, deploy.ExtraArgs)
+		if err != nil {
+			return "", fmt.Errorf("invalid extraArgs: %w", err)
+		}
+	}
+
 	// External cluster needs kubeconfig
 	if deploy.Target == zarfv1alpha3.DeployTargetExternalCluster {
 		cmd = fmt.Sprintf("export KUBECONFIG=%s/kubeconfig && %s", constants.VolumeMountPathKubeconfig, cmd)
@@ -220,7 +244,7 @@ func (handler *DeployHandler) buildDeployCommand(pkg *zarfv1alpha3.ZarfPackageJo
 		}
 	}
 
-	return cmd
+	return cmd, nil
 }
 
 // buildEnvVars builds environment variables for deploy job

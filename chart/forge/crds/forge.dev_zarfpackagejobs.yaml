@@ -989,6 +989,21 @@ spec:
                 description: Build defines configuration for building the package
                   (optional)
                 properties:
+                  architecture:
+                    description: Architecture specifies target architecture (e.g.,
+                      "arm64", "amd64")
+                    type: string
+                  extraArgs:
+                    description: |-
+                      ExtraArgs are additional CLI arguments passed to 'zarf package create'
+                      Use for flags not explicitly supported in the API
+                      Example: ["--max-package-size", "100"]
+                    items:
+                      type: string
+                    type: array
+                  flavor:
+                    description: Flavor specifies which package flavor to build
+                    type: string
                   registryCredentialRef:
                     description: |-
                       RegistryCredentialRef references a Secret with registry credentials for pulling
@@ -1042,6 +1057,9 @@ spec:
                           type: string
                         type: array
                     type: object
+                  skipSBOM:
+                    description: SkipSBOM disables SBOM generation for faster builds
+                    type: boolean
                   timeout:
                     default: 1h
                     description: Timeout for the build operation
@@ -1058,6 +1076,11 @@ spec:
                 description: Deploy defines how to deploy the package (required if
                   action includes Deploy)
                 properties:
+                  adoptExistingResources:
+                    description: |-
+                      AdoptExistingResources enables adoption of pre-existing resources
+                      This passes --adopt-existing-resources to zarf deploy
+                    type: boolean
                   adoptionPolicy:
                     allOf:
                     - enum:
@@ -1106,6 +1129,13 @@ spec:
                     required:
                     - secretRef
                     type: object
+                  extraArgs:
+                    description: |-
+                      ExtraArgs are additional CLI arguments passed to 'zarf package deploy'
+                      Use for flags not explicitly supported in the API
+                    items:
+                      type: string
+                    type: array
                   namespace:
                     default: default
                     description: Namespace to deploy into
@@ -1139,6 +1169,11 @@ spec:
                           have other owners
                         type: boolean
                     type: object
+                  retries:
+                    description: |-
+                      Retries specifies the number of retry attempts for failed deployments
+                      This passes --retries to zarf deploy
+                    type: integer
                   retry:
                     description: Retry policy for deploy failures
                     properties:
@@ -1175,6 +1210,11 @@ spec:
                           type: string
                         type: array
                     type: object
+                  skipWebhooks:
+                    description: |-
+                      SkipWebhooks disables webhook validation during deploy
+                      This passes --skip-webhooks to zarf deploy
+                    type: boolean
                   target:
                     description: Target specifies where to deploy
                     enum:
@@ -1319,6 +1359,13 @@ spec:
                     required:
                     - type
                     type: object
+                  extraArgs:
+                    description: |-
+                      ExtraArgs are additional CLI arguments passed to 'zarf package publish'
+                      Use for flags not explicitly supported in the API
+                    items:
+                      type: string
+                    type: array
                   retry:
                     description: Retry policy for publish failures
                     properties:

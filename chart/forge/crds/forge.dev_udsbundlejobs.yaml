@@ -987,6 +987,21 @@ spec:
               create:
                 description: Create defines configuration for bundle creation (optional)
                 properties:
+                  architecture:
+                    description: Architecture specifies target architecture (e.g.,
+                      "arm64", "amd64")
+                    type: string
+                  extraArgs:
+                    description: |-
+                      ExtraArgs are additional CLI arguments passed to 'uds create'
+                      Use for flags not explicitly supported in the API
+                      Example: ["--no-progress"]
+                    items:
+                      type: string
+                    type: array
+                  flavor:
+                    description: Flavor specifies which bundle flavor to create
+                    type: string
                   registryCredentialRef:
                     description: |-
                       RegistryCredentialRef references a Secret with registry credentials for pulling
@@ -1040,6 +1055,9 @@ spec:
                           type: string
                         type: array
                     type: object
+                  skipSBOM:
+                    description: SkipSBOM disables SBOM generation for faster builds
+                    type: boolean
                   timeout:
                     default: 1h
                     description: Timeout for the create operation
@@ -1103,6 +1121,18 @@ spec:
                     required:
                     - secretRef
                     type: object
+                  extraArgs:
+                    description: |-
+                      ExtraArgs are additional CLI arguments passed to 'uds deploy'
+                      Use for flags not explicitly supported in the API
+                    items:
+                      type: string
+                    type: array
+                  insecure:
+                    description: |-
+                      Insecure skips TLS verification during deploy
+                      This passes --insecure to uds deploy
+                    type: boolean
                   namespace:
                     description: Namespace to deploy into (if applicable)
                     type: string
@@ -1135,6 +1165,11 @@ spec:
                           have other owners
                         type: boolean
                     type: object
+                  retries:
+                    description: |-
+                      Retries specifies the number of retry attempts for failed deployments
+                      This passes --retries to uds deploy
+                    type: integer
                   retry:
                     description: Retry policy for deploy failures
                     properties:
@@ -1315,6 +1350,13 @@ spec:
                     required:
                     - type
                     type: object
+                  extraArgs:
+                    description: |-
+                      ExtraArgs are additional CLI arguments passed to 'uds publish'
+                      Use for flags not explicitly supported in the API
+                    items:
+                      type: string
+                    type: array
                   retry:
                     description: Retry policy for publish failures
                     properties:

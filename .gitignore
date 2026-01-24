@@ -54,4 +54,3 @@ dist/
 # Test coverage
 cover.out
 coverage.out
-kubectl-forge

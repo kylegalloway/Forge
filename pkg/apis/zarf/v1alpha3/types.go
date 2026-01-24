@@ -309,6 +309,24 @@ type BuildConfig struct {
 	// These are passed as --set KEY=VALUE flags to 'zarf package create'
 	// +optional
 	Variables map[string]string `json:"variables,omitempty"`
+
+	// Flavor specifies which package flavor to build
+	// +optional
+	Flavor string `json:"flavor,omitempty"`
+
+	// Architecture specifies target architecture (e.g., "arm64", "amd64")
+	// +optional
+	Architecture string `json:"architecture,omitempty"`
+
+	// SkipSBOM disables SBOM generation for faster builds
+	// +optional
+	SkipSBOM bool `json:"skipSBOM,omitempty"`
+
+	// ExtraArgs are additional CLI arguments passed to 'zarf package create'
+	// Use for flags not explicitly supported in the API
+	// Example: ["--max-package-size", "100"]
+	// +optional
+	ExtraArgs []string `json:"extraArgs,omitempty"`
 }
 
 // PublishConfig defines where and how to publish packages
@@ -325,6 +343,11 @@ type PublishConfig struct {
 	// Retry policy for publish failures
 	// +optional
 	Retry *RetryPolicy `json:"retry,omitempty"`
+
+	// ExtraArgs are additional CLI arguments passed to 'zarf package publish'
+	// Use for flags not explicitly supported in the API
+	// +optional
+	ExtraArgs []string `json:"extraArgs,omitempty"`
 }
 
 // PublishDestination defines the publish target
@@ -445,6 +468,26 @@ type DeployConfig struct {
 	// Only used when AdoptionPolicy is "Adopt"
 	// +optional
 	ResourceSelector *ResourceSelector `json:"resourceSelector,omitempty"`
+
+	// AdoptExistingResources enables adoption of pre-existing resources
+	// This passes --adopt-existing-resources to zarf deploy
+	// +optional
+	AdoptExistingResources bool `json:"adoptExistingResources,omitempty"`
+
+	// SkipWebhooks disables webhook validation during deploy
+	// This passes --skip-webhooks to zarf deploy
+	// +optional
+	SkipWebhooks bool `json:"skipWebhooks,omitempty"`
+
+	// Retries specifies the number of retry attempts for failed deployments
+	// This passes --retries to zarf deploy
+	// +optional
+	Retries *int `json:"retries,omitempty"`
+
+	// ExtraArgs are additional CLI arguments passed to 'zarf package deploy'
+	// Use for flags not explicitly supported in the API
+	// +optional
+	ExtraArgs []string `json:"extraArgs,omitempty"`
 }
 
 // AdoptionPolicy defines how deploy actions handle existing resources

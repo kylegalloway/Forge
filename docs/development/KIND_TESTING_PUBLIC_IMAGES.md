@@ -116,7 +116,7 @@ Expected output:
 
 ```text
 NAME            CHART VERSION   APP VERSION     DESCRIPTION
-forge/forge     0.1.2           v0.9.6          A Helm chart for deploying Forge - a Kubernetes...
+forge/forge     0.1.2           v0.9.7          A Helm chart for deploying Forge - a Kubernetes...
 ```
 
 ### 3. Install Forge
@@ -163,11 +163,11 @@ helm search repo forge/forge --versions
 
 # Install specific version
 helm install forge forge/forge \
-  --version 0.9.6 \
+  --version 0.9.7 \
   --namespace forge-system \
   --create-namespace \
-  --set controller.image.tag=v0.9.6 \
-  --set webhook.image.tag=v0.9.6 \
+  --set controller.image.tag=v0.9.7 \
+  --set webhook.image.tag=v0.9.7 \
   --wait
 ```
 

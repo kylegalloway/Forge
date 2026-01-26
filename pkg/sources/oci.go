@@ -54,6 +54,10 @@ func BuildOCIInitContainer(config *OCISourceConfig, runAsUser int64) (*corev1.Co
 			Name:      constants.VolumeNameWorkspace,
 			MountPath: constants.VolumeMountPathWorkspace,
 		},
+		{
+			Name:      "tmp",
+			MountPath: "/tmp",
+		},
 	}
 
 	if config.CredentialsSecretName != "" { // pragma: allowlist secret

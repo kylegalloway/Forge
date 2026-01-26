@@ -85,6 +85,10 @@ func BuildGitInitContainer(config *GitSourceConfig, runAsUser int64) (*corev1.Co
 				Name:      "workspace",
 				MountPath: "/workspace",
 			},
+			{
+				Name:      "tmp",
+				MountPath: "/tmp",
+			},
 		},
 		SecurityContext: &corev1.SecurityContext{
 			RunAsNonRoot:             actions.Ptr(true),

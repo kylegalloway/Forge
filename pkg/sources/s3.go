@@ -73,6 +73,10 @@ func BuildS3InitContainer(config *S3SourceConfig, runAsUser int64) (*corev1.Cont
 			Name:      constants.VolumeNameWorkspace,
 			MountPath: constants.VolumeMountPathWorkspace,
 		},
+		{
+			Name:      "tmp",
+			MountPath: "/tmp",
+		},
 	}
 
 	// Configure credentials based on type

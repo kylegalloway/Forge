@@ -29,7 +29,7 @@ spec:
         {{- toYaml .Values.controller.podSecurityContext | nindent 8 }}
       containers:
       - name: controller
-        image: "{{ .Values.controller.image.repository }}:{{ .Values.controller.image.tag | default .Chart.AppVersion }}"
+        image: "{{ .Values.controller.image.repository }}:{{ .Values.controller.image.tag | default .Chart.version }}"
         imagePullPolicy: {{ .Values.controller.image.pullPolicy }}
         command:
         - /controller

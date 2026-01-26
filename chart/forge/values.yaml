@@ -23,7 +23,7 @@ controller:
   image:
     repository: ghcr.io/kylegalloway/forge/forge-controller
     pullPolicy: IfNotPresent
-    # Tag defaults to Chart.version if empty
+    # Tag defaults to Chart.Version if empty
     tag: ""
 
   # Image pull secrets (add if using private registry)
@@ -117,7 +117,7 @@ webhook:
   image:
     repository: ghcr.io/kylegalloway/forge/forge-webhook
     pullPolicy: IfNotPresent
-    # Tag defaults to Chart.version if empty
+    # Tag defaults to Chart.Version if empty
     tag: ""
 
   # Resource limits and requests

@@ -29,7 +29,7 @@ spec:
       automountServiceAccountToken: true  # Webhook needs API access
       containers:
       - name: webhook
-        image: "{{ .Values.webhook.image.repository }}:{{ .Values.webhook.image.tag | default .Chart.version }}"
+        image: "{{ .Values.webhook.image.repository }}:{{ .Values.webhook.image.tag | default .Chart.Version }}"
         imagePullPolicy: {{ .Values.webhook.image.pullPolicy }}
         ports:
         - containerPort: 8443

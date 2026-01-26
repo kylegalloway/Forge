@@ -142,7 +142,6 @@ func BuildS3InitContainer(config *S3SourceConfig, runAsUser int64) (*corev1.Cont
 			RunAsNonRoot:             actions.Ptr(true),
 			RunAsUser:                actions.Ptr(runAsUser),
 			AllowPrivilegeEscalation: actions.Ptr(false),
-			ReadOnlyRootFilesystem:   actions.Ptr(true),
 			Capabilities: &corev1.Capabilities{
 				Drop: []corev1.Capability{"ALL"},
 			},

@@ -90,7 +90,6 @@ func BuildGitInitContainer(config *GitSourceConfig, runAsUser int64) (*corev1.Co
 			RunAsNonRoot:             actions.Ptr(true),
 			RunAsUser:                actions.Ptr(runAsUser),
 			AllowPrivilegeEscalation: actions.Ptr(false),
-			ReadOnlyRootFilesystem:   actions.Ptr(true),
 			Capabilities: &corev1.Capabilities{
 				Drop: []corev1.Capability{"ALL"},
 			},

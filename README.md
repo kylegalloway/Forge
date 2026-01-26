@@ -126,19 +126,19 @@ helm repo update
 helm install forge forge/forge \
   --namespace forge-system \
   --create-namespace \
-  --version 0.9.7
+  --version 0.9.8
 ```
 
 **Container Images**:
-- `ghcr.io/kylegalloway/forge/forge-controller:v0.9.7`
-- `ghcr.io/kylegalloway/forge/forge-webhook:v0.9.7`
+- `ghcr.io/kylegalloway/forge/forge-controller:v0.9.8`
+- `ghcr.io/kylegalloway/forge/forge-webhook:v0.9.8`
 - `ghcr.io/kylegalloway/forge/zarf-cli:v0.68.1` (used by ZarfPackageJobs)
 
 **Custom Configuration**:
 
 ```bash
 helm install forge forge/forge \
-  --version 0.9.7 \
+  --version 0.9.8 \
   --namespace forge-system \
   --create-namespace \
   --set controller.replicaCount=2 \

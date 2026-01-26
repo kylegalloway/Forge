@@ -48,6 +48,8 @@ spec:
           value: "{{ .Values.initContainerImages.awsCli }}"
         - name: FORGE_CRANE_IMAGE
           value: "{{ .Values.initContainerImages.crane }}"
+        - name: FORGE_DEBUG_MODE
+          value: "{{ .Values.debugMode }}"
         ports:
         - name: metrics
           containerPort: 8080

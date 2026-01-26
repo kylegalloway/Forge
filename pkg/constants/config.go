@@ -129,6 +129,11 @@ var ZarfCLIImage = getEnvOrDefault("FORGE_ZARF_CLI_IMAGE", DefaultZarfCLIImage)
 // It can be overridden via the FORGE_UDS_CLI_IMAGE environment variable.
 var UDSCLIImage = getEnvOrDefault("FORGE_UDS_CLI_IMAGE", DefaultUDSCLIImage)
 
+// DebugMode controls whether jobs run in debug mode (sleep instead of command).
+// When enabled, job pods run "sleep infinity" instead of actual commands,
+// allowing users to exec into pods for debugging.
+var DebugMode = getEnvOrDefault("FORGE_DEBUG_MODE", "false") == "true"
+
 // getEnvOrDefault returns the value of the environment variable or the default value if not set.
 func getEnvOrDefault(key, defaultValue string) string {
 	if value := os.Getenv(key); value != "" {

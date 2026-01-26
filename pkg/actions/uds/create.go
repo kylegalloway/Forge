@@ -121,7 +121,7 @@ func (handler *CreateHandler) createBundleJob(ctx context.Context, bundle *udsv1
 		WithCommand([]string{"/bin/sh", "-c"}).
 		WithArgs([]string{udsCmd}).
 		WithWorkingDir(workingDir).
-		WithHomeDir(constants.HomePathZarf).
+		WithUserConfig(constants.DefaultUDSUID).
 		WithResources(handler.getResources(bundle)).
 		WithNodeSelector(bundle.Spec.NodeSelector).
 		WithAffinity(bundle.Spec.Affinity).
@@ -131,7 +131,8 @@ func (handler *CreateHandler) createBundleJob(ctx context.Context, bundle *udsv1
 		WithTTLSecondsAfterFinished(3600).
 		WithInitContainers(initContainers).
 		WithWorkspaceVolume().
-		WithArtifactPVC(artifactPVCName)
+		WithArtifactPVC(artifactPVCName).
+		WithDebugMode(constants.DebugMode)
 
 	// Add git credentials volume if needed
 	if bundle.Spec.Source.Type == udsv1alpha3.SourceTypeGit && bundle.Spec.Source.Git != nil {

@@ -125,7 +125,7 @@ func (handler *BuildHandler) createBuildJob(ctx context.Context, pkg *zarfv1alph
 		WithCommand([]string{"/bin/sh", "-c"}).
 		WithArgs([]string{zarfCmd}).
 		WithWorkingDir(workingDir).
-		WithHomeDir(constants.HomePathZarf).
+		WithUserConfig(constants.DefaultZarfUID).
 		WithResources(handler.getResources(pkg)).
 		WithNodeSelector(pkg.Spec.NodeSelector).
 		WithAffinity(pkg.Spec.Affinity).
@@ -135,7 +135,8 @@ func (handler *BuildHandler) createBuildJob(ctx context.Context, pkg *zarfv1alph
 		WithTTLSecondsAfterFinished(3600).
 		WithInitContainers(initContainers).
 		WithWorkspaceVolume().
-		WithArtifactPVC(artifactPVCName)
+		WithArtifactPVC(artifactPVCName).
+		WithDebugMode(constants.DebugMode)
 
 	// Add docker-config volume if OCI source with credentials
 	if pkg.Spec.Source.Type == zarfv1alpha3.SourceTypeOCI && pkg.Spec.Source.OCI != nil && pkg.Spec.Source.OCI.CredentialRef != nil { // pragma: allowlist secret

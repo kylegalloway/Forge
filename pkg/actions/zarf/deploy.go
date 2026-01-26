@@ -128,7 +128,7 @@ func (handler *DeployHandler) createDeployJob(ctx context.Context, pkg *zarfv1al
 		WithCommand([]string{"/bin/sh", "-c"}).
 		WithArgs([]string{deployCmd}).
 		WithWorkingDir(constants.VolumeMountPathWorkspace).
-		WithHomeDir(constants.HomePathZarf).
+		WithUserConfig(constants.DefaultZarfUID).
 		WithResources(handler.getResources(pkg)).
 		WithNodeSelector(pkg.Spec.NodeSelector).
 		WithAffinity(pkg.Spec.Affinity).
@@ -138,7 +138,8 @@ func (handler *DeployHandler) createDeployJob(ctx context.Context, pkg *zarfv1al
 		WithTTLSecondsAfterFinished(3600).
 		WithInitContainers(initContainers).
 		WithWorkspaceVolume().
-		WithArtifactPVC(artifactPVCName)
+		WithArtifactPVC(artifactPVCName).
+		WithDebugMode(constants.DebugMode)
 
 	// Add env vars
 	for _, envVar := range envVars {

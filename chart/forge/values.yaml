@@ -11,6 +11,10 @@ global:
   # Whether to create the namespace
   createNamespace: true
 
+# Debug mode - when enabled, job pods run "sleep infinity" instead of actual commands
+# This allows exec'ing into pods for debugging
+debugMode: false
+
 # Controller configuration
 controller:
   # Enable controller deployment

@@ -129,7 +129,7 @@ func (handler *DeployHandler) createDeployJob(ctx context.Context, bundle *udsv1
 		WithCommand([]string{"/bin/sh", "-c"}).
 		WithArgs([]string{udsCmd}).
 		WithWorkingDir(constants.VolumeMountPathWorkspace).
-		WithHomeDir(constants.HomePathUDS).
+		WithUserConfig(constants.DefaultUDSUID).
 		WithResources(handler.getResources(bundle)).
 		WithNodeSelector(bundle.Spec.NodeSelector).
 		WithAffinity(bundle.Spec.Affinity).
@@ -141,8 +141,7 @@ func (handler *DeployHandler) createDeployJob(ctx context.Context, bundle *udsv1
 		WithWorkspaceVolume().
 		WithArtifactPVC(artifactPVCName).
 		WithServiceAccountName(bundle.Spec.ServiceAccountName).
-		WithPodSecurityContext(actions.NonRootPodSecurityContextWithUID(constants.DefaultUDSUID)).
-		WithContainerSecurityContext(actions.NonRootSecurityContextWithUID(constants.DefaultUDSUID))
+		WithDebugMode(constants.DebugMode)
 
 	// Add env vars
 	for _, envVar := range envVars {

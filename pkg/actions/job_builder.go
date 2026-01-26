@@ -31,6 +31,7 @@ type JobBuilder struct {
 	command                  []string
 	args                     []string
 	workingDir               string
+	homeDir                  string
 	resources                corev1.ResourceRequirements
 	nodeSelector             map[string]string
 	affinity                 *corev1.Affinity
@@ -40,6 +41,7 @@ type JobBuilder struct {
 	podSecurityContext       *corev1.PodSecurityContext
 	containerSecurityContext *corev1.SecurityContext
 	serviceAccountName       string
+	debugMode                bool
 }
 
 // NewJobBuilder creates a new JobBuilder with basic metadata.
@@ -321,10 +323,36 @@ func (b *JobBuilder) WithEnvVar(name, value string) *JobBuilder {
 }
 
 // WithHomeDir sets the HOME environment variable for the container.
-// This is required for containers running as non-root users to ensure
-// tools like git, docker, and aws-cli can write to their config directories.
+//
+// Deprecated: Use WithUserConfig instead, which also sets security contexts
+// and adds a writable home directory volume.
 func (b *JobBuilder) WithHomeDir(home string) *JobBuilder {
+	b.homeDir = home
 	return b.WithEnvVar("HOME", home)
+}
+
+// WithUserConfig configures the container to run as a specific user.
+// This sets the appropriate home directory, security contexts, and environment.
+// For Zarf containers, use constants.DefaultZarfUID (1000).
+// For UDS containers, use constants.DefaultUDSUID (65532).
+// This also adds a writable emptyDir volume for the home directory.
+func (b *JobBuilder) WithUserConfig(uid int64) *JobBuilder {
+	// Determine home directory based on UID
+	var homePath string
+	switch uid {
+	case constants.DefaultZarfUID:
+		homePath = constants.HomePathZarf
+	case constants.DefaultUDSUID:
+		homePath = constants.HomePathUDS
+	default:
+		homePath = fmt.Sprintf("/home/%d", uid)
+	}
+
+	b.homeDir = homePath
+	b.podSecurityContext = NonRootPodSecurityContextWithUID(uid)
+	b.containerSecurityContext = NonRootSecurityContextWithUID(uid)
+
+	return b.WithEnvVar("HOME", homePath)
 }
 
 // WithCustomEnvVar adds a full environment variable (supports ValueFrom for secrets).
@@ -385,6 +413,14 @@ func (b *JobBuilder) WithContainerSecurityContext(ctx *corev1.SecurityContext) *
 // WithServiceAccountName sets the service account name for the pod.
 func (b *JobBuilder) WithServiceAccountName(name string) *JobBuilder {
 	b.serviceAccountName = name
+	return b
+}
+
+// WithDebugMode enables debug mode for the job.
+// When enabled, the job runs "sleep infinity" instead of the actual command,
+// allowing users to exec into the pod for debugging.
+func (b *JobBuilder) WithDebugMode(enabled bool) *JobBuilder {
+	b.debugMode = enabled
 	return b
 }
 
@@ -454,12 +490,38 @@ func (b *JobBuilder) Build() *batchv1.Job {
 		MountPath: "/tmp",
 	})
 
+	// Add home directory emptyDir volume if configured via WithUserConfig or WithHomeDir
+	// This allows tools to write config files to their home directory (e.g., .cache, .config)
+	if b.homeDir != "" {
+		homeSizeLimit := resource.MustParse("1Gi")
+		b.volumes = append(b.volumes, corev1.Volume{
+			Name: "home",
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{
+					SizeLimit: &homeSizeLimit,
+				},
+			},
+		})
+		b.volumeMounts = append(b.volumeMounts, corev1.VolumeMount{
+			Name:      "home",
+			MountPath: b.homeDir,
+		})
+	}
+
+	// Determine container args - use debug command if debug mode is enabled
+	containerArgs := b.args
+	if b.debugMode {
+		containerArgs = []string{"sleep infinity"}
+		klog.InfoS("Debug mode enabled, job will run sleep infinity instead of actual command",
+			"job", b.job.Name, "originalArgs", b.args)
+	}
+
 	// Build the main container
 	container := corev1.Container{
 		Name:            b.containerName,
 		Image:           b.containerImage,
 		Command:         b.command,
-		Args:            b.args,
+		Args:            containerArgs,
 		WorkingDir:      b.workingDir,
 		VolumeMounts:    b.volumeMounts,
 		Env:             b.envVars,

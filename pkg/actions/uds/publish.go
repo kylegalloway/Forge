@@ -121,7 +121,7 @@ func (handler *PublishHandler) createPublishJob(ctx context.Context, bundle *uds
 		WithCommand([]string{"/bin/sh", "-c"}).
 		WithArgs([]string{udsCmd}).
 		WithWorkingDir(constants.VolumeMountPathWorkspace).
-		WithHomeDir(constants.HomePathUDS).
+		WithUserConfig(constants.DefaultUDSUID).
 		WithResources(handler.getResources(bundle)).
 		WithNodeSelector(bundle.Spec.NodeSelector).
 		WithAffinity(bundle.Spec.Affinity).
@@ -133,8 +133,7 @@ func (handler *PublishHandler) createPublishJob(ctx context.Context, bundle *uds
 		WithWorkspaceVolume().
 		WithArtifactPVC(artifactPVCName).
 		WithServiceAccountName(bundle.Spec.ServiceAccountName).
-		WithPodSecurityContext(actions.NonRootPodSecurityContextWithUID(constants.DefaultUDSUID)).
-		WithContainerSecurityContext(actions.NonRootSecurityContextWithUID(constants.DefaultUDSUID))
+		WithDebugMode(constants.DebugMode)
 
 	// Apply destination-specific configuration (volumes, env vars) from shared adapters
 	if jobConfig != nil {

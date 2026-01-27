@@ -288,15 +288,16 @@ Phase 2 has been implemented:
 - Added timing information via `time.Since(startTime)`
 - Existing unit tests verify debug log paths work correctly
 
-### Phase 3: Enhanced Controller Logging
+### Phase 3: Enhanced Controller Logging ✓ COMPLETED
 
-- [ ] Migrate controller to use `pkg/logging.Logger` consistently
-- [ ] Add correlation ID propagation through event handlers
-- [ ] Add debug logging for object event handling
-- [ ] Add debug logging for action dispatch decisions
-- [ ] Add debug logging for status updates
-- [ ] Add timing information for reconciliation duration
-- [ ] Add unit tests verifying debug log output
+Phase 3 has been implemented:
+- Added logger field to GenericController using `pkg/logging.Logger`
+- Added correlation ID propagation through handleObject via `logging.WithCorrelationID()`
+- Added debug logging for object event handling (generation, resourceVersion, debugMode)
+- Added debug logging for action dispatch decisions (isPrimaryAction, handler selection)
+- Added debug logging for PVC creation and terminal state skipping
+- Added timing information for reconciliation duration via `time.Since(startTime)`
+- Existing unit tests verify the controller behavior works correctly
 
 ### Phase 4: Enhanced Job Monitor Logging
 

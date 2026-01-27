@@ -22,6 +22,7 @@ import (
 	"github.com/kylegalloway/forge/pkg/actions/common"
 	apiscommon "github.com/kylegalloway/forge/pkg/apis/common"
 	"github.com/kylegalloway/forge/pkg/constants"
+	"github.com/kylegalloway/forge/pkg/logging"
 	"github.com/kylegalloway/forge/pkg/policy"
 	"github.com/kylegalloway/forge/pkg/telemetry"
 )
@@ -62,6 +63,7 @@ type GenericController[T apiscommon.PackageResource] struct {
 	tracer        *telemetry.Tracer
 	policyEngine  *policy.Engine
 	config        ControllerConfig
+	logger        *logging.Logger
 
 	// Action handlers
 	primaryHandler common.ActionHandler[T]
@@ -100,6 +102,7 @@ func NewGenericController[T apiscommon.PackageResource](
 		tracer:         tracer,
 		policyEngine:   policyEngine,
 		config:         config,
+		logger:         logging.NewLogger(config.ResourceType + "-controller"),
 		primaryHandler: primaryHandler,
 		publishHandler: publishHandler,
 		deployHandler:  deployHandler,
@@ -225,6 +228,8 @@ func (ctrl *GenericController[T]) handleEvent(ctx context.Context, event watch.E
 
 // handleObject processes a resource object
 func (ctrl *GenericController[T]) handleObject(ctx context.Context, obj interface{}) error {
+	startTime := time.Now()
+
 	unstrObj, ok := obj.(*unstructured.Unstructured)
 	if !ok {
 		return fmt.Errorf("unexpected object type: %T", obj)
@@ -233,14 +238,28 @@ func (ctrl *GenericController[T]) handleObject(ctx context.Context, obj interfac
 	name := unstrObj.GetName()
 	namespace := unstrObj.GetNamespace()
 
-	klog.InfoS("Reconciling resource", "name", name, "namespace", namespace, "resourceType", ctrl.config.ResourceType)
-
-	// Convert unstructured to typed resource
+	// Convert unstructured to typed resource first to get action
 	var resource T
 	if err := runtime.DefaultUnstructuredConverter.FromUnstructured(unstrObj.Object, &resource); err != nil {
 		klog.ErrorS(err, "Failed to convert to typed resource", "name", name, "namespace", namespace)
 		return err
 	}
+
+	// Set up logging context with correlation ID
+	correlationID := logging.GenerateCorrelationID(namespace, name, resource.GetAction())
+	ctx = logging.WithCorrelationID(ctx, correlationID)
+	ctx = logging.WithJobName(ctx, name)
+	ctx = logging.WithNamespace(ctx, namespace)
+	ctx = logging.WithAction(ctx, resource.GetAction())
+
+	ctrl.logger.Debug(ctx, "Handling object event",
+		"eventType", "reconcile",
+		"generation", unstrObj.GetGeneration(),
+		"resourceVersion", unstrObj.GetResourceVersion(),
+		"debugMode", resource.GetDebugMode(),
+	)
+
+	klog.InfoS("Reconciling resource", "name", name, "namespace", namespace, "resourceType", ctrl.config.ResourceType)
 
 	// Check if resource is in retry state
 	status, hasStatus := unstrObj.Object["status"].(map[string]interface{})
@@ -254,31 +273,43 @@ func (ctrl *GenericController[T]) handleObject(ctx context.Context, obj interfac
 		switch phase {
 		case constants.PhaseRetrying:
 			if ctrl.shouldRetryNow(status) {
+				ctrl.logger.Debug(ctx, "Retry time reached, dispatching action", "phase", phase)
 				klog.InfoS("Retry time reached, dispatching action", "name", name)
 				// Fall through to dispatch action
 			} else {
+				ctrl.logger.Debug(ctx, "Retry scheduled but not due yet", "phase", phase)
 				klog.V(4).InfoS("Retry scheduled but not due yet", "name", name)
 				return nil
 			}
 		case constants.PhaseCompleted, constants.PhaseFailed:
 			// Resource in terminal state, skip
+			ctrl.logger.Debug(ctx, "Skipping terminal resource", "status", phase, "reason", "already_completed")
 			klog.V(4).InfoS("Resource already in terminal state, skipping", "name", name, "phase", phase)
 			return nil
 		}
 	}
 
 	// Policy validation
+	ctrl.logger.Debug(ctx, "Starting policy validation")
 	if err := ctrl.validatePolicy(ctx, resource); err != nil {
+		ctrl.logger.Debug(ctx, "Policy validation failed", "error", err.Error())
 		klog.ErrorS(err, "Policy validation failed", "name", name)
 		return ctrl.updateResourceStatus(ctx, unstrObj, constants.PhaseFailed, fmt.Sprintf("Policy validation failed: %v", err))
 	}
+	ctrl.logger.Debug(ctx, "Policy validation passed")
 
 	// Action dispatch
+	ctrl.logger.Debug(ctx, "Dispatching to handler",
+		"action", resource.GetAction(),
+		"isPrimaryAction", ctrl.isPrimaryAction(resource.GetAction()),
+	)
 	if err := ctrl.dispatchAction(ctx, resource); err != nil {
+		ctrl.logger.Debug(ctx, "Handler failed", "error", err.Error(), "duration", time.Since(startTime).String())
 		klog.ErrorS(err, "Action dispatch failed", "name", name, "action", resource.GetAction())
 		return ctrl.updateResourceStatus(ctx, unstrObj, constants.PhaseFailed, fmt.Sprintf("Action failed: %v", err))
 	}
 
+	ctrl.logger.Debug(ctx, "Handler completed", "duration", time.Since(startTime).String())
 	return nil
 }
 
@@ -305,15 +336,19 @@ func (ctrl *GenericController[T]) dispatchAction(ctx context.Context, resource T
 	if ctrl.config.SupportsPVC && ctrl.isPrimaryAction(action) && resource.GetUseArtifactPVC() {
 		// Create PVC for artifact sharing
 		pvcName := fmt.Sprintf("%s-artifacts", resource.GetName())
+		ctrl.logger.Debug(ctx, "Ensuring artifact PVC", "pvcName", pvcName)
 		if err := ctrl.ensureArtifactPVC(ctx, resource.GetNamespace(), pvcName, resource); err != nil {
+			ctrl.logger.Debug(ctx, "Failed to ensure artifact PVC", "error", err.Error())
 			return fmt.Errorf("failed to ensure artifact PVC: %w", err)
 		}
 		opts.ArtifactPVCName = pvcName
+		ctrl.logger.Debug(ctx, "Artifact PVC ready", "pvcName", pvcName)
 	}
 
 	// Execute primary action based on the action type
 	// The monitor will handle chaining for compound actions
 	if ctrl.isPrimaryAction(action) {
+		ctrl.logger.Debug(ctx, "Executing primary handler", "handler", ctrl.config.PrimaryAction)
 		_, err := ctrl.primaryHandler.Execute(ctx, resource, opts)
 		return err
 	}
@@ -321,12 +356,15 @@ func (ctrl *GenericController[T]) dispatchAction(ctx context.Context, resource T
 	// Single publish or deploy action (standalone, not part of a compound action)
 	switch action {
 	case constants.SpecActionPublish:
+		ctrl.logger.Debug(ctx, "Executing publish handler")
 		_, err := ctrl.publishHandler.Execute(ctx, resource, opts)
 		return err
 	case constants.SpecActionDeploy:
+		ctrl.logger.Debug(ctx, "Executing deploy handler")
 		_, err := ctrl.deployHandler.Execute(ctx, resource, opts)
 		return err
 	default:
+		ctrl.logger.Debug(ctx, "Unknown action", "action", action)
 		return fmt.Errorf("unknown action: %s", action)
 	}
 }

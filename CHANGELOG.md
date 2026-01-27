@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Action handlers now check per-job debug flag before falling back to global constant
 - JobBuilder sets TTLSecondsAfterFinished to 1 hour (3600s) when debug mode is enabled
 - Webhook validators now emit detailed debug logs at V(4) with correlation IDs, timing, and policy decisions
+- GenericController now emits debug logs with correlation IDs, timing, and action dispatch decisions
 
 ## [0.9.13] - 2026-01-27
 

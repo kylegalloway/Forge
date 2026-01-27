@@ -53,6 +53,30 @@ git clone https://github.com/kylegalloway/forge.git
 cd forge
 ```
 
+### Install Git Hooks
+
+Forge uses custom git hooks to enforce code quality and commit conventions:
+
+```bash
+# Install pre-commit framework (runs linters, formatters, security checks)
+pip install pre-commit
+pre-commit install
+
+# Install custom hooks (commit message validation, signed commits)
+cp scripts/hooks/* .git/hooks/
+chmod +x .git/hooks/*
+```
+
+The hooks enforce:
+
+| Hook | Purpose |
+|------|---------|
+| `pre-commit` | Runs linters, formatters, and security scanners via pre-commit framework |
+| `prepare-commit-msg` | Requires signed commits (`git commit -S` or `git config commit.gpgSign true`) |
+| `commit-msg` | Validates commit messages: emoji required, no boring prefixes, body required |
+
+> **Note**: If you don't have GPG signing set up, see [GitHub's guide to signing commits](https://docs.github.com/en/authentication/managing-commit-signature-verification/signing-commits).
+
 ## Local Testing with Kind
 
 ### Quick Start
@@ -278,7 +302,9 @@ if err != nil {
 
 ### Before Submitting
 
-1. Run tests and linters
+1. Ensure git hooks are installed (see [Install Git Hooks](#install-git-hooks))
+
+2. Run tests and linters (hooks run these automatically, but you can run manually)
 
    ```bash
    make test
@@ -286,16 +312,20 @@ if err != nil {
    make vet
    ```
 
-2. Test in kind cluster
+3. Test in kind cluster
 
    ```bash
    make kind-redeploy
    # Manual testing
    ```
 
-3. Update documentation if needed
+4. Update documentation if needed
 
-4. Use clear, descriptive commit messages (we prefer chaotic but informative style)
+5. Commit with a signed, chaotic commit message
+   - Must include an emoji in the title
+   - Must have a body explaining the "why"
+   - No boring prefixes like `fix:`, `feat:`, `chore:`
+   - Cultural references encouraged (see `scripts/hooks/commit-msg` for details)
 
 ### Pull Request Process
 

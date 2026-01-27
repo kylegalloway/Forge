@@ -11,9 +11,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - PascalCase spec action constants (`SpecActionBuild`, `SpecActionPublish`, `SpecActionDeploy`, etc.) in `pkg/constants/actions.go` for matching CRD enum values
 - Comprehensive unit tests for `determineNextAction()` and `isMultiActionJob()` functions covering all compound action chains (Zarf: BuildPublish, BuildDeploy, BuildPublishDeploy; UDS: CreatePublish, CreateDeploy, CreatePublishDeploy; Shared: PublishDeploy)
 - Debug mode enhancement plan document outlining per-job debug flag, enhanced webhook/controller logging, and debug pod behavior improvements
+- Release script now updates `chart/forge/values.yaml` image tags (controller and webhook) to explicit versions instead of empty strings
+- Release script now manages CHANGELOG.md automatically (moves Unreleased to new version section, updates comparison links)
+- Git hooks tracked in `scripts/hooks/` for reproducible developer setup:
+  - `commit-msg`: Validates commit messages (emoji required, body required, no boring prefixes, no AI attribution)
+  - `pre-commit`: Portable pre-commit framework invocation (no hardcoded paths)
+  - `prepare-commit-msg`: Enforces signed commits
+- CONTRIBUTING.md updated with "Install Git Hooks" section and commit message requirements
 
 ### Fixed
 - Action chaining case sensitivity bug where compound actions like `BuildPublish` (PascalCase from spec.action) failed to chain because they were compared against string concatenations like `buildPublish` (lowercase + PascalCase). All action dispatch and chaining logic now uses typed constants ensuring consistent comparison.
+- Commit-msg hook now accepts both 3-byte (`\xE2`) and 4-byte (`\xF0`) UTF-8 emojis, allowing ✨ ♻️ ⚡ ⬆️ ⬇️ alongside 🔧 🐛 📝 🚀
 
 ## [0.9.12] - 2026-01-26
 

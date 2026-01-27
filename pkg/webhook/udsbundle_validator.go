@@ -20,11 +20,13 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/kylegalloway/forge/pkg/actions/validation"
 	udsv1alpha3 "github.com/kylegalloway/forge/pkg/apis/uds/v1alpha3"
 	"github.com/kylegalloway/forge/pkg/audit"
 	"github.com/kylegalloway/forge/pkg/constants"
+	"github.com/kylegalloway/forge/pkg/logging"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -35,6 +37,7 @@ import (
 type UDSBundleJobValidator struct {
 	kubeClient kubernetes.Interface
 	auditTrail *audit.AuditTrail
+	logger     *logging.Logger
 }
 
 // NewUDSBundleJobValidator creates a new UDSBundleJob validator
@@ -42,65 +45,143 @@ func NewUDSBundleJobValidator(kubeClient kubernetes.Interface) *UDSBundleJobVali
 	return &UDSBundleJobValidator{
 		kubeClient: kubeClient,
 		auditTrail: audit.NewAuditTrail(kubeClient, audit.DefaultConfig()),
+		logger:     logging.NewLogger("uds-validator"),
 	}
 }
 
 // ValidateUDSBundleJob validates a UDSBundleJob resource against ServiceAccount permissions
 func (validator *UDSBundleJobValidator) ValidateUDSBundleJob(ctx context.Context, bundle *udsv1alpha3.UDSBundleJob) error {
+	startTime := time.Now()
+
+	// Set up logging context with correlation ID
+	correlationID := logging.GenerateCorrelationID(bundle.Namespace, bundle.Name, string(bundle.Spec.Action))
+	ctx = logging.WithCorrelationID(ctx, correlationID)
+	ctx = logging.WithJobName(ctx, bundle.Name)
+	ctx = logging.WithNamespace(ctx, bundle.Namespace)
+	ctx = logging.WithAction(ctx, string(bundle.Spec.Action))
+
+	validator.logger.Debug(ctx, "Starting validation",
+		"resource", bundle.Name,
+		"serviceAccount", bundle.Spec.ServiceAccountName,
+		"debugMode", bundle.Spec.DebugMode,
+	)
+
 	klog.InfoS("Validating UDSBundleJob", "name", bundle.Name, "namespace", bundle.Namespace)
 
 	// Get the ServiceAccount
+	validator.logger.Debug(ctx, "Fetching ServiceAccount",
+		"serviceAccount", bundle.Spec.ServiceAccountName,
+	)
 	sa, err := validator.kubeClient.CoreV1().ServiceAccounts(bundle.Namespace).Get(ctx, bundle.Spec.ServiceAccountName, metav1.GetOptions{})
 	if err != nil {
 		reason := fmt.Sprintf("failed to get ServiceAccount %s: %v", bundle.Spec.ServiceAccountName, err)
+		validator.logger.Debug(ctx, "ServiceAccount lookup failed",
+			"serviceAccount", bundle.Spec.ServiceAccountName,
+			"error", err.Error(),
+			"decision", "DENY",
+		)
 		if auditErr := validator.auditTrail.RecordJobValidationFailed(ctx, "UDSBundleJob", bundle.Namespace, bundle.Name, bundle.Spec.ServiceAccountName, reason); auditErr != nil {
 			klog.V(4).ErrorS(auditErr, "Failed to record audit event")
 		}
 		return fmt.Errorf("failed to get ServiceAccount %s: %w", bundle.Spec.ServiceAccountName, err)
 	}
 
+	// Log ServiceAccount annotations for debugging
+	validator.logger.Debug(ctx, "ServiceAccount annotations parsed",
+		"allowedActions", getAnnotation(sa, constants.AnnotationAllowedActions),
+		"allowedSourceRepos", getAnnotation(sa, constants.AnnotationAllowedSourceRepos),
+		"allowedSourceRegistries", getAnnotation(sa, constants.AnnotationAllowedSourceRegistries),
+		"allowedSourceBuckets", getAnnotation(sa, constants.AnnotationAllowedSourceBuckets),
+		"allowedPublishRegistries", getAnnotation(sa, constants.AnnotationAllowedPublishRegistries),
+		"allowedPublishBuckets", getAnnotation(sa, constants.AnnotationAllowedPublishBuckets),
+		"allowedDeployTargets", getAnnotation(sa, constants.AnnotationAllowedDeployTargets),
+	)
+
 	// Validate action is allowed
+	validator.logger.Debug(ctx, "Checking allowed actions",
+		"requestedAction", bundle.Spec.Action,
+		"allowedActions", getAnnotation(sa, constants.AnnotationAllowedActions),
+	)
 	if err := validator.validateAction(sa, bundle.Spec.Action); err != nil {
+		validator.logger.Debug(ctx, "Action validation failed",
+			"requestedAction", bundle.Spec.Action,
+			"decision", "DENY",
+			"reason", err.Error(),
+		)
 		if auditErr := validator.auditTrail.RecordJobValidationFailed(ctx, "UDSBundleJob", bundle.Namespace, bundle.Name, bundle.Spec.ServiceAccountName, err.Error()); auditErr != nil {
 			klog.V(4).ErrorS(auditErr, "Failed to record audit event")
 		}
 		return err
 	}
+	validator.logger.Debug(ctx, "Action validation passed", "action", bundle.Spec.Action, "decision", "ALLOW")
 
 	// Validate source permissions
+	validator.logger.Debug(ctx, "Checking source policy",
+		"sourceType", bundle.Spec.Source.Type,
+	)
 	if err := validator.validateSource(sa, &bundle.Spec.Source); err != nil {
+		validator.logger.Debug(ctx, "Source validation failed",
+			"sourceType", bundle.Spec.Source.Type,
+			"decision", "DENY",
+			"reason", err.Error(),
+		)
 		if auditErr := validator.auditTrail.RecordJobValidationFailed(ctx, "UDSBundleJob", bundle.Namespace, bundle.Name, bundle.Spec.ServiceAccountName, err.Error()); auditErr != nil {
 			klog.V(4).ErrorS(auditErr, "Failed to record audit event")
 		}
 		return err
 	}
+	validator.logger.Debug(ctx, "Source validation passed", "sourceType", bundle.Spec.Source.Type, "decision", "ALLOW")
 
 	// Validate extraArgs for command injection
+	validator.logger.Debug(ctx, "Checking extraArgs for command injection")
 	if err := validator.validateExtraArgs(&bundle.Spec); err != nil {
+		validator.logger.Debug(ctx, "ExtraArgs validation failed",
+			"decision", "DENY",
+			"reason", err.Error(),
+		)
 		if auditErr := validator.auditTrail.RecordJobValidationFailed(ctx, "UDSBundleJob", bundle.Namespace, bundle.Name, bundle.Spec.ServiceAccountName, err.Error()); auditErr != nil {
 			klog.V(4).ErrorS(auditErr, "Failed to record audit event")
 		}
 		return err
 	}
+	validator.logger.Debug(ctx, "ExtraArgs validation passed", "decision", "ALLOW")
 
 	// Validate publish permissions if publish config is specified
 	if bundle.Spec.Publish != nil {
+		validator.logger.Debug(ctx, "Checking publish policy",
+			"destinationType", bundle.Spec.Publish.Destination.Type,
+		)
 		if err := validator.validatePublish(sa, bundle.Spec.Publish); err != nil {
+			validator.logger.Debug(ctx, "Publish validation failed",
+				"destinationType", bundle.Spec.Publish.Destination.Type,
+				"decision", "DENY",
+				"reason", err.Error(),
+			)
 			if auditErr := validator.auditTrail.RecordJobValidationFailed(ctx, "UDSBundleJob", bundle.Namespace, bundle.Name, bundle.Spec.ServiceAccountName, err.Error()); auditErr != nil {
 				klog.V(4).ErrorS(auditErr, "Failed to record audit event")
 			}
 			return err
 		}
+		validator.logger.Debug(ctx, "Publish validation passed", "destinationType", bundle.Spec.Publish.Destination.Type, "decision", "ALLOW")
 	}
 
 	// Validate deploy permissions if deploy config is specified
 	if bundle.Spec.Deploy != nil {
+		validator.logger.Debug(ctx, "Checking deploy policy",
+			"target", bundle.Spec.Deploy.Target,
+		)
 		if err := validator.validateDeploy(sa, bundle.Spec.Deploy); err != nil {
+			validator.logger.Debug(ctx, "Deploy validation failed",
+				"target", bundle.Spec.Deploy.Target,
+				"decision", "DENY",
+				"reason", err.Error(),
+			)
 			if auditErr := validator.auditTrail.RecordJobValidationFailed(ctx, "UDSBundleJob", bundle.Namespace, bundle.Name, bundle.Spec.ServiceAccountName, err.Error()); auditErr != nil {
 				klog.V(4).ErrorS(auditErr, "Failed to record audit event")
 			}
 			return err
 		}
+		validator.logger.Debug(ctx, "Deploy validation passed", "target", bundle.Spec.Deploy.Target, "decision", "ALLOW")
 	}
 
 	// Record successful validation
@@ -111,6 +192,12 @@ func (validator *UDSBundleJobValidator) ValidateUDSBundleJob(ctx context.Context
 	if auditErr := validator.auditTrail.RecordJobValidated(ctx, "UDSBundleJob", bundle.Namespace, bundle.Name, bundle.Spec.ServiceAccountName, details); auditErr != nil {
 		klog.V(4).ErrorS(auditErr, "Failed to record audit event")
 	}
+
+	validator.logger.Debug(ctx, "Validation complete",
+		"resource", bundle.Name,
+		"allowed", true,
+		"duration", time.Since(startTime).String(),
+	)
 
 	klog.InfoS("UDSBundleJob validation passed", "name", bundle.Name, "namespace", bundle.Namespace)
 	return nil

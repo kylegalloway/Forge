@@ -21,11 +21,13 @@ import (
 	"fmt"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/kylegalloway/forge/pkg/actions/validation"
 	zarfv1alpha3 "github.com/kylegalloway/forge/pkg/apis/zarf/v1alpha3"
 	"github.com/kylegalloway/forge/pkg/audit"
 	"github.com/kylegalloway/forge/pkg/constants"
+	"github.com/kylegalloway/forge/pkg/logging"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -36,6 +38,7 @@ import (
 type ZarfPackageJobValidator struct {
 	kubeClient kubernetes.Interface
 	auditTrail *audit.AuditTrail
+	logger     *logging.Logger
 }
 
 // NewZarfPackageJobValidator creates a new ZarfPackageJob validator
@@ -43,65 +46,143 @@ func NewZarfPackageJobValidator(kubeClient kubernetes.Interface) *ZarfPackageJob
 	return &ZarfPackageJobValidator{
 		kubeClient: kubeClient,
 		auditTrail: audit.NewAuditTrail(kubeClient, audit.DefaultConfig()),
+		logger:     logging.NewLogger("zarf-validator"),
 	}
 }
 
 // ValidateZarfPackageJob validates a ZarfPackageJob resource against ServiceAccount permissions
 func (validator *ZarfPackageJobValidator) ValidateZarfPackageJob(ctx context.Context, pkg *zarfv1alpha3.ZarfPackageJob) error {
+	startTime := time.Now()
+
+	// Set up logging context with correlation ID
+	correlationID := logging.GenerateCorrelationID(pkg.Namespace, pkg.Name, string(pkg.Spec.Action))
+	ctx = logging.WithCorrelationID(ctx, correlationID)
+	ctx = logging.WithJobName(ctx, pkg.Name)
+	ctx = logging.WithNamespace(ctx, pkg.Namespace)
+	ctx = logging.WithAction(ctx, string(pkg.Spec.Action))
+
+	validator.logger.Debug(ctx, "Starting validation",
+		"resource", pkg.Name,
+		"serviceAccount", pkg.Spec.ServiceAccountName,
+		"debugMode", pkg.Spec.DebugMode,
+	)
+
 	klog.InfoS("Validating ZarfPackageJob", "name", pkg.Name, "namespace", pkg.Namespace)
 
 	// Get the ServiceAccount
+	validator.logger.Debug(ctx, "Fetching ServiceAccount",
+		"serviceAccount", pkg.Spec.ServiceAccountName,
+	)
 	sa, err := validator.kubeClient.CoreV1().ServiceAccounts(pkg.Namespace).Get(ctx, pkg.Spec.ServiceAccountName, metav1.GetOptions{})
 	if err != nil {
 		reason := fmt.Sprintf("failed to get ServiceAccount %s: %v", pkg.Spec.ServiceAccountName, err)
+		validator.logger.Debug(ctx, "ServiceAccount lookup failed",
+			"serviceAccount", pkg.Spec.ServiceAccountName,
+			"error", err.Error(),
+			"decision", "DENY",
+		)
 		if auditErr := validator.auditTrail.RecordJobValidationFailed(ctx, "ZarfPackageJob", pkg.Namespace, pkg.Name, pkg.Spec.ServiceAccountName, reason); auditErr != nil {
 			klog.V(4).ErrorS(auditErr, "Failed to record audit event")
 		}
 		return fmt.Errorf("failed to get ServiceAccount %s: %w", pkg.Spec.ServiceAccountName, err)
 	}
 
+	// Log ServiceAccount annotations for debugging
+	validator.logger.Debug(ctx, "ServiceAccount annotations parsed",
+		"allowedActions", getAnnotation(sa, constants.AnnotationAllowedActions),
+		"allowedSourceRepos", getAnnotation(sa, constants.AnnotationAllowedSourceRepos),
+		"allowedSourceRegistries", getAnnotation(sa, constants.AnnotationAllowedSourceRegistries),
+		"allowedSourceBuckets", getAnnotation(sa, constants.AnnotationAllowedSourceBuckets),
+		"allowedPublishRegistries", getAnnotation(sa, constants.AnnotationAllowedPublishRegistries),
+		"allowedPublishBuckets", getAnnotation(sa, constants.AnnotationAllowedPublishBuckets),
+		"allowedDeployTargets", getAnnotation(sa, constants.AnnotationAllowedDeployTargets),
+	)
+
 	// Validate action is allowed
+	validator.logger.Debug(ctx, "Checking allowed actions",
+		"requestedAction", pkg.Spec.Action,
+		"allowedActions", getAnnotation(sa, constants.AnnotationAllowedActions),
+	)
 	if err := validator.validateAction(sa, pkg.Spec.Action); err != nil {
+		validator.logger.Debug(ctx, "Action validation failed",
+			"requestedAction", pkg.Spec.Action,
+			"decision", "DENY",
+			"reason", err.Error(),
+		)
 		if auditErr := validator.auditTrail.RecordJobValidationFailed(ctx, "ZarfPackageJob", pkg.Namespace, pkg.Name, pkg.Spec.ServiceAccountName, err.Error()); auditErr != nil {
 			klog.V(4).ErrorS(auditErr, "Failed to record audit event")
 		}
 		return err
 	}
+	validator.logger.Debug(ctx, "Action validation passed", "action", pkg.Spec.Action, "decision", "ALLOW")
 
 	// Validate source permissions
+	validator.logger.Debug(ctx, "Checking source policy",
+		"sourceType", pkg.Spec.Source.Type,
+	)
 	if err := validator.validateSource(sa, &pkg.Spec.Source); err != nil {
+		validator.logger.Debug(ctx, "Source validation failed",
+			"sourceType", pkg.Spec.Source.Type,
+			"decision", "DENY",
+			"reason", err.Error(),
+		)
 		if auditErr := validator.auditTrail.RecordJobValidationFailed(ctx, "ZarfPackageJob", pkg.Namespace, pkg.Name, pkg.Spec.ServiceAccountName, err.Error()); auditErr != nil {
 			klog.V(4).ErrorS(auditErr, "Failed to record audit event")
 		}
 		return err
 	}
+	validator.logger.Debug(ctx, "Source validation passed", "sourceType", pkg.Spec.Source.Type, "decision", "ALLOW")
 
 	// Validate extraArgs for command injection
+	validator.logger.Debug(ctx, "Checking extraArgs for command injection")
 	if err := validator.validateExtraArgs(&pkg.Spec); err != nil {
+		validator.logger.Debug(ctx, "ExtraArgs validation failed",
+			"decision", "DENY",
+			"reason", err.Error(),
+		)
 		if auditErr := validator.auditTrail.RecordJobValidationFailed(ctx, "ZarfPackageJob", pkg.Namespace, pkg.Name, pkg.Spec.ServiceAccountName, err.Error()); auditErr != nil {
 			klog.V(4).ErrorS(auditErr, "Failed to record audit event")
 		}
 		return err
 	}
+	validator.logger.Debug(ctx, "ExtraArgs validation passed", "decision", "ALLOW")
 
 	// Validate publish permissions if publish config is specified
 	if pkg.Spec.Publish != nil {
+		validator.logger.Debug(ctx, "Checking publish policy",
+			"destinationType", pkg.Spec.Publish.Destination.Type,
+		)
 		if err := validator.validatePublish(sa, pkg.Spec.Publish); err != nil {
+			validator.logger.Debug(ctx, "Publish validation failed",
+				"destinationType", pkg.Spec.Publish.Destination.Type,
+				"decision", "DENY",
+				"reason", err.Error(),
+			)
 			if auditErr := validator.auditTrail.RecordJobValidationFailed(ctx, "ZarfPackageJob", pkg.Namespace, pkg.Name, pkg.Spec.ServiceAccountName, err.Error()); auditErr != nil {
 				klog.V(4).ErrorS(auditErr, "Failed to record audit event")
 			}
 			return err
 		}
+		validator.logger.Debug(ctx, "Publish validation passed", "destinationType", pkg.Spec.Publish.Destination.Type, "decision", "ALLOW")
 	}
 
 	// Validate deploy permissions if deploy config is specified
 	if pkg.Spec.Deploy != nil {
+		validator.logger.Debug(ctx, "Checking deploy policy",
+			"target", pkg.Spec.Deploy.Target,
+		)
 		if err := validator.validateDeploy(sa, pkg.Spec.Deploy); err != nil {
+			validator.logger.Debug(ctx, "Deploy validation failed",
+				"target", pkg.Spec.Deploy.Target,
+				"decision", "DENY",
+				"reason", err.Error(),
+			)
 			if auditErr := validator.auditTrail.RecordJobValidationFailed(ctx, "ZarfPackageJob", pkg.Namespace, pkg.Name, pkg.Spec.ServiceAccountName, err.Error()); auditErr != nil {
 				klog.V(4).ErrorS(auditErr, "Failed to record audit event")
 			}
 			return err
 		}
+		validator.logger.Debug(ctx, "Deploy validation passed", "target", pkg.Spec.Deploy.Target, "decision", "ALLOW")
 	}
 
 	// Record successful validation
@@ -112,6 +193,12 @@ func (validator *ZarfPackageJobValidator) ValidateZarfPackageJob(ctx context.Con
 	if auditErr := validator.auditTrail.RecordJobValidated(ctx, "ZarfPackageJob", pkg.Namespace, pkg.Name, pkg.Spec.ServiceAccountName, details); auditErr != nil {
 		klog.V(4).ErrorS(auditErr, "Failed to record audit event")
 	}
+
+	validator.logger.Debug(ctx, "Validation complete",
+		"resource", pkg.Name,
+		"allowed", true,
+		"duration", time.Since(startTime).String(),
+	)
 
 	klog.InfoS("ZarfPackageJob validation passed", "name", pkg.Name, "namespace", pkg.Namespace)
 	return nil

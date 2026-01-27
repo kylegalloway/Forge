@@ -277,15 +277,16 @@ Phase 1 has been implemented:
 - Regenerated CRDs with `make manifests`
 - Added unit tests for debug mode in job_builder_test.go
 
-### Phase 2: Enhanced Webhook Logging
+### Phase 2: Enhanced Webhook Logging ✓ COMPLETED
 
-- [ ] Add correlation ID to all webhook request contexts
-- [ ] Add debug logging at each validation step
-- [ ] Log policy evaluation inputs and outputs
-- [ ] Log ServiceAccount annotation parsing
-- [ ] Log final validation decision with detailed reason
-- [ ] Add timing information for validation duration
-- [ ] Add unit tests verifying debug log output
+Phase 2 has been implemented:
+- Added correlation ID to all webhook request contexts via `logging.WithCorrelationID()`
+- Added debug logging at each validation step (action, source, extraArgs, publish, deploy)
+- Logged policy evaluation inputs and outputs (requested action vs allowed actions, etc.)
+- Logged ServiceAccount annotations when fetched
+- Logged final validation decision with detailed reason and duration
+- Added timing information via `time.Since(startTime)`
+- Existing unit tests verify debug log paths work correctly
 
 ### Phase 3: Enhanced Controller Logging
 

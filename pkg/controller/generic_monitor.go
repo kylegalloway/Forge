@@ -420,26 +420,29 @@ func (m *GenericJobMonitor[T]) handleActionChaining(ctx context.Context, unstrOb
 	return nil
 }
 
-// determineNextAction determines the next action in a compound workflow
+// determineNextAction determines the next action in a compound workflow.
+// mainAction is the spec.action value (PascalCase, e.g., "BuildPublish").
+// completedAction is the job label action (lowercase, e.g., "build").
 func (m *GenericJobMonitor[T]) determineNextAction(mainAction, completedAction string) string {
-	// Map of compound actions to their sequences
-	// Uses generic pattern: {Primary}Publish, {Primary}Deploy, etc.
-	primaryAction := m.config.PrimaryAction
+	// Map of compound actions to their sequences.
+	// mainAction uses PascalCase constants (SpecAction*) matching the CRD enum.
+	// completedAction uses lowercase constants (Action*) matching job labels.
+	primaryAction := m.config.PrimaryAction // lowercase, e.g., "build" or "create"
 
 	switch mainAction {
-	case primaryAction + "Publish", "CreatePublish": // BuildPublish or CreatePublish
+	case constants.SpecActionBuildPublish, constants.SpecActionCreatePublish:
 		if completedAction == primaryAction || completedAction == constants.ActionCreate {
 			return constants.ActionPublish
 		}
-	case primaryAction + "Deploy", "CreateDeploy": // BuildDeploy or CreateDeploy
+	case constants.SpecActionBuildDeploy, constants.SpecActionCreateDeploy:
 		if completedAction == primaryAction || completedAction == constants.ActionCreate {
 			return constants.ActionDeploy
 		}
-	case "PublishDeploy":
+	case constants.SpecActionPublishDeploy:
 		if completedAction == constants.ActionPublish {
 			return constants.ActionDeploy
 		}
-	case primaryAction + "PublishDeploy", "CreatePublishDeploy": // BuildPublishDeploy or CreatePublishDeploy
+	case constants.SpecActionBuildPublishDeploy, constants.SpecActionCreatePublishDeploy:
 		switch completedAction {
 		case primaryAction, constants.ActionCreate:
 			return constants.ActionPublish
@@ -451,18 +454,17 @@ func (m *GenericJobMonitor[T]) determineNextAction(mainAction, completedAction s
 	return ""
 }
 
-// isMultiActionJob checks if an action is a compound action that needs PVC support
+// isMultiActionJob checks if an action is a compound action that needs PVC support.
+// action is the spec.action value (PascalCase, e.g., "BuildPublish").
 func (m *GenericJobMonitor[T]) isMultiActionJob(action string) bool {
-	primaryAction := m.config.PrimaryAction
-
 	multiActions := []string{
-		primaryAction + "Publish",
-		primaryAction + "Deploy",
-		"PublishDeploy",
-		primaryAction + "PublishDeploy",
-		"CreatePublish",
-		"CreateDeploy",
-		"CreatePublishDeploy",
+		constants.SpecActionBuildPublish,
+		constants.SpecActionBuildDeploy,
+		constants.SpecActionBuildPublishDeploy,
+		constants.SpecActionCreatePublish,
+		constants.SpecActionCreateDeploy,
+		constants.SpecActionCreatePublishDeploy,
+		constants.SpecActionPublishDeploy,
 	}
 
 	for _, ma := range multiActions {

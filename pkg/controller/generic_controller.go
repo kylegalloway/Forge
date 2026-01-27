@@ -318,12 +318,12 @@ func (ctrl *GenericController[T]) dispatchAction(ctx context.Context, resource T
 		return err
 	}
 
-	// Single publish or deploy action
+	// Single publish or deploy action (standalone, not part of a compound action)
 	switch action {
-	case "Publish", "publish":
+	case constants.SpecActionPublish:
 		_, err := ctrl.publishHandler.Execute(ctx, resource, opts)
 		return err
-	case "Deploy", "deploy":
+	case constants.SpecActionDeploy:
 		_, err := ctrl.deployHandler.Execute(ctx, resource, opts)
 		return err
 	default:
@@ -331,17 +331,23 @@ func (ctrl *GenericController[T]) dispatchAction(ctx context.Context, resource T
 	}
 }
 
-// isPrimaryAction checks if this is the primary action (Build or Create)
+// isPrimaryAction checks if this is the primary action (Build or Create).
+// action is the spec.action value (PascalCase, e.g., "Build" or "BuildPublish").
 func (ctrl *GenericController[T]) isPrimaryAction(action string) bool {
-	// Check if action starts with primary action or is a compound action containing it
+	// Check if action is a primary action or compound action starting with a primary action.
+	// Uses PascalCase SpecAction* constants to match the CRD enum values.
 	primaryActions := []string{
-		ctrl.config.PrimaryAction,
-		ctrl.config.PrimaryAction + "Publish",
-		ctrl.config.PrimaryAction + "Deploy",
-		ctrl.config.PrimaryAction + "PublishDeploy",
-		"Build", "Create", // Standalone primary actions (capitalized API types)
-		"BuildPublish", "BuildDeploy", "BuildPublishDeploy", // Zarf
-		"CreatePublish", "CreateDeploy", "CreatePublishDeploy", // UDS
+		// Standalone primary actions
+		constants.SpecActionBuild,
+		constants.SpecActionCreate,
+		// Zarf compound actions starting with Build
+		constants.SpecActionBuildPublish,
+		constants.SpecActionBuildDeploy,
+		constants.SpecActionBuildPublishDeploy,
+		// UDS compound actions starting with Create
+		constants.SpecActionCreatePublish,
+		constants.SpecActionCreateDeploy,
+		constants.SpecActionCreatePublishDeploy,
 	}
 
 	for _, pa := range primaryActions {

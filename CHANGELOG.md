@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Per-job `debugMode` field in ZarfPackageJobSpec and UDSBundleJobSpec CRDs
+- `GetDebugMode()` method on PackageResource interface for unified debug mode access
+- Unit tests for JobBuilder debug mode behavior in job_builder_test.go
+- Debug mode precedence: per-job spec.debugMode takes priority over global FORGE_DEBUG_MODE env var
+
+### Changed
+- Action handlers now check per-job debug flag before falling back to global constant
+- JobBuilder sets TTLSecondsAfterFinished to 1 hour (3600s) when debug mode is enabled
+
 ## [0.9.13] - 2026-01-27
 
 ### Added

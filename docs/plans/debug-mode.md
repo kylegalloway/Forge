@@ -267,14 +267,15 @@ func (b *JobBuilder) Build() *batchv1.Job {
 
 ## Implementation Checklist
 
-### Phase 1: CRD Spec Field
+### Phase 1: CRD Spec Field ✓ COMPLETED
 
-- [ ] Add `debugMode bool` field to `ZarfPackageJobSpec`
-- [ ] Add `debugMode bool` field to `UDSBundleJobSpec`
-- [ ] Add `IsDebugModeEnabled()` helper function
-- [ ] Update `JobBuilder` to use per-job debug flag
-- [ ] Regenerate CRDs with `make generate`
-- [ ] Add unit tests for debug mode precedence logic
+Phase 1 has been implemented:
+- Added `debugMode bool` field to both `ZarfPackageJobSpec` and `UDSBundleJobSpec`
+- Added `GetDebugMode()` method to the `PackageResource` interface
+- Updated all action handlers to use per-job debug flag with global fallback
+- Updated `JobBuilder` to set extended TTL when debug mode enabled
+- Regenerated CRDs with `make manifests`
+- Added unit tests for debug mode in job_builder_test.go
 
 ### Phase 2: Enhanced Webhook Logging
 
@@ -306,7 +307,7 @@ func (b *JobBuilder) Build() *batchv1.Job {
 
 ### Phase 5: Debug Pod Behavior
 
-- [ ] Set `TTLSecondsAfterFinished = 3600` when debugMode enabled
+- [x] Set `TTLSecondsAfterFinished = 3600` when debugMode enabled (done in Phase 1)
 - [ ] Skip automatic pod cleanup when debugMode enabled
 - [ ] Document debug mode workflow in kubectl-forge help
 - [ ] Add example YAML with debugMode enabled

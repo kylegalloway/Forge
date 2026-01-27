@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.13] - 2026-01-27
+
 ### Added
 - PascalCase spec action constants (`SpecActionBuild`, `SpecActionPublish`, `SpecActionDeploy`, etc.) in `pkg/constants/actions.go` for matching CRD enum values
 - Comprehensive unit tests for `determineNextAction()` and `isMultiActionJob()` functions covering all compound action chains (Zarf: BuildPublish, BuildDeploy, BuildPublishDeploy; UDS: CreatePublish, CreateDeploy, CreatePublishDeploy; Shared: PublishDeploy)
@@ -496,7 +498,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial project setup and build infrastructure
 - CI/CD pipeline configuration for automated testing and releases
 
-[Unreleased]: https://github.com/kylegalloway/forge/compare/v0.9.12...HEAD
+[Unreleased]: https://github.com/kylegalloway/forge/compare/v0.9.13...HEAD
+[0.9.13]: https://github.com/kylegalloway/forge/compare/v0.9.12...v0.9.13
 [0.9.12]: https://github.com/kylegalloway/forge/compare/v0.9.11...v0.9.12
 [0.9.11]: https://github.com/kylegalloway/forge/compare/v0.9.10...v0.9.11
 [0.9.10]: https://github.com/kylegalloway/forge/compare/v0.9.9...v0.9.10

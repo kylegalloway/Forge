@@ -136,7 +136,7 @@ func (handler *BuildHandler) createBuildJob(ctx context.Context, pkg *zarfv1alph
 		WithInitContainers(initContainers).
 		WithWorkspaceVolume().
 		WithArtifactPVC(artifactPVCName).
-		WithDebugMode(constants.DebugMode)
+		WithDebugMode(pkg.GetDebugMode() || constants.DebugMode)
 
 	// Add docker-config volume if OCI source with credentials
 	if pkg.Spec.Source.Type == zarfv1alpha3.SourceTypeOCI && pkg.Spec.Source.OCI != nil && pkg.Spec.Source.OCI.CredentialRef != nil { // pragma: allowlist secret

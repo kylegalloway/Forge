@@ -25,4 +25,8 @@ type PackageResource interface {
 	// GetRetainArtifactPVC returns whether to retain the PVC after job completion
 	// Returns true by default if not specified
 	GetRetainArtifactPVC() bool
+
+	// GetDebugMode returns whether debug mode is enabled for this job
+	// When true, pods run "sleep infinity" and have extended TTL
+	GetDebugMode() bool
 }

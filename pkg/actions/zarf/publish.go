@@ -139,7 +139,7 @@ func (handler *PublishHandler) createPublishJob(ctx context.Context, pkg *zarfv1
 		WithInitContainers(initContainers).
 		WithWorkspaceVolume().
 		WithArtifactPVC(artifactPVCName).
-		WithDebugMode(constants.DebugMode)
+		WithDebugMode(pkg.GetDebugMode() || constants.DebugMode)
 
 	// Add source credential volume if OCI source with credentials
 	if pkg.Spec.Source.Type == zarfv1alpha3.SourceTypeOCI && pkg.Spec.Source.OCI != nil && pkg.Spec.Source.OCI.CredentialRef != nil { // pragma: allowlist secret

@@ -132,7 +132,7 @@ func (handler *CreateHandler) createBundleJob(ctx context.Context, bundle *udsv1
 		WithInitContainers(initContainers).
 		WithWorkspaceVolume().
 		WithArtifactPVC(artifactPVCName).
-		WithDebugMode(constants.DebugMode)
+		WithDebugMode(bundle.GetDebugMode() || constants.DebugMode)
 
 	// Add git credentials volume if needed
 	if bundle.Spec.Source.Type == udsv1alpha3.SourceTypeGit && bundle.Spec.Source.Git != nil {

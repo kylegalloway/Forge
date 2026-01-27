@@ -150,6 +150,16 @@ type UDSBundleJobSpec struct {
 	// +optional
 	// +kubebuilder:default=true
 	RetainArtifactPVC *bool `json:"retainArtifactPVC,omitempty"`
+
+	// DebugMode enables debugging capabilities for this job.
+	// When enabled:
+	// - Job pods run "sleep infinity" instead of actual commands
+	// - Automatic pod/job cleanup is skipped (TTL set to 1 hour)
+	// - Enhanced debug logging is emitted for this job's operations
+	// This allows operators to exec into pods and inspect the environment.
+	// Per-job debugMode takes precedence over global FORGE_DEBUG_MODE environment variable.
+	// +optional
+	DebugMode bool `json:"debugMode,omitempty"`
 }
 
 // PackageSource defines where to get the bundle definition or artifact
@@ -648,4 +658,10 @@ func (u *UDSBundleJob) GetRetainArtifactPVC() bool {
 		return true
 	}
 	return *u.Spec.RetainArtifactPVC
+}
+
+// GetDebugMode implements the PackageResource interface
+// Returns true if debug mode is enabled for this job
+func (u *UDSBundleJob) GetDebugMode() bool {
+	return u.Spec.DebugMode
 }

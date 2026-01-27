@@ -1072,6 +1072,16 @@ spec:
                       These are passed as --set KEY=VALUE flags to 'zarf package create'
                     type: object
                 type: object
+              debugMode:
+                description: |-
+                  DebugMode enables debugging capabilities for this job.
+                  When enabled:
+                  - Job pods run "sleep infinity" instead of actual commands
+                  - Automatic pod/job cleanup is skipped (TTL set to 1 hour)
+                  - Enhanced debug logging is emitted for this job's operations
+                  This allows operators to exec into pods and inspect the environment.
+                  Per-job debugMode takes precedence over global FORGE_DEBUG_MODE environment variable.
+                type: boolean
               deploy:
                 description: Deploy defines how to deploy the package (required if
                   action includes Deploy)

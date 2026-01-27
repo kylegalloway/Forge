@@ -139,7 +139,7 @@ func (handler *DeployHandler) createDeployJob(ctx context.Context, pkg *zarfv1al
 		WithInitContainers(initContainers).
 		WithWorkspaceVolume().
 		WithArtifactPVC(artifactPVCName).
-		WithDebugMode(constants.DebugMode)
+		WithDebugMode(pkg.GetDebugMode() || constants.DebugMode)
 
 	// Add env vars
 	for _, envVar := range envVars {

@@ -133,7 +133,7 @@ func (handler *PublishHandler) createPublishJob(ctx context.Context, bundle *uds
 		WithWorkspaceVolume().
 		WithArtifactPVC(artifactPVCName).
 		WithServiceAccountName(bundle.Spec.ServiceAccountName).
-		WithDebugMode(constants.DebugMode)
+		WithDebugMode(bundle.GetDebugMode() || constants.DebugMode)
 
 	// Apply destination-specific configuration (volumes, env vars) from shared adapters
 	if jobConfig != nil {

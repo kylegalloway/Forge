@@ -512,8 +512,11 @@ func (b *JobBuilder) Build() *batchv1.Job {
 	containerArgs := b.args
 	if b.debugMode {
 		containerArgs = []string{"sleep infinity"}
+		// Set extended TTL for debug pods (1 hour) to allow time for inspection
+		debugTTL := int32(3600)
+		b.job.Spec.TTLSecondsAfterFinished = &debugTTL
 		klog.InfoS("Debug mode enabled, job will run sleep infinity instead of actual command",
-			"job", b.job.Name, "originalArgs", b.args)
+			"job", b.job.Name, "originalArgs", b.args, "ttlSecondsAfterFinished", debugTTL)
 	}
 
 	// Build the main container

@@ -6,6 +6,8 @@ set -e
 
 BUMP_TYPE=${1:-patch}
 CHART_FILE="chart/forge/Chart.yaml"
+VALUES_FILE="chart/forge/values.yaml"
+CHANGELOG_FILE="CHANGELOG.md"
 
 # Color codes for output
 RED='\033[0;31m'
@@ -157,6 +159,8 @@ ${cap_bump_type} version bump: ${CURRENT_VERSION} → ${new_version}
 
 Updated files:
 - chart/forge/Chart.yaml (version and appVersion)
+- chart/forge/values.yaml (controller and webhook image tags)
+- CHANGELOG.md (Unreleased → ${new_version})
 - README.md and user documentation
 - zarf.yaml package metadata
 
@@ -187,6 +191,80 @@ update_version_in_file() {
     # Update :vX.Y.Z tag references
     sed -i '' "s/:v${old_version}/:v${new_version}/g" "$file" 2>/dev/null || \
     sed -i "s/:v${old_version}/:v${new_version}/g" "$file"
+}
+
+# Function to update image tags in values.yaml
+# Changes tag: "" or tag: "vX.Y.Z" to tag: "vNEW_VERSION" for controller and webhook
+update_values_image_tags() {
+    local new_version=$1
+    local values_file=$2
+
+    # Update controller image tag (handles both empty "" and existing "vX.Y.Z" values)
+    # Matches the pattern under controller.image.tag
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        # macOS sed - update controller tag
+        sed -i '' '/^controller:/,/^[a-z]/ {
+            /^  image:/,/^  [a-z]/ {
+                s/tag: ".*"/tag: "v'"${new_version}"'"/
+            }
+        }' "$values_file"
+        # Update webhook tag
+        sed -i '' '/^webhook:/,/^[a-z]/ {
+            /^  image:/,/^  [a-z]/ {
+                s/tag: ".*"/tag: "v'"${new_version}"'"/
+            }
+        }' "$values_file"
+    else
+        # GNU sed
+        sed -i '/^controller:/,/^[a-z]/ {
+            /^  image:/,/^  [a-z]/ {
+                s/tag: ".*"/tag: "v'"${new_version}"'"/
+            }
+        }' "$values_file"
+        sed -i '/^webhook:/,/^[a-z]/ {
+            /^  image:/,/^  [a-z]/ {
+                s/tag: ".*"/tag: "v'"${new_version}"'"/
+            }
+        }' "$values_file"
+    fi
+}
+
+# Function to update CHANGELOG.md for a new release
+# - Moves [Unreleased] content to a new version section with today's date
+# - Creates a fresh [Unreleased] section
+# - Updates comparison links at the bottom
+update_changelog() {
+    local old_version=$1
+    local new_version=$2
+    local changelog_file=$3
+    local today
+    today=$(date +%Y-%m-%d)
+
+    # Step 1: Replace "## [Unreleased]" with "## [Unreleased]\n\n## [X.Y.Z] - YYYY-MM-DD"
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        # macOS sed - need to use literal newlines differently
+        sed -i '' "s/^## \[Unreleased\]$/## [Unreleased]\\
+\\
+## [${new_version}] - ${today}/" "$changelog_file"
+    else
+        # GNU sed
+        sed -i "s/^## \[Unreleased\]$/## [Unreleased]\n\n## [${new_version}] - ${today}/" "$changelog_file"
+    fi
+
+    # Step 2: Update the [Unreleased] comparison link to point to the new version
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        sed -i '' "s|\[Unreleased\]: \(.*\)/compare/v${old_version}\.\.\.HEAD|[Unreleased]: \1/compare/v${new_version}...HEAD|" "$changelog_file"
+    else
+        sed -i "s|\[Unreleased\]: \(.*\)/compare/v${old_version}\.\.\.HEAD|[Unreleased]: \1/compare/v${new_version}...HEAD|" "$changelog_file"
+    fi
+
+    # Step 3: Add the new version comparison link after the [Unreleased] link
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        sed -i '' "/^\[Unreleased\]:.*HEAD$/a\\
+[${new_version}]: https://github.com/kylegalloway/forge/compare/v${old_version}...v${new_version}" "$changelog_file"
+    else
+        sed -i "/^\[Unreleased\]:.*HEAD$/a [${new_version}]: https://github.com/kylegalloway/forge/compare/v${old_version}...v${new_version}" "$changelog_file"
+    fi
 }
 
 # Main script starts here
@@ -233,6 +311,11 @@ sed -i '' "s/^appVersion: \"v${CURRENT_VERSION}\"/appVersion: \"v${NEW_VERSION}\
 sed -i "s/^appVersion: \"v${CURRENT_VERSION}\"/appVersion: \"v${NEW_VERSION}\"/" "$CHART_FILE"
 print_success "Chart.yaml updated"
 
+# Step 1b: Update values.yaml image tags
+print_step "Step 1b: Updating values.yaml image tags"
+update_values_image_tags "$NEW_VERSION" "$VALUES_FILE"
+print_success "values.yaml image tags updated (controller and webhook → v${NEW_VERSION})"
+
 # Step 2: Update documentation files
 print_step "Step 2: Updating documentation"
 DOC_FILES=(
@@ -262,11 +345,20 @@ if [ -f "zarf.yaml" ]; then
     sed -i "s/:${CURRENT_VERSION}/:${NEW_VERSION}/g" "zarf.yaml"
     print_success "Updated zarf.yaml"
 fi
+
+# Step 2b: Update CHANGELOG.md
+print_step "Step 2b: Updating CHANGELOG.md"
+if [ -f "$CHANGELOG_FILE" ]; then
+    update_changelog "$CURRENT_VERSION" "$NEW_VERSION" "$CHANGELOG_FILE"
+    print_success "CHANGELOG.md updated (Unreleased → ${NEW_VERSION})"
+else
+    print_warning "CHANGELOG.md not found, skipping"
+fi
 echo ""
 
 # Step 3: Commit changes
 print_step "Step 3: Creating commit"
-git add "$CHART_FILE" "${DOC_FILES[@]}" zarf.yaml
+git add "$CHART_FILE" "$VALUES_FILE" "$CHANGELOG_FILE" "${DOC_FILES[@]}" zarf.yaml
 COMMIT_MSG=$(generate_commit_message "$NEW_VERSION" "$BUMP_TYPE")
 git commit -S -m "$COMMIT_MSG"
 print_success "Changes committed"

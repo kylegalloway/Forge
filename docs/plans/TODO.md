@@ -1,5 +1,10 @@
 # TODO
 
+## Manually added
+
+* **Release script update** - Update release script to add correct image versions to chart instead of `""`
+* **kubectl-forge plugin not working** - Investigate and fix the kubectl forge CLI plugin (unknown root cause)
+
 ## Production Readiness (High Priority)
 
 ### Critical Operational Concerns

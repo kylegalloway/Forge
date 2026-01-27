@@ -5,6 +5,14 @@ config:
   # MD013: Line length
   MD013: false
 
+  # MD022: Headings should be surrounded by blank lines
+  # Disabled for CHANGELOG format where version sections are dense
+  MD022: false
+
+  # MD024: No duplicate headings
+  # Disabled for CHANGELOG format where Added/Changed/Fixed repeat per version
+  MD024: false
+
   # MD033: Allow inline HTML (needed for badges, etc)
   MD033: false
 

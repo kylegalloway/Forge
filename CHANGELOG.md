@@ -1,0 +1,526 @@
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [Unreleased]
+
+### Added
+- PascalCase spec action constants (`SpecActionBuild`, `SpecActionPublish`, `SpecActionDeploy`, etc.) in `pkg/constants/actions.go` for matching CRD enum values
+- Comprehensive unit tests for `determineNextAction()` and `isMultiActionJob()` functions covering all compound action chains (Zarf: BuildPublish, BuildDeploy, BuildPublishDeploy; UDS: CreatePublish, CreateDeploy, CreatePublishDeploy; Shared: PublishDeploy)
+- Debug mode enhancement plan document outlining per-job debug flag, enhanced webhook/controller logging, and debug pod behavior improvements
+
+### Fixed
+- Action chaining case sensitivity bug where compound actions like `BuildPublish` (PascalCase from spec.action) failed to chain because they were compared against string concatenations like `buildPublish` (lowercase + PascalCase). All action dispatch and chaining logic now uses typed constants ensuring consistent comparison.
+
+## [0.9.12] - 2026-01-26
+
+### Fixed
+- Corrected StatusKeyState constant in `pkg/constants/status.go` from "state" to "phase" to match the OperationStatus struct JSON field definition. This resolves action chaining failures where Kubernetes was rejecting field updates with "unknown field status.buildStatus.state" errors. All status update operations now properly reference the correct field name across all action handlers.
+
+## [0.9.11] - 2026-01-26
+
+### Added
+- Debug mode support for job pods with configurable `debugMode` Helm value (default: false)
+- FORGE_DEBUG_MODE environment variable passed to controller deployment
+- WithDebugMode() method added to JobBuilder that replaces command args with "sleep infinity"
+- WithUserConfig() helper method that consolidates UID, home directory, and security context setup in JobBuilder
+
+### Changed
+- Deprecated WithHomeDir() method in favor of new WithUserConfig() which provides more comprehensive user configuration
+- Home directory now added as emptyDir volume mount with 1Gi size limit
+
+### Fixed
+- Job pod debugging is now possible - pods sleep indefinitely instead of terminating immediately after execution, allowing users to `kubectl exec` for inspection
+
+## [0.9.10] - 2026-01-26
+
+### Fixed
+- Corrected Helm template variable reference in controller and webhook deployments from `.Chart.AppVersion` to `.Chart.version`. The AppVersion field is separate from the version field that triggers releases, causing containers to fail version detection. This was a template field mapping error where the code and release tags were using different version sources.
+
+## [0.9.9] - 2026-01-26
+
+### Fixed
+- Corrected Helm template variable reference in controller and webhook deployments from `.Chart.AppVersion` to `.Chart.version`. The templates were looking at the wrong metadata field, preventing containers from identifying their own version
+
+## [0.9.8] - 2026-01-26
+
+### Added
+- Added /tmp emptyDir volume mount to all init containers (git, s3, oci) for temporary file storage
+
+### Fixed
+- Init containers now have writable /tmp directories for credential setup (removing ReadOnlyRootFilesystem: true from git, s3, and oci init containers)
+- Init containers can now write SSH keys (~/.ssh/id_rsa) and git credentials (~/.git-credentials) without filesystem restrictions
+- Kyverno policy compatibility improved by properly mounting emptyDir volumes for all writable paths
+
+## [0.9.7] - 2026-01-23
+
+### Added
+- Variable support in Zarf and UDS package operations via CreateConfig and DeployConfig
+- CLI flags passthrough to `zarf create` and `uds create` commands via --set flag support
+- ExtraArgs array support in CreateConfig and DeployConfig for unsupported flags
+- Flavor, Architecture, and SkipSBOM options added to CreateConfig for advanced package creation
+- Insecure TLS skip option and Retries configuration added to DeployConfig
+- Comprehensive validation for flag formats and shell metacharacter protection (ShellCheck integration)
+- CRD updates for v1alpha3 with new fields
+
+### Changed
+- Action handlers now properly support --set flag passthrough
+- Variable validation implemented with comprehensive test coverage
+
+## [0.9.6] - 2026-01-23
+
+### Added
+- Init container image version constants with automatic versioning support
+- Size limits for workspace and output emptyDir volumes (10Gi each) for Kyverno compliance
+- Size limit for /tmp emptyDir volume (1Gi) for Kyverno and Pod Security Standards compliance
+- Kyverno and PSS (Pod Security Standards) compliance documentation
+- Conditional automountServiceAccountToken to disable by default and only enable when service account specified
+
+### Changed
+- ReadOnlyRootFilesystem: true enforced in NonRootSecurityContextWithUID() for security hardening
+- kubectl-forge debug pod security compliance improvements
+- Security context enhancements for Helm templates
+
+### Fixed
+- The gitignore was a little too enthusiastic about kubectl-forge - removed .gitignore rule that prevented kubectl-forge binary from being packaged in charts
+- S3 destinations now support multiple authentication methods beyond AWS (credential polymorphism)
+
+## [0.9.5] - 2026-01-23
+
+### Added
+- Comprehensive kubectl-forge CLI enhancement package: cancel, colors, debug, diagnose, get_events, get_job, get_logs, get_pods, get, list, logs, retry, status, and util commands
+- kubectl-forge diagnose command with comprehensive job troubleshooting capabilities:
+  - Automatic problem detection (OOMKilled, CrashLoopBackOff, ImagePullBackOff, scheduling issues)
+  - Event aggregation and filtering with warning detection
+  - Container log collection and display
+  - Interactive troubleshooting suggestions
+  - Multiple output formats (table, JSON, YAML)
+- kubectl-forge retry command for re-running failed jobs
+- kubectl-forge cancel command for stopping running jobs
+- Comprehensive structured logging support across controller and webhook
+- Kubernetes pod security standards documentation and implementation
+- RBAC permissions reference guide for cluster-wide and namespace-scoped deployments
+- Example demonstrating retainArtifactPVC functionality
+- Credential examples for diverse authentication methods
+
+### Changed
+- Job pods implement Kyverno appeasement security context with readonly root filesystem
+- Release workflow improved to 'latest' tag handling
+- kubectl-forge now fully integrated as kubectl plugin
+
+### Fixed
+- kubectl-forge binary properly included in Helm chart with security compliance
+
+## [0.9.4] - 2026-01-22
+
+### Added
+- Variable support in Zarf and UDS action operations with Variables map in BuildConfig, CreateConfig, PublishConfig, and DeployConfig
+- Variables passed to zarf and uds CLI commands via --set KEY=VALUE flags
+- Comprehensive test coverage for variable handling across UDS and Zarf actions
+- CRD field additions for variable support (v1alpha3 types)
+
+## [0.9.3] - 2026-01-21
+
+### Added
+- Comprehensive Gitea testing documentation and examples
+- Root Cause Analysis documentation for git credential mounting failures
+- Enhanced credential example showcase with diverse authentication methods
+- S3 destination support for multiple credential types and regions
+- Support for credential polymorphism across different backend types
+
+### Changed
+- Git credential handling now supports any git server (GitHub, GitLab, Bitbucket, private instances)
+- Git URL parsing enhanced to extract both scheme and host for proper credential routing
+- Credential manager improvements with support for multiple authentication schemes:
+  - SSH key authentication for SSH URLs
+  - Token/password authentication for HTTPS URLs
+  - OAuth2 token support with proper username handling
+  - URL encoding of special characters in credentials
+- CRD updates with credential field enhancements (v1alpha3 types)
+- Pre-commit hooks configuration improvements
+
+### Fixed
+- Git credentials no longer assume everyone uses SSH keys (OAuth-flavored prison escaped)
+- Git URLs now properly support HTTP/HTTPS authentication
+
+## [0.9.2] - 2026-01-21
+
+### Added
+- Enhanced git credential mounting with support for multiple git servers
+- extractGitHost() function for parsing git URLs (both HTTPS and SSH formats)
+- URL scheme extraction for proper credential routing
+- Test coverage for git URL parsing and credential handling
+
+### Changed
+- Git credential configuration now dynamically reads the host from the repository URL instead of hardcoding github.com/gitlab.com
+- Improved shell script templating for credential setup
+
+### Fixed
+- Git credentials no longer hardcoded to specific servers - now routes to actual host
+
+## [0.9.1] - 2026-01-21
+
+### Added
+- WithHomeDir() method to JobBuilder for setting HOME environment variable
+- Home directory path constants (HomePathZarf, HomePathUDS, HomePathTmp) in constants/config.go
+- Credential mounting support across all source and destination handlers (git, s3, oci)
+- HOME environment variable configuration for all action types (build, deploy, publish, create)
+
+### Changed
+- All action handlers now explicitly set HOME directory for credential access
+- Improved credential routing across git, OCI, and S3 handlers
+
+### Fixed
+- Credential mounts delivered to correct addresses at last
+- Action handlers now properly configure HOME directory during initialization
+- Non-root users can now write configuration files to proper home directories
+
+## [0.9.0] - 2026-01-20
+
+### Added
+- Credential volume mounting infrastructure for all source types (git, s3, oci)
+- GetGitCredentialVolume() function for proper credential secret mounting
+- Volume name and mount path constants for credential handling
+- Multi-environment build support with proper credential routing
+- Comprehensive test coverage for credential volumes
+
+### Changed
+- All action handlers now support credential references with proper volume mounting
+- Release workflow significantly refactored (681 lines changed in release.yaml)
+- Builds can now access credentials from mounted secrets across all source handlers
+- UDS create and deploy handlers enhanced with credential support
+
+### Fixed
+- Missing credential volumes added to all source handlers (git, oci, s3)
+- Credential secret references now properly mounted in init containers
+- Multi-action workflows can now access credentials stored in Kubernetes secrets
+
+## [0.8.1] - 2026-01-20
+
+### Added
+- Comprehensive credential showcase examples for both Zarf and UDS:
+  - 04-credentials-showcase for UDS (467 lines of example configs)
+  - 05-credentials-showcase for Zarf (412 lines of example configs)
+  - Full documentation of credential management patterns
+- AWS credential polymorphism with multiple loading methods:
+  - EnvVar: Load credentials from secret keys as environment variables
+  - File: Mount AWS credentials file from secret
+  - Node: Use node-level credentials (IRSA, instance profile)
+- AWSCredentialRef type with configurable credential type and namespace support
+- S3 destination enhanced with AWS credential flexibility
+- UDS adapters improved for credential handling
+- Source handlers (git, oci, s3) updated with credential support
+
+### Changed
+- All action handlers (build, deploy, publish, create) now support AWS credentials
+- S3 destination significantly refactored to support multiple credential types
+- Credential reference types expanded to support diverse authentication patterns
+
+## [0.8.0] - 2026-01-20
+
+### Added
+- Centralized constants package for action names, status values, and configuration:
+  - ActionBuild, ActionPublish, ActionDeploy, ActionCreate constants
+  - Status state constants with standardized naming (Running, Succeeded, Failed, etc.)
+  - ServiceAccount annotation keys, job/pod labels
+  - API group versions for dynamic client operations
+  - Container image and configuration constants
+- Running status consensus - everyone agrees what "Running" means now
+- Shared resource grouping infrastructure
+
+### Changed
+- All controllers, handlers, webhooks, and monitoring now use centralized constants
+- Job status handling standardized across all action types
+- Significantly refactored JobBuilder to support new patterns
+- UDS create and deploy handlers refactored with new action framework
+- v1alpha3 API validation and label handling improved
+- CRD definitions optimized with schema improvements
+- V1alpha2 migration guide removed (v1alpha3 is now standard)
+
+### Fixed
+- Action handlers unmask their true labels with proper constant usage
+- Controllers, webhook, and CLI all speak the common tongue of constants
+- Status updates consistent across all component types
+
+## [0.7.3] - 2026-01-16
+
+### Changed
+- Three AWS dialects walk into a bar, leave speaking the same language
+
+## [0.7.2] - 2026-01-16
+
+### Fixed
+- macOS bash 3.2 compatibility improvements
+
+## [0.7.1] - 2026-01-16
+
+### Added
+- Release workflow improvements and forensic capabilities
+- kubectl-forge debugging enhancements
+
+## [0.7.0] - 2026-01-15
+
+### Added
+- UDS CLI container image support with dedicated Dockerfile
+- PVC (PersistentVolumeClaim) support and comprehensive examples
+- UDS CLI versioning and auto-detection infrastructure
+- Bundle CLI feature alongside Zarf CLI support
+- update-cli-versions.sh script for automated version management
+- V1alpha2 migration guide documentation for API users
+- V1alpha2 and V1alpha1 API types for backward compatibility
+
+### Changed
+- Helm chart repository documentation improved
+- Container image version management automated
+- Generic controller and monitor improvements with better configuration handling
+- kubectl client enhanced for image pulling and version detection
+- Release workflow updated for multi-version package support
+- Deployment documentation improved with additional deployment patterns
+
+### Fixed
+- Dockerfile versioning automation
+- Version detection for multiple container runtimes
+- PVC retention policy handling
+
+## [0.6.2] - 2026-01-15
+
+### Changed
+- Release workflow enhancements for better commit message handling
+- gh-pages deployment process improvements
+
+### Fixed
+- gh-pages commit enhancements with proper body content
+- Release commit message formatting
+
+## [0.6.1] - 2026-01-15
+
+### Changed
+- zarf.yaml packaging now integrated into release factory workflow
+
+## [0.6.0] - 2026-01-15
+
+### Added
+- Zarf CLI container image support with automated building in CI/CD pipeline
+- Container image versioning and registry management (ghcr.io)
+- Automated image publishing to container registries
+
+### Changed
+- Registry changed to ghcr.io for improved accessibility
+- Release workflow updated to handle container images alongside Helm charts
+
+## [0.5.0] - 2026-01-07
+
+### Added
+- Unified attestation workflow for consistent artifact signing and verification
+
+### Changed
+- gh-pages release process improved and consolidated
+- Attestation generation consolidated into single workflow
+
+## [0.4.6] - 2026-01-06
+
+### Added
+- Node selector, affinity, and tolerations support for pod scheduling control
+- Ephemeral storage configuration and resource scheduling
+- kubectl-forge CLI tool with multiple commands:
+  - debug: Debug pods from jobs
+  - download: Download artifacts from jobs
+  - list: List all Forge jobs
+  - And more subcommands for job management
+- kubectl-forge README and comprehensive documentation
+- Extensive CRD updates with scheduler field support
+- Advanced Kubernetes scheduling capabilities
+
+### Changed
+- JobBuilder enhanced with scheduling support
+- GoMod dependencies updated with new tooling support
+- CI/CD workflow improvements
+
+### Fixed
+- Pod scheduling now supports node affinity and pod anti-affinity rules
+
+### Fixed
+- Apollo 13 moment: we have a link problem (now solved)
+
+## [0.4.5] - 2026-01-05
+
+### Added
+- Webhook high availability configuration for production deployment
+- Production-ready webhook setup with multiple replicas
+- Structured logging implementation across controller and webhook
+- Comprehensive security documentation
+- PVC (PersistentVolumeClaim) retention policy with optional automatic cleanup after jobs
+- Trivy and Grype image scanning integration for vulnerability scanning
+- RBAC documentation for both cluster-wide and namespace-scoped deployments
+- Validator enhancements for forensic evidence collection
+
+### Changed
+- Webhook deployment refactored for HA setup
+- Structured logging adopted throughout system
+- Resource adoption now fully idempotent
+- Logging improvements with structured output support
+
+### Fixed
+- Webhook now supports multiple replicas for high availability
+- Resource adoption idempotency improved
+
+## [0.4.4] - 2026-01-04
+
+### Added
+- CRD allowDangerousTypes field support for flexible object handling
+- Apollo 13 problem solving for complex field compatibility issues
+
+### Fixed
+- Action type recognition properly implemented across all handlers
+- Fixed unrecognized action type errors in controllers
+
+## [0.4.3] - 2026-01-02
+
+### Changed
+- Release script refactored for documentation discovery in new repository structure
+- Test suite significantly refactored
+- Documentation reorganized by reader context and use case
+- Schrödinger's controller finally observed in tests with error handling validation
+
+### Fixed
+- Release script now finds docs in reorganized structure
+
+## [0.4.2] - 2025-12-30
+
+### Added
+- Retry policies integrated into API with exponential backoff configuration
+- Resource adoption capabilities with proper Kubernetes ownership semantics
+- Advanced retry configuration with configurable delays and attempt limits
+
+### Changed
+- Generics implementation reducing codebase complexity
+- DRY principle applied to eliminate code duplication across handlers
+- k8s v0.35 upgrade from EOL v0.28
+- golangci-lint v2 format migration with updated configuration
+
+### Fixed
+- Kubernetes client updated to supported version
+- Linting configuration modernized for v2.x compatibility
+
+## [0.4.1] - 2025-12-26
+
+### Changed
+- Banished "common" packages from the codebase (package restructuring)
+- golangci-lint upgraded to latest version
+- Code organization improvements
+
+### Fixed
+- Helm's trust issues with directories vs files (proper path handling)
+
+## [0.4.0] - 2025-12-26
+
+### Added
+- Testing infrastructure with validation and e2e test frameworks
+- UDS troubleshooting guide for production support
+- Unified action architecture eliminating code duplication
+- ActionResult unification across all action handlers
+- CRD regeneration with enhanced capabilities and v1alpha3 support
+
+### Changed
+- Testing phoenix rises from the ashes (validation and e2e tests reborn)
+- Comprehensive tech debt discovery and cataloging
+- Code architecture refactored for consistency and maintainability
+- v1alpha1 API deprecated in favor of v1alpha2 migration
+
+### Fixed
+- Zarf version upgrade (v0.66.0 → v0.68.1)
+- Kubernetes client initialization improvements
+
+## [0.3.0] - 2025-12-25
+
+### Added
+- Security improvements with RBAC patches and authentication enhancements
+- Comprehensive tech debt discovery, cataloging, and remediation
+- Testing and validation infrastructure (both unit and integration)
+- Pod security standards documentation
+
+### Changed
+- High-priority consistency improvements across codebase
+- Security audit completion with documented findings
+
+### Fixed
+- Multiple RBAC security vulnerabilities addressed
+- Security context properly implemented in controllers and webhooks
+
+## [0.2.0] - 2025-12-18
+
+### Added
+- UDS controller support and integration
+- Helm chart publication workflow (v0.1.1 and beyond)
+- Initial Helm repository infrastructure on GitHub Pages
+- Webhook support for validation
+
+## [0.1.2] - 2025-12-07
+
+### Added
+- RBAC revelation and UDS controller infrastructure rise
+- Webhook unification framework
+- Initial architectural planning documents
+
+## [0.1.1] - 2025-12-18
+
+### Changed
+- Minor improvements and fixes
+- Helm repository enhancements
+
+## [0.1.0] - 2025-11-20
+
+### Added
+- Initial Forge project creation with Kubernetes controller framework
+- GitHub Actions and GitLab CI/CD automation pipelines
+- Pre-commit hooks infrastructure for code quality
+- Multi-architecture Dockerfile support (amd64, arm64 detection)
+- Kubernetes controller infrastructure with reconciliation logic
+- Basic webhook support with validation capabilities
+- High availability deployment patterns
+- Helm chart for easy deployment to Kubernetes clusters
+- Custom Resource Definition (CRD) support for ZarfPackageJob and UDSBundleJob
+
+### Changed
+- Initial project setup and build infrastructure
+- CI/CD pipeline configuration for automated testing and releases
+
+[Unreleased]: https://github.com/kylegalloway/forge/compare/v0.9.12...HEAD
+[0.9.12]: https://github.com/kylegalloway/forge/compare/v0.9.11...v0.9.12
+[0.9.11]: https://github.com/kylegalloway/forge/compare/v0.9.10...v0.9.11
+[0.9.10]: https://github.com/kylegalloway/forge/compare/v0.9.9...v0.9.10
+[0.9.9]: https://github.com/kylegalloway/forge/compare/v0.9.8...v0.9.9
+[0.9.8]: https://github.com/kylegalloway/forge/compare/v0.9.7...v0.9.8
+[0.9.7]: https://github.com/kylegalloway/forge/compare/v0.9.6...v0.9.7
+[0.9.6]: https://github.com/kylegalloway/forge/compare/v0.9.5...v0.9.6
+[0.9.5]: https://github.com/kylegalloway/forge/compare/v0.9.4...v0.9.5
+[0.9.4]: https://github.com/kylegalloway/forge/compare/v0.9.3...v0.9.4
+[0.9.3]: https://github.com/kylegalloway/forge/compare/v0.9.2...v0.9.3
+[0.9.2]: https://github.com/kylegalloway/forge/compare/v0.9.1...v0.9.2
+[0.9.1]: https://github.com/kylegalloway/forge/compare/v0.9.0...v0.9.1
+[0.9.0]: https://github.com/kylegalloway/forge/compare/v0.8.1...v0.9.0
+[0.8.1]: https://github.com/kylegalloway/forge/compare/v0.8.0...v0.8.1
+[0.8.0]: https://github.com/kylegalloway/forge/compare/v0.7.3...v0.8.0
+[0.7.3]: https://github.com/kylegalloway/forge/compare/v0.7.2...v0.7.3
+[0.7.2]: https://github.com/kylegalloway/forge/compare/v0.7.1...v0.7.2
+[0.7.1]: https://github.com/kylegalloway/forge/compare/v0.7.0...v0.7.1
+[0.7.0]: https://github.com/kylegalloway/forge/compare/v0.6.2...v0.7.0
+[0.6.2]: https://github.com/kylegalloway/forge/compare/v0.6.1...v0.6.2
+[0.6.1]: https://github.com/kylegalloway/forge/compare/v0.6.0...v0.6.1
+[0.6.0]: https://github.com/kylegalloway/forge/compare/v0.5.0...v0.6.0
+[0.5.0]: https://github.com/kylegalloway/forge/compare/v0.4.6...v0.5.0
+[0.4.6]: https://github.com/kylegalloway/forge/compare/v0.4.5...v0.4.6
+[0.4.5]: https://github.com/kylegalloway/forge/compare/v0.4.4...v0.4.5
+[0.4.4]: https://github.com/kylegalloway/forge/compare/v0.4.3...v0.4.4
+[0.4.3]: https://github.com/kylegalloway/forge/compare/v0.4.2...v0.4.3
+[0.4.2]: https://github.com/kylegalloway/forge/compare/v0.4.1...v0.4.2
+[0.4.1]: https://github.com/kylegalloway/forge/compare/v0.4.0...v0.4.1
+[0.4.0]: https://github.com/kylegalloway/forge/compare/v0.3.0...v0.4.0
+[0.3.0]: https://github.com/kylegalloway/forge/compare/v0.2.0...v0.3.0
+[0.2.0]: https://github.com/kylegalloway/forge/compare/v0.1.2...v0.2.0
+[0.1.2]: https://github.com/kylegalloway/forge/compare/v0.1.1...v0.1.2
+[0.1.1]: https://github.com/kylegalloway/forge/compare/v0.1.0...v0.1.1
+[0.1.0]: https://github.com/kylegalloway/forge/releases/tag/v0.1.0

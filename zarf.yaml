@@ -2,7 +2,7 @@ kind: ZarfPackageConfig
 metadata:
   name: forge
   description: "Forge - Kubernetes controller for managing Zarf package and UDS bundle operations"
-  version: "0.9.11"
+  version: "0.9.12"
   url: https://github.com/kylegalloway/forge
   authors: Kyle Galloway
   architecture: multi
@@ -17,14 +17,14 @@ components:
       - name: forge
         localPath: chart/forge
         namespace: forge-system
-        version: 0.9.11
+        version: 0.9.12
         valuesFiles:
           - chart/forge/values.yaml
     images:
       # Forge controller image (tagged without 'v' prefix)
-      - ghcr.io/kylegalloway/forge/forge-controller:0.9.11
+      - ghcr.io/kylegalloway/forge/forge-controller:0.9.12
       # Forge webhook image (tagged without 'v' prefix)
-      - ghcr.io/kylegalloway/forge/forge-webhook:0.9.11
+      - ghcr.io/kylegalloway/forge/forge-webhook:0.9.12
 
   # Zarf CLI image for running ZarfPackageJobs
   - name: zarf-cli

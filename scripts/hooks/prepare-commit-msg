@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Skip for merge commits, rebases, cherry-picks
+case "${2:-}" in
+  merge|squash|commit)
+    exit 0
+    ;;
+esac
+
+# Check if signing is enabled globally or locally
+if git config --bool commit.gpgSign | grep -q true; then
+  exit 0
+fi
+
+# Check if -S was passed explicitly
+if [[ "${GIT_COMMITTER_SIGNING_KEY:-}" != "" ]]; then
+  exit 0
+fi
+
+cat <<'EOF' 1>&2
+❌ Commit is not signed.
+
+This repository REQUIRES signed commits.
+
+Use one of:
+  git commit -S
+  git config commit.gpgSign true
+
+No unsigned commits shall pass.
+EOF
+
+exit 1

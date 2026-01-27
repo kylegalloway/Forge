@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+# Pre-commit hook that invokes the pre-commit framework
+# Install pre-commit with: pip install pre-commit && pre-commit install
+
+set -euo pipefail
+
+ARGS=(hook-impl --config=.pre-commit-config.yaml --hook-type=pre-commit)
+
+HERE="$(cd "$(dirname "$0")" && pwd)"
+ARGS+=(--hook-dir "$HERE" -- "$@")
+
+if command -v pre-commit > /dev/null; then
+    exec pre-commit "${ARGS[@]}"
+else
+    echo '`pre-commit` not found. Install with: pip install pre-commit' 1>&2
+    echo 'Then run: pre-commit install' 1>&2
+    exit 1
+fi

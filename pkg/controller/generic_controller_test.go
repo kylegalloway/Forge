@@ -15,6 +15,7 @@ import (
 	"github.com/kylegalloway/forge/pkg/actions"
 	"github.com/kylegalloway/forge/pkg/actions/common"
 	zarfv1alpha3 "github.com/kylegalloway/forge/pkg/apis/zarf/v1alpha3"
+	"github.com/kylegalloway/forge/pkg/constants"
 	testhelpers "github.com/kylegalloway/forge/pkg/controller/testing"
 	"github.com/kylegalloway/forge/pkg/telemetry"
 )
@@ -86,7 +87,7 @@ func TestHandleObject_ActionDispatchError(t *testing.T) {
 	config := ControllerConfig{
 		ResourceType:    "ZarfPackageJob",
 		ResourceGVR:     gvr,
-		PrimaryAction:   "Build",
+		PrimaryAction:   constants.ActionBuild,
 		LabelSelector:   "app=forge",
 		SupportsPVC:     true,
 		StatusFieldName: "buildStatus",
@@ -195,7 +196,7 @@ func TestUpdateStatus_NotFoundError(t *testing.T) {
 	config := ControllerConfig{
 		ResourceType:    "ZarfPackageJob",
 		ResourceGVR:     gvr,
-		PrimaryAction:   "Build",
+		PrimaryAction:   constants.ActionBuild,
 		LabelSelector:   "app=forge",
 		SupportsPVC:     true,
 		StatusFieldName: "buildStatus",
@@ -239,7 +240,7 @@ func createTestController(t *testing.T) *GenericController[*zarfv1alpha3.ZarfPac
 	config := ControllerConfig{
 		ResourceType:    "ZarfPackageJob",
 		ResourceGVR:     gvr,
-		PrimaryAction:   "Build",
+		PrimaryAction:   constants.ActionBuild,
 		LabelSelector:   "app=forge",
 		SupportsPVC:     true,
 		StatusFieldName: "buildStatus",

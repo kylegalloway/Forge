@@ -88,7 +88,7 @@ func TestProcessJobStatus_RunningJob(t *testing.T) {
 	config := MonitorConfig{
 		ResourceType:       "ZarfPackageJob",
 		LabelSelector:      "app=forge",
-		PrimaryAction:      "Build",
+		PrimaryAction:      constants.ActionBuild,
 		PrimaryStatusField: "buildStatus",
 		SupportsPVC:        true,
 	}
@@ -158,7 +158,7 @@ func TestProcessJobStatus_CompletedJob(t *testing.T) {
 	config := MonitorConfig{
 		ResourceType:       "ZarfPackageJob",
 		LabelSelector:      "app=forge",
-		PrimaryAction:      "Build",
+		PrimaryAction:      constants.ActionBuild,
 		PrimaryStatusField: "buildStatus",
 		SupportsPVC:        true,
 	}
@@ -241,7 +241,7 @@ func TestProcessJobStatus_FailedJob(t *testing.T) {
 	config := MonitorConfig{
 		ResourceType:       "ZarfPackageJob",
 		LabelSelector:      "app=forge",
-		PrimaryAction:      "Build",
+		PrimaryAction:      constants.ActionBuild,
 		PrimaryStatusField: "buildStatus",
 		SupportsPVC:        true,
 	}
@@ -309,7 +309,7 @@ func TestProcessJobStatus_ResourceNotFound(t *testing.T) {
 	config := MonitorConfig{
 		ResourceType:       "ZarfPackageJob",
 		LabelSelector:      "app=forge",
-		PrimaryAction:      "Build",
+		PrimaryAction:      constants.ActionBuild,
 		PrimaryStatusField: "buildStatus",
 		SupportsPVC:        true,
 	}
@@ -383,7 +383,7 @@ func TestProcessJobStatus_StatusUpdateError(t *testing.T) {
 	config := MonitorConfig{
 		ResourceType:       "ZarfPackageJob",
 		LabelSelector:      "app=forge",
-		PrimaryAction:      "Build",
+		PrimaryAction:      constants.ActionBuild,
 		PrimaryStatusField: "buildStatus",
 		SupportsPVC:        true,
 	}
@@ -455,7 +455,7 @@ func TestProcessJobStatus_MultipleCompletedJobs(t *testing.T) {
 	config := MonitorConfig{
 		ResourceType:       "ZarfPackageJob",
 		LabelSelector:      "app=forge",
-		PrimaryAction:      "Build",
+		PrimaryAction:      constants.ActionBuild,
 		PrimaryStatusField: "buildStatus",
 		SupportsPVC:        true,
 	}
@@ -546,7 +546,212 @@ func createTestMonitor(t *testing.T) *GenericJobMonitor[*zarfv1alpha3.ZarfPackag
 	config := MonitorConfig{
 		ResourceType:       "ZarfPackageJob",
 		LabelSelector:      "app=forge",
-		PrimaryAction:      "Build",
+		PrimaryAction:      constants.ActionBuild,
+		PrimaryStatusField: "buildStatus",
+		SupportsPVC:        true,
+	}
+
+	return NewGenericJobMonitor(
+		kubeClient,
+		dynamicClient,
+		"default",
+		zarfv1alpha3.SchemeGroupVersion.WithResource("zarfpackagejobs"),
+		&mockMetricsRecorder{},
+		config,
+		&mockSuccessHandler{},
+		&mockSuccessHandler{},
+		&mockSuccessHandler{},
+		func(_ context.Context, _ *unstructured.Unstructured, _, _ string, _ map[string]interface{}) error {
+			return nil
+		},
+	)
+}
+
+// TestDetermineNextAction tests that compound actions correctly chain to the next action.
+// This tests the fix for the case sensitivity bug where "BuildPublish" (PascalCase from spec)
+// was not matching "buildPublish" (lowercase+PascalCase from string concatenation).
+func TestDetermineNextAction(t *testing.T) {
+	// Test with Zarf monitor (PrimaryAction = "build")
+	zarfMonitor := createTestMonitor(t)
+
+	// Test with UDS monitor (PrimaryAction = "create")
+	udsMonitor := createTestMonitorWithPrimaryAction(t, "create")
+
+	tests := []struct {
+		name            string
+		monitor         *GenericJobMonitor[*zarfv1alpha3.ZarfPackageJob]
+		mainAction      string // spec.action (PascalCase)
+		completedAction string // job label action (lowercase)
+		expectedNext    string // expected next action (lowercase)
+	}{
+		// Zarf: BuildPublish chain
+		{
+			name:            "BuildPublish after build completes",
+			monitor:         zarfMonitor,
+			mainAction:      constants.SpecActionBuildPublish,
+			completedAction: constants.ActionBuild,
+			expectedNext:    constants.ActionPublish,
+		},
+		{
+			name:            "BuildPublish after publish completes (no next)",
+			monitor:         zarfMonitor,
+			mainAction:      constants.SpecActionBuildPublish,
+			completedAction: constants.ActionPublish,
+			expectedNext:    "",
+		},
+		// Zarf: BuildDeploy chain
+		{
+			name:            "BuildDeploy after build completes",
+			monitor:         zarfMonitor,
+			mainAction:      constants.SpecActionBuildDeploy,
+			completedAction: constants.ActionBuild,
+			expectedNext:    constants.ActionDeploy,
+		},
+		// Zarf: BuildPublishDeploy chain
+		{
+			name:            "BuildPublishDeploy after build completes",
+			monitor:         zarfMonitor,
+			mainAction:      constants.SpecActionBuildPublishDeploy,
+			completedAction: constants.ActionBuild,
+			expectedNext:    constants.ActionPublish,
+		},
+		{
+			name:            "BuildPublishDeploy after publish completes",
+			monitor:         zarfMonitor,
+			mainAction:      constants.SpecActionBuildPublishDeploy,
+			completedAction: constants.ActionPublish,
+			expectedNext:    constants.ActionDeploy,
+		},
+		{
+			name:            "BuildPublishDeploy after deploy completes (no next)",
+			monitor:         zarfMonitor,
+			mainAction:      constants.SpecActionBuildPublishDeploy,
+			completedAction: constants.ActionDeploy,
+			expectedNext:    "",
+		},
+		// PublishDeploy chain (both Zarf and UDS)
+		{
+			name:            "PublishDeploy after publish completes",
+			monitor:         zarfMonitor,
+			mainAction:      constants.SpecActionPublishDeploy,
+			completedAction: constants.ActionPublish,
+			expectedNext:    constants.ActionDeploy,
+		},
+		// UDS: CreatePublish chain
+		{
+			name:            "CreatePublish after create completes",
+			monitor:         udsMonitor,
+			mainAction:      constants.SpecActionCreatePublish,
+			completedAction: constants.ActionCreate,
+			expectedNext:    constants.ActionPublish,
+		},
+		// UDS: CreateDeploy chain
+		{
+			name:            "CreateDeploy after create completes",
+			monitor:         udsMonitor,
+			mainAction:      constants.SpecActionCreateDeploy,
+			completedAction: constants.ActionCreate,
+			expectedNext:    constants.ActionDeploy,
+		},
+		// UDS: CreatePublishDeploy chain
+		{
+			name:            "CreatePublishDeploy after create completes",
+			monitor:         udsMonitor,
+			mainAction:      constants.SpecActionCreatePublishDeploy,
+			completedAction: constants.ActionCreate,
+			expectedNext:    constants.ActionPublish,
+		},
+		{
+			name:            "CreatePublishDeploy after publish completes",
+			monitor:         udsMonitor,
+			mainAction:      constants.SpecActionCreatePublishDeploy,
+			completedAction: constants.ActionPublish,
+			expectedNext:    constants.ActionDeploy,
+		},
+		// Single actions (no chaining)
+		{
+			name:            "Build action has no next",
+			monitor:         zarfMonitor,
+			mainAction:      constants.SpecActionBuild,
+			completedAction: constants.ActionBuild,
+			expectedNext:    "",
+		},
+		{
+			name:            "Publish action has no next",
+			monitor:         zarfMonitor,
+			mainAction:      constants.SpecActionPublish,
+			completedAction: constants.ActionPublish,
+			expectedNext:    "",
+		},
+		{
+			name:            "Deploy action has no next",
+			monitor:         zarfMonitor,
+			mainAction:      constants.SpecActionDeploy,
+			completedAction: constants.ActionDeploy,
+			expectedNext:    "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := tt.monitor.determineNextAction(tt.mainAction, tt.completedAction)
+			if result != tt.expectedNext {
+				t.Errorf("determineNextAction(%q, %q) = %q, want %q",
+					tt.mainAction, tt.completedAction, result, tt.expectedNext)
+			}
+		})
+	}
+}
+
+// TestIsMultiActionJob tests that compound actions are correctly identified
+func TestIsMultiActionJob(t *testing.T) {
+	monitor := createTestMonitor(t)
+
+	tests := []struct {
+		action   string
+		expected bool
+	}{
+		// Compound actions (should return true)
+		{constants.SpecActionBuildPublish, true},
+		{constants.SpecActionBuildDeploy, true},
+		{constants.SpecActionBuildPublishDeploy, true},
+		{constants.SpecActionCreatePublish, true},
+		{constants.SpecActionCreateDeploy, true},
+		{constants.SpecActionCreatePublishDeploy, true},
+		{constants.SpecActionPublishDeploy, true},
+		// Single actions (should return false)
+		{constants.SpecActionBuild, false},
+		{constants.SpecActionPublish, false},
+		{constants.SpecActionDeploy, false},
+		{constants.SpecActionCreate, false},
+		// Invalid/unknown actions (should return false)
+		{"Unknown", false},
+		{"", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.action, func(t *testing.T) {
+			result := monitor.isMultiActionJob(tt.action)
+			if result != tt.expected {
+				t.Errorf("isMultiActionJob(%q) = %v, want %v", tt.action, result, tt.expected)
+			}
+		})
+	}
+}
+
+// createTestMonitorWithPrimaryAction creates a test monitor with a custom primary action
+func createTestMonitorWithPrimaryAction(t *testing.T, primaryAction string) *GenericJobMonitor[*zarfv1alpha3.ZarfPackageJob] {
+	t.Helper()
+
+	kubeClient := fake.NewClientset()
+	scheme := runtime.NewScheme()
+	_ = zarfv1alpha3.AddToScheme(scheme)
+	dynamicClient := dynamicfake.NewSimpleDynamicClient(scheme)
+
+	config := MonitorConfig{
+		ResourceType:       "ZarfPackageJob",
+		LabelSelector:      "app=forge",
+		PrimaryAction:      primaryAction,
 		PrimaryStatusField: "buildStatus",
 		SupportsPVC:        true,
 	}

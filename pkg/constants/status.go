@@ -23,8 +23,9 @@ const (
 	// StatusFieldDeploy is the field name for deploy operation status.
 	StatusFieldDeploy = "deployStatus"
 
-	// StatusKeyState is the key for the state value in operation status.
-	StatusKeyState = "state"
+	// StatusKeyState is the key for the phase field in operation status.
+	// Maps to the JSON field "phase" in OperationStatus types.
+	StatusKeyState = "phase"
 
 	// StatusKeyMessage is the key for the message value in operation status.
 	StatusKeyMessage = "message"

@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Complete API reference YAML files in `examples/reference/` documenting all available fields:
+  - `zarfpackagejob-reference.yaml` - All ZarfPackageJob spec fields with valid values
+  - `udsbundlejob-reference.yaml` - All UDSBundleJob spec fields with valid values
+  - `serviceaccount-reference.yaml` - All policy annotations with examples
+
 ### Fixed
 - UDS example YAML files now use correct PascalCase for action types (`CreatePublish`, `CreateDeploy`) and source types (`Git`, `Local`, `S3`, `OCI`) to match API enum definitions
 - UDS policy ServiceAccount examples now use correct annotation prefix `forge.dev/` instead of erroneous `forge.forge.dev/`

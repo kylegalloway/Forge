@@ -14,7 +14,7 @@ metadata:
   namespace: default
   annotations:
     # Allow Create and Publish actions
-    forge.dev/allowed-actions: "create,publish,createpublish"
+    forge.dev/allowed-actions: "Create,Publish,CreatePublish"
 
     # Allow fetching from this repository
     forge.dev/allowed-source-repos: "https://github.com/kylegalloway/forge/*"
@@ -43,11 +43,11 @@ spec:
   serviceAccountName: bundle-git-to-oci-builder
 
   # Create and Publish pipeline
-  action: createpublish
+  action: CreatePublish
 
   # Source: Git repository
   source:
-    type: git
+    type: Git
     git:
       url: https://github.com/kylegalloway/forge
       ref: main
@@ -56,7 +56,7 @@ spec:
   # Publish to OCI registry
   publish:
     destination:
-      type: oci
+      type: OCI
       oci:
         registry: ghcr.io
         repository: myorg/bundles/hello-git-to-oci-bundle

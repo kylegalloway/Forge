@@ -14,7 +14,7 @@ metadata:
   namespace: default
   annotations:
     # Allow Create and Publish actions
-    forge.dev/allowed-actions: "create,publish,createpublish"
+    forge.dev/allowed-actions: "Create,Publish,CreatePublish"
 
     # Allow local sources
     forge.dev/allow-local-sources: "true"
@@ -45,11 +45,11 @@ spec:
   serviceAccountName: bundle-local-to-s3-builder
 
   # Create and Publish pipeline
-  action: createpublish
+  action: CreatePublish
 
   # Source: Local filesystem (in practice, mounted via PVC)
   source:
-    type: local
+    type: Local
     local:
       path: /workspace/bundle  # Would be mounted from a PVC
       devMode: true  # Required for local sources
@@ -57,7 +57,7 @@ spec:
   # Publish to S3 bucket
   publish:
     destination:
-      type: s3
+      type: S3
       s3:
         bucket: my-uds-bundles
         keyPrefix: hello-local-to-s3-bundle/  # Artifact name is appended

@@ -14,7 +14,7 @@ metadata:
   namespace: default
   annotations:
     # Allow Create, Deploy, and CreateDeploy actions
-    forge.dev/allowed-actions: "create,deploy,createdeploy"
+    forge.dev/allowed-actions: "Create,Deploy,CreateDeploy"
 
     # Allow fetching from forge repository
     forge.dev/allowed-source-repos: "https://github.com/kylegalloway/forge/*"
@@ -32,11 +32,11 @@ spec:
   serviceAccountName: bundle-git-build-deploy-sa
 
   # Create and Deploy pipeline
-  action: createdeploy
+  action: CreateDeploy
 
   # Source: Git repository containing the UDS bundle definition
   source:
-    type: git
+    type: Git
     git:
       url: https://github.com/kylegalloway/forge
       ref: main

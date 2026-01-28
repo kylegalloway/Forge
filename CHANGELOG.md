@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- UDS example YAML files now use correct PascalCase for action types (`CreatePublish`, `CreateDeploy`) and source types (`Git`, `Local`, `S3`, `OCI`) to match API enum definitions
+- UDS policy ServiceAccount examples now use correct annotation prefix `forge.dev/` instead of erroneous `forge.forge.dev/`
+- USER_GUIDE.md documentation corrected: annotation prefix fixed, external cluster config field changed from `kubeconfig:` to `externalCluster:`, removed outdated v1alpha1/v1alpha2 migration section
+
+### Changed
+- Removed completed plan files from `docs/plans/`: debug-mode.md, cli-flags-passthrough.md, security-kyverno-compliance.md, Kubeconfig-create.md (all implemented)
+- Updated `docs/README.md` with complete documentation index including Security section, Planning section, and missing development docs (GITEA_TESTING.md, STRUCTURED-LOGGING.md)
+
 ## [0.11.0] - 2026-01-28
 
 ### Fixed

@@ -36,8 +36,8 @@ func (source *OCISource) GetInitContainer(pkg *zarfv1alpha3.ZarfPackageJob) (*co
 		CredentialsSecretName: secretName,
 	}
 
-	// Use common builder with Zarf UID (note: OCI originally used 65532, keeping that)
-	return BuildOCIInitContainer(config, int64(constants.DefaultUDSUID))
+	// Use common builder with Zarf UID
+	return BuildOCIInitContainer(config, int64(constants.DefaultZarfUID))
 }
 
 // BuildOCIInitContainer creates an init container for OCI pulls

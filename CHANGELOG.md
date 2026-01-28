@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- OCI source init containers for Zarf jobs now run as UID 1000 (DefaultZarfUID) instead of UID 65532 (DefaultUDSUID). Previously, files extracted by the OCI init container were owned by a different UID than the main Zarf container, which could cause permission issues if the main container needed to modify source files.
+
 ### Added
 - Per-job `debugMode` field in ZarfPackageJobSpec and UDSBundleJobSpec CRDs
 - Per-action `debugActions` field for fine-grained control in chained workflows (e.g., debug only `build` in a `BuildPublish` job)

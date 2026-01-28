@@ -1,4 +1,4 @@
-apiVersion: forge.dev/v1alpha1
+apiVersion: forge.dev/v1alpha3
 kind: ZarfPackageJob
 metadata:
   name: test-simple-deploy
@@ -8,15 +8,12 @@ metadata:
     test: e2e
 spec:
   serviceAccountName: test-deployer
-  action: Deploy
+  action: BuildDeploy
   source:
-    # NOTE: Replace with actual public OCI package if available
-    # For now, using Git source + devMode for testing
     type: Git
     git:
-      url: https://github.com/stefanprodan/podinfo
-      ref: 6.7.0
+      url: https://github.com/kylegalloway/forge
+      ref: main
+      path: examples/samples/zarf/03-git-build-deploy
   deploy:
     target: InCluster
-    # Store temporary build artifacts locally
-    devMode: true

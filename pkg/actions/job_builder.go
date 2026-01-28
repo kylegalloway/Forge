@@ -417,11 +417,30 @@ func (b *JobBuilder) WithServiceAccountName(name string) *JobBuilder {
 }
 
 // WithDebugMode enables debug mode for the job.
-// When enabled, the job runs "sleep infinity" instead of the actual command,
-// allowing users to exec into the pod for debugging.
+// When enabled, the job waits for a completion marker file (/tmp/debug-complete)
+// instead of running the actual command, allowing users to exec into the pod for debugging.
+// Touch /tmp/debug-complete inside the pod to signal completion and continue to the next action.
 func (b *JobBuilder) WithDebugMode(enabled bool) *JobBuilder {
 	b.debugMode = enabled
 	return b
+}
+
+// ShouldDebugAction determines if a specific action should run in debug mode.
+// It checks both the global debugMode flag and the debugActions list.
+// If debugActions is empty and debugMode is true, all actions are debugged.
+// If debugActions is non-empty, only listed actions are debugged (regardless of debugMode).
+func ShouldDebugAction(debugMode bool, debugActions []string, currentAction string) bool {
+	// If debugActions is specified, it takes precedence
+	if len(debugActions) > 0 {
+		for _, action := range debugActions {
+			if action == currentAction {
+				return true
+			}
+		}
+		return false
+	}
+	// Fall back to global debugMode
+	return debugMode
 }
 
 // NonRootSecurityContext returns a standard non-root security context with UID 1000.
@@ -511,12 +530,39 @@ func (b *JobBuilder) Build() *batchv1.Job {
 	// Determine container args - use debug command if debug mode is enabled
 	containerArgs := b.args
 	if b.debugMode {
-		containerArgs = []string{"sleep infinity"}
+		// Debug script that:
+		// 1. Shows instructions for the operator
+		// 2. Waits for /tmp/debug-complete marker file
+		// 3. Exits 0 when marker is created, allowing job to complete and chaining to continue
+		debugScript := `echo "=========================================="
+echo "DEBUG MODE ENABLED"
+echo "=========================================="
+echo ""
+echo "Pod is ready for debugging. The original command was:"
+echo "  %s"
+echo ""
+echo "To inspect the environment, exec into this pod:"
+echo "  kubectl exec -it $HOSTNAME -n $POD_NAMESPACE -- /bin/sh"
+echo ""
+echo "When done debugging, signal completion to continue:"
+echo "  touch /tmp/debug-complete"
+echo ""
+echo "Waiting for /tmp/debug-complete..."
+while [ ! -f /tmp/debug-complete ]; do sleep 2; done
+echo "Debug marker found, exiting successfully."
+exit 0`
+		// Format the script with the original command for reference
+		originalCmd := ""
+		if len(b.args) > 0 {
+			originalCmd = b.args[0]
+		}
+		containerArgs = []string{fmt.Sprintf(debugScript, originalCmd)}
 		// Set extended TTL for debug pods (1 hour) to allow time for inspection
 		debugTTL := int32(3600)
 		b.job.Spec.TTLSecondsAfterFinished = &debugTTL
-		klog.InfoS("Debug mode enabled, job will run sleep infinity instead of actual command",
-			"job", b.job.Name, "originalArgs", b.args, "ttlSecondsAfterFinished", debugTTL)
+		klog.InfoS("Debug mode enabled, job will wait for completion marker",
+			"job", b.job.Name, "originalArgs", b.args, "ttlSecondsAfterFinished", debugTTL,
+			"completionMarker", "/tmp/debug-complete")
 	}
 
 	// Build the main container

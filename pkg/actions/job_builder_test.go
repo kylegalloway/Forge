@@ -1,27 +1,31 @@
 package actions
 
 import (
+	"strings"
 	"testing"
 )
 
 func TestJobBuilder_DebugMode(t *testing.T) {
 	tests := []struct {
-		name         string
-		debugMode    bool
-		wantSleepCmd bool
-		wantTTL      *int32
+		name          string
+		debugMode     bool
+		wantDebugCmd  bool
+		wantTTL       *int32
+		wantOrigInMsg bool // expect original command to appear in debug message
 	}{
 		{
-			name:         "debug mode disabled - normal command",
-			debugMode:    false,
-			wantSleepCmd: false,
-			wantTTL:      nil, // TTL not overridden
+			name:          "debug mode disabled - normal command",
+			debugMode:     false,
+			wantDebugCmd:  false,
+			wantTTL:       nil, // TTL not overridden
+			wantOrigInMsg: false,
 		},
 		{
-			name:         "debug mode enabled - sleep infinity",
-			debugMode:    true,
-			wantSleepCmd: true,
-			wantTTL:      Ptr(int32(3600)), // TTL set to 1 hour
+			name:          "debug mode enabled - debug script with completion marker",
+			debugMode:     true,
+			wantDebugCmd:  true,
+			wantTTL:       Ptr(int32(3600)), // TTL set to 1 hour
+			wantOrigInMsg: true,
 		},
 	}
 
@@ -42,9 +46,25 @@ func TestJobBuilder_DebugMode(t *testing.T) {
 			}
 
 			container := job.Spec.Template.Spec.Containers[0]
-			if tt.wantSleepCmd {
-				if len(container.Args) != 1 || container.Args[0] != "sleep infinity" {
-					t.Errorf("expected args = [sleep infinity], got %v", container.Args)
+			if tt.wantDebugCmd {
+				// Debug mode should have a script that waits for completion marker
+				if len(container.Args) != 1 {
+					t.Fatalf("expected 1 arg, got %d", len(container.Args))
+				}
+				arg := container.Args[0]
+
+				// Check for key elements of the debug script
+				if !strings.Contains(arg, "DEBUG MODE ENABLED") {
+					t.Error("debug script should contain 'DEBUG MODE ENABLED'")
+				}
+				if !strings.Contains(arg, "/tmp/debug-complete") {
+					t.Error("debug script should reference /tmp/debug-complete marker")
+				}
+				if !strings.Contains(arg, "touch /tmp/debug-complete") {
+					t.Error("debug script should show how to complete debugging")
+				}
+				if tt.wantOrigInMsg && !strings.Contains(arg, "echo hello") {
+					t.Error("debug script should show original command")
 				}
 			} else {
 				if len(container.Args) != 1 || container.Args[0] != "echo hello" {
@@ -80,7 +100,82 @@ func TestJobBuilder_DebugModePrecedence(t *testing.T) {
 	job := builder.Build()
 
 	container := job.Spec.Template.Spec.Containers[0]
-	if container.Args[0] != "sleep infinity" {
-		t.Errorf("debug mode override should result in sleep infinity, got %s", container.Args[0])
+	// Debug mode should produce a script with completion marker logic
+	if !strings.Contains(container.Args[0], "/tmp/debug-complete") {
+		t.Errorf("debug mode should produce script with completion marker, got %s", container.Args[0])
+	}
+	// Original command should be shown in the debug output
+	if !strings.Contains(container.Args[0], "actual command") {
+		t.Errorf("debug script should show original command, got %s", container.Args[0])
+	}
+}
+
+func TestShouldDebugAction(t *testing.T) {
+	tests := []struct {
+		name          string
+		debugMode     bool
+		debugActions  []string
+		currentAction string
+		want          bool
+	}{
+		{
+			name:          "debugMode true, no debugActions - all actions debugged",
+			debugMode:     true,
+			debugActions:  nil,
+			currentAction: "build",
+			want:          true,
+		},
+		{
+			name:          "debugMode true, no debugActions - publish also debugged",
+			debugMode:     true,
+			debugActions:  []string{},
+			currentAction: "publish",
+			want:          true,
+		},
+		{
+			name:          "debugMode false, no debugActions - no debugging",
+			debugMode:     false,
+			debugActions:  nil,
+			currentAction: "build",
+			want:          false,
+		},
+		{
+			name:          "debugActions specified - only listed action debugged",
+			debugMode:     true,
+			debugActions:  []string{"build"},
+			currentAction: "build",
+			want:          true,
+		},
+		{
+			name:          "debugActions specified - unlisted action not debugged",
+			debugMode:     true,
+			debugActions:  []string{"build"},
+			currentAction: "publish",
+			want:          false,
+		},
+		{
+			name:          "debugActions specified - multiple actions",
+			debugMode:     true,
+			debugActions:  []string{"build", "deploy"},
+			currentAction: "deploy",
+			want:          true,
+		},
+		{
+			name:          "debugActions specified - debugMode false doesn't matter",
+			debugMode:     false,
+			debugActions:  []string{"publish"},
+			currentAction: "publish",
+			want:          true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := ShouldDebugAction(tt.debugMode, tt.debugActions, tt.currentAction)
+			if got != tt.want {
+				t.Errorf("ShouldDebugAction(%v, %v, %q) = %v, want %v",
+					tt.debugMode, tt.debugActions, tt.currentAction, got, tt.want)
+			}
+		})
 	}
 }

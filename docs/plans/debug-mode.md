@@ -313,12 +313,18 @@ Phase 4 has been implemented:
 - Added timing information for job status check duration via `time.Since(startTime)`
 - Existing unit tests verify the monitor behavior works correctly
 
-### Phase 5: Debug Pod Behavior
+### Phase 5: Debug Pod Behavior ✓ COMPLETED
 
+Phase 5 has been implemented:
 - [x] Set `TTLSecondsAfterFinished = 3600` when debugMode enabled (done in Phase 1)
-- [ ] Skip automatic pod cleanup when debugMode enabled
-- [ ] Document debug mode workflow in kubectl-forge help
-- [ ] Add example YAML with debugMode enabled
+- [x] Added `debugActions []string` field to specify which actions to debug in chained workflows
+- [x] Changed debug pod behavior from `sleep infinity` to completion marker script
+- [x] Debug pods now wait for `/tmp/debug-complete` marker file before exiting
+- [x] When marker is created, pod exits successfully, allowing action chaining to continue
+- [x] Added `ShouldDebugAction()` helper to check if specific action should be debugged
+- [x] Updated all action handlers to use per-action debug checking
+- [x] Regenerated CRDs with new `debugActions` field
+- [x] Added comprehensive unit tests for `ShouldDebugAction` logic
 
 ### Phase 6: Documentation & Testing
 
@@ -342,7 +348,7 @@ To enable debug logging, run the controller/webhook with `-v=4` or `-v=5`.
 
 ## Example Usage
 
-### Per-Job Debug Mode
+### Per-Job Debug Mode (All Actions)
 
 ```yaml
 apiVersion: forge.dev/v1alpha3
@@ -351,7 +357,8 @@ metadata:
   name: debug-my-build
   namespace: forge-jobs
 spec:
-  debugMode: true  # Enable debug mode for this job only
+  debugMode: true  # Enable debug mode for ALL actions
+  action: Build
   source:
     type: Git
     git:
@@ -361,13 +368,41 @@ spec:
     flavor: "slim"
 ```
 
+### Per-Action Debug Mode (Chained Workflows)
+
+For chained actions like `BuildPublish`, use `debugActions` to debug specific steps:
+
+```yaml
+apiVersion: forge.dev/v1alpha3
+kind: ZarfPackageJob
+metadata:
+  name: debug-build-only
+  namespace: forge-jobs
+spec:
+  action: BuildPublish
+  debugActions:
+    - build  # Only debug the build step, publish runs normally after completion
+  source:
+    type: Git
+    git:
+      url: https://github.com/example/zarf-package
+      ref: main
+  build:
+    flavor: "slim"
+  publish:
+    destination:
+      type: OCI
+      oci:
+        url: ghcr.io/example/packages
+```
+
 ### Debug Workflow
 
 ```bash
 # 1. Create job with debug mode
 kubectl apply -f debug-job.yaml
 
-# 2. Wait for pod to start (running sleep infinity)
+# 2. Wait for pod to start (shows debug instructions)
 kubectl get pods -n forge-jobs -w
 
 # 3. Exec into the pod to inspect environment
@@ -378,8 +413,11 @@ ls -la /workspace
 cat /workspace/zarf.yaml
 zarf package create . --confirm
 
-# 5. When done, delete the job (cleanup skipped by TTL)
-kubectl delete zarfpackagejob debug-my-build -n forge-jobs
+# 5. Signal debug completion to continue to next action (or finish)
+touch /tmp/debug-complete
+
+# The pod will exit successfully, and if this is a chained workflow,
+# the next action (e.g., publish) will start automatically.
 ```
 
 ### Viewing Debug Logs

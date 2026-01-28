@@ -141,7 +141,7 @@ func (handler *DeployHandler) createDeployJob(ctx context.Context, bundle *udsv1
 		WithWorkspaceVolume().
 		WithArtifactPVC(artifactPVCName).
 		WithServiceAccountName(bundle.Spec.ServiceAccountName).
-		WithDebugMode(bundle.GetDebugMode() || constants.DebugMode)
+		WithDebugMode(actions.ShouldDebugAction(bundle.GetDebugMode() || constants.DebugMode, bundle.GetDebugActions(), constants.ActionDeploy))
 
 	// Add env vars
 	for _, envVar := range envVars {

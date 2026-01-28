@@ -27,6 +27,11 @@ type PackageResource interface {
 	GetRetainArtifactPVC() bool
 
 	// GetDebugMode returns whether debug mode is enabled for this job
-	// When true, pods run "sleep infinity" and have extended TTL
+	// When true, pods run in debug mode and have extended TTL
 	GetDebugMode() bool
+
+	// GetDebugActions returns the list of actions to run in debug mode
+	// If empty and debugMode is true, all actions run in debug mode
+	// If non-empty, only listed actions run in debug mode
+	GetDebugActions() []string
 }

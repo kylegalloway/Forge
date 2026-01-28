@@ -153,13 +153,25 @@ type UDSBundleJobSpec struct {
 
 	// DebugMode enables debugging capabilities for this job.
 	// When enabled:
-	// - Job pods run "sleep infinity" instead of actual commands
+	// - Job pods run in debug mode instead of actual commands
 	// - Automatic pod/job cleanup is skipped (TTL set to 1 hour)
 	// - Enhanced debug logging is emitted for this job's operations
 	// This allows operators to exec into pods and inspect the environment.
 	// Per-job debugMode takes precedence over global FORGE_DEBUG_MODE environment variable.
+	// For chained actions (e.g., CreatePublish), use debugActions to debug specific steps.
 	// +optional
 	DebugMode bool `json:"debugMode,omitempty"`
+
+	// DebugActions specifies which actions to run in debug mode for chained workflows.
+	// If set, only the listed actions will run with debug mode enabled, allowing
+	// other actions to proceed normally. Valid values: "create", "publish", "deploy".
+	// Example: For a CreatePublish job, set debugActions: ["create"] to debug only the
+	// create step while publish runs normally after you signal completion.
+	// To signal debug completion and continue to the next action:
+	//   kubectl exec -it <pod> -- touch /tmp/debug-complete
+	// If debugActions is empty and debugMode is true, all actions run in debug mode.
+	// +optional
+	DebugActions []string `json:"debugActions,omitempty"`
 }
 
 // PackageSource defines where to get the bundle definition or artifact
@@ -664,4 +676,10 @@ func (u *UDSBundleJob) GetRetainArtifactPVC() bool {
 // Returns true if debug mode is enabled for this job
 func (u *UDSBundleJob) GetDebugMode() bool {
 	return u.Spec.DebugMode
+}
+
+// GetDebugActions implements the PackageResource interface
+// Returns the list of actions to run in debug mode
+func (u *UDSBundleJob) GetDebugActions() []string {
+	return u.Spec.DebugActions
 }

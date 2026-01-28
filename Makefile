@@ -278,7 +278,7 @@ kind-deploy: kind-load ## Build, load image to kind, and deploy controller with 
 		--set controller.image.tag=latest \
 		--set webhook.image.repository=localhost/forge-webhook \
 		--set webhook.image.tag=latest \
-		--set observability.deployStack=false \
+		--set debugMode=true \
 		--wait
 	@echo "Deployment complete. Checking status..."
 	@sleep 3

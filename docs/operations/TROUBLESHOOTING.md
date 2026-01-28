@@ -11,6 +11,7 @@ Common issues and their solutions when running Forge.
 - [Webhook Issues](#webhook-issues)
 - [Controller Issues](#controller-issues)
 - [Debugging Commands](#debugging-commands)
+- [Debug Mode](#debug-mode)
 
 ---
 
@@ -625,6 +626,113 @@ spec:
 EOF
 # Should see webhook validation error
 kubectl delete ZarfPackageJob test-webhook --ignore-not-found
+```
+
+---
+
+## Debug Mode
+
+Debug mode allows you to pause job pods and inspect their environment before they complete. This is useful for troubleshooting build failures, permission issues, or understanding what commands would run.
+
+### Enabling Debug Mode for a Single Job
+
+Add `debugMode: true` to your job spec:
+
+```yaml
+apiVersion: forge.dev/v1alpha3
+kind: ZarfPackageJob
+metadata:
+  name: debug-my-build
+spec:
+  debugMode: true
+  action: Build
+  source:
+    type: Git
+    git:
+      url: https://github.com/example/package
+      ref: main
+```
+
+### Debugging Specific Actions in Chained Workflows
+
+For multi-action jobs (BuildPublish, CreateDeploy, etc.), debug only specific actions:
+
+```yaml
+spec:
+  action: BuildPublish
+  debugActions:
+    - build  # Only pause on build; publish runs normally after
+```
+
+### Debug Workflow
+
+```bash
+# 1. Create the debug job
+kubectl apply -f debug-job.yaml
+
+# 2. Wait for pod to start
+kubectl get pods -l forge.dev/package=debug-my-build -w
+
+# 3. Exec into the pod
+kubectl exec -it debug-my-build-build-xxxxx -- /bin/sh
+
+# 4. Inspect the environment
+ls -la /workspace
+env | grep -E 'AWS|DOCKER|GIT'
+cat /workspace/zarf.yaml
+
+# 5. Run the command manually to see errors
+zarf package create . --confirm
+
+# 6. When done, signal completion
+touch /tmp/debug-complete
+# Pod will exit and workflow continues (for chained actions)
+```
+
+### Debug Mode Not Working
+
+**Symptom:** Pod runs the actual command instead of waiting
+
+**Possible causes:**
+
+1. `debugMode` not set in spec
+2. Wrong action in `debugActions` list (case-sensitive: use `build`, `publish`, `deploy`, `create`)
+3. Global debug mode disabled and per-job not enabled
+
+**Solution:**
+
+```bash
+# Check if debugMode is set
+kubectl get zarfpackagejob my-job -o jsonpath='{.spec.debugMode}'
+
+# Check debugActions
+kubectl get zarfpackagejob my-job -o jsonpath='{.spec.debugActions}'
+
+# Check global setting
+kubectl get deployment forge-controller -n forge-system -o jsonpath='{.spec.template.spec.containers[0].env[?(@.name=="FORGE_DEBUG_MODE")].value}'
+```
+
+### Debug Pod Stuck
+
+**Symptom:** Debug pod runs indefinitely, blocking workflow
+
+**Solution:** Touch the completion marker to signal you're done:
+
+```bash
+kubectl exec debug-my-build-build-xxxxx -- touch /tmp/debug-complete
+```
+
+### Viewing Debug Logs
+
+Enable verbose logging to see detailed controller/webhook decisions:
+
+```bash
+# Increase verbosity to V(4) for debug logs
+kubectl patch deployment forge-controller -n forge-system \
+  --type='json' -p='[{"op": "add", "path": "/spec/template/spec/containers/0/args/-", "value": "-v=4"}]'
+
+# View logs with correlation IDs
+kubectl logs -n forge-system -l app.kubernetes.io/component=controller -f | grep correlationID
 ```
 
 ---

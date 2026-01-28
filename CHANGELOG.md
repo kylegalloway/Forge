@@ -9,15 +9,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Per-job `debugMode` field in ZarfPackageJobSpec and UDSBundleJobSpec CRDs
-- `GetDebugMode()` method on PackageResource interface for unified debug mode access
-- Unit tests for JobBuilder debug mode behavior in job_builder_test.go
-- Debug mode precedence: per-job spec.debugMode takes priority over global FORGE_DEBUG_MODE env var
+- Per-action `debugActions` field for fine-grained control in chained workflows (e.g., debug only `build` in a `BuildPublish` job)
+- `GetDebugMode()` and `GetDebugActions()` methods on PackageResource interface for unified debug mode access
+- `ShouldDebugAction()` helper function to determine if a specific action should run in debug mode
+- Debug completion marker pattern (`/tmp/debug-complete`) allowing debug pods to exit gracefully and continue chained workflows
+- Comprehensive debug logging in GenericJobMonitor with correlation IDs, timing, and detailed status information
+- Unit tests for JobBuilder debug mode behavior and `ShouldDebugAction` logic in job_builder_test.go
+- Debug mode documentation in USER_GUIDE.md with examples for `debugMode` and `debugActions`
+- Debug mode troubleshooting section in TROUBLESHOOTING.md
+- Debug mode precedence: `debugActions` > `spec.debugMode` > global `FORGE_DEBUG_MODE` env var
 
 ### Changed
-- Action handlers now check per-job debug flag before falling back to global constant
+- Debug pods now use completion marker script instead of `sleep infinity`, enabling chained workflow continuation
+- Action handlers now use `ShouldDebugAction()` for per-action debug control
 - JobBuilder sets TTLSecondsAfterFinished to 1 hour (3600s) when debug mode is enabled
 - Webhook validators now emit detailed debug logs at V(4) with correlation IDs, timing, and policy decisions
 - GenericController now emits debug logs with correlation IDs, timing, and action dispatch decisions
+- GenericJobMonitor now emits debug logs for job status checks, retry policy evaluation, action chaining, and cleanup operations
 
 ## [0.10.0] - 2026-01-27
 

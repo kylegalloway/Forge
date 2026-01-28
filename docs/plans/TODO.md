@@ -63,8 +63,8 @@
   * ✅ `kubectl forge debug <job-name>` to exec into failed pod
   * ✅ Create debug pods with workspace access (`--copy-workspace`)
   * ✅ Preserve debug pods for inspection (`--preserve-pod`)
+  * ✅ Debug mode flag in CRD spec (`spec.debugMode`, `spec.debugActions`)
   * ❌ Live log streaming in CLI
-  * ❌ Debug mode flag in CRD spec (skip cleanup, verbose logging)
 
 ## Future Enhancements (Long-term)
 

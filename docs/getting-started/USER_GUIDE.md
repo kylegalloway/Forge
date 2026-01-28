@@ -967,6 +967,126 @@ spec:
 
 If the job tries to use a disallowed source or action, the controller will reject it.
 
+## Debug Mode
+
+Debug mode allows operators to inspect job pods before they complete, enabling manual inspection and troubleshooting of the execution environment.
+
+### Enabling Debug Mode
+
+There are three ways to enable debug mode, with increasing granularity:
+
+#### Global Debug Mode (Environment Variable)
+
+Set `FORGE_DEBUG_MODE=true` on the controller to enable debug mode for all jobs:
+
+```bash
+# Via Helm
+helm upgrade forge forge/forge \
+  --set controller.debugMode=true
+
+# Or set the environment variable directly
+kubectl set env deployment/forge-controller -n forge-system FORGE_DEBUG_MODE=true
+```
+
+#### Per-Job Debug Mode
+
+Enable debug mode for a specific job using `spec.debugMode`:
+
+```yaml
+apiVersion: forge.dev/v1alpha3
+kind: ZarfPackageJob
+metadata:
+  name: debug-my-build
+spec:
+  debugMode: true  # Debug ALL actions in this job
+  action: Build
+  source:
+    type: Git
+    git:
+      url: https://github.com/example/zarf-package
+      ref: main
+```
+
+#### Per-Action Debug Mode (Chained Workflows)
+
+For chained actions (e.g., `BuildPublish`, `CreatePublishDeploy`), use `spec.debugActions` to debug only specific steps:
+
+```yaml
+apiVersion: forge.dev/v1alpha3
+kind: ZarfPackageJob
+metadata:
+  name: debug-build-only
+spec:
+  action: BuildPublish
+  debugActions:
+    - build  # Only debug the build step; publish runs normally after
+  source:
+    type: Git
+    git:
+      url: https://github.com/example/zarf-package
+      ref: main
+```
+
+This is useful when you want to inspect the build environment without also pausing the publish step.
+
+### Debug Mode Behavior
+
+When debug mode is enabled for an action:
+
+1. **Pod waits for completion marker**: Instead of running the actual command, the pod displays debug instructions and waits for a marker file
+2. **Extended TTL**: Job cleanup is delayed (TTL set to 1 hour) to give time for inspection
+3. **Enhanced logging**: Debug logs at V(4) include correlation IDs, timing, and detailed decision information
+
+### Debug Workflow
+
+```bash
+# 1. Create job with debug mode
+kubectl apply -f debug-job.yaml
+
+# 2. Wait for pod to start
+kubectl get pods -l forge.dev/package=debug-my-build -w
+
+# 3. Exec into the pod to inspect environment
+kubectl exec -it debug-my-build-build-xxxxx -- /bin/sh
+
+# 4. Inside pod: inspect workspace and run commands manually
+ls -la /workspace
+cat /workspace/zarf.yaml
+zarf package create . --confirm
+
+# 5. Signal debug completion to continue (or finish)
+touch /tmp/debug-complete
+
+# The pod exits successfully. For chained workflows, the next action starts.
+```
+
+### Debug Mode Precedence
+
+Debug mode follows this precedence (highest to lowest):
+
+1. `spec.debugActions` - If specified, only listed actions are debugged
+2. `spec.debugMode` - If true and `debugActions` is empty, all actions are debugged
+3. `FORGE_DEBUG_MODE` env var - Global fallback for all jobs
+
+### Viewing Debug Logs
+
+Enable verbose logging on the controller/webhook to see detailed debug information:
+
+```bash
+# Run controller with debug verbosity
+kubectl patch deployment forge-controller -n forge-system \
+  --type='json' -p='[{"op": "add", "path": "/spec/template/spec/containers/0/args/-", "value": "-v=4"}]'
+
+# View webhook debug logs
+kubectl logs -n forge-system -l app.kubernetes.io/component=webhook -f | grep -E 'correlationID|validation'
+
+# View controller debug logs
+kubectl logs -n forge-system -l app.kubernetes.io/component=controller -f | grep -E 'correlationID|handler|dispatch'
+
+# Filter by specific job
+kubectl logs -n forge-system -l app.kubernetes.io/component=controller -f | grep 'job="debug-my-build"'
+```
+
 ## Troubleshooting
 
 ### Job Failures

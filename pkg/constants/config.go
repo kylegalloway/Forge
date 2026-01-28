@@ -123,29 +123,15 @@ const (
 	// InClusterKubeconfigSetup is a shell script snippet that generates a kubeconfig
 	// from the pod's service account token for in-cluster deployments.
 	// This is needed because Zarf/UDS CLIs don't auto-detect in-cluster config.
+	// The token is embedded directly in the kubeconfig and the API server endpoint is
+	// determined from environment variables (KUBERNETES_SERVICE_HOST and KUBERNETES_SERVICE_PORT)
+	// to ensure it works regardless of DNS configuration or file permissions.
 	InClusterKubeconfigSetup = `SA_DIR=/var/run/secrets/kubernetes.io/serviceaccount && ` +
 		`mkdir -p /tmp/.kube && ` +
-		`cat > /tmp/.kube/config << KUBEEOF
-apiVersion: v1
-kind: Config
-clusters:
-- cluster:
-    certificate-authority: ${SA_DIR}/ca.crt
-    server: https://kubernetes.default.svc
-  name: in-cluster
-contexts:
-- context:
-    cluster: in-cluster
-    namespace: $(cat ${SA_DIR}/namespace)
-    user: service-account
-  name: in-cluster
-current-context: in-cluster
-users:
-- name: service-account
-  user:
-    tokenFile: ${SA_DIR}/token
-KUBEEOF
-export KUBECONFIG=/tmp/.kube/config && `
+		`TOKEN=$(cat ${SA_DIR}/token) && ` +
+		`API_SERVER="${KUBERNETES_SERVICE_HOST:-kubernetes.default.svc}:${KUBERNETES_SERVICE_PORT:-443}" && ` +
+		`printf 'apiVersion: v1\nkind: Config\nclusters:\n- cluster:\n    certificate-authority: ${SA_DIR}/ca.crt\n    server: https://%s\n  name: in-cluster\ncontexts:\n- context:\n    cluster: in-cluster\n    namespace: default\n    user: service-account\n  name: in-cluster\ncurrent-context: in-cluster\nusers:\n- name: service-account\n  user:\n    token: %s\n' "$API_SERVER" "$TOKEN" > /tmp/.kube/config && ` +
+		`export KUBECONFIG=/tmp/.kube/config && `
 )
 
 // ZarfCLIImage is the container image for Zarf CLI operations.

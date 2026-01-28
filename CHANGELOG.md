@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Container image tags now consistently use "v" prefix (e.g., `v0.9.13` instead of `0.9.13`) across all release artifacts. The release workflow's docker/metadata-action was stripping the "v" prefix, causing helm charts and zarf.yaml to reference non-existent image tags.
+
 ## [0.9.13] - 2026-01-27
 
 ### Added

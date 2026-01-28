@@ -21,10 +21,10 @@ components:
         valuesFiles:
           - chart/forge/values.yaml
     images:
-      # Forge controller image (tagged without 'v' prefix)
-      - ghcr.io/kylegalloway/forge/forge-controller:0.9.13
-      # Forge webhook image (tagged without 'v' prefix)
-      - ghcr.io/kylegalloway/forge/forge-webhook:0.9.13
+      # Forge controller image
+      - ghcr.io/kylegalloway/forge/forge-controller:v0.9.13
+      # Forge webhook image
+      - ghcr.io/kylegalloway/forge/forge-webhook:v0.9.13
 
   # Zarf CLI image for running ZarfPackageJobs
   - name: zarf-cli

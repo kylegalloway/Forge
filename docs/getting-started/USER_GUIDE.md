@@ -43,7 +43,7 @@ helm repo update
 helm install forge forge/forge \
   --namespace forge-system \
   --create-namespace \
-  --version 0.10.0
+  --version 0.11.0
 ```
 
 Expected output:
@@ -63,8 +63,8 @@ REVISION: 1
 
 **Container Images Used**:
 
-- Controller: `ghcr.io/kylegalloway/forge/forge-controller:latest` (or `:v0.10.0` for specific version)
-- Webhook: `ghcr.io/kylegalloway/forge/forge-webhook:latest` (or `:v0.10.0` for specific version)
+- Controller: `ghcr.io/kylegalloway/forge/forge-controller:latest` (or `:v0.11.0` for specific version)
+- Webhook: `ghcr.io/kylegalloway/forge/forge-webhook:latest` (or `:v0.11.0` for specific version)
 
 ### Installation Options
 
@@ -72,7 +72,7 @@ REVISION: 1
 
 ```bash
 helm install forge forge/forge \
-  --version 0.10.0 \
+  --version 0.11.0 \
   --namespace forge-system \
   --create-namespace
 ```
@@ -81,7 +81,7 @@ helm install forge forge/forge \
 
 ```bash
 helm install forge forge/forge \
-  --version 0.10.0 \
+  --version 0.11.0 \
   --namespace forge-system \
   --create-namespace \
   --set controller.replicaCount=2 \
@@ -176,7 +176,7 @@ For UDS bundles, Forge provides a unified API with consistent naming.
 
 The v1alpha2 API uses the same action names as Zarf (`Create`, `Publish`, `Deploy`) instead of the v1alpha1 prefixed names (`BundleActionCreate`, etc.). This makes the API consistent across both package types.
 
-**Migration**: v1alpha1 will be supported until Forge v0.10.0 (~6 months). See [V1ALPHA2_MIGRATION.md](../operations/V1ALPHA2_MIGRATION.md) for the complete migration guide.
+**Migration**: v1alpha1 will be supported until Forge v0.11.0 (~6 months). See [V1ALPHA2_MIGRATION.md](../operations/V1ALPHA2_MIGRATION.md) for the complete migration guide.
 
 #### What is a UDS Bundle?
 
@@ -1389,7 +1389,7 @@ If you cannot create job resources:
 | **Action Values** | `BundleActionCreate`, `BundleActionPublish`, etc. | `Create`, `Publish`, `Deploy` |
 | **Naming Convention** | Bundle-prefixed actions | Consistent with ZarfPackageJob |
 | **API Group** | `forge.dev/v1alpha3` | `forge.dev/v1alpha3` |
-| **Deprecation** | Deprecated, removed in v0.10.0 | Active, recommended |
+| **Deprecation** | Deprecated, removed in v0.11.0 | Active, recommended |
 
 ### Migration Example
 

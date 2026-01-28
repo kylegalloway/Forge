@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-01-28
+
 ### Fixed
 - OCI source init containers for Zarf jobs now run as UID 1000 (DefaultZarfUID) instead of UID 65532 (DefaultUDSUID). Previously, files extracted by the OCI init container were owned by a different UID than the main Zarf container, which could cause permission issues if the main container needed to modify source files.
 - UDS bundle create command no longer passes unsupported `--output-directory` flag to UDS CLI. The bundle is created in the workspace and moved to the target directory.
@@ -540,7 +542,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial project setup and build infrastructure
 - CI/CD pipeline configuration for automated testing and releases
 
-[Unreleased]: https://github.com/kylegalloway/forge/compare/v0.10.0...HEAD
+[Unreleased]: https://github.com/kylegalloway/forge/compare/v0.11.0...HEAD
+[0.11.0]: https://github.com/kylegalloway/forge/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/kylegalloway/forge/compare/v0.9.13...v0.10.0
 [0.9.13]: https://github.com/kylegalloway/forge/compare/v0.9.12...v0.9.13
 [0.9.12]: https://github.com/kylegalloway/forge/compare/v0.9.11...v0.9.12

@@ -333,7 +333,7 @@ The Zarf CLI image cannot be pulled. This could be due to network issues, regist
    Forge includes a Dockerfile to build custom versions:
 
    ```bash
-   docker build -t ghcr.io/kylegalloway/forge/zarf-cli:v0.68.1 images/zarf-cli/
+   docker build -t ghcr.io/kylegalloway/forge/zarfpackagejob:v0.11.1 images/zarfpackagejob/
    ```
 
 4. **Configure imagePullSecrets (for private registries):**

@@ -166,7 +166,8 @@ The release tag triggers CI/CD workflows that:
 - Push to GHCR at:
   - `ghcr.io/kylegalloway/forge/forge-controller:vX.Y.Z`
   - `ghcr.io/kylegalloway/forge/forge-webhook:vX.Y.Z`
-  - `ghcr.io/kylegalloway/forge/zarf-cli:vX.Y.Z`
+  - `ghcr.io/kylegalloway/forge/zarfpackagejob:vX.Y.Z`
+  - `ghcr.io/kylegalloway/forge/udsbundlejob:vX.Y.Z`
 - Update `:latest` tags
 
 ### 2. **Helm Repository**

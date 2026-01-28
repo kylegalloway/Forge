@@ -254,13 +254,13 @@ kind load docker-image ghcr.io/kylegalloway/forge/zarfpackagejob:v0.11.1 --name 
 kind load docker-image ghcr.io/kylegalloway/forge/udsbundlejob:v0.11.1 --name forge-test
 
 # OR using Podman
-podman build -t ghcr.io/kylegalloway/forge/zarf-cli:v0.69.0 images/zarf-cli/
-podman build -t ghcr.io/kylegalloway/forge/uds-cli:v0.27.21 images/uds-cli/
-podman save ghcr.io/kylegalloway/forge/zarf-cli:v0.69.0 -o /tmp/zarf-cli.tar
-podman save ghcr.io/kylegalloway/forge/uds-cli:v0.27.21 -o /tmp/uds-cli.tar
-kind load image-archive /tmp/zarf-cli.tar --name forge-test
-kind load image-archive /tmp/uds-cli.tar --name forge-test
-rm /tmp/zarf-cli.tar /tmp/uds-cli.tar
+podman build -t ghcr.io/kylegalloway/forge/zarfpackagejob:v0.11.1 images/zarfpackagejob/
+podman build -t ghcr.io/kylegalloway/forge/udsbundlejob:v0.11.1 images/udsbundlejob/
+podman save ghcr.io/kylegalloway/forge/zarfpackagejob:v0.11.1 -o /tmp/zarfpackagejob.tar
+podman save ghcr.io/kylegalloway/forge/udsbundlejob:v0.11.1 -o /tmp/udsbundlejob.tar
+kind load image-archive /tmp/zarfpackagejob.tar --name forge-test
+kind load image-archive /tmp/udsbundlejob.tar --name forge-test
+rm /tmp/zarfpackagejob.tar /tmp/udsbundlejob.tar
 ```
 
 **Option 3: Use custom CLI images via Helm**
@@ -271,9 +271,9 @@ You can override the CLI images via Helm values:
 helm install forge forge/forge \
   --namespace forge-system \
   --create-namespace \
-  --set zarfCLI.image.repository=my-registry.io/zarf-cli \
+  --set zarfCLI.image.repository=my-registry.io/zarfpackagejob \
   --set zarfCLI.image.tag=v0.69.0 \
-  --set udsCLI.image.repository=my-registry.io/uds-cli \
+  --set udsCLI.image.repository=my-registry.io/udsbundlejob \
   --set udsCLI.image.tag=v0.27.21
 ```
 
@@ -291,7 +291,7 @@ Expected output:
 
 ```text
 ghcr.io/kylegalloway/forge/zarfpackagejob    v0.11.1    e8c96af1c3cbd    45MB
-ghcr.io/kylegalloway/forge/uds-cli     v0.27.21   a1b2c3d4e5f6g    50MB
+ghcr.io/kylegalloway/forge/udsbundlejob    v0.11.1   a1b2c3d4e5f6g    50MB
 ```
 
 ### 6. Run a Test Job
@@ -655,7 +655,7 @@ podman pull ghcr.io/kylegalloway/forge/forge-webhook:latest
 
 ### Zarf CLI Image Not Found
 
-If job pods show `ImagePullBackOff` for the zarf-cli image:
+If job pods show `ImagePullBackOff` for the zarfpackagejob image:
 
 ```bash
 # Verify image is in Kind cluster
@@ -663,14 +663,14 @@ docker exec -it forge-test-control-plane crictl images | grep zarf
 
 # If missing, pull and load it
 # Using Docker
-docker pull ghcr.io/kylegalloway/forge/zarf-cli:v0.69.0
-kind load docker-image ghcr.io/kylegalloway/forge/zarf-cli:v0.69.0 --name forge-test
+docker pull ghcr.io/kylegalloway/forge/zarfpackagejob:v0.11.1
+kind load docker-image ghcr.io/kylegalloway/forge/zarfpackagejob:v0.11.1 --name forge-test
 
 # OR using Podman
-podman pull ghcr.io/kylegalloway/forge/zarf-cli:v0.69.0
-podman save ghcr.io/kylegalloway/forge/zarf-cli:v0.69.0 -o /tmp/zarf-cli.tar
-kind load image-archive /tmp/zarf-cli.tar --name forge-test
-rm /tmp/zarf-cli.tar
+podman pull ghcr.io/kylegalloway/forge/zarfpackagejob:v0.11.1
+podman save ghcr.io/kylegalloway/forge/zarfpackagejob:v0.11.1 -o /tmp/zarfpackagejob.tar
+kind load image-archive /tmp/zarfpackagejob.tar --name forge-test
+rm /tmp/zarfpackagejob.tar
 ```
 
 ### Webhook TLS Certificate Errors

@@ -62,9 +62,9 @@ CLI images can be customized via Helm values or environment variables:
 ```bash
 # Via Helm values
 helm install forge forge/forge \
-  --set zarfCLI.image.repository=my-registry.io/zarf-cli \
+  --set zarfCLI.image.repository=my-registry.io/zarfpackagejob \
   --set zarfCLI.image.tag=v0.69.0 \
-  --set udsCLI.image.repository=my-registry.io/uds-cli \
+  --set udsCLI.image.repository=my-registry.io/udsbundlejob \
   --set udsCLI.image.tag=v0.27.21
 ```
 
@@ -306,7 +306,7 @@ zarf package create . --confirm
 This creates `zarf-package-forge-<arch>-v0.6.0.tar.zst` containing:
 
 - **forge** component: Controller, webhook, Helm chart, and CRDs
-- **zarf-cli** component: Zarf CLI image for running ZarfPackageJobs
+- **zarfpackagejob** component: Zarf Package Job image for running ZarfPackageJobs
 - **image-scanning** component (optional): Trivy and Grype for vulnerability scanning
 
 ### Deploying to Air-Gapped Cluster
@@ -319,7 +319,7 @@ zarf package deploy zarf-package-forge-*.tar.zst --confirm
 
 # Deploy with optional image scanning tools
 zarf package deploy zarf-package-forge-*.tar.zst \
-  --components=forge,zarf-cli,image-scanning \
+  --components=forge,zarfpackagejob,image-scanning \
   --confirm
 ```
 
@@ -328,7 +328,7 @@ zarf package deploy zarf-package-forge-*.tar.zst \
 | Component | Required | Description |
 |-----------|----------|-------------|
 | `forge` | Yes | Controller, webhook, Helm chart |
-| `zarf-cli` | Yes | Zarf CLI image for build/deploy jobs |
+| `zarfpackagejob` | Yes | Zarf Package Job image for build/deploy jobs |
 | `image-scanning` | No | Trivy and Grype scanners |
 
 ### Verifying Deployment

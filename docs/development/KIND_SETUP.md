@@ -519,7 +519,7 @@ make kind-load
 make kind-load-docker
 
 # Reload Zarf CLI image
-make kind-zarf-cli
+make kind-zarfpackagejob
 ```
 
 ### Pods Not Starting
@@ -601,7 +601,7 @@ kind load docker-image localhost/forge-controller:latest --name forge-dev
 kind load docker-image localhost/forge-webhook:latest --name forge-dev
 
 # Zarf CLI
-docker build -t localhost/zarf:v0.68.1 images/zarf-cli/
+docker build -t localhost/zarfpackagejob:v0.11.1 images/zarfpackagejob/
 kind load docker-image localhost/zarf:v0.68.1 --name forge-dev
 ```
 

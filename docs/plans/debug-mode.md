@@ -299,13 +299,19 @@ Phase 3 has been implemented:
 - Added timing information for reconciliation duration via `time.Since(startTime)`
 - Existing unit tests verify the controller behavior works correctly
 
-### Phase 4: Enhanced Job Monitor Logging
+### Phase 4: Enhanced Job Monitor Logging ✓ COMPLETED
 
-- [ ] Add debug logging for job status checks
-- [ ] Add debug logging for pod status evaluation
-- [ ] Add debug logging for action chaining decisions
-- [ ] Add debug logging for cleanup operations
-- [ ] Log detailed job/pod conditions at debug level
+Phase 4 has been implemented:
+- Added logger field to GenericJobMonitor using `pkg/logging.Logger`
+- Added correlation ID propagation through processJobStatus via `logging.WithCorrelationID()`
+- Added debug logging for job status checks (`checkJobStatuses`, `processJobStatus`)
+- Added debug logging for job/pod condition evaluation (each condition logged)
+- Added debug logging for retry policy evaluation and decisions
+- Added debug logging for action chaining (`handleActionChaining`, `determineNextAction`)
+- Added debug logging for cleanup operations (`cleanupArtifactPVCIfNeeded`, `deleteFailedJob`)
+- Added debug logging for resource adoption (`adoptDeployedResources`)
+- Added timing information for job status check duration via `time.Since(startTime)`
+- Existing unit tests verify the monitor behavior works correctly
 
 ### Phase 5: Debug Pod Behavior
 

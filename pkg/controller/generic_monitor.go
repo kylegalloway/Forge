@@ -11,6 +11,7 @@ import (
 	udsv1alpha3 "github.com/kylegalloway/forge/pkg/apis/uds/v1alpha3"
 	zarfv1alpha3 "github.com/kylegalloway/forge/pkg/apis/zarf/v1alpha3"
 	"github.com/kylegalloway/forge/pkg/constants"
+	"github.com/kylegalloway/forge/pkg/logging"
 	"github.com/kylegalloway/forge/pkg/resources"
 	"github.com/kylegalloway/forge/pkg/retry"
 
@@ -51,6 +52,7 @@ type GenericJobMonitor[T apiscommon.PackageResource] struct {
 	resourceGVR   schema.GroupVersionResource
 	metrics       MetricsRecorder[T]
 	config        MonitorConfig
+	logger        *logging.Logger
 
 	// Action handlers for chaining
 	primaryHandler common.ActionHandler[T]
@@ -81,6 +83,7 @@ func NewGenericJobMonitor[T apiscommon.PackageResource](
 		resourceGVR:    resourceGVR,
 		metrics:        metrics,
 		config:         config,
+		logger:         logging.NewLogger("monitor"),
 		primaryHandler: primaryHandler,
 		publishHandler: publishHandler,
 		deployHandler:  deployHandler,
@@ -110,12 +113,23 @@ func (m *GenericJobMonitor[T]) Start(ctx context.Context) {
 
 // checkJobStatuses checks all jobs with the configured label selector
 func (m *GenericJobMonitor[T]) checkJobStatuses(ctx context.Context) error {
+	startTime := time.Now()
+
+	m.logger.Debug(ctx, "Starting job status check",
+		"labelSelector", m.config.LabelSelector,
+		"namespace", m.namespace,
+	)
+
 	jobs, err := m.kubeClient.BatchV1().Jobs(m.namespace).List(ctx, metav1.ListOptions{
 		LabelSelector: m.config.LabelSelector,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to list jobs: %w", err)
 	}
+
+	m.logger.Debug(ctx, "Found jobs to check",
+		"jobCount", len(jobs.Items),
+	)
 
 	for _, job := range jobs.Items {
 		if err := m.processJobStatus(ctx, &job); err != nil {
@@ -124,23 +138,51 @@ func (m *GenericJobMonitor[T]) checkJobStatuses(ctx context.Context) error {
 		}
 	}
 
+	m.logger.Debug(ctx, "Completed job status check",
+		"jobCount", len(jobs.Items),
+		"duration", time.Since(startTime),
+	)
+
 	return nil
 }
 
 // processJobStatus processes a single job and updates the corresponding resource
 func (m *GenericJobMonitor[T]) processJobStatus(ctx context.Context, job *batchv1.Job) error {
+	startTime := time.Now()
+
 	// Get resource name and action from job labels
 	resourceName, ok := job.Labels[constants.LabelPackage]
 	if !ok {
-		klog.V(4).InfoS("Job missing package label, skipping", "job", job.Name)
+		m.logger.Debug(ctx, "Job missing package label, skipping",
+			"job", job.Name,
+			"namespace", job.Namespace,
+		)
 		return nil
 	}
 
 	action, ok := job.Labels[constants.LabelAction]
 	if !ok {
-		klog.V(4).InfoS("Job missing action label, skipping", "job", job.Name)
+		m.logger.Debug(ctx, "Job missing action label, skipping",
+			"job", job.Name,
+			"namespace", job.Namespace,
+			"resource", resourceName,
+		)
 		return nil
 	}
+
+	// Set up logging context with correlation ID
+	ctx = logging.WithCorrelationID(ctx, logging.GenerateCorrelationID(job.Namespace, resourceName, action))
+	ctx = logging.WithJobName(ctx, job.Name)
+	ctx = logging.WithNamespace(ctx, job.Namespace)
+	ctx = logging.WithAction(ctx, action)
+
+	m.logger.Debug(ctx, "Processing job status",
+		"resource", resourceName,
+		"active", job.Status.Active,
+		"succeeded", job.Status.Succeeded,
+		"failed", job.Status.Failed,
+		"conditions", len(job.Status.Conditions),
+	)
 
 	// Check if job is complete or failed
 	var phase, message string
@@ -148,11 +190,23 @@ func (m *GenericJobMonitor[T]) processJobStatus(ctx context.Context, job *batchv
 	var completionTime *metav1.Time
 
 	for _, condition := range job.Status.Conditions {
+		m.logger.Debug(ctx, "Evaluating job condition",
+			"conditionType", condition.Type,
+			"conditionStatus", condition.Status,
+			"reason", condition.Reason,
+			"message", condition.Message,
+		)
+
 		if condition.Type == batchv1.JobComplete && condition.Status == corev1.ConditionTrue {
 			phase = constants.PhaseCompleted
 			message = fmt.Sprintf("%s job %s completed successfully", action, job.Name)
 			completed = true
 			completionTime = condition.LastTransitionTime.DeepCopy()
+
+			m.logger.Debug(ctx, "Job completed successfully",
+				"resource", resourceName,
+				"completionTime", completionTime,
+			)
 
 			// Record metrics
 			m.recordCompletionMetrics(ctx, job.Namespace, resourceName, action, job.Status.StartTime, completionTime)
@@ -160,10 +214,17 @@ func (m *GenericJobMonitor[T]) processJobStatus(ctx context.Context, job *batchv
 		}
 
 		if condition.Type == batchv1.JobFailed && condition.Status == corev1.ConditionTrue {
+			m.logger.Debug(ctx, "Job failed, checking retry policy",
+				"resource", resourceName,
+				"failureMessage", condition.Message,
+			)
 			// Get the resource to check retry policy
 			unstrObj, err := m.dynamicClient.Resource(m.resourceGVR).Namespace(job.Namespace).Get(ctx, resourceName, metav1.GetOptions{})
 			if err != nil {
-				klog.V(4).InfoS("Failed to get resource, may be deleted", "resource", resourceName, "error", err)
+				m.logger.Debug(ctx, "Failed to get resource, may be deleted",
+					"resource", resourceName,
+					"error", err,
+				)
 				return nil
 			}
 
@@ -171,21 +232,42 @@ func (m *GenericJobMonitor[T]) processJobStatus(ctx context.Context, job *batchv
 			statusField := m.getStatusFieldName(action)
 			currentRetryCount := m.extractRetryCount(unstrObj, statusField)
 
+			m.logger.Debug(ctx, "Checking retry policy",
+				"resource", resourceName,
+				"statusField", statusField,
+				"currentRetryCount", currentRetryCount,
+			)
+
 			// Check if we should retry
 			retryPolicy, err := m.getRetryPolicy(unstrObj, action)
 			if err != nil {
-				klog.ErrorS(err, "Failed to get retry policy", "resource", resourceName, "action", action)
+				m.logger.Error(ctx, err, "Failed to get retry policy",
+					"resource", resourceName,
+				)
 			}
 
 			if retryPolicy != nil {
+				m.logger.Debug(ctx, "Retry policy found",
+					"resource", resourceName,
+					"maxRetries", retryPolicy.MaxRetries,
+					"initialBackoff", retryPolicy.InitialBackoff,
+				)
+
 				tracker := retry.NewTracker(retryPolicy)
 				decision, err := tracker.RecordFailure(ctx, currentRetryCount, condition.Message)
 				if err != nil {
-					klog.ErrorS(err, "Failed to record failure", "resource", resourceName, "action", action)
+					m.logger.Error(ctx, err, "Failed to record failure",
+						"resource", resourceName,
+					)
 				}
 
 				if decision != nil && decision.ShouldRetry {
-					klog.InfoS("Scheduling retry", "job", job.Name, "resource", resourceName, "retryAt", decision.RetryAt, "attempt", currentRetryCount+1)
+					m.logger.Debug(ctx, "Scheduling retry",
+						"resource", resourceName,
+						"retryAt", decision.RetryAt,
+						"attempt", currentRetryCount+1,
+						"reason", decision.Reason,
+					)
 
 					// Update status to "Retrying"
 					opStatus := map[string]interface{}{}
@@ -199,12 +281,22 @@ func (m *GenericJobMonitor[T]) processJobStatus(ctx context.Context, job *batchv
 
 					// Delete failed job so it can be recreated
 					if err := m.deleteFailedJob(ctx, job); err != nil {
-						klog.ErrorS(err, "Failed to delete failed job", "job", job.Name)
+						m.logger.Error(ctx, err, "Failed to delete failed job for retry")
 					}
 
 					// Update resource status
 					return m.statusUpdater(ctx, unstrObj, constants.PhaseRetrying, decision.Reason, opStatus)
 				}
+
+				m.logger.Debug(ctx, "Retry not possible",
+					"resource", resourceName,
+					"shouldRetry", decision != nil && decision.ShouldRetry,
+					"currentRetryCount", currentRetryCount,
+				)
+			} else {
+				m.logger.Debug(ctx, "No retry policy configured",
+					"resource", resourceName,
+				)
 			}
 
 			// Not retryable or max retries exhausted - mark as failed
@@ -212,6 +304,11 @@ func (m *GenericJobMonitor[T]) processJobStatus(ctx context.Context, job *batchv
 			message = fmt.Sprintf("%s job %s failed: %s", action, job.Name, condition.Message)
 			completed = true
 			completionTime = condition.LastTransitionTime.DeepCopy()
+
+			m.logger.Debug(ctx, "Job marked as failed",
+				"resource", resourceName,
+				"failureMessage", condition.Message,
+			)
 
 			// Record metrics
 			m.recordFailureMetrics(ctx, job.Namespace, resourceName, action, job.Status.StartTime, completionTime)
@@ -221,22 +318,34 @@ func (m *GenericJobMonitor[T]) processJobStatus(ctx context.Context, job *batchv
 
 	// If job is still running, nothing to update
 	if !completed {
+		m.logger.Debug(ctx, "Job still running, no status update needed",
+			"resource", resourceName,
+		)
 		return nil
 	}
 
-	klog.InfoS("Job status changed", "job", job.Name, "resource", resourceName, "phase", phase)
+	m.logger.Debug(ctx, "Job status changed",
+		"resource", resourceName,
+		"phase", phase,
+		"duration", time.Since(startTime),
+	)
 
 	// Get the resource
 	unstrObj, err := m.dynamicClient.Resource(m.resourceGVR).Namespace(job.Namespace).Get(ctx, resourceName, metav1.GetOptions{})
 	if err != nil {
-		klog.V(4).InfoS("Failed to get resource, may be deleted", "resource", resourceName, "error", err)
+		m.logger.Debug(ctx, "Failed to get resource, may be deleted",
+			"resource", resourceName,
+			"error", err,
+		)
 		return nil
 	}
 
 	// Extract spec for later use
 	spec, ok := unstrObj.Object["spec"].(map[string]interface{})
 	if !ok {
-		klog.ErrorS(nil, "Failed to extract spec from resource", "resource", resourceName)
+		m.logger.Error(ctx, nil, "Failed to extract spec from resource",
+			"resource", resourceName,
+		)
 		return fmt.Errorf("failed to extract spec from resource %s", resourceName)
 	}
 
@@ -244,6 +353,13 @@ func (m *GenericJobMonitor[T]) processJobStatus(ctx context.Context, job *batchv
 	opStatus := map[string]interface{}{}
 	statusField := m.getStatusFieldName(action)
 	artifactLocation := constants.DefaultArtifactPath // Default artifact location
+
+	m.logger.Debug(ctx, "Updating operation status",
+		"resource", resourceName,
+		"statusField", statusField,
+		"phase", phase,
+		"artifactLocation", artifactLocation,
+	)
 
 	opStatus[statusField] = map[string]interface{}{
 		constants.StatusKeyState:            phase,
@@ -254,27 +370,48 @@ func (m *GenericJobMonitor[T]) processJobStatus(ctx context.Context, job *batchv
 
 	// Update resource status
 	if err := m.statusUpdater(ctx, unstrObj, phase, message, opStatus); err != nil {
+		m.logger.Error(ctx, err, "Failed to update resource status",
+			"resource", resourceName,
+		)
 		return err
 	}
 
 	// Handle resource adoption if job succeeded and action is deploy
 	if phase == constants.PhaseCompleted && action == constants.ActionDeploy {
+		m.logger.Debug(ctx, "Checking for resource adoption after deploy",
+			"resource", resourceName,
+		)
 		if err := m.adoptDeployedResources(ctx, unstrObj); err != nil {
 			// Don't fail the deployment, just log warning
-			klog.ErrorS(err, "Failed to adopt resources", "resource", resourceName, "action", action)
+			m.logger.Warning(ctx, "Failed to adopt resources",
+				"resource", resourceName,
+				"error", err,
+			)
 		}
 	}
 
 	// Handle action chaining if job succeeded
 	if phase == constants.PhaseCompleted {
+		m.logger.Debug(ctx, "Checking for action chaining",
+			"resource", resourceName,
+			"completedAction", action,
+		)
 		err := m.handleActionChaining(ctx, unstrObj, action, artifactLocation)
 		// If there's no next action or chaining failed, clean up PVC if needed
 		currentAction, ok := spec["action"].(string)
 		if !ok {
-			klog.V(4).InfoS("Could not determine current action for chaining check", "resource", resourceName)
+			m.logger.Debug(ctx, "Could not determine current action for chaining check",
+				"resource", resourceName,
+			)
 			currentAction = ""
 		}
-		if err != nil || m.determineNextAction(currentAction, action) == "" {
+		nextAction := m.determineNextAction(currentAction, action)
+		if err != nil || nextAction == "" {
+			m.logger.Debug(ctx, "No next action or chaining failed, cleaning up PVC",
+				"resource", resourceName,
+				"nextAction", nextAction,
+				"chainingError", err,
+			)
 			m.cleanupArtifactPVCIfNeeded(ctx, unstrObj, resourceName)
 		}
 		return err
@@ -282,6 +419,9 @@ func (m *GenericJobMonitor[T]) processJobStatus(ctx context.Context, job *batchv
 
 	// If job failed, clean up PVC if needed
 	if phase == constants.PhaseFailed {
+		m.logger.Debug(ctx, "Job failed, cleaning up PVC",
+			"resource", resourceName,
+		)
 		m.cleanupArtifactPVCIfNeeded(ctx, unstrObj, resourceName)
 	}
 
@@ -351,29 +491,46 @@ func (m *GenericJobMonitor[T]) handleActionChaining(ctx context.Context, unstrOb
 	// Get the action from spec to determine if this is a chained workflow
 	spec, ok := unstrObj.Object["spec"].(map[string]interface{})
 	if !ok {
+		m.logger.Debug(ctx, "No spec found, skipping action chaining")
 		return nil
 	}
 
 	action, ok := spec["action"].(string)
 	if !ok {
+		m.logger.Debug(ctx, "No action in spec, skipping action chaining")
 		return nil
 	}
 
 	// Convert to typed resource
 	var resource T
 	if err := runtime.DefaultUnstructuredConverter.FromUnstructured(unstrObj.Object, &resource); err != nil {
+		m.logger.Error(ctx, err, "Failed to convert unstructured to typed resource")
 		return fmt.Errorf("failed to convert to %s: %w", m.config.ResourceType, err)
 	}
 
-	klog.InfoS("Checking for action chaining", "resource", resource.GetName(), "action", action, "completedAction", completedAction)
+	m.logger.Debug(ctx, "Evaluating action chaining",
+		"resource", resource.GetName(),
+		"specAction", action,
+		"completedAction", completedAction,
+		"isMultiAction", m.isMultiActionJob(action),
+	)
 
 	// Determine next action based on compound action pattern
 	nextAction := m.determineNextAction(action, completedAction)
 	if nextAction == "" {
+		m.logger.Debug(ctx, "No next action in chain",
+			"resource", resource.GetName(),
+			"specAction", action,
+			"completedAction", completedAction,
+		)
 		return nil
 	}
 
-	klog.InfoS("Triggering next action in chain", "resource", resource.GetName(), "nextAction", nextAction, "artifactPath", artifactPath)
+	m.logger.Debug(ctx, "Triggering next action in chain",
+		"resource", resource.GetName(),
+		"nextAction", nextAction,
+		"artifactPath", artifactPath,
+	)
 
 	// Prepare options for next action
 	opts := common.ExecuteOptions{
@@ -384,10 +541,19 @@ func (m *GenericJobMonitor[T]) handleActionChaining(ctx context.Context, unstrOb
 	if m.config.SupportsPVC && m.isMultiActionJob(action) {
 		opts.ArtifactPVCName = fmt.Sprintf("%s-artifacts", resource.GetName())
 		opts.ArtifactPath = "/artifacts/*.tar.zst"
-		klog.InfoS("Using shared artifact PVC for chained action", "resource", resource.GetName(), "pvc", opts.ArtifactPVCName)
+		m.logger.Debug(ctx, "Using shared artifact PVC for chained action",
+			"resource", resource.GetName(),
+			"pvc", opts.ArtifactPVCName,
+			"artifactPath", opts.ArtifactPath,
+		)
 	}
 
 	// Execute the next action
+	m.logger.Debug(ctx, "Executing chained action",
+		"resource", resource.GetName(),
+		"nextAction", nextAction,
+	)
+
 	var result *actions.ActionResult
 	var err error
 
@@ -397,15 +563,28 @@ func (m *GenericJobMonitor[T]) handleActionChaining(ctx context.Context, unstrOb
 	case constants.ActionDeploy:
 		result, err = m.deployHandler.Execute(ctx, resource, opts)
 	default:
+		m.logger.Error(ctx, nil, "Unknown next action in chain",
+			"nextAction", nextAction,
+		)
 		return fmt.Errorf("unknown next action: %s", nextAction)
 	}
 
 	if err != nil {
-		klog.ErrorS(err, "Failed to execute next action", "resource", resource.GetName(), "action", nextAction)
+		m.logger.Error(ctx, err, "Failed to execute chained action",
+			"resource", resource.GetName(),
+			"nextAction", nextAction,
+		)
 		return m.statusUpdater(ctx, unstrObj, constants.PhaseFailed, fmt.Sprintf("Failed to execute %s: %v", nextAction, err), nil)
 	}
 
 	if result != nil {
+		m.logger.Debug(ctx, "Chained action started successfully",
+			"resource", resource.GetName(),
+			"nextAction", nextAction,
+			"jobName", result.JobName,
+			"phase", result.Phase,
+		)
+
 		// Update status for the next action
 		opStatus := map[string]interface{}{}
 		statusField := m.getStatusFieldName(nextAction)
@@ -591,7 +770,11 @@ func (m *GenericJobMonitor[T]) extractRetryCount(obj *unstructured.Unstructured,
 
 // deleteFailedJob deletes a failed job so it can be recreated during retry
 func (m *GenericJobMonitor[T]) deleteFailedJob(ctx context.Context, job *batchv1.Job) error {
-	klog.InfoS("Deleting failed job for retry", "job", job.Name, "namespace", job.Namespace)
+	m.logger.Debug(ctx, "Deleting failed job for retry",
+		"job", job.Name,
+		"namespace", job.Namespace,
+		"propagationPolicy", "Background",
+	)
 
 	deletePolicy := metav1.DeletePropagationBackground
 	err := m.kubeClient.BatchV1().Jobs(job.Namespace).Delete(ctx, job.Name, metav1.DeleteOptions{
@@ -609,48 +792,69 @@ func (m *GenericJobMonitor[T]) deleteFailedJob(ctx context.Context, job *batchv1
 func (m *GenericJobMonitor[T]) cleanupArtifactPVCIfNeeded(ctx context.Context, obj *unstructured.Unstructured, resourceName string) {
 	// Only cleanup if PVC support is enabled
 	if !m.config.SupportsPVC {
+		m.logger.Debug(ctx, "PVC support not enabled, skipping cleanup",
+			"resource", resourceName,
+		)
 		return
 	}
 
 	// Check spec for PVC settings
 	spec, ok := obj.Object["spec"].(map[string]interface{})
 	if !ok {
+		m.logger.Debug(ctx, "No spec found, skipping PVC cleanup",
+			"resource", resourceName,
+		)
 		return
 	}
 
 	// Check if PVC was even created (useArtifactPVC)
 	usePVC, usePVCOK := spec["useArtifactPVC"].(bool)
 	if usePVCOK && !usePVC {
-		// PVC was not created, nothing to cleanup
+		m.logger.Debug(ctx, "useArtifactPVC is false, no PVC to cleanup",
+			"resource", resourceName,
+		)
 		return
 	}
 
 	// Check if retainArtifactPVC is set to false
 	retainPVC, ok := spec["retainArtifactPVC"].(bool)
 	if !ok {
-		// Default is true (retain), so if not specified, don't delete
+		m.logger.Debug(ctx, "retainArtifactPVC not specified, defaulting to retain",
+			"resource", resourceName,
+		)
 		return
 	}
 
 	if retainPVC {
-		// User wants to keep the PVC
+		m.logger.Debug(ctx, "retainArtifactPVC is true, keeping PVC",
+			"resource", resourceName,
+		)
 		return
 	}
 
 	// Delete the artifact PVC
 	pvcName := fmt.Sprintf("%s-artifacts", resourceName)
-	klog.InfoS("Deleting artifact PVC as requested by retainArtifactPVC=false",
-		"resource", resourceName, "pvc", pvcName, "namespace", obj.GetNamespace())
+	m.logger.Debug(ctx, "Deleting artifact PVC as requested by retainArtifactPVC=false",
+		"resource", resourceName,
+		"pvc", pvcName,
+		"namespace", obj.GetNamespace(),
+	)
 
 	err := m.kubeClient.CoreV1().PersistentVolumeClaims(obj.GetNamespace()).Delete(
 		ctx, pvcName, metav1.DeleteOptions{})
 
 	if err != nil {
-		klog.ErrorS(err, "Failed to delete artifact PVC", "pvc", pvcName, "namespace", obj.GetNamespace())
+		m.logger.Error(ctx, err, "Failed to delete artifact PVC",
+			"pvc", pvcName,
+			"namespace", obj.GetNamespace(),
+		)
 		return
 	}
 
-	klog.InfoS("Successfully deleted artifact PVC", "pvc", pvcName, "namespace", obj.GetNamespace())
+	m.logger.Debug(ctx, "Successfully deleted artifact PVC",
+		"pvc", pvcName,
+		"namespace", obj.GetNamespace(),
+	)
 }
 
 // adoptDeployedResources handles resource adoption after successful deployment
@@ -658,32 +862,44 @@ func (m *GenericJobMonitor[T]) adoptDeployedResources(ctx context.Context, obj *
 	// Extract deploy config from spec
 	spec, ok := obj.Object["spec"].(map[string]interface{})
 	if !ok {
-		klog.V(4).InfoS("No spec found, skipping adoption")
+		m.logger.Debug(ctx, "No spec found, skipping adoption",
+			"resource", obj.GetName(),
+		)
 		return nil
 	}
 
 	deploy, ok := spec["deploy"].(map[string]interface{})
 	if !ok {
-		klog.V(4).InfoS("No deploy config found, skipping adoption")
+		m.logger.Debug(ctx, "No deploy config found, skipping adoption",
+			"resource", obj.GetName(),
+		)
 		return nil
 	}
 
 	// Check if adoption policy is set
 	adoptionPolicyStr, ok := deploy["adoptionPolicy"].(string)
 	if !ok || adoptionPolicyStr == "" {
-		klog.V(4).InfoS("No adoption policy set, skipping adoption")
+		m.logger.Debug(ctx, "No adoption policy set, skipping adoption",
+			"resource", obj.GetName(),
+		)
 		return nil
 	}
 
 	// Only proceed if policy is "Adopt"
 	if adoptionPolicyStr != "Adopt" {
-		klog.V(4).InfoS("Adoption policy is not 'Adopt', skipping", "policy", adoptionPolicyStr)
+		m.logger.Debug(ctx, "Adoption policy is not 'Adopt', skipping",
+			"resource", obj.GetName(),
+			"policy", adoptionPolicyStr,
+		)
 		return nil
 	}
 
 	// Get resource selector
 	selectorMap, ok := deploy["resourceSelector"].(map[string]interface{})
 	if !ok {
+		m.logger.Error(ctx, nil, "resourceSelector is required when adoptionPolicy is 'Adopt'",
+			"resource", obj.GetName(),
+		)
 		return fmt.Errorf("resourceSelector is required when adoptionPolicy is 'Adopt'")
 	}
 
@@ -707,7 +923,11 @@ func (m *GenericJobMonitor[T]) adoptDeployedResources(ctx context.Context, obj *
 		}
 	}
 
-	klog.InfoS("Starting resource adoption", "resource", obj.GetName(), "namespaces", namespaces)
+	m.logger.Debug(ctx, "Starting resource adoption",
+		"resource", obj.GetName(),
+		"namespaces", namespaces,
+		"policy", adoptionPolicyStr,
+	)
 
 	// Determine resource type and parse selector accordingly
 	resourceType := m.config.ResourceType
@@ -715,6 +935,11 @@ func (m *GenericJobMonitor[T]) adoptDeployedResources(ctx context.Context, obj *
 	var err error
 
 	discoverer := resources.NewDiscoverer(m.dynamicClient)
+
+	m.logger.Debug(ctx, "Discovering resources for adoption",
+		"resource", obj.GetName(),
+		"resourceType", resourceType,
+	)
 
 	if resourceType == constants.ResourceTypeZarfPackageJob {
 		// Convert map to Zarf ResourceSelector
@@ -727,11 +952,21 @@ func (m *GenericJobMonitor[T]) adoptDeployedResources(ctx context.Context, obj *
 	}
 
 	if err != nil {
+		m.logger.Error(ctx, err, "Failed to discover resources for adoption",
+			"resource", obj.GetName(),
+		)
 		return fmt.Errorf("failed to discover resources: %w", err)
 	}
 
+	m.logger.Debug(ctx, "Discovered resources for adoption",
+		"resource", obj.GetName(),
+		"discoveredCount", len(discovered),
+	)
+
 	if len(discovered) == 0 {
-		klog.InfoS("No resources found to adopt", "resource", obj.GetName())
+		m.logger.Debug(ctx, "No resources found to adopt",
+			"resource", obj.GetName(),
+		)
 		return nil
 	}
 
@@ -741,21 +976,41 @@ func (m *GenericJobMonitor[T]) adoptDeployedResources(ctx context.Context, obj *
 		validateOwnership = validateOwnershipBool
 	}
 
+	m.logger.Debug(ctx, "Validating ownership before adoption",
+		"resource", obj.GetName(),
+		"validateOwnership", validateOwnership,
+	)
+
 	adopter := resources.NewAdopter(m.dynamicClient)
 
 	if validateOwnership {
 		if err := adopter.ValidateNoConflictingOwners(discovered); err != nil {
+			m.logger.Error(ctx, err, "Ownership validation failed",
+				"resource", obj.GetName(),
+			)
 			return fmt.Errorf("ownership validation failed: %w", err)
 		}
 	}
 
 	// Adopt resources
 	ownerGVK := m.resourceGVR.GroupVersion().WithKind(m.config.ResourceType)
+	m.logger.Debug(ctx, "Adopting resources",
+		"resource", obj.GetName(),
+		"ownerGVK", ownerGVK.String(),
+		"count", len(discovered),
+	)
+
 	if err := adopter.AdoptResources(ctx, obj, ownerGVK, discovered, validateOwnership); err != nil {
+		m.logger.Error(ctx, err, "Failed to adopt resources",
+			"resource", obj.GetName(),
+		)
 		return fmt.Errorf("failed to adopt resources: %w", err)
 	}
 
-	klog.InfoS("Successfully adopted resources", "resource", obj.GetName(), "count", len(discovered))
+	m.logger.Debug(ctx, "Successfully adopted resources",
+		"resource", obj.GetName(),
+		"count", len(discovered),
+	)
 	return nil
 }
 

@@ -1,0 +1,17 @@
+apiVersion: forge.dev/v1alpha3
+kind: UDSBundleJob
+metadata:
+  name: test-uds-create
+  namespace: default
+  labels:
+    app: forge-test
+    test: e2e
+spec:
+  serviceAccountName: test-uds-creator
+  action: Create
+  source:
+    type: Git
+    git:
+      url: https://github.com/kylegalloway/forge
+      ref: fix/uds-oci-uid-and-create
+      path: examples/samples/uds/03-git-build-deploy

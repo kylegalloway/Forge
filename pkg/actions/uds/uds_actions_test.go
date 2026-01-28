@@ -1002,7 +1002,7 @@ func TestCreateHandlerBuildUDSCommandWithVariables(t *testing.T) {
 				},
 			},
 			artifactPVCName: "",
-			wantContains:    []string{"uds create", "--confirm", "--output-directory"},
+			wantContains:    []string{"uds create", "--confirm", "mv uds-bundle-*.tar.zst"},
 			wantNotContains: []string{"--set"},
 		},
 		{

@@ -9,6 +9,8 @@ Simple, automated tests for Forge functionality that work on both local Kind clu
 | **01-simple-build** | Build Zarf package from Git | ~2 min | None (public repo) |
 | **02-simple-deploy** | Deploy Zarf package to cluster | ~3 min | Sufficient cluster resources |
 | **03-health-check** | Verify controller health/metrics | ~10 sec | Controller deployed |
+| **04-uds-create** | Create UDS bundle from Git | ~2-3 min | None (public repo) |
+| **05-uds-deploy** | Create and deploy UDS bundle | ~3-5 min | Sufficient cluster resources |
 
 ## Quick Start
 
@@ -140,13 +142,53 @@ kubectl logs -n forge-system -l app=forge-controller
 - Port forwarding failed (check firewall)
 - Service not created correctly
 
+### Test 04 (UDS Bundle Create) Fails
+
+**Symptom**: Job fails or times out
+
+**Check**:
+```bash
+kubectl get udsbundlejob test-uds-create -o yaml
+kubectl logs -l forge.dev/bundle=test-uds-create
+```
+
+**Common Issues**:
+- Git repository inaccessible (network/firewall)
+- Insufficient CPU/memory resources
+- UDS CLI image not available in cluster
+- ServiceAccount policy too restrictive
+
+### Test 05 (UDS Bundle Deploy) Fails
+
+**Symptom**: Bundle doesn't deploy
+
+**Check**:
+```bash
+kubectl get udsbundlejob test-uds-deploy -o yaml
+kubectl logs -l forge.dev/bundle=test-uds-deploy
+kubectl get pods -n headlamp
+```
+
+**Common Issues**:
+- Create phase completed but deploy phase failed
+- Cluster doesn't have required resources for Headlamp
+- RBAC permissions insufficient for deployment
+- Image pull failures (Headlamp images)
+
 ## Cleanup
 
 ```bash
-# Delete test resources
+# Delete Zarf test resources
 kubectl delete zarfpackagejobs test-simple-build test-simple-deploy
 kubectl delete serviceaccount test-builder test-deployer
+
+# Delete UDS test resources
+kubectl delete udsbundlejobs test-uds-create test-uds-deploy
+kubectl delete serviceaccount test-uds-creator test-uds-deployer
+
+# Delete deployed namespaces
 kubectl delete namespace zarf --ignore-not-found=true
+kubectl delete namespace headlamp --ignore-not-found=true
 
 # Delete Kind cluster
 make kind-delete

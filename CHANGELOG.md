@@ -9,8 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - OCI source init containers for Zarf jobs now run as UID 1000 (DefaultZarfUID) instead of UID 65532 (DefaultUDSUID). Previously, files extracted by the OCI init container were owned by a different UID than the main Zarf container, which could cause permission issues if the main container needed to modify source files.
+- UDS bundle create command no longer passes unsupported `--output-directory` flag to UDS CLI. The bundle is created in the workspace and moved to the target directory.
+- UDS bundle sample `03-git-build-deploy/uds-bundle.yaml` now uses `path` instead of `repository` for local zarf package references, matching UDS CLI requirements.
 
 ### Added
+- E2E tests for UDS bundle create and deploy operations (`04-uds-create`, `05-uds-deploy`).
+
 - Per-job `debugMode` field in ZarfPackageJobSpec and UDSBundleJobSpec CRDs
 - Per-action `debugActions` field for fine-grained control in chained workflows (e.g., debug only `build` in a `BuildPublish` job)
 - `GetDebugMode()` and `GetDebugActions()` methods on PackageResource interface for unified debug mode access

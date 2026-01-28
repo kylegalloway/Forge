@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - kubectl added to zarf-cli and uds-cli container images for in-cluster kubeconfig generation and debugging.
 - In-cluster kubeconfig generation for deploy jobs. Zarf/UDS CLIs don't auto-detect in-cluster mode, so deploy handlers now generate a kubeconfig from the pod's service account token.
 - AWS credentials documentation (`docs/operations/AWS_CREDENTIALS.md`) covering static credentials and IRSA configuration for S3 access.
+- CI pipeline now validates generated code (CRDs and deepcopy) is up-to-date via `verify-codegen` job. PRs will fail if `make manifests generate` produces changes not committed to the repository. Generation runs goimports to normalize import formatting.
 
 ### Fixed
 - Container image tags now consistently use "v" prefix (e.g., `v0.9.13` instead of `0.9.13`) across all release artifacts. The release workflow's docker/metadata-action was stripping the "v" prefix, causing helm charts and zarf.yaml to reference non-existent image tags.

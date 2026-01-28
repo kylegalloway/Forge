@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.11.1] - 2026-01-28
+
 ### Added
 - Complete API reference YAML files in `examples/reference/` documenting all available fields:
   - `zarfpackagejob-reference.yaml` - All ZarfPackageJob spec fields with valid values
@@ -557,7 +559,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial project setup and build infrastructure
 - CI/CD pipeline configuration for automated testing and releases
 
-[Unreleased]: https://github.com/kylegalloway/forge/compare/v0.11.0...HEAD
+[Unreleased]: https://github.com/kylegalloway/forge/compare/v0.11.1...HEAD
+[0.11.1]: https://github.com/kylegalloway/forge/compare/v0.11.0...v0.11.1
 [0.11.0]: https://github.com/kylegalloway/forge/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/kylegalloway/forge/compare/v0.9.13...v0.10.0
 [0.9.13]: https://github.com/kylegalloway/forge/compare/v0.9.12...v0.9.13

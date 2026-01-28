@@ -237,12 +237,16 @@ func (handler *DeployHandler) buildDeployCommand(pkg *zarfv1alpha3.ZarfPackageJo
 		}
 	}
 
-	// External cluster needs kubeconfig
+	// Configure kubeconfig based on deploy target
 	if deploy.Target == zarfv1alpha3.DeployTargetExternalCluster {
+		// External cluster: mount kubeconfig from secret
 		cmd = fmt.Sprintf("export KUBECONFIG=%s/kubeconfig && %s", constants.VolumeMountPathKubeconfig, cmd)
 		if deploy.ExternalCluster != nil && deploy.ExternalCluster.Context != "" {
 			cmd = fmt.Sprintf("%s --kubeconfig-context=%s", cmd, deploy.ExternalCluster.Context)
 		}
+	} else {
+		// In-cluster: generate kubeconfig from service account token
+		cmd = constants.InClusterKubeconfigSetup + cmd
 	}
 
 	return cmd, nil

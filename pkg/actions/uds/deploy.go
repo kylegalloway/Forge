@@ -236,13 +236,17 @@ func (handler *DeployHandler) buildDeployCommand(bundle *udsv1alpha3.UDSBundleJo
 		}
 	}
 
-	// Add kubeconfig for external cluster
+	// Configure kubeconfig based on deploy target
 	if deploy.Target == udsv1alpha3.DeployTargetExternalCluster {
+		// External cluster: mount kubeconfig from secret
 		cmd = fmt.Sprintf("export KUBECONFIG=%s/kubeconfig && ", constants.VolumeMountPathKubeconfig) + cmd
 		// Add context flag if specified
 		if deploy.ExternalCluster != nil && deploy.ExternalCluster.Context != "" {
 			cmd += fmt.Sprintf(" --kubeconfig-context %s", deploy.ExternalCluster.Context)
 		}
+	} else {
+		// In-cluster: generate kubeconfig from service account token
+		cmd = constants.InClusterKubeconfigSetup + cmd
 	}
 
 	return cmd, nil

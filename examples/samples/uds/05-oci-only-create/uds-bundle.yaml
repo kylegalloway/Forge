@@ -1,0 +1,10 @@
+kind: UDSBundle
+metadata:
+  name: podinfo-bundle
+  description: Simple UDS Bundle using only OCI-hosted packages
+  version: 0.1.0
+
+packages:
+  - name: podinfo
+    repository: ghcr.io/defenseunicorns/uds-cli/podinfo
+    ref: 0.0.1

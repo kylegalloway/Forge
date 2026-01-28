@@ -1,21 +1,28 @@
 # Dockerfile for Zarf CLI container image
-# Used by Forge to run build jobs in Kubernetes
+# Used by Forge to run build/deploy/publish jobs in Kubernetes
 #
 # This image is published to ghcr.io/kylegalloway/forge/zarf-cli
 # The official Zarf project does not publish a CLI container image,
 # so Forge provides this containerized version.
+#
+# Includes:
+# - Zarf CLI for package operations
+# - AWS CLI for S3 publishing destinations
+# - Git, curl, and other utilities
 
 FROM alpine:3.20
 
 # Zarf version to install
 ARG ZARF_VERSION=v0.69.0
 
-# Install dependencies
+# Install dependencies including AWS CLI
+# Note: aws-cli package provides full AWS CLI v2 functionality
 RUN apk add --no-cache \
     ca-certificates \
     git \
     curl \
-    bash
+    bash \
+    aws-cli
 
 # Set shell to use pipefail
 SHELL ["/bin/ash", "-eo", "pipefail", "-c"]
@@ -34,8 +41,8 @@ RUN adduser -D -u 1000 zarf && \
 USER zarf
 WORKDIR /workspace
 
-# Verify installation
-RUN zarf version
+# Verify installations
+RUN zarf version && aws --version
 
 ENTRYPOINT ["/usr/local/bin/zarf"]
 CMD ["--help"]

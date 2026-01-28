@@ -1,23 +1,31 @@
 # Dockerfile for UDS CLI container image
-# Used by Forge to run UDS bundle jobs in Kubernetes
+# Used by Forge to run create/deploy/publish jobs in Kubernetes
 #
 # This image is published to ghcr.io/kylegalloway/forge/uds-cli
 # While Defense Unicorns publishes an official UDS CLI image,
 # Forge provides this version for consistency and to ensure
 # all required dependencies are included.
+#
+# Includes:
+# - UDS CLI for bundle operations
+# - AWS CLI for S3 publishing destinations
+# - Docker CLI for container operations
+# - Git, curl, and other utilities
 
 FROM alpine:3.20
 
 # UDS CLI version to install
 ARG UDS_VERSION=v0.27.21
 
-# Install dependencies
+# Install dependencies including AWS CLI
+# Note: aws-cli package provides full AWS CLI v2 functionality
 RUN apk add --no-cache \
     ca-certificates \
     git \
     curl \
     bash \
-    docker-cli
+    docker-cli \
+    aws-cli
 
 # Set shell to use pipefail
 SHELL ["/bin/ash", "-eo", "pipefail", "-c"]
@@ -37,8 +45,8 @@ RUN adduser -D -u 65532 uds && \
 USER uds
 WORKDIR /workspace
 
-# Verify installation
-RUN uds version
+# Verify installations
+RUN uds version && aws --version
 
 ENTRYPOINT ["/usr/local/bin/uds"]
 CMD ["--help"]

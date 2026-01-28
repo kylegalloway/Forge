@@ -19,6 +19,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Webhook validators now emit detailed debug logs at V(4) with correlation IDs, timing, and policy decisions
 - GenericController now emits debug logs with correlation IDs, timing, and action dispatch decisions
 
+## [0.10.0] - 2026-01-27
+
+### Added
+- GitHub artifact attestations via `actions/attest-build-provenance@v2` for all container images and binaries. Attestations are stored in GitHub's attestation store and verifiable with `gh attestation verify`. This complements existing Cosign signatures with GitHub-native supply chain security.
+- AWS CLI added to zarf-cli and uds-cli container images, enabling S3 publishing destinations. Jobs can now publish packages and bundles directly to S3 buckets using `aws s3 cp`.
+- kubectl added to zarf-cli and uds-cli container images for in-cluster kubeconfig generation and debugging.
+- In-cluster kubeconfig generation for deploy jobs. Zarf/UDS CLIs don't auto-detect in-cluster mode, so deploy handlers now generate a kubeconfig from the pod's service account token.
+- AWS credentials documentation (`docs/operations/AWS_CREDENTIALS.md`) covering static credentials and IRSA configuration for S3 access.
+- CI pipeline now validates generated code (CRDs and deepcopy) is up-to-date via `verify-codegen` job. PRs will fail if `make manifests generate` produces changes not committed to the repository. Generation runs goimports to normalize import formatting.
+
+### Fixed
+- Container image tags now consistently use "v" prefix (e.g., `v0.9.13` instead of `0.9.13`) across all release artifacts. The release workflow's docker/metadata-action was stripping the "v" prefix, causing helm charts and zarf.yaml to reference non-existent image tags.
+- In-cluster deployments now work correctly. Previously, deploy jobs would fail with kubeconfig errors because no KUBECONFIG was set for in-cluster targets.
+
 ## [0.9.13] - 2026-01-27
 
 ### Added
@@ -510,7 +524,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial project setup and build infrastructure
 - CI/CD pipeline configuration for automated testing and releases
 
-[Unreleased]: https://github.com/kylegalloway/forge/compare/v0.9.13...HEAD
+[Unreleased]: https://github.com/kylegalloway/forge/compare/v0.10.0...HEAD
+[0.10.0]: https://github.com/kylegalloway/forge/compare/v0.9.13...v0.10.0
 [0.9.13]: https://github.com/kylegalloway/forge/compare/v0.9.12...v0.9.13
 [0.9.12]: https://github.com/kylegalloway/forge/compare/v0.9.11...v0.9.12
 [0.9.11]: https://github.com/kylegalloway/forge/compare/v0.9.10...v0.9.11

@@ -119,6 +119,33 @@ const (
 
 	// DefaultArtifactPath is the default path where built artifacts are stored.
 	DefaultArtifactPath = "/workspace/package.tar.zst"
+
+	// InClusterKubeconfigSetup is a shell script snippet that generates a kubeconfig
+	// from the pod's service account token for in-cluster deployments.
+	// This is needed because Zarf/UDS CLIs don't auto-detect in-cluster config.
+	InClusterKubeconfigSetup = `SA_DIR=/var/run/secrets/kubernetes.io/serviceaccount && ` +
+		`mkdir -p /tmp/.kube && ` +
+		`cat > /tmp/.kube/config << KUBEEOF
+apiVersion: v1
+kind: Config
+clusters:
+- cluster:
+    certificate-authority: ${SA_DIR}/ca.crt
+    server: https://kubernetes.default.svc
+  name: in-cluster
+contexts:
+- context:
+    cluster: in-cluster
+    namespace: $(cat ${SA_DIR}/namespace)
+    user: service-account
+  name: in-cluster
+current-context: in-cluster
+users:
+- name: service-account
+  user:
+    tokenFile: ${SA_DIR}/token
+KUBEEOF
+export KUBECONFIG=/tmp/.kube/config && `
 )
 
 // ZarfCLIImage is the container image for Zarf CLI operations.

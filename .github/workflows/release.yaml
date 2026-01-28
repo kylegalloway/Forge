@@ -15,6 +15,7 @@ permissions:
   packages: write
   id-token: write  # For OIDC token generation (keyless signing)
   security-events: write
+  attestations: write  # For GitHub artifact attestations
 
 env:
   REGISTRY: ghcr.io
@@ -130,6 +131,11 @@ jobs:
           syft packages bin/webhook-linux-amd64 --output spdx-json=webhook-sbom.spdx.json --output cyclonedx-json=webhook-sbom.cdx.json &
           wait
 
+      - name: Attest binary build provenance
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: 'bin/*'
+
       - name: Upload binaries artifact
         uses: actions/upload-artifact@v4
         with:
@@ -235,9 +241,9 @@ jobs:
         with:
           images: ${{ steps.repo-name.outputs.repo }}
           tags: |
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=semver,pattern={{major}}
+            type=semver,pattern=v{{version}}
+            type=semver,pattern=v{{major}}.{{minor}}
+            type=semver,pattern=v{{major}}
             type=sha
 
       - name: Extract metadata (cli)
@@ -284,6 +290,13 @@ jobs:
           cache-to: type=gha,mode=max,scope=${{ matrix.image }}
           provenance: true
           sbom: true
+
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-name: ${{ steps.repo-name.outputs.repo }}
+          subject-digest: ${{ steps.build.outputs.digest }}
+          push-to-registry: true
 
       - name: Set output for downstream jobs
         id: set-output
@@ -449,9 +462,9 @@ jobs:
 
       - name: Update values.yaml with release version
         run: |
-          VERSION="${{ needs.prepare.outputs.version }}"
-          # Update controller and webhook image tags to use the release version
-          sed -i 's/tag: ""/tag: "'"${VERSION}"'"/' chart/forge/values.yaml
+          FULL_VERSION="${{ needs.prepare.outputs.full_version }}"
+          # Update controller and webhook image tags to use the release version (with v prefix)
+          sed -i 's/tag: "v[^"]*"/tag: "'"${FULL_VERSION}"'"/' chart/forge/values.yaml
 
       - name: Package Helm chart
         run: |
@@ -557,7 +570,16 @@ jobs:
 
           ## Security Attestations
 
-          ### Verify Image Signature
+          ### Verify GitHub Artifact Attestation
+          \`\`\`bash
+          # Verify container image attestation
+          gh attestation verify oci://${{ needs.prepare.outputs.controller_repo }}@${{ steps.digests.outputs.controller }} -R ${{ github.repository }}
+
+          # Verify binary attestation (after downloading)
+          gh attestation verify controller-linux-amd64 -R ${{ github.repository }}
+          \`\`\`
+
+          ### Verify Image Signature (Cosign)
           \`\`\`bash
           cosign verify \\
             --certificate-identity-regexp="https://github.com/${{ github.repository }}" \\
@@ -565,7 +587,7 @@ jobs:
             ${{ needs.prepare.outputs.controller_repo }}@${{ steps.digests.outputs.controller }}
           \`\`\`
 
-          ### Verify SBOM Attestation
+          ### Verify SBOM Attestation (Cosign)
           \`\`\`bash
           cosign verify-attestation \\
             --certificate-identity-regexp="https://github.com/${{ github.repository }}" \\
@@ -625,6 +647,7 @@ jobs:
 
           ---
           **Provenance:** ✅ SLSA Build Level 3
+          **GitHub Attestations:** ✅ Build provenance attached
           **SBOM:** ✅ Attached
           **Signed:** ✅ Cosign (keyless OIDC)
           EOF

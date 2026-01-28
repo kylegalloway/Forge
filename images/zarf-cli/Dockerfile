@@ -8,6 +8,7 @@
 # Includes:
 # - Zarf CLI for package operations
 # - AWS CLI for S3 publishing destinations
+# - kubectl for in-cluster kubeconfig generation
 # - Git, curl, and other utilities
 
 FROM alpine:3.20
@@ -15,14 +16,16 @@ FROM alpine:3.20
 # Zarf version to install
 ARG ZARF_VERSION=v0.69.0
 
-# Install dependencies including AWS CLI
+# Install dependencies including AWS CLI and kubectl
 # Note: aws-cli package provides full AWS CLI v2 functionality
+# kubectl is needed for in-cluster kubeconfig generation and debugging
 RUN apk add --no-cache \
     ca-certificates \
     git \
     curl \
     bash \
-    aws-cli
+    aws-cli \
+    kubectl
 
 # Set shell to use pipefail
 SHELL ["/bin/ash", "-eo", "pipefail", "-c"]
@@ -42,7 +45,7 @@ USER zarf
 WORKDIR /workspace
 
 # Verify installations
-RUN zarf version && aws --version
+RUN zarf version && aws --version && kubectl version --client
 
 ENTRYPOINT ["/usr/local/bin/zarf"]
 CMD ["--help"]

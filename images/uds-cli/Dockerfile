@@ -9,6 +9,7 @@
 # Includes:
 # - UDS CLI for bundle operations
 # - AWS CLI for S3 publishing destinations
+# - kubectl for in-cluster kubeconfig generation
 # - Docker CLI for container operations
 # - Git, curl, and other utilities
 
@@ -17,15 +18,17 @@ FROM alpine:3.20
 # UDS CLI version to install
 ARG UDS_VERSION=v0.27.21
 
-# Install dependencies including AWS CLI
+# Install dependencies including AWS CLI and kubectl
 # Note: aws-cli package provides full AWS CLI v2 functionality
+# kubectl is needed for in-cluster kubeconfig generation and debugging
 RUN apk add --no-cache \
     ca-certificates \
     git \
     curl \
     bash \
     docker-cli \
-    aws-cli
+    aws-cli \
+    kubectl
 
 # Set shell to use pipefail
 SHELL ["/bin/ash", "-eo", "pipefail", "-c"]
@@ -46,7 +49,7 @@ USER uds
 WORKDIR /workspace
 
 # Verify installations
-RUN uds version && aws --version
+RUN uds version && aws --version && kubectl version --client
 
 ENTRYPOINT ["/usr/local/bin/uds"]
 CMD ["--help"]

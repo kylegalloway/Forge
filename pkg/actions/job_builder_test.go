@@ -66,10 +66,8 @@ func TestJobBuilder_DebugMode(t *testing.T) {
 				if tt.wantOrigInMsg && !strings.Contains(arg, "echo hello") {
 					t.Error("debug script should show original command")
 				}
-			} else {
-				if len(container.Args) != 1 || container.Args[0] != "echo hello" {
-					t.Errorf("expected args = [echo hello], got %v", container.Args)
-				}
+			} else if len(container.Args) != 1 || container.Args[0] != "echo hello" {
+				t.Errorf("expected args = [echo hello], got %v", container.Args)
 			}
 
 			// Verify TTL

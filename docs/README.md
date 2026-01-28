@@ -21,12 +21,13 @@ Contributing to Forge or extending its functionality? These guides cover develop
 - [Testing Guide](development/TESTING.md) - Running tests, coverage, and CI workflows
 - [KIND Setup](development/KIND_SETUP.md) - Local development environment setup
 - [KIND Testing with Public Images](development/KIND_TESTING_PUBLIC_IMAGES.md) - Testing workflows
+- [Gitea Testing](development/GITEA_TESTING.md) - Testing with private Git repositories
 - [Releasing](development/RELEASING.md) - Release process and versioning
 - [ServiceAccount Reference](development/SERVICEACCOUNT_REFERENCE.md) - RBAC and policy configuration reference
 - [Attestation Verification](development/ATTESTATION_VERIFICATION.md) - SLSA provenance and package signing
 - [Logging](development/LOGGING.md) - Logging conventions and practices
+- [Structured Logging](development/STRUCTURED-LOGGING.md) - Structured logging implementation details
 - [Tool Versions](development/TOOL_VERSIONS.md) - Dependency version tracking
-- [TODO](development/TODO.md) - Current issues and future enhancements
 
 ## Operations
 
@@ -38,6 +39,20 @@ Running Forge in production? These guides cover deployment, hosting, and operati
 - [Runbook](operations/RUNBOOK.md) - Operational procedures and common tasks
 - [Troubleshooting](operations/TROUBLESHOOTING.md) - Debugging Zarf package jobs and common issues
 - [UDS Troubleshooting](operations/UDS_TROUBLESHOOTING.md) - Debugging UDS bundle jobs
+- [AWS Credentials](operations/AWS_CREDENTIALS.md) - AWS credential management
+
+## Security
+
+Security documentation and compliance information.
+
+- [Pod Security Standards](security/pod-security-standards.md) - Kubernetes PSS compliance
+- [RBAC Permissions](security/rbac-permissions.md) - Detailed RBAC requirements
+
+## Planning
+
+Future enhancements and roadmap items.
+
+- [TODO](plans/TODO.md) - Current issues and future enhancements
 
 ## Quick Links
 
@@ -47,10 +62,12 @@ Running Forge in production? These guides cover deployment, hosting, and operati
 
 ## Documentation Organization
 
-This documentation is organized into three main categories:
+This documentation is organized into five main categories:
 
 1. **getting-started/** - User-focused guides for learning Forge
 2. **development/** - Developer-focused guides for contributing
 3. **operations/** - Operator-focused guides for production deployments
+4. **security/** - Security documentation and compliance information
+5. **plans/** - Future enhancements and roadmap items
 
 Each category serves a distinct audience with different needs and levels of experience with Forge.

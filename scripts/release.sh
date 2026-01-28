@@ -165,8 +165,8 @@ Updated files:
 - zarf.yaml package metadata
 
 The tag v${new_version} triggers the release workflow, which builds
-and publishes container images for controller, webhook, zarf-cli,
-and uds-cli to ghcr.io.
+and publishes container images for controller, webhook, zarfpackagejob,
+and udsbundlejob to ghcr.io.
 EOF
 }
 
@@ -445,7 +445,7 @@ echo "  2. Users can install with: helm install forge forge/forge --version ${NE
 echo "  3. Images will be available at:"
 echo "     - ghcr.io/kylegalloway/forge/forge-controller:v${NEW_VERSION}"
 echo "     - ghcr.io/kylegalloway/forge/forge-webhook:v${NEW_VERSION}"
-echo "     - ghcr.io/kylegalloway/forge/zarf-cli (version from Dockerfile)"
-echo "     - ghcr.io/kylegalloway/forge/uds-cli (version from Dockerfile)"
+echo "     - ghcr.io/kylegalloway/forge/zarfpackagejob:v${NEW_VERSION}"
+echo "     - ghcr.io/kylegalloway/forge/udsbundlejob:v${NEW_VERSION}"
 echo ""
 print_success "Release automation complete! 🚀"

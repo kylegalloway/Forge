@@ -307,13 +307,13 @@ kind-setup: kind-create kind-deploy ## Complete setup: create kind cluster and d
 
 ##@ Test/Samples
 
-.PHONY: kind-zarf-cli
-kind-zarf-cli: ## Build and load the Zarf CLI image into kind.
-	@echo "Building and loading Zarf CLI image into kind cluster '$(KIND_CLUSTER_NAME)'..."
-	podman build -t localhost/zarf:v0.68.1 images/zarf-cli/
-	podman save localhost/zarf:v0.68.1 -o /tmp/zarf-cli.tar
-	kind load image-archive /tmp/zarf-cli.tar --name $(KIND_CLUSTER_NAME)
-	rm /tmp/zarf-cli.tar
+.PHONY: kind-zarfpackagejob
+kind-zarfpackagejob: ## Build and load the Zarf Package Job image into kind.
+	@echo "Building and loading Zarf Package Job image into kind cluster '$(KIND_CLUSTER_NAME)'..."
+	podman build -t localhost/zarfpackagejob:v0.11.1 images/zarfpackagejob/
+	podman save localhost/zarfpackagejob:v0.11.1 -o /tmp/zarfpackagejob.tar
+	kind load image-archive /tmp/zarfpackagejob.tar --name $(KIND_CLUSTER_NAME)
+	rm /tmp/zarfpackagejob.tar
 
 ##@ Release
 

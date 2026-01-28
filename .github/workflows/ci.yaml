@@ -171,13 +171,23 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Build zarf-cli image
+      - name: Build zarfpackagejob image
         uses: docker/build-push-action@v6
         with:
-          context: ./images/zarf-cli
-          file: ./images/zarf-cli/Dockerfile
+          context: ./images/zarfpackagejob
+          file: ./images/zarfpackagejob/Dockerfile
           push: false
-          tags: zarf-cli:${{ github.sha }}
+          tags: zarfpackagejob:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build udsbundlejob image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./images/udsbundlejob
+          file: ./images/udsbundlejob/Dockerfile
+          push: false
+          tags: udsbundlejob:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 

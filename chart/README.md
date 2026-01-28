@@ -46,7 +46,7 @@ helm install forge forge/forge \
 
 - Controller: `ghcr.io/kylegalloway/forge/forge-controller:v0.6.0`
 - Webhook: `ghcr.io/kylegalloway/forge/forge-webhook:v0.6.0`
-- Zarf CLI: `ghcr.io/kylegalloway/forge/zarf-cli:v0.68.1` (used by ZarfPackageJobs)
+- Zarf Package Job: `ghcr.io/kylegalloway/forge/zarfpackagejob:v0.11.1` (used by ZarfPackageJobs)
 
 ### For Developers (Local Chart)
 
@@ -137,7 +137,7 @@ Forge uses containerized CLI tools for build and deploy operations. These can be
 ```yaml
 zarfCLI:
   image:
-    repository: ghcr.io/kylegalloway/forge/zarf-cli
+    repository: ghcr.io/kylegalloway/forge/zarfpackagejob
     tag: v0.69.0
     pullPolicy: IfNotPresent
 ```

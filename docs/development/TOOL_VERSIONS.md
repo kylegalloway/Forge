@@ -213,7 +213,7 @@ Most development tools are already on latest stable versions. The pre-commit fra
 
 **Impact**: Updating these images requires:
 1. Update `pkg/constants/config.go`
-2. Update Makefile reference (line 309: `kind-zarf-cli` target)
+2. Update Makefile reference (line 309: `kind-zarfpackagejob` target)
 3. Full integration test run
 4. Update documentation referencing these versions
 

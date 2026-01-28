@@ -13,7 +13,7 @@ spec:
     type: Git
     git:
       url: https://github.com/kylegalloway/forge
-      ref: fix/uds-oci-uid-and-create
+      ref: main
       path: examples/samples/uds/05-oci-only-create
   deploy:
     target: InCluster

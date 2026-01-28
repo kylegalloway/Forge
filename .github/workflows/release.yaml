@@ -30,10 +30,8 @@ jobs:
       full_version: ${{ steps.version.outputs.full_version }}
       controller_repo: ${{ steps.repo.outputs.controller }}
       webhook_repo: ${{ steps.repo.outputs.webhook }}
-      zarf_cli_repo: ${{ steps.repo.outputs.zarf_cli }}
-      uds_cli_repo: ${{ steps.repo.outputs.uds_cli }}
-      zarf_version: ${{ steps.cli-versions.outputs.zarf_version }}
-      uds_version: ${{ steps.cli-versions.outputs.uds_version }}
+      zarfpackagejob_repo: ${{ steps.repo.outputs.zarfpackagejob }}
+      udsbundlejob_repo: ${{ steps.repo.outputs.udsbundlejob }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -43,8 +41,8 @@ jobs:
         run: |
           echo "controller=ghcr.io/${{ github.repository }}/forge-controller" | tr '[:upper:]' '[:lower:]' >> $GITHUB_OUTPUT
           echo "webhook=ghcr.io/${{ github.repository }}/forge-webhook" | tr '[:upper:]' '[:lower:]' >> $GITHUB_OUTPUT
-          echo "zarf_cli=ghcr.io/${{ github.repository }}/zarf-cli" | tr '[:upper:]' '[:lower:]' >> $GITHUB_OUTPUT
-          echo "uds_cli=ghcr.io/${{ github.repository }}/uds-cli" | tr '[:upper:]' '[:lower:]' >> $GITHUB_OUTPUT
+          echo "zarfpackagejob=ghcr.io/${{ github.repository }}/zarfpackagejob" | tr '[:upper:]' '[:lower:]' >> $GITHUB_OUTPUT
+          echo "udsbundlejob=ghcr.io/${{ github.repository }}/udsbundlejob" | tr '[:upper:]' '[:lower:]' >> $GITHUB_OUTPUT
 
       - name: Set version from tag
         id: version
@@ -57,13 +55,6 @@ jobs:
           echo "version=${VERSION#v}" >> $GITHUB_OUTPUT
           echo "full_version=${VERSION}" >> $GITHUB_OUTPUT
 
-      - name: Extract CLI versions from Dockerfiles
-        id: cli-versions
-        run: |
-          ZARF_VERSION=$(grep -E '^ARG ZARF_VERSION=' images/zarf-cli/Dockerfile | cut -d= -f2)
-          UDS_VERSION=$(grep -E '^ARG UDS_VERSION=' images/uds-cli/Dockerfile | cut -d= -f2)
-          echo "zarf_version=${ZARF_VERSION}" >> $GITHUB_OUTPUT
-          echo "uds_version=${UDS_VERSION}" >> $GITHUB_OUTPUT
 
   # Run tests
   test:
@@ -173,29 +164,27 @@ jobs:
             target: webhook
             repo_key: webhook_repo
             tags_type: semver
-          - image: zarf-cli
-            context: ./images/zarf-cli
-            file: ./images/zarf-cli/Dockerfile
+          - image: zarfpackagejob
+            context: ./images/zarfpackagejob
+            file: ./images/zarfpackagejob/Dockerfile
             target: ""
-            repo_key: zarf_cli_repo
-            tags_type: cli
-            cli_version_key: zarf_version
-          - image: uds-cli
-            context: ./images/uds-cli
-            file: ./images/uds-cli/Dockerfile
+            repo_key: zarfpackagejob_repo
+            tags_type: semver
+          - image: udsbundlejob
+            context: ./images/udsbundlejob
+            file: ./images/udsbundlejob/Dockerfile
             target: ""
-            repo_key: uds_cli_repo
-            tags_type: cli
-            cli_version_key: uds_version
+            repo_key: udsbundlejob_repo
+            tags_type: semver
     outputs:
       controller-digest: ${{ steps.set-output.outputs.controller-digest }}
       webhook-digest: ${{ steps.set-output.outputs.webhook-digest }}
-      zarf-cli-digest: ${{ steps.set-output.outputs.zarf-cli-digest }}
-      uds-cli-digest: ${{ steps.set-output.outputs.uds-cli-digest }}
+      zarfpackagejob-digest: ${{ steps.set-output.outputs.zarfpackagejob-digest }}
+      udsbundlejob-digest: ${{ steps.set-output.outputs.udsbundlejob-digest }}
       controller-tags: ${{ steps.set-output.outputs.controller-tags }}
       webhook-tags: ${{ steps.set-output.outputs.webhook-tags }}
-      zarf-cli-tags: ${{ steps.set-output.outputs.zarf-cli-tags }}
-      uds-cli-tags: ${{ steps.set-output.outputs.uds-cli-tags }}
+      zarfpackagejob-tags: ${{ steps.set-output.outputs.zarfpackagejob-tags }}
+      udsbundlejob-tags: ${{ steps.set-output.outputs.udsbundlejob-tags }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -221,18 +210,10 @@ jobs:
           case "${{ matrix.repo_key }}" in
             controller_repo) echo "repo=${{ needs.prepare.outputs.controller_repo }}" >> $GITHUB_OUTPUT ;;
             webhook_repo) echo "repo=${{ needs.prepare.outputs.webhook_repo }}" >> $GITHUB_OUTPUT ;;
-            zarf_cli_repo) echo "repo=${{ needs.prepare.outputs.zarf_cli_repo }}" >> $GITHUB_OUTPUT ;;
-            uds_cli_repo) echo "repo=${{ needs.prepare.outputs.uds_cli_repo }}" >> $GITHUB_OUTPUT ;;
+            zarfpackagejob_repo) echo "repo=${{ needs.prepare.outputs.zarfpackagejob_repo }}" >> $GITHUB_OUTPUT ;;
+            udsbundlejob_repo) echo "repo=${{ needs.prepare.outputs.udsbundlejob_repo }}" >> $GITHUB_OUTPUT ;;
           esac
 
-      - name: Get CLI version (for CLI images)
-        id: cli-version
-        if: matrix.tags_type == 'cli'
-        run: |
-          case "${{ matrix.cli_version_key }}" in
-            zarf_version) echo "version=${{ needs.prepare.outputs.zarf_version }}" >> $GITHUB_OUTPUT ;;
-            uds_version) echo "version=${{ needs.prepare.outputs.uds_version }}" >> $GITHUB_OUTPUT ;;
-          esac
 
       - name: Extract metadata (semver)
         id: meta-semver
@@ -246,15 +227,6 @@ jobs:
             type=semver,pattern=v{{major}}
             type=sha
 
-      - name: Extract metadata (cli)
-        id: meta-cli
-        if: matrix.tags_type == 'cli'
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ steps.repo-name.outputs.repo }}
-          tags: |
-            type=raw,value=${{ steps.cli-version.outputs.version }}
-            type=sha
 
       - name: Determine tags and labels
         id: meta
@@ -351,15 +323,15 @@ jobs:
         run: |
           echo "controller=$(cat controller)" >> $GITHUB_OUTPUT
           echo "webhook=$(cat webhook)" >> $GITHUB_OUTPUT
-          echo "zarf_cli=$(cat zarf-cli)" >> $GITHUB_OUTPUT
-          echo "uds_cli=$(cat uds-cli)" >> $GITHUB_OUTPUT
+          echo "zarfpackagejob=$(cat zarfpackagejob)" >> $GITHUB_OUTPUT
+          echo "udsbundlejob=$(cat udsbundlejob)" >> $GITHUB_OUTPUT
 
       - name: Sign all images (parallel)
         run: |
           cosign sign --yes "${{ needs.prepare.outputs.controller_repo }}@${{ steps.digests.outputs.controller }}" &
           cosign sign --yes "${{ needs.prepare.outputs.webhook_repo }}@${{ steps.digests.outputs.webhook }}" &
-          cosign sign --yes "${{ needs.prepare.outputs.zarf_cli_repo }}@${{ steps.digests.outputs.zarf_cli }}" &
-          cosign sign --yes "${{ needs.prepare.outputs.uds_cli_repo }}@${{ steps.digests.outputs.uds_cli }}" &
+          cosign sign --yes "${{ needs.prepare.outputs.zarfpackagejob_repo }}@${{ steps.digests.outputs.zarfpackagejob }}" &
+          cosign sign --yes "${{ needs.prepare.outputs.udsbundlejob_repo }}@${{ steps.digests.outputs.udsbundlejob }}" &
           wait
 
       - name: Attest SBOMs (parallel)
@@ -387,10 +359,10 @@ jobs:
             repo_key: controller_repo
           - image: webhook
             repo_key: webhook_repo
-          - image: zarf-cli
-            repo_key: zarf_cli_repo
-          - image: uds-cli
-            repo_key: uds_cli_repo
+          - image: zarfpackagejob
+            repo_key: zarfpackagejob_repo
+          - image: udsbundlejob
+            repo_key: udsbundlejob_repo
     steps:
       - name: Download digest artifact
         uses: actions/download-artifact@v4
@@ -407,8 +379,8 @@ jobs:
           case "${{ matrix.repo_key }}" in
             controller_repo) echo "repo=${{ needs.prepare.outputs.controller_repo }}" >> $GITHUB_OUTPUT ;;
             webhook_repo) echo "repo=${{ needs.prepare.outputs.webhook_repo }}" >> $GITHUB_OUTPUT ;;
-            zarf_cli_repo) echo "repo=${{ needs.prepare.outputs.zarf_cli_repo }}" >> $GITHUB_OUTPUT ;;
-            uds_cli_repo) echo "repo=${{ needs.prepare.outputs.uds_cli_repo }}" >> $GITHUB_OUTPUT ;;
+            zarfpackagejob_repo) echo "repo=${{ needs.prepare.outputs.zarfpackagejob_repo }}" >> $GITHUB_OUTPUT ;;
+            udsbundlejob_repo) echo "repo=${{ needs.prepare.outputs.udsbundlejob_repo }}" >> $GITHUB_OUTPUT ;;
           esac
 
       - name: Scan image
@@ -524,8 +496,8 @@ jobs:
         run: |
           echo "controller=$(cat controller)" >> $GITHUB_OUTPUT
           echo "webhook=$(cat webhook)" >> $GITHUB_OUTPUT
-          echo "zarf_cli=$(cat zarf-cli)" >> $GITHUB_OUTPUT
-          echo "uds_cli=$(cat uds-cli)" >> $GITHUB_OUTPUT
+          echo "zarfpackagejob=$(cat zarfpackagejob)" >> $GITHUB_OUTPUT
+          echo "udsbundlejob=$(cat udsbundlejob)" >> $GITHUB_OUTPUT
 
       - name: Generate release notes
         run: |
@@ -546,12 +518,12 @@ jobs:
 
           ### Zarf CLI
           \`\`\`
-          ${{ needs.prepare.outputs.zarf_cli_repo }}@${{ steps.digests.outputs.zarf_cli }}
+          ${{ needs.prepare.outputs.zarfpackagejob_repo }}@${{ steps.digests.outputs.zarfpackagejob }}
           \`\`\`
 
           ### UDS CLI
           \`\`\`
-          ${{ needs.prepare.outputs.uds_cli_repo }}@${{ steps.digests.outputs.uds_cli }}
+          ${{ needs.prepare.outputs.udsbundlejob_repo }}@${{ steps.digests.outputs.udsbundlejob }}
           \`\`\`
 
           ## Helm Chart
@@ -635,14 +607,14 @@ jobs:
           **Digest:** `${{ steps.digests.outputs.webhook }}`
           **Platforms:** `linux/amd64`, `linux/arm64`
 
-          ### Zarf CLI Image
-          **Image:** `${{ needs.prepare.outputs.zarf_cli_repo }}`
-          **Digest:** `${{ steps.digests.outputs.zarf_cli }}`
+          ### Zarf Package Job Image
+          **Image:** `${{ needs.prepare.outputs.zarfpackagejob_repo }}`
+          **Digest:** `${{ steps.digests.outputs.zarfpackagejob }}`
           **Platforms:** `linux/amd64`, `linux/arm64`
 
-          ### UDS CLI Image
-          **Image:** `${{ needs.prepare.outputs.uds_cli_repo }}`
-          **Digest:** `${{ steps.digests.outputs.uds_cli }}`
+          ### UDS Bundle Job Image
+          **Image:** `${{ needs.prepare.outputs.udsbundlejob_repo }}`
+          **Digest:** `${{ steps.digests.outputs.udsbundlejob }}`
           **Platforms:** `linux/amd64`, `linux/arm64`
 
           ---

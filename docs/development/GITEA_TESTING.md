@@ -20,7 +20,7 @@ This guide walks through setting up a local Gitea instance in a Kind cluster to 
 ```bash
 # From the forge repository root
 make kind-setup          # Create cluster and deploy Forge
-make kind-zarf-cli       # Load zarf CLI image
+make kind-zarfpackagejob  # Load zarf package job image
 # Then follow the steps below to set up Gitea
 ```
 

@@ -1,7 +1,7 @@
 # Dockerfile for UDS CLI container image
 # Used by Forge to run create/deploy/publish jobs in Kubernetes
 #
-# This image is published to ghcr.io/kylegalloway/forge/uds-cli
+# This image is published to ghcr.io/kylegalloway/forge/udsbundlejob
 # While Defense Unicorns publishes an official UDS CLI image,
 # Forge provides this version for consistency and to ensure
 # all required dependencies are included.

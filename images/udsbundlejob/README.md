@@ -1,6 +1,6 @@
-# UDS CLI Container Image
+# UDS Bundle Job Container Image
 
-This directory contains a Dockerfile for building a UDS CLI container image.
+This directory contains a Dockerfile for building the Forge `udsbundlejob` container image (wraps the UDS CLI for in-cluster execution).
 
 ## Why This Exists
 
@@ -12,27 +12,27 @@ all required dependencies for running UDS bundle operations in Kubernetes Jobs.
 
 ```bash
 # Build for your local architecture
-docker build -t localhost/uds-cli:v0.27.13 images/uds-cli/
+docker build -t localhost/udsbundlejob:v0.11.1 images/udsbundlejob/
 
 # Or build for a specific UDS version
-docker build -t localhost/uds-cli:v0.28.0 \
+docker build -t localhost/udsbundlejob:v0.11.1 \
   --build-arg UDS_VERSION=v0.28.0 \
-  images/uds-cli/
+  images/udsbundlejob/
 
 # Build multi-arch (requires docker buildx)
 docker buildx build --platform linux/amd64,linux/arm64 \
-  -t localhost/uds-cli:v0.27.13 \
-  images/uds-cli/ --push
+  -t localhost/udsbundlejob:v0.11.1 \
+  images/udsbundlejob/ --push
 ```
 
 ## For Kind Testing
 
 ```bash
 # Build the image
-docker build -t localhost/uds-cli:v0.27.13 images/uds-cli/
+docker build -t localhost/udsbundlejob:v0.11.1 images/udsbundlejob/
 
 # Load into Kind cluster
-kind load docker-image localhost/uds-cli:v0.27.13 --name forge-demo
+kind load docker-image localhost/udsbundlejob:v0.11.1 --name forge-demo
 ```
 
 ## For Production
@@ -55,10 +55,10 @@ For production deployments, you can either:
 
 ## Updating the Version
 
-Run the version update script to fetch the latest release:
+Run the tool version update script to fetch the latest upstream releases (this updates Dockerfile ARGs only):
 
 ```bash
-./scripts/update-cli-versions.sh
+./scripts/update-tool-versions.sh
 ```
 
 ## Notes

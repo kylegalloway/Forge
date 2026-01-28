@@ -58,8 +58,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - GitHub artifact attestations via `actions/attest-build-provenance@v2` for all container images and binaries. Attestations are stored in GitHub's attestation store and verifiable with `gh attestation verify`. This complements existing Cosign signatures with GitHub-native supply chain security.
-- AWS CLI added to zarf-cli and uds-cli container images, enabling S3 publishing destinations. Jobs can now publish packages and bundles directly to S3 buckets using `aws s3 cp`.
-- kubectl added to zarf-cli and uds-cli container images for in-cluster kubeconfig generation and debugging.
+- AWS CLI added to zarfpackagejob and udsbundlejob container images, enabling S3 publishing destinations. Jobs can now publish packages and bundles directly to S3 buckets using `aws s3 cp`.
+- kubectl added to zarfpackagejob and udsbundlejob container images for in-cluster kubeconfig generation and debugging.
 - In-cluster kubeconfig generation for deploy jobs. Zarf/UDS CLIs don't auto-detect in-cluster mode, so deploy handlers now generate a kubeconfig from the pod's service account token.
 - AWS credentials documentation (`docs/operations/AWS_CREDENTIALS.md`) covering static credentials and IRSA configuration for S3 access.
 - CI pipeline now validates generated code (CRDs and deepcopy) is up-to-date via `verify-codegen` job. PRs will fail if `make manifests generate` produces changes not committed to the repository. Generation runs goimports to normalize import formatting.
@@ -339,7 +339,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - PVC (PersistentVolumeClaim) support and comprehensive examples
 - UDS CLI versioning and auto-detection infrastructure
 - Bundle CLI feature alongside Zarf CLI support
-- update-cli-versions.sh script for automated version management
+- update-tool-versions.sh script for automated tool version updates (updates Dockerfile ARGs only)
 - V1alpha2 migration guide documentation for API users
 - V1alpha2 and V1alpha1 API types for backward compatibility
 

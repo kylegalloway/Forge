@@ -1,6 +1,6 @@
-# Zarf CLI Container Image
+# Zarf Package Job Container Image
 
-This directory contains a Dockerfile for building a Zarf CLI container image.
+This directory contains a Dockerfile for building the Forge `zarfpackagejob` container image (wraps the Zarf CLI for in-cluster execution).
 
 ## Why This Exists
 
@@ -12,27 +12,27 @@ This Dockerfile packages the official Zarf CLI binary into an Alpine-based conta
 
 ```bash
 # Build for your local architecture
-docker build -t localhost/zarf:v0.68.1 images/zarf-cli/
+docker build -t localhost/zarfpackagejob:v0.11.1 images/zarfpackagejob/
 
 # Or build for a specific Zarf version
-docker build -t localhost/zarf:v0.42.0 \
+docker build -t localhost/zarfpackagejob:v0.11.1 \
   --build-arg ZARF_VERSION=v0.42.0 \
-  images/zarf-cli/
+  images/zarfpackagejob/
 
 # Build multi-arch (requires docker buildx)
 docker buildx build --platform linux/amd64,linux/arm64 \
-  -t localhost/zarf:v0.68.1 \
-  images/zarf-cli/ --push
+  -t localhost/zarfpackagejob:v0.11.1 \
+  images/zarfpackagejob/ --push
 ```
 
 ## For Kind Testing
 
 ```bash
 # Build the image
-docker build -t localhost/zarf:v0.68.1 images/zarf-cli/
+docker build -t localhost/zarfpackagejob:v0.11.1 images/zarfpackagejob/
 
 # Load into Kind cluster
-kind load docker-image localhost/zarf:v0.68.1 --name forge-demo
+kind load docker-image localhost/zarfpackagejob:v0.11.1 --name forge-demo
 ```
 
 ## For Production
@@ -40,9 +40,9 @@ kind load docker-image localhost/zarf:v0.68.1 --name forge-demo
 For production deployments, you should:
 
 1. Build this image and push to your internal container registry
-2. Update `pkg/constants/config.go` to reference your registry:
+2. Update `pkg/constants/config.go` or Helm values to reference your registry image:
    ```go
-   ZarfCLIImage = "your-registry.io/zarf:v0.68.1"
+   DefaultZarfCLIImage = "your-registry.io/zarfpackagejob:v0.11.1"
    ```
 3. Or use Helm values to override the image (if/when that feature is added)
 

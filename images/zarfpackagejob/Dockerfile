@@ -1,7 +1,7 @@
 # Dockerfile for Zarf CLI container image
 # Used by Forge to run build/deploy/publish jobs in Kubernetes
 #
-# This image is published to ghcr.io/kylegalloway/forge/zarf-cli
+# This image is published to ghcr.io/kylegalloway/forge/zarfpackagejob
 # The official Zarf project does not publish a CLI container image,
 # so Forge provides this containerized version.
 #

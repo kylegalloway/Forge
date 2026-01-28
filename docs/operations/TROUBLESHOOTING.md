@@ -295,7 +295,7 @@ kubectl get pods -n default
 ```
 
 ```text
-Failed to pull image "ghcr.io/kylegalloway/forge/zarf-cli:v0.68.1":
+Failed to pull image "ghcr.io/kylegalloway/forge/zarfpackagejob:v0.11.1":
 failed to pull and unpack image: pull access denied
 ```
 
@@ -310,14 +310,14 @@ The Zarf CLI image cannot be pulled. This could be due to network issues, regist
 
    ```bash
    # Using Docker
-   docker pull ghcr.io/kylegalloway/forge/zarf-cli:v0.68.1
-   kind load docker-image ghcr.io/kylegalloway/forge/zarf-cli:v0.68.1 --name <cluster-name>
+   docker pull ghcr.io/kylegalloway/forge/zarfpackagejob:v0.11.1
+   kind load docker-image ghcr.io/kylegalloway/forge/zarfpackagejob:v0.11.1 --name <cluster-name>
 
    # Using Podman
-   podman pull ghcr.io/kylegalloway/forge/zarf-cli:v0.68.1
-   podman save ghcr.io/kylegalloway/forge/zarf-cli:v0.68.1 -o /tmp/zarf-cli.tar
-   kind load image-archive /tmp/zarf-cli.tar --name <cluster-name>
-   rm /tmp/zarf-cli.tar
+   podman pull ghcr.io/kylegalloway/forge/zarfpackagejob:v0.11.1
+   podman save ghcr.io/kylegalloway/forge/zarfpackagejob:v0.11.1 -o /tmp/zarfpackagejob.tar
+   kind load image-archive /tmp/zarfpackagejob.tar --name <cluster-name>
+   rm /tmp/zarfpackagejob.tar
    ```
 
 2. **For air-gapped environments - use Zarf package:**

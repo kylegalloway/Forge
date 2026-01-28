@@ -26,19 +26,19 @@ components:
       # Forge webhook image
       - ghcr.io/kylegalloway/forge/forge-webhook:v0.11.1
 
-  # Zarf CLI image for running ZarfPackageJobs
-  - name: zarf-cli
-    description: "Zarf CLI container image used by ZarfPackageJobs to build and deploy packages"
+  # Forge Zarf package job image for running ZarfPackageJobs
+  - name: zarfpackagejob
+    description: "Forge container image used by ZarfPackageJobs to run package build/deploy/publish jobs"
     required: true
     images:
-      - ghcr.io/kylegalloway/forge/zarf-cli:v0.69.0
+      - ghcr.io/kylegalloway/forge/zarfpackagejob:v0.11.1
 
-  # UDS CLI image for running UDSBundleJobs
-  - name: uds-cli
-    description: "UDS CLI container image used by UDSBundleJobs to create and deploy bundles"
+  # Forge UDS bundle job image for running UDSBundleJobs
+  - name: udsbundlejob
+    description: "Forge container image used by UDSBundleJobs to run bundle create/deploy/publish jobs"
     required: true
     images:
-      - ghcr.io/kylegalloway/forge/uds-cli:v0.27.21
+      - ghcr.io/kylegalloway/forge/udsbundlejob:v0.11.1
 
   # Optional: Image scanning tools
   - name: image-scanning

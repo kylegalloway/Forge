@@ -52,8 +52,8 @@ helm install forge forge/forge \
 
 - `ghcr.io/kylegalloway/forge/forge-controller:v0.6.0`
 - `ghcr.io/kylegalloway/forge/forge-webhook:v0.6.0`
-- `ghcr.io/kylegalloway/forge/zarf-cli:v0.69.0` (used by ZarfPackageJobs)
-- `ghcr.io/kylegalloway/forge/uds-cli:v0.27.21` (used by UDSBundleJobs)
+- `ghcr.io/kylegalloway/forge/zarfpackagejob:v0.11.1` (used by ZarfPackageJobs)
+- `ghcr.io/kylegalloway/forge/udsbundlejob:v0.11.1` (used by UDSBundleJobs)
 
 **CLI Image Configuration**:
 

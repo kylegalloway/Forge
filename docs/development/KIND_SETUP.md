@@ -50,8 +50,8 @@ make status
 Most Forge operations need the Zarf CLI container image. Add it after setup:
 
 ```bash
-# Build and load Zarf CLI into the cluster
-make kind-zarf-cli
+# Build and load Zarf Package Job image into the cluster
+make kind-zarfpackagejob
 ```
 
 ### Manual Setup (for reference)
@@ -72,8 +72,8 @@ make kind-load
 # For Docker:
 make kind-load-docker
 
-# 4. Build and load Zarf CLI image
-make kind-zarf-cli
+# 4. Build and load Zarf Package Job image
+make kind-zarfpackagejob
 
 # 5. Deploy with Helm
 make install
@@ -106,7 +106,7 @@ The Forge Makefile provides convenient targets for Kind development workflows:
 | `make docker-build` | Build controller and webhook images using Docker |
 | `make kind-load` | Build with Podman and load into Kind cluster (via tar archive) |
 | `make kind-load-docker` | Build with Docker and load into Kind cluster (direct) |
-| `make kind-zarf-cli` | Build and load Zarf CLI image into Kind cluster |
+| `make kind-zarfpackagejob` | Build and load Zarf Package Job image into Kind cluster |
 | `make kind-images` | List Forge images in the Kind cluster |
 
 ### Observability
@@ -148,7 +148,7 @@ make kind-load-docker
 **Initial Setup:**
 ```bash
 make kind-setup           # Full setup
-make kind-zarf-cli        # Add Zarf CLI for jobs
+make kind-zarfpackagejob   # Add Zarf Package Job for jobs
 make status               # Verify everything is running
 ```
 
@@ -285,28 +285,28 @@ localhost/forge-webhook     latest      def456abc123   95MB
 localhost/zarf              v0.68.1     789abc012def   45MB
 ```
 
-### 3a. Build and Load Zarf CLI Image
+### 3a. Build and Load Zarf Package Job Image
 
 Zarf doesn't publish container images - only binaries. Forge includes a Dockerfile that packages the official Zarf CLI binary into a container image for use in Job pods.
 
 **Using Make (recommended):**
 
 ```bash
-make kind-zarf-cli
+make kind-zarfpackagejob
 ```
 
 **Manual commands:**
 
 ```bash
 # For Podman:
-podman build -t localhost/zarf:v0.68.1 images/zarf-cli/
-podman save localhost/zarf:v0.68.1 -o /tmp/zarf-cli.tar
-kind load image-archive /tmp/zarf-cli.tar --name forge-dev
-rm /tmp/zarf-cli.tar
+podman build -t localhost/zarfpackagejob:v0.11.1 images/zarfpackagejob/
+podman save localhost/zarfpackagejob:v0.11.1 -o /tmp/zarfpackagejob.tar
+kind load image-archive /tmp/zarfpackagejob.tar --name forge-dev
+rm /tmp/zarfpackagejob.tar
 
 # For Docker:
-docker build -t localhost/zarf:v0.68.1 images/zarf-cli/
-kind load docker-image localhost/zarf:v0.68.1 --name forge-dev
+docker build -t localhost/zarfpackagejob:v0.11.1 images/zarfpackagejob/
+kind load docker-image localhost/zarfpackagejob:v0.11.1 --name forge-dev
 ```
 
 Without this image, Zarf build/deploy jobs will fail with `ImagePullBackOff`.
@@ -502,8 +502,8 @@ make kind-images
 # Reload Forge images
 make kind-load
 
-# Reload Zarf CLI image
-make kind-zarf-cli
+# Reload Zarf Package Job image
+make kind-zarfpackagejob
 ```
 
 **Manual diagnosis and fix:**
@@ -553,7 +553,7 @@ If things are completely broken, start fresh:
 make kind-delete      # Delete cluster
 make clean            # Clean artifacts
 make kind-setup       # Recreate everything
-make kind-zarf-cli    # Add Zarf CLI
+make kind-zarfpackagejob    # Add Zarf Package Job image
 make status           # Verify
 ```
 
@@ -570,7 +570,7 @@ Podman requires saving images to tar archives before loading into Kind:
 ```bash
 make podman-build     # Build with Podman
 make kind-load        # Save to tar, load into Kind, cleanup
-make kind-zarf-cli    # Same for Zarf CLI
+make kind-zarfpackagejob    # Same for Zarf Package Job
 ```
 
 **What it does behind the scenes:**

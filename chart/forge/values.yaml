@@ -164,15 +164,15 @@ webhook:
 # Zarf CLI image for Jobs
 zarfCLI:
   image:
-    repository: ghcr.io/kylegalloway/forge/zarf-cli
-    tag: v0.69.0
+    repository: ghcr.io/kylegalloway/forge/zarfpackagejob
+    tag: v0.11.1
     pullPolicy: IfNotPresent
 
 # UDS CLI image for Jobs
 udsCLI:
   image:
-    repository: ghcr.io/defenseunicorns/uds-cli
-    tag: v0.27.21
+    repository: ghcr.io/kylegalloway/forge/udsbundlejob
+    tag: v0.11.1
     pullPolicy: IfNotPresent
 
 # Init container images for source fetching

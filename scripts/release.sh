@@ -159,7 +159,7 @@ ${cap_bump_type} version bump: ${CURRENT_VERSION} → ${new_version}
 
 Updated files:
 - chart/forge/Chart.yaml (version and appVersion)
-- chart/forge/values.yaml (controller and webhook image tags)
+- chart/forge/values.yaml (controller, webhook, zarfCLI, udsCLI image tags)
 - CHANGELOG.md (Unreleased → ${new_version})
 - README.md and user documentation
 - zarf.yaml package metadata
@@ -194,7 +194,7 @@ update_version_in_file() {
 }
 
 # Function to update image tags in values.yaml
-# Changes tag: "" or tag: "vX.Y.Z" to tag: "vNEW_VERSION" for controller and webhook
+# Changes tag values for controller, webhook, zarfCLI, and udsCLI
 update_values_image_tags() {
     local new_version=$1
     local values_file=$2
@@ -202,16 +202,28 @@ update_values_image_tags() {
     # Update controller image tag (handles both empty "" and existing "vX.Y.Z" values)
     # Matches the pattern under controller.image.tag
     if [[ "$OSTYPE" == "darwin"* ]]; then
-        # macOS sed - update controller tag
+        # macOS sed - update controller tag (quoted format)
         sed -i '' '/^controller:/,/^[a-z]/ {
             /^  image:/,/^  [a-z]/ {
                 s/tag: ".*"/tag: "v'"${new_version}"'"/
             }
         }' "$values_file"
-        # Update webhook tag
+        # Update webhook tag (quoted format)
         sed -i '' '/^webhook:/,/^[a-z]/ {
             /^  image:/,/^  [a-z]/ {
                 s/tag: ".*"/tag: "v'"${new_version}"'"/
+            }
+        }' "$values_file"
+        # Update zarfCLI tag (unquoted format)
+        sed -i '' '/^zarfCLI:/,/^[a-z]/ {
+            /^  image:/,/^  [a-z]/ {
+                s/tag: v[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*/tag: v'"${new_version}"'/
+            }
+        }' "$values_file"
+        # Update udsCLI tag (unquoted format)
+        sed -i '' '/^udsCLI:/,/^[a-z]/ {
+            /^  image:/,/^  [a-z]/ {
+                s/tag: v[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*/tag: v'"${new_version}"'/
             }
         }' "$values_file"
     else
@@ -224,6 +236,16 @@ update_values_image_tags() {
         sed -i '/^webhook:/,/^[a-z]/ {
             /^  image:/,/^  [a-z]/ {
                 s/tag: ".*"/tag: "v'"${new_version}"'"/
+            }
+        }' "$values_file"
+        sed -i '/^zarfCLI:/,/^[a-z]/ {
+            /^  image:/,/^  [a-z]/ {
+                s/tag: v[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*/tag: v'"${new_version}"'/
+            }
+        }' "$values_file"
+        sed -i '/^udsCLI:/,/^[a-z]/ {
+            /^  image:/,/^  [a-z]/ {
+                s/tag: v[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*/tag: v'"${new_version}"'/
             }
         }' "$values_file"
     fi
@@ -314,7 +336,7 @@ print_success "Chart.yaml updated"
 # Step 1b: Update values.yaml image tags
 print_step "Step 1b: Updating values.yaml image tags"
 update_values_image_tags "$NEW_VERSION" "$VALUES_FILE"
-print_success "values.yaml image tags updated (controller and webhook → v${NEW_VERSION})"
+print_success "values.yaml image tags updated (controller, webhook, zarfCLI, udsCLI → v${NEW_VERSION})"
 
 # Step 2: Update documentation files
 print_step "Step 2: Updating documentation"

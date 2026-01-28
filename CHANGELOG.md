@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Release script now updates `zarfCLI` and `udsCLI` image tags in values.yaml during version bumps, ensuring all four Forge images (controller, webhook, zarfpackagejob, udsbundlejob) are versioned consistently
+
 ## [0.11.1] - 2026-01-28
 
 ### Added

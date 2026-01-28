@@ -167,16 +167,7 @@ The primary resource for defining operations on a single Zarf package.
 
 ### UDSBundleJob
 
-For UDS bundles, Forge provides a unified API with consistent naming.
-
-#### API Versions
-
-- **v1alpha1** (deprecated): `UDSBundleJob` with `BundleAction` types
-- **v1alpha2** (recommended): `UDSBundleJob` with simplified `Action` types matching Zarf
-
-The v1alpha2 API uses the same action names as Zarf (`Create`, `Publish`, `Deploy`) instead of the v1alpha1 prefixed names (`BundleActionCreate`, etc.). This makes the API consistent across both package types.
-
-**Migration**: v1alpha1 will be supported until Forge v0.11.0 (~6 months). See [V1ALPHA2_MIGRATION.md](../operations/V1ALPHA2_MIGRATION.md) for the complete migration guide.
+For UDS bundles, Forge provides a unified API with consistent naming that mirrors the ZarfPackageJob API.
 
 #### What is a UDS Bundle?
 
@@ -195,7 +186,7 @@ A UDS bundle is a collection of multiple Zarf packages defined in a `uds-bundle.
 - **Deploy**: Installs a package into a cluster
 - **Composite Actions**: `BuildPublish`, `BuildDeploy`, `PublishDeploy`, `BuildPublishDeploy`
 
-**For UDS Bundles** (v1alpha2):
+**For UDS Bundles**:
 - **Create**: Builds a UDS bundle from source (equivalent to `uds create`)
 - **Publish**: Uploads a bundle to a registry (OCI or S3)
 - **Deploy**: Installs a bundle into a cluster (equivalent to `uds deploy`)
@@ -710,7 +701,7 @@ spec:
       reference: ghcr.io/myorg/bundles/platform:latest
   deploy:
     target: ExternalCluster
-    kubeconfig:
+    externalCluster:
       secretRef:
         name: target-cluster-kubeconfig
         namespace: default
@@ -833,9 +824,9 @@ metadata:
   name: uds-bundle-operator-restricted
   namespace: forge-system
   annotations:
-    forge.forge.dev/allowed-actions: "create,deploy"
-    forge.forge.dev/allowed-git-repos: "github.com/cncf/*,github.com/myorg/*"
-    forge.forge.dev/allowed-deploy-namespaces: "uds-dev,uds-staging"
+    forge.dev/allowed-actions: "Create,Deploy"
+    forge.dev/allowed-git-repos: "github.com/cncf/*,github.com/myorg/*"
+    forge.dev/allowed-deploy-namespaces: "uds-dev,uds-staging"
     # No OCI or S3 access (internal builds only)
 ```
 
@@ -855,7 +846,7 @@ serviceaccount/restricted-builder created
 
 ### UDS Bundle Policy Annotations
 
-All annotations use the prefix `forge.forge.dev/`:
+All annotations use the prefix `forge.dev/`:
 
 | Annotation | Values | Description |
 |------------|--------|-------------|
@@ -885,11 +876,11 @@ metadata:
   name: uds-bundle-operator-permissive
   namespace: forge-system
   annotations:
-    forge.forge.dev/allowed-actions: "create,publish,deploy"
-    forge.forge.dev/allowed-git-repos: "*"
-    forge.forge.dev/allowed-oci-registries: "*"
-    forge.forge.dev/allowed-deploy-namespaces: "*"
-    forge.forge.dev/allowed-s3-buckets: "*"
+    forge.dev/allowed-actions: "Create,Publish,Deploy"
+    forge.dev/allowed-git-repos: "*"
+    forge.dev/allowed-oci-registries: "*"
+    forge.dev/allowed-deploy-namespaces: "*"
+    forge.dev/allowed-s3-buckets: "*"
 ```
 
 **Warning**: Not recommended for production. Use only in controlled development environments.
@@ -905,9 +896,9 @@ metadata:
   name: uds-bundle-operator-restricted
   namespace: forge-system
   annotations:
-    forge.forge.dev/allowed-actions: "create,deploy"
-    forge.forge.dev/allowed-git-repos: "github.com/cncf/*,github.com/myorg/*"
-    forge.forge.dev/allowed-deploy-namespaces: "uds-dev,uds-staging"
+    forge.dev/allowed-actions: "Create,Deploy"
+    forge.dev/allowed-git-repos: "github.com/cncf/*,github.com/myorg/*"
+    forge.dev/allowed-deploy-namespaces: "uds-dev,uds-staging"
     # No OCI or S3 access (internal builds only)
 ```
 
@@ -922,10 +913,10 @@ metadata:
   name: uds-bundle-cicd
   namespace: forge-system
   annotations:
-    forge.forge.dev/allowed-actions: "create,publish"
-    forge.forge.dev/allowed-git-repos: "github.com/myorg/*,gitlab.mycompany.com/*"
-    forge.forge.dev/allowed-oci-registries: "registry.mycompany.com/*"
-    forge.forge.dev/allowed-s3-buckets: "mycompany-uds-bundles,mycompany-uds-bundles-staging"
+    forge.dev/allowed-actions: "Create,Publish"
+    forge.dev/allowed-git-repos: "github.com/myorg/*,gitlab.mycompany.com/*"
+    forge.dev/allowed-oci-registries: "registry.mycompany.com/*"
+    forge.dev/allowed-s3-buckets: "mycompany-uds-bundles,mycompany-uds-bundles-staging"
     # No deployment permissions (separation of concerns)
 ```
 
@@ -1116,7 +1107,7 @@ Forge creates Kubernetes Jobs for each operation. If an operation fails:
     ```bash
     kubectl get jobs -l forge.dev/package=my-package
     # or for UDS bundles
-    kubectl get jobs -l forge.forge.dev/package=my-bundle
+    kubectl get jobs -l forge.dev/package=my-bundle
     ```
 
     Expected output:
@@ -1158,7 +1149,7 @@ If a bundle creation fails, check the following:
 2. **Find the failed Job**:
 
     ```bash
-    kubectl get jobs -l forge.forge.dev/package=my-bundle
+    kubectl get jobs -l forge.dev/package=my-bundle
     ```
 
     Expected output:
@@ -1209,7 +1200,7 @@ action "create" not allowed by ServiceAccount annotations
     annotations:
       forge.dev/allowed-actions: "Build,Deploy"  # ✅ Build is allowed
       # or for UDS
-      forge.forge.dev/allowed-actions: "create,deploy"  # ✅ create is allowed
+      forge.dev/allowed-actions: "Create,Deploy"  # ✅ create is allowed
     ```
 
 3. Verify repository matches the allowed pattern:
@@ -1218,7 +1209,7 @@ action "create" not allowed by ServiceAccount annotations
     annotations:
       forge.dev/allowed-source-repos: "https://github.com/myorg/*"  # ✅ pattern matches
       # or for UDS
-      forge.forge.dev/allowed-git-repos: "github.com/myorg/*"  # ✅ pattern matches
+      forge.dev/allowed-git-repos: "github.com/myorg/*"  # ✅ pattern matches
     ```
 
     Example: `github.com/myorg/bundle` matches `github.com/myorg/*`
@@ -1377,58 +1368,6 @@ If you cannot create job resources:
     ```
 
 2. Check webhook logs for validation errors.
-
-## UDS Bundle API Migration
-
-### Differences Between v1alpha1 and v1alpha2
-
-| Aspect | v1alpha1 (Deprecated) | v1alpha2 (Recommended) |
-|--------|----------------------|------------------------|
-| **Resource Name** | `UDSBundleJob` | `UDSBundleJob` |
-| **Action Field** | `bundleAction` | `action` |
-| **Action Values** | `BundleActionCreate`, `BundleActionPublish`, etc. | `Create`, `Publish`, `Deploy` |
-| **Naming Convention** | Bundle-prefixed actions | Consistent with ZarfPackageJob |
-| **API Group** | `forge.dev/v1alpha3` | `forge.dev/v1alpha3` |
-| **Deprecation** | Deprecated, removed in v0.11.0 | Active, recommended |
-
-### Migration Example
-
-**v1alpha1 (Old)**:
-
-```yaml
-apiVersion: forge.dev/v1alpha3
-kind: UDSBundleJob
-metadata:
-  name: my-bundle
-spec:
-  bundleAction: BundleActionCreate
-  source:
-    type: Git
-    git:
-      url: https://github.com/myorg/bundle
-```
-
-**v1alpha2 (New)**:
-
-```yaml
-apiVersion: forge.dev/v1alpha3
-kind: UDSBundleJob
-metadata:
-  name: my-bundle
-spec:
-  action: Create
-  source:
-    type: Git
-    git:
-      url: https://github.com/myorg/bundle
-```
-
-**Key changes**:
-
-1. `apiVersion: forge.dev/v1alpha3` → `apiVersion: forge.dev/v1alpha3`
-2. `bundleAction: BundleActionCreate` → `action: Create`
-
-For a complete migration guide with automated conversion tools, see [V1ALPHA2_MIGRATION.md](../operations/V1ALPHA2_MIGRATION.md).
 
 ## kubectl-forge Reference
 

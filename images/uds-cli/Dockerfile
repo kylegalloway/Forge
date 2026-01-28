@@ -51,5 +51,4 @@ WORKDIR /workspace
 # Verify installations
 RUN uds version && aws --version && kubectl version --client
 
-ENTRYPOINT ["/usr/local/bin/uds"]
-CMD ["--help"]
+ENTRYPOINT ["/bin/sh"]

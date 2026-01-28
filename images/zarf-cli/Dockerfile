@@ -47,5 +47,4 @@ WORKDIR /workspace
 # Verify installations
 RUN zarf version && aws --version && kubectl version --client
 
-ENTRYPOINT ["/usr/local/bin/zarf"]
-CMD ["--help"]
+ENTRYPOINT ["/bin/sh"]

@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- AWS CLI added to zarf-cli and uds-cli container images, enabling S3 publishing destinations. Jobs can now publish packages and bundles directly to S3 buckets using `aws s3 cp`.
+
 ### Fixed
 - Container image tags now consistently use "v" prefix (e.g., `v0.9.13` instead of `0.9.13`) across all release artifacts. The release workflow's docker/metadata-action was stripping the "v" prefix, causing helm charts and zarf.yaml to reference non-existent image tags.
 

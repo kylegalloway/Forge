@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-01-27
+
 ### Added
 - GitHub artifact attestations via `actions/attest-build-provenance@v2` for all container images and binaries. Attestations are stored in GitHub's attestation store and verifiable with `gh attestation verify`. This complements existing Cosign signatures with GitHub-native supply chain security.
 - AWS CLI added to zarf-cli and uds-cli container images, enabling S3 publishing destinations. Jobs can now publish packages and bundles directly to S3 buckets using `aws s3 cp`.
@@ -510,7 +512,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial project setup and build infrastructure
 - CI/CD pipeline configuration for automated testing and releases
 
-[Unreleased]: https://github.com/kylegalloway/forge/compare/v0.9.13...HEAD
+[Unreleased]: https://github.com/kylegalloway/forge/compare/v0.10.0...HEAD
+[0.10.0]: https://github.com/kylegalloway/forge/compare/v0.9.13...v0.10.0
 [0.9.13]: https://github.com/kylegalloway/forge/compare/v0.9.12...v0.9.13
 [0.9.12]: https://github.com/kylegalloway/forge/compare/v0.9.11...v0.9.12
 [0.9.11]: https://github.com/kylegalloway/forge/compare/v0.9.10...v0.9.11

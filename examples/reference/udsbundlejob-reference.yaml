@@ -1,0 +1,303 @@
+# UDSBundleJob Complete API Reference
+# API Version: forge.dev/v1alpha3
+# This file documents ALL available fields with valid values and examples.
+# This is a reference document - not all combinations are valid together.
+---
+apiVersion: forge.dev/v1alpha3
+kind: UDSBundleJob
+metadata:
+  name: example-uds-job
+  namespace: default
+spec:
+  # =============================================================================
+  # REQUIRED FIELDS
+  # =============================================================================
+
+  # ServiceAccount that defines permissions for this job (REQUIRED)
+  # Must have forge.dev/* annotations defining allowed actions
+  serviceAccountName: uds-bundle-operator
+
+  # Action to perform (REQUIRED)
+  # Valid values: Create, Publish, Deploy, CreatePublish, CreateDeploy, PublishDeploy, CreatePublishDeploy
+  action: CreatePublish
+
+  # Source configuration (REQUIRED)
+  source:
+    # Source type (REQUIRED)
+    # Valid values: Git, S3, OCI, Local
+    type: Git
+
+    # Git source configuration (required if type=Git)
+    git:
+      # Repository URL (REQUIRED) - must be https://
+      url: https://github.com/example/uds-bundle
+      # Branch, tag, or commit (optional, default: "main")
+      ref: main
+      # Path to uds-bundle.yaml within repo (optional, default: ".")
+      path: bundles/platform
+      # Credentials for private repos (optional)
+      credentialRef:
+        name: git-credentials-secret
+        namespace: default  # optional, defaults to job namespace
+      # Disable credentials for clone (optional, default: false)
+      disableCloneCredentials: false
+
+    # S3 source configuration (required if type=S3)
+    s3:
+      # Bucket name (REQUIRED)
+      bucket: my-uds-bundles
+      # Object key/path (REQUIRED)
+      key: bundles/platform-v1.0.0.tar.zst
+      # AWS region (optional)
+      region: us-west-2
+      # Custom endpoint for S3-compatible storage like MinIO (optional)
+      endpoint: https://minio.example.com
+      # AWS credentials (optional)
+      credentialRef:
+        # Credential type (optional, default: "EnvVar")
+        # Valid values: EnvVar, File, Node
+        # - EnvVar: Secret with 'access-key-id' and 'secret-access-key' keys
+        # - File: Secret with 'credentials' key containing AWS credentials file
+        # - Node: Use IRSA/instance profile (no secret needed)
+        type: EnvVar
+        name: aws-credentials-secret
+        namespace: default  # optional
+        key: credentials    # only used when type=File, default: "credentials"
+
+    # OCI source configuration (required if type=OCI)
+    oci:
+      # Full OCI reference (REQUIRED)
+      reference: ghcr.io/example/uds-bundle:v1.0.0
+      # Registry credentials (optional)
+      credentialRef:
+        name: registry-credentials-secret
+        namespace: default  # optional
+
+    # Local source configuration (required if type=Local, dev/testing only)
+    local:
+      # Path to local directory (REQUIRED)
+      path: /workspace/my-bundle
+      # Must be true (REQUIRED for local sources)
+      devMode: true
+
+  # =============================================================================
+  # CREATE CONFIGURATION (optional, used when action includes Create)
+  # =============================================================================
+  create:
+    # Timeout for create operation (optional, default: "1h")
+    timeout: 2h
+    # Registry credentials for pulling Zarf packages during bundle creation (optional)
+    registryCredentialRef:
+      name: registry-credentials
+      namespace: default  # optional
+    # UDS variables for bundle creation (optional)
+    variables:
+      MY_VAR: my-value
+      ANOTHER_VAR: another-value
+    # Bundle flavor to create (optional)
+    flavor: upstream
+    # Target architecture (optional)
+    # Common values: amd64, arm64
+    architecture: amd64
+    # Skip SBOM generation for faster builds (optional, default: false)
+    skipSBOM: false
+    # Additional CLI flags for 'uds create' (optional)
+    extraArgs:
+      - "--no-progress"
+    # Retry policy for create failures (optional)
+    retry:
+      # Max retry attempts (optional, default: 3, range: 0-10)
+      maxRetries: 3
+      # Initial delay before first retry (optional, default: "30s")
+      initialBackoff: 30s
+      # Maximum delay between retries (optional, default: "5m")
+      maxBackoff: 5m
+      # Backoff multiplier as percentage (optional, default: 200 = 2.0x, range: 100-1000)
+      backoffMultiplier: 200
+      # Error patterns that trigger retries - glob patterns supported (optional)
+      retryableErrors:
+        - "*timeout*"
+        - "*throttle*"
+        - "*rate limit*"
+
+  # =============================================================================
+  # PUBLISH CONFIGURATION (optional, used when action includes Publish)
+  # =============================================================================
+  publish:
+    # Timeout for publish operation (optional, default: "30m")
+    timeout: 1h
+    # Additional CLI flags for 'uds publish' (optional)
+    extraArgs:
+      - "--insecure"
+    # Retry policy (optional, same structure as create.retry)
+    retry:
+      maxRetries: 3
+
+    # Destination configuration (REQUIRED when publishing)
+    destination:
+      # Destination type (REQUIRED)
+      # Valid values: S3, OCI, Local
+      type: OCI
+
+      # OCI destination (required if type=OCI)
+      oci:
+        # Registry hostname (REQUIRED)
+        registry: ghcr.io
+        # Repository path (REQUIRED)
+        repository: example/uds-bundles
+        # Tag for the artifact (REQUIRED)
+        tag: v1.0.0
+        # Registry credentials (optional)
+        credentialRef:
+          name: ghcr-credentials
+          namespace: default  # optional
+
+      # S3 destination (required if type=S3)
+      s3:
+        # Bucket name (REQUIRED)
+        bucket: my-artifact-bucket
+        # Key prefix - artifact name is appended (REQUIRED)
+        keyPrefix: bundles/uds/
+        # AWS region (optional)
+        region: us-west-2
+        # Custom endpoint (optional)
+        endpoint: https://minio.example.com
+        # AWS credentials (optional, same structure as source.s3.credentialRef)
+        credentialRef:
+          type: EnvVar
+          name: aws-credentials
+
+      # Local destination (required if type=Local, dev/testing only)
+      local:
+        # Output path (REQUIRED)
+        path: /output/bundles
+        # Must be true (REQUIRED)
+        devMode: true
+
+  # =============================================================================
+  # DEPLOY CONFIGURATION (optional, used when action includes Deploy)
+  # =============================================================================
+  deploy:
+    # Deploy target (REQUIRED)
+    # Valid values: InCluster, ExternalCluster
+    target: InCluster
+    # Namespace to deploy into (optional)
+    namespace: uds-bundles
+    # Timeout for deployment (optional, default: "30m")
+    timeout: 1h
+    # Components to deploy - if empty, deploys all (optional)
+    components:
+      - core
+      - monitoring
+    # Variables for deployment (optional)
+    variables:
+      DOMAIN: example.com
+      REPLICAS: "3"
+    # Skip TLS verification during deploy (optional, default: false)
+    insecure: false
+    # Number of retry attempts for uds deploy (optional)
+    retries: 3
+    # Additional CLI flags for 'uds deploy' (optional)
+    extraArgs:
+      - "--confirm"
+    # Retry policy (optional, same structure as create.retry)
+    retry:
+      maxRetries: 3
+
+    # External cluster configuration (required if target=ExternalCluster)
+    externalCluster:
+      # Secret containing kubeconfig (REQUIRED)
+      secretRef:
+        name: target-cluster-kubeconfig
+        namespace: default  # optional
+      # Key in secret containing kubeconfig (optional, default: "kubeconfig")
+      key: kubeconfig
+      # Kubeconfig context to use (optional)
+      context: production-cluster
+
+    # Adoption policy for existing resources (optional, default: "Error")
+    # Valid values: Adopt, Skip, Error
+    adoptionPolicy: Error
+
+    # Resource selector for adoption (optional, only used when adoptionPolicy=Adopt)
+    resourceSelector:
+      # Select by labels (optional)
+      matchLabels:
+        app: my-app
+      # Select by name patterns - glob supported (optional)
+      matchNames:
+        - "app-*"
+        - "service-?-prod"
+      # Namespaces to search (optional, defaults to deploy.namespace)
+      namespaces:
+        - production
+        - staging
+      # Validate resources don't have other owners (optional, default: true)
+      validateOwnership: true
+
+  # =============================================================================
+  # RESOURCE CONFIGURATION (optional)
+  # =============================================================================
+
+  # Resource requirements for job pods (optional)
+  resources:
+    requests:
+      cpu: 500m
+      memory: 1Gi
+    limits:
+      cpu: 2
+      memory: 4Gi
+
+  # Node selector for pod scheduling (optional)
+  nodeSelector:
+    disktype: ssd
+    kubernetes.io/arch: amd64
+
+  # Affinity rules for pod scheduling (optional)
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+          - matchExpressions:
+              - key: kubernetes.io/arch
+                operator: In
+                values:
+                  - amd64
+                  - arm64
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          podAffinityTerm:
+            labelSelector:
+              matchLabels:
+                app: uds-builder
+            topologyKey: kubernetes.io/hostname
+
+  # Tolerations for job pods (optional)
+  tolerations:
+    - key: dedicated
+      operator: Equal
+      value: build-nodes
+      effect: NoSchedule
+
+  # =============================================================================
+  # PVC AND DEBUG OPTIONS (optional)
+  # =============================================================================
+
+  # Create PVC for storing build artifacts (optional, default: true)
+  useArtifactPVC: true
+
+  # Keep PVC after job completion (optional, default: true)
+  # Set to false for automatic cleanup
+  retainArtifactPVC: true
+
+  # Enable debug mode for this job (optional, default: false)
+  # Pods wait instead of running commands, allowing kubectl exec for inspection
+  debugMode: false
+
+  # Actions to run in debug mode for chained workflows (optional)
+  # Valid values: create, publish, deploy
+  # If empty and debugMode=true, all actions are debugged
+  # Touch /tmp/debug-complete in the pod to continue to next action
+  debugActions:
+    - create

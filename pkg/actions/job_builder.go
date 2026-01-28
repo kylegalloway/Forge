@@ -3,6 +3,7 @@ package actions
 import (
 	"context"
 	"fmt"
+	"slices"
 	"time"
 
 	batchv1 "k8s.io/api/batch/v1"
@@ -416,6 +417,67 @@ func (b *JobBuilder) WithServiceAccountName(name string) *JobBuilder {
 	return b
 }
 
+// WithProjectedServiceAccountVolume adds a projected volume for the service account token.
+// This provides explicit control over token mounting with:
+// - Short-lived service account token (1 hour expiration)
+// - CA certificate from kube-root-ca.crt ConfigMap
+// - Namespace from downward API
+// The volume is mounted at /var/run/secrets/kubernetes.io/serviceaccount for compatibility
+// with the InClusterKubeconfigSetup script.
+func (b *JobBuilder) WithProjectedServiceAccountVolume() *JobBuilder {
+	expirationSeconds := int64(3600) // 1 hour token expiration
+
+	b.volumes = append(b.volumes, corev1.Volume{
+		Name: "kube-api-access",
+		VolumeSource: corev1.VolumeSource{
+			Projected: &corev1.ProjectedVolumeSource{
+				Sources: []corev1.VolumeProjection{
+					{
+						ServiceAccountToken: &corev1.ServiceAccountTokenProjection{
+							Path:              "token",
+							ExpirationSeconds: &expirationSeconds,
+							Audience:          "https://kubernetes.default.svc",
+						},
+					},
+					{
+						ConfigMap: &corev1.ConfigMapProjection{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: "kube-root-ca.crt",
+							},
+							Items: []corev1.KeyToPath{
+								{
+									Key:  "ca.crt",
+									Path: "ca.crt",
+								},
+							},
+						},
+					},
+					{
+						DownwardAPI: &corev1.DownwardAPIProjection{
+							Items: []corev1.DownwardAPIVolumeFile{
+								{
+									Path: "namespace",
+									FieldRef: &corev1.ObjectFieldSelector{
+										FieldPath: "metadata.namespace",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	})
+
+	b.volumeMounts = append(b.volumeMounts, corev1.VolumeMount{
+		Name:      "kube-api-access",
+		MountPath: "/var/run/secrets/kubernetes.io/serviceaccount",
+		ReadOnly:  true,
+	})
+
+	return b
+}
+
 // WithDebugMode enables debug mode for the job.
 // When enabled, the job waits for a completion marker file (/tmp/debug-complete)
 // instead of running the actual command, allowing users to exec into the pod for debugging.
@@ -432,12 +494,7 @@ func (b *JobBuilder) WithDebugMode(enabled bool) *JobBuilder {
 func ShouldDebugAction(debugMode bool, debugActions []string, currentAction string) bool {
 	// If debugActions is specified, it takes precedence
 	if len(debugActions) > 0 {
-		for _, action := range debugActions {
-			if action == currentAction {
-				return true
-			}
-		}
-		return false
+		return slices.Contains(debugActions, currentAction)
 	}
 	// Fall back to global debugMode
 	return debugMode

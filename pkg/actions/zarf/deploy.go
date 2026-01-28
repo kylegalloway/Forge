@@ -165,22 +165,25 @@ func (handler *DeployHandler) createDeployJob(ctx context.Context, pkg *zarfv1al
 		}
 	}
 
-	// Build the job spec so we can apply additional configuration
-	job := builder.Build()
+	// Add ServiceAccount and appropriate kubeconfig volume based on deploy target
+	builder.WithServiceAccountName(pkg.Spec.ServiceAccountName)
 
-	// Add ServiceAccount for in-cluster or external cluster access
-	handler.addServiceAccount(pkg, job)
-
-	// Add kubeconfig volume for external cluster deploys
 	if pkg.Spec.Deploy.Target == zarfv1alpha3.DeployTargetExternalCluster {
+		// External cluster: mount kubeconfig from secret
 		kubeconfigSecretName := ""
 		kubeconfigKey := ""
 		if pkg.Spec.Deploy.ExternalCluster != nil && pkg.Spec.Deploy.ExternalCluster.SecretRef.Name != "" { // pragma: allowlist secret
 			kubeconfigSecretName = pkg.Spec.Deploy.ExternalCluster.SecretRef.Name // pragma: allowlist secret
 			kubeconfigKey = pkg.Spec.Deploy.ExternalCluster.Key
 		}
-		actions.AddKubeconfigVolume(job, kubeconfigSecretName, kubeconfigKey)
+		builder.WithKubeconfigVolume(kubeconfigSecretName, kubeconfigKey)
+	} else {
+		// In-cluster: add projected volume for SA token with explicit control
+		builder.WithProjectedServiceAccountVolume()
 	}
+
+	// Build the job spec
+	job := builder.Build()
 
 	// Check if job already exists
 	existingJob, err := handler.kubeClient.BatchV1().Jobs(pkg.Namespace).Get(ctx, jobName, metav1.GetOptions{})
@@ -301,12 +304,6 @@ func (handler *DeployHandler) getResources(pkg *zarfv1alpha3.ZarfPackageJob) cor
 
 	// Default resources for deploy jobs
 	return actions.DeployResourceRequirements()
-}
-
-// addServiceAccount adds the ServiceAccount to the job pod
-func (handler *DeployHandler) addServiceAccount(pkg *zarfv1alpha3.ZarfPackageJob, job *batchv1.Job) {
-	// Use the ZarfPackageJob's ServiceAccount
-	job.Spec.Template.Spec.ServiceAccountName = pkg.Spec.ServiceAccountName
 }
 
 // validateAdoptionConfig validates resource adoption configuration

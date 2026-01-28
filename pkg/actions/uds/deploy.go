@@ -167,8 +167,9 @@ func (handler *DeployHandler) createDeployJob(ctx context.Context, bundle *udsv1
 		}
 	}
 
-	// Add kubeconfig volume for external cluster deployment
+	// Add kubeconfig volume based on deploy target
 	if bundle.Spec.Deploy.Target == udsv1alpha3.DeployTargetExternalCluster {
+		// External cluster: mount kubeconfig from secret
 		kubeconfigSecretName := ""
 		kubeconfigKey := ""
 		if bundle.Spec.Deploy.ExternalCluster != nil && bundle.Spec.Deploy.ExternalCluster.SecretRef.Name != "" { // pragma: allowlist secret
@@ -176,6 +177,9 @@ func (handler *DeployHandler) createDeployJob(ctx context.Context, bundle *udsv1
 			kubeconfigKey = bundle.Spec.Deploy.ExternalCluster.Key
 		}
 		builder.WithKubeconfigVolume(kubeconfigSecretName, kubeconfigKey)
+	} else {
+		// In-cluster: add projected volume for SA token with explicit control
+		builder.WithProjectedServiceAccountVolume()
 	}
 
 	// Create or get the job

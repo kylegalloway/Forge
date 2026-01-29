@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.11.5] - 2026-01-29
+
 ### Fixed
 - Regenerated `zz_generated.deepcopy.go` to match controller-gen output, fixing the CI "Verify Generated Code" check. An inline `// pragma: allowlist secret` comment had been manually added to the generated file, causing a diff on regeneration. The detect-secrets exclude pattern now covers `zz_generated` files instead.
 
@@ -588,7 +590,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial project setup and build infrastructure
 - CI/CD pipeline configuration for automated testing and releases
 
-[Unreleased]: https://github.com/kylegalloway/forge/compare/v0.11.4...HEAD
+[Unreleased]: https://github.com/kylegalloway/forge/compare/v0.11.5...HEAD
+[0.11.5]: https://github.com/kylegalloway/forge/compare/v0.11.4...v0.11.5
 [0.11.4]: https://github.com/kylegalloway/forge/compare/v0.11.3...v0.11.4
 [0.11.3]: https://github.com/kylegalloway/forge/compare/v0.11.2...v0.11.3
 [0.11.2]: https://github.com/kylegalloway/forge/compare/v0.11.1...v0.11.2

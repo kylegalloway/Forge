@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.11.4] - 2026-01-28
+
 ### Fixed
 - In-cluster kubeconfig generation now embeds the CA certificate as base64 data (`certificate-authority-data`) instead of referencing a file path (`certificate-authority`). This avoids potential file path resolution issues that could cause "context deadline exceeded" errors during cluster connection. Token is also trimmed of whitespace.
 - Projected service account token no longer specifies an explicit audience (`https://kubernetes.default.svc`). Letting the API server use its default audience provides better compatibility across different cluster configurations (EKS, GKE, custom OIDC setups).
@@ -579,7 +581,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial project setup and build infrastructure
 - CI/CD pipeline configuration for automated testing and releases
 
-[Unreleased]: https://github.com/kylegalloway/forge/compare/v0.11.3...HEAD
+[Unreleased]: https://github.com/kylegalloway/forge/compare/v0.11.4...HEAD
+[0.11.4]: https://github.com/kylegalloway/forge/compare/v0.11.3...v0.11.4
 [0.11.3]: https://github.com/kylegalloway/forge/compare/v0.11.2...v0.11.3
 [0.11.2]: https://github.com/kylegalloway/forge/compare/v0.11.1...v0.11.2
 [0.11.1]: https://github.com/kylegalloway/forge/compare/v0.11.0...v0.11.1

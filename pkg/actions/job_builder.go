@@ -436,7 +436,8 @@ func (b *JobBuilder) WithProjectedServiceAccountVolume() *JobBuilder {
 						ServiceAccountToken: &corev1.ServiceAccountTokenProjection{
 							Path:              "token",
 							ExpirationSeconds: &expirationSeconds,
-							Audience:          "https://kubernetes.default.svc",
+							// No audience specified - uses API server's default audience
+							// This ensures compatibility across different cluster configurations
 						},
 					},
 					{

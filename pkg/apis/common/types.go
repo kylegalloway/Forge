@@ -1,7 +1,28 @@
-// Package common contains shared types used by both UDS and Zarf APIs.
-//
 //nolint:revive // package name "common" is intentional for shared API types
 package common
+
+import "k8s.io/apimachinery/pkg/api/resource"
+
+// VolumeSizes allows users to individually configure the sizes of EmptyDir volumes
+// mounted in job pods. All fields are optional — unset fields keep their defaults.
+// +k8s:deepcopy-gen=true
+type VolumeSizes struct {
+	// Workspace is the size limit for the workspace EmptyDir volume (default: 10Gi).
+	// +optional
+	Workspace *resource.Quantity `json:"workspace,omitempty"`
+
+	// Output is the size limit for the output EmptyDir volume (default: 10Gi).
+	// +optional
+	Output *resource.Quantity `json:"output,omitempty"`
+
+	// Tmp is the size limit for the /tmp EmptyDir volume (default: 1Gi).
+	// +optional
+	Tmp *resource.Quantity `json:"tmp,omitempty"`
+
+	// Home is the size limit for the home directory EmptyDir volume (default: 1Gi).
+	// +optional
+	Home *resource.Quantity `json:"home,omitempty"`
+}
 
 // SecretReference contains information to locate a secret
 type SecretReference struct {
@@ -59,6 +80,7 @@ type AWSCredentialRef struct {
 }
 
 // ExtraMount defines an additional ConfigMap or Secret to mount into a job pod.
+// +k8s:deepcopy-gen=true
 type ExtraMount struct {
 	// ConfigMapRef references a ConfigMap to mount.
 	// Exactly one of configMapRef or secretRef must be set.
@@ -88,6 +110,7 @@ type ExtraMount struct {
 }
 
 // LocalObjectReference contains enough information to let you locate the referenced object.
+// +k8s:deepcopy-gen=true
 type LocalObjectReference struct {
 	// Name of the referent.
 	// +kubebuilder:validation:Required

@@ -129,11 +129,16 @@ const (
 	// (KUBERNETES_SERVICE_HOST and KUBERNETES_SERVICE_PORT).
 	InClusterKubeconfigSetup = `SA_DIR=/var/run/secrets/kubernetes.io/serviceaccount && ` +
 		`mkdir -p /tmp/.kube && ` +
+		`echo "[kubeconfig] Reading token from ${SA_DIR}/token" && ` +
 		`TOKEN=$(cat ${SA_DIR}/token | tr -d '\n') && ` +
+		`echo "[kubeconfig] Reading CA cert from ${SA_DIR}/ca.crt" && ` +
 		`CA_DATA=$(base64 -w0 ${SA_DIR}/ca.crt 2>/dev/null || base64 ${SA_DIR}/ca.crt | tr -d '\n') && ` +
 		`API_SERVER="${KUBERNETES_SERVICE_HOST:-kubernetes.default.svc}:${KUBERNETES_SERVICE_PORT:-443}" && ` +
+		`echo "[kubeconfig] API server: https://${API_SERVER}" && ` +
 		`printf 'apiVersion: v1\nkind: Config\nclusters:\n- cluster:\n    certificate-authority-data: %s\n    server: https://%s\n  name: in-cluster\ncontexts:\n- context:\n    cluster: in-cluster\n    namespace: default\n    user: service-account\n  name: in-cluster\ncurrent-context: in-cluster\nusers:\n- name: service-account\n  user:\n    token: %s\n' "$CA_DATA" "$API_SERVER" "$TOKEN" > /tmp/.kube/config && ` +
-		`export KUBECONFIG=/tmp/.kube/config && `
+		`export KUBECONFIG=/tmp/.kube/config && ` +
+		`echo "[kubeconfig] Testing API server connectivity..." && ` +
+		`if kubectl cluster-info --request-timeout=10s >/dev/null 2>&1; then echo "[kubeconfig] Cluster connectivity verified"; else echo "[kubeconfig] WARNING: kubectl test failed, Zarf will retry"; fi && `
 )
 
 // ZarfCLIImage is the container image for Zarf CLI operations.

@@ -156,6 +156,11 @@ type ZarfPackageJobSpec struct {
 	// +optional
 	ExtraMounts []common.ExtraMount `json:"extraMounts,omitempty"`
 
+	// VolumeSizes allows customizing the size limits of EmptyDir volumes mounted in job pods.
+	// Configurable volumes: workspace (default 10Gi), output (default 10Gi), tmp (default 1Gi), home (default 1Gi).
+	// +optional
+	VolumeSizes *common.VolumeSizes `json:"volumeSizes,omitempty"`
+
 	// DebugMode enables debugging capabilities for this job.
 	// When enabled:
 	// - Job pods run in debug mode instead of actual commands

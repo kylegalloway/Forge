@@ -559,6 +559,11 @@ func (in *UDSBundleJobSpec) DeepCopyInto(out *UDSBundleJobSpec) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
+	if in.VolumeSizes != nil {
+		in, out := &in.VolumeSizes, &out.VolumeSizes
+		*out = new(common.VolumeSizes)
+		(*in).DeepCopyInto(*out)
+	}
 	if in.DebugActions != nil {
 		in, out := &in.DebugActions, &out.DebugActions
 		*out = make([]string, len(*in))

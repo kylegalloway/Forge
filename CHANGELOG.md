@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- In-cluster kubeconfig generation now embeds the CA certificate as base64 data (`certificate-authority-data`) instead of referencing a file path (`certificate-authority`). This avoids potential file path resolution issues that could cause "context deadline exceeded" errors during cluster connection. Token is also trimmed of whitespace.
+
 ## [0.11.3] - 2026-01-28
 
 ### Fixed

@@ -123,14 +123,16 @@ const (
 	// InClusterKubeconfigSetup is a shell script snippet that generates a kubeconfig
 	// from the pod's service account token for in-cluster deployments.
 	// This is needed because Zarf/UDS CLIs don't auto-detect in-cluster config.
-	// The token is embedded directly in the kubeconfig and the API server endpoint is
-	// determined from environment variables (KUBERNETES_SERVICE_HOST and KUBERNETES_SERVICE_PORT)
-	// to ensure it works regardless of DNS configuration or file permissions.
+	// The CA certificate is base64-encoded and embedded directly (certificate-authority-data)
+	// to avoid file path issues. The token is read and trimmed of whitespace.
+	// The API server endpoint is determined from environment variables
+	// (KUBERNETES_SERVICE_HOST and KUBERNETES_SERVICE_PORT).
 	InClusterKubeconfigSetup = `SA_DIR=/var/run/secrets/kubernetes.io/serviceaccount && ` +
 		`mkdir -p /tmp/.kube && ` +
-		`TOKEN=$(cat ${SA_DIR}/token) && ` +
+		`TOKEN=$(cat ${SA_DIR}/token | tr -d '\n') && ` +
+		`CA_DATA=$(base64 -w0 ${SA_DIR}/ca.crt 2>/dev/null || base64 ${SA_DIR}/ca.crt | tr -d '\n') && ` +
 		`API_SERVER="${KUBERNETES_SERVICE_HOST:-kubernetes.default.svc}:${KUBERNETES_SERVICE_PORT:-443}" && ` +
-		`printf 'apiVersion: v1\nkind: Config\nclusters:\n- cluster:\n    certificate-authority: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt\n    server: https://%s\n  name: in-cluster\ncontexts:\n- context:\n    cluster: in-cluster\n    namespace: default\n    user: service-account\n  name: in-cluster\ncurrent-context: in-cluster\nusers:\n- name: service-account\n  user:\n    token: %s\n' "$API_SERVER" "$TOKEN" > /tmp/.kube/config && ` +
+		`printf 'apiVersion: v1\nkind: Config\nclusters:\n- cluster:\n    certificate-authority-data: %s\n    server: https://%s\n  name: in-cluster\ncontexts:\n- context:\n    cluster: in-cluster\n    namespace: default\n    user: service-account\n  name: in-cluster\ncurrent-context: in-cluster\nusers:\n- name: service-account\n  user:\n    token: %s\n' "$CA_DATA" "$API_SERVER" "$TOKEN" > /tmp/.kube/config && ` +
 		`export KUBECONFIG=/tmp/.kube/config && `
 )
 

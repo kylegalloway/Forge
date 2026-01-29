@@ -16,6 +16,7 @@ import (
 
 	"github.com/kylegalloway/forge/pkg/actions"
 	"github.com/kylegalloway/forge/pkg/actions/validation"
+	"github.com/kylegalloway/forge/pkg/apis/common"
 	udsv1alpha3 "github.com/kylegalloway/forge/pkg/apis/uds/v1alpha3"
 	"github.com/kylegalloway/forge/pkg/constants"
 	"github.com/kylegalloway/forge/pkg/sources"
@@ -157,6 +158,17 @@ func (handler *CreateHandler) createBundleJob(ctx context.Context, bundle *udsv1
 	if bundle.Spec.Create != nil && bundle.Spec.Create.RegistryCredentialRef != nil { // pragma: allowlist secret
 		builder.WithRegistryCredentials(bundle.Spec.Create.RegistryCredentialRef.Name, constants.VolumeMountPathDockerConfigUDS) // pragma: allowlist secret
 	}
+
+	// Add extra mounts (merged: spec-level + create-level)
+	var createExtraMounts []common.ExtraMount
+	if bundle.Spec.Create != nil {
+		createExtraMounts = bundle.Spec.Create.ExtraMounts
+	}
+	extraMounts, err := validation.MergeExtraMounts(bundle.Spec.ExtraMounts, createExtraMounts)
+	if err != nil {
+		return nil, fmt.Errorf("invalid extraMounts: %w", err)
+	}
+	builder.WithExtraMounts(extraMounts)
 
 	// Create or get the job
 	job, err := builder.CreateOrGet(ctx)

@@ -14,6 +14,7 @@ import (
 
 	"github.com/kylegalloway/forge/pkg/actions"
 	"github.com/kylegalloway/forge/pkg/actions/validation"
+	"github.com/kylegalloway/forge/pkg/apis/common"
 	udsv1alpha3 "github.com/kylegalloway/forge/pkg/apis/uds/v1alpha3"
 	"github.com/kylegalloway/forge/pkg/constants"
 	"github.com/kylegalloway/forge/pkg/resources"
@@ -181,6 +182,17 @@ func (handler *DeployHandler) createDeployJob(ctx context.Context, bundle *udsv1
 		// In-cluster: add projected volume for SA token with explicit control
 		builder.WithProjectedServiceAccountVolume()
 	}
+
+	// Add extra mounts (merged: spec-level + deploy-level)
+	var deployExtraMounts []common.ExtraMount
+	if bundle.Spec.Deploy != nil {
+		deployExtraMounts = bundle.Spec.Deploy.ExtraMounts
+	}
+	extraMounts, err := validation.MergeExtraMounts(bundle.Spec.ExtraMounts, deployExtraMounts)
+	if err != nil {
+		return nil, fmt.Errorf("invalid extraMounts: %w", err)
+	}
+	builder.WithExtraMounts(extraMounts)
 
 	// Create or get the job
 	job, err := builder.CreateOrGet(ctx)

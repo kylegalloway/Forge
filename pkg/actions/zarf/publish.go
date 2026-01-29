@@ -5,6 +5,8 @@ import (
 	"fmt"
 
 	"github.com/kylegalloway/forge/pkg/actions"
+	"github.com/kylegalloway/forge/pkg/actions/validation"
+	"github.com/kylegalloway/forge/pkg/apis/common"
 
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -172,6 +174,17 @@ func (handler *PublishHandler) createPublishJob(ctx context.Context, pkg *zarfv1
 			builder.WithCustomEnvVar(env)
 		}
 	}
+
+	// Add extra mounts (merged: spec-level + publish-level)
+	var publishExtraMounts []common.ExtraMount
+	if pkg.Spec.Publish != nil {
+		publishExtraMounts = pkg.Spec.Publish.ExtraMounts
+	}
+	extraMounts, err := validation.MergeExtraMounts(pkg.Spec.ExtraMounts, publishExtraMounts)
+	if err != nil {
+		return nil, fmt.Errorf("invalid extraMounts: %w", err)
+	}
+	builder.WithExtraMounts(extraMounts)
 
 	// Create or get the job
 	job, err := builder.CreateOrGet(ctx)

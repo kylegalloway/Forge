@@ -6,6 +6,7 @@ import (
 
 	"github.com/kylegalloway/forge/pkg/actions"
 	"github.com/kylegalloway/forge/pkg/actions/validation"
+	"github.com/kylegalloway/forge/pkg/apis/common"
 	"github.com/kylegalloway/forge/pkg/resources"
 
 	batchv1 "k8s.io/api/batch/v1"
@@ -181,6 +182,17 @@ func (handler *DeployHandler) createDeployJob(ctx context.Context, pkg *zarfv1al
 		// In-cluster: add projected volume for SA token with explicit control
 		builder.WithProjectedServiceAccountVolume()
 	}
+
+	// Add extra mounts (merged: spec-level + deploy-level)
+	var deployExtraMounts []common.ExtraMount
+	if pkg.Spec.Deploy != nil {
+		deployExtraMounts = pkg.Spec.Deploy.ExtraMounts
+	}
+	extraMounts, err := validation.MergeExtraMounts(pkg.Spec.ExtraMounts, deployExtraMounts)
+	if err != nil {
+		return nil, fmt.Errorf("invalid extraMounts: %w", err)
+	}
+	builder.WithExtraMounts(extraMounts)
 
 	// Build the job spec
 	job := builder.Build()

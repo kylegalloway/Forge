@@ -16,6 +16,7 @@ import (
 
 	"github.com/kylegalloway/forge/pkg/actions"
 	"github.com/kylegalloway/forge/pkg/actions/validation"
+	"github.com/kylegalloway/forge/pkg/apis/common"
 	zarfv1alpha3 "github.com/kylegalloway/forge/pkg/apis/zarf/v1alpha3"
 	"github.com/kylegalloway/forge/pkg/constants"
 	"github.com/kylegalloway/forge/pkg/sources"
@@ -161,6 +162,17 @@ func (handler *BuildHandler) createBuildJob(ctx context.Context, pkg *zarfv1alph
 	if pkg.Spec.Build != nil && pkg.Spec.Build.RegistryCredentialRef != nil { // pragma: allowlist secret
 		builder.WithRegistryCredentials(pkg.Spec.Build.RegistryCredentialRef.Name, constants.VolumeMountPathDockerConfig) // pragma: allowlist secret
 	}
+
+	// Add extra mounts (merged: spec-level + build-level)
+	var buildExtraMounts []common.ExtraMount
+	if pkg.Spec.Build != nil {
+		buildExtraMounts = pkg.Spec.Build.ExtraMounts
+	}
+	extraMounts, err := validation.MergeExtraMounts(pkg.Spec.ExtraMounts, buildExtraMounts)
+	if err != nil {
+		return nil, fmt.Errorf("invalid extraMounts: %w", err)
+	}
+	builder.WithExtraMounts(extraMounts)
 
 	// Create or get the job
 	job, err := builder.CreateOrGet(ctx)

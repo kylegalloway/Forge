@@ -14,6 +14,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog/v2"
 
+	"github.com/kylegalloway/forge/pkg/apis/common"
 	udsv1alpha3 "github.com/kylegalloway/forge/pkg/apis/uds/v1alpha3"
 	zarfv1alpha3 "github.com/kylegalloway/forge/pkg/apis/zarf/v1alpha3"
 	"github.com/kylegalloway/forge/pkg/constants"
@@ -311,6 +312,52 @@ func (b *JobBuilder) WithCustomVolume(volume corev1.Volume) *JobBuilder {
 // WithCustomVolumeMount adds a custom volume mount.
 func (b *JobBuilder) WithCustomVolumeMount(mount corev1.VolumeMount) *JobBuilder {
 	b.volumeMounts = append(b.volumeMounts, mount)
+	return b
+}
+
+// WithExtraMounts adds user-specified ConfigMap/Secret volumes and mounts.
+func (b *JobBuilder) WithExtraMounts(mounts []common.ExtraMount) *JobBuilder {
+	for i, mount := range mounts {
+		volName := fmt.Sprintf("extra-mount-%d", i)
+
+		var volSource corev1.VolumeSource
+		if mount.ConfigMapRef != nil {
+			volSource = corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: mount.ConfigMapRef.Name,
+					},
+				},
+			}
+		} else if mount.SecretRef != nil { // pragma: allowlist secret
+			volSource = corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: mount.SecretRef.Name, // pragma: allowlist secret
+				},
+			}
+		}
+
+		b.volumes = append(b.volumes, corev1.Volume{
+			Name:         volName,
+			VolumeSource: volSource,
+		})
+
+		readOnly := true
+		if mount.ReadOnly != nil {
+			readOnly = *mount.ReadOnly
+		}
+
+		vm := corev1.VolumeMount{
+			Name:      volName,
+			MountPath: mount.MountPath,
+			ReadOnly:  readOnly,
+		}
+		if mount.SubPath != "" {
+			vm.SubPath = mount.SubPath
+		}
+
+		b.volumeMounts = append(b.volumeMounts, vm)
+	}
 	return b
 }
 

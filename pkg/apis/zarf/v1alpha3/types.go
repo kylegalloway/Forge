@@ -152,6 +152,10 @@ type ZarfPackageJobSpec struct {
 	// +kubebuilder:default=true
 	RetainArtifactPVC *bool `json:"retainArtifactPVC,omitempty"`
 
+	// ExtraMounts specifies additional ConfigMaps or Secrets to mount into all action pods.
+	// +optional
+	ExtraMounts []common.ExtraMount `json:"extraMounts,omitempty"`
+
 	// DebugMode enables debugging capabilities for this job.
 	// When enabled:
 	// - Job pods run in debug mode instead of actual commands
@@ -311,6 +315,11 @@ type RetryPolicy struct {
 
 // BuildConfig defines configuration for package building
 type BuildConfig struct {
+	// ExtraMounts specifies additional ConfigMaps or Secrets to mount into the build pod.
+	// These are merged with spec-level extraMounts.
+	// +optional
+	ExtraMounts []common.ExtraMount `json:"extraMounts,omitempty"`
+
 	// Timeout for the build operation
 	// +optional
 	// +kubebuilder:default="1h"
@@ -353,6 +362,11 @@ type BuildConfig struct {
 
 // PublishConfig defines where and how to publish packages
 type PublishConfig struct {
+	// ExtraMounts specifies additional ConfigMaps or Secrets to mount into the publish pod.
+	// These are merged with spec-level extraMounts.
+	// +optional
+	ExtraMounts []common.ExtraMount `json:"extraMounts,omitempty"`
+
 	// Destination specifies where to publish
 	// +kubebuilder:validation:Required
 	Destination PublishDestination `json:"destination"`
@@ -450,6 +464,11 @@ type LocalDestination struct {
 
 // DeployConfig defines how to deploy the package
 type DeployConfig struct {
+	// ExtraMounts specifies additional ConfigMaps or Secrets to mount into the deploy pod.
+	// These are merged with spec-level extraMounts.
+	// +optional
+	ExtraMounts []common.ExtraMount `json:"extraMounts,omitempty"`
+
 	// Target specifies where to deploy
 	// +kubebuilder:validation:Required
 	Target DeployTargetType `json:"target"`

@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - ExtraMounts support for ZarfPackageJob and UDSBundleJob resources. Users can now mount existing ConfigMaps and Secrets into job pods via `spec.extraMounts` (applied to all actions) and per-action `extraMounts` fields (e.g., `spec.build.extraMounts`). Both levels are merged additively with duplicate mount path validation. Reserved system paths are protected.
+- Configurable EmptyDir volume sizes via `spec.volumeSizes` for both ZarfPackageJob and UDSBundleJob resources. Users can individually set the size limits for `workspace` (default 10Gi), `output` (default 10Gi), `tmp` (default 1Gi), and `home` (default 1Gi) EmptyDir volumes. All fields are optional — unset fields keep their current defaults.
 
 ## [0.11.4] - 2026-01-28
 

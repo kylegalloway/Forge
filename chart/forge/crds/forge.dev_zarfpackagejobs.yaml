@@ -1001,6 +1001,56 @@ spec:
                     items:
                       type: string
                     type: array
+                  extraMounts:
+                    description: |-
+                      ExtraMounts specifies additional ConfigMaps or Secrets to mount into the build pod.
+                      These are merged with spec-level extraMounts.
+                    items:
+                      description: ExtraMount defines an additional ConfigMap or Secret
+                        to mount into a job pod.
+                      properties:
+                        configMapRef:
+                          description: |-
+                            ConfigMapRef references a ConfigMap to mount.
+                            Exactly one of configMapRef or secretRef must be set.
+                          properties:
+                            name:
+                              description: Name of the referent.
+                              type: string
+                          required:
+                          - name
+                          type: object
+                        mountPath:
+                          description: |-
+                            MountPath is the absolute path where the volume will be mounted in the container.
+                            Must not conflict with reserved system paths.
+                          pattern: ^/.*
+                          type: string
+                        readOnly:
+                          default: true
+                          description: ReadOnly controls whether the mount is read-only.
+                            Defaults to true.
+                          type: boolean
+                        secretRef:
+                          description: |-
+                            SecretRef references a Secret to mount.
+                            Exactly one of configMapRef or secretRef must be set.
+                          properties:
+                            name:
+                              description: Name of the referent.
+                              type: string
+                          required:
+                          - name
+                          type: object
+                        subPath:
+                          description: |-
+                            SubPath mounts a single key from the ConfigMap/Secret as a file at MountPath
+                            instead of mounting the entire map as a directory.
+                          type: string
+                      required:
+                      - mountPath
+                      type: object
+                    type: array
                   flavor:
                     description: Flavor specifies which package flavor to build
                     type: string
@@ -1160,6 +1210,56 @@ spec:
                     items:
                       type: string
                     type: array
+                  extraMounts:
+                    description: |-
+                      ExtraMounts specifies additional ConfigMaps or Secrets to mount into the deploy pod.
+                      These are merged with spec-level extraMounts.
+                    items:
+                      description: ExtraMount defines an additional ConfigMap or Secret
+                        to mount into a job pod.
+                      properties:
+                        configMapRef:
+                          description: |-
+                            ConfigMapRef references a ConfigMap to mount.
+                            Exactly one of configMapRef or secretRef must be set.
+                          properties:
+                            name:
+                              description: Name of the referent.
+                              type: string
+                          required:
+                          - name
+                          type: object
+                        mountPath:
+                          description: |-
+                            MountPath is the absolute path where the volume will be mounted in the container.
+                            Must not conflict with reserved system paths.
+                          pattern: ^/.*
+                          type: string
+                        readOnly:
+                          default: true
+                          description: ReadOnly controls whether the mount is read-only.
+                            Defaults to true.
+                          type: boolean
+                        secretRef:
+                          description: |-
+                            SecretRef references a Secret to mount.
+                            Exactly one of configMapRef or secretRef must be set.
+                          properties:
+                            name:
+                              description: Name of the referent.
+                              type: string
+                          required:
+                          - name
+                          type: object
+                        subPath:
+                          description: |-
+                            SubPath mounts a single key from the ConfigMap/Secret as a file at MountPath
+                            instead of mounting the entire map as a directory.
+                          type: string
+                      required:
+                      - mountPath
+                      type: object
+                    type: array
                   namespace:
                     default: default
                     description: Namespace to deploy into
@@ -1257,6 +1357,55 @@ spec:
                 required:
                 - target
                 type: object
+              extraMounts:
+                description: ExtraMounts specifies additional ConfigMaps or Secrets
+                  to mount into all action pods.
+                items:
+                  description: ExtraMount defines an additional ConfigMap or Secret
+                    to mount into a job pod.
+                  properties:
+                    configMapRef:
+                      description: |-
+                        ConfigMapRef references a ConfigMap to mount.
+                        Exactly one of configMapRef or secretRef must be set.
+                      properties:
+                        name:
+                          description: Name of the referent.
+                          type: string
+                      required:
+                      - name
+                      type: object
+                    mountPath:
+                      description: |-
+                        MountPath is the absolute path where the volume will be mounted in the container.
+                        Must not conflict with reserved system paths.
+                      pattern: ^/.*
+                      type: string
+                    readOnly:
+                      default: true
+                      description: ReadOnly controls whether the mount is read-only.
+                        Defaults to true.
+                      type: boolean
+                    secretRef:
+                      description: |-
+                        SecretRef references a Secret to mount.
+                        Exactly one of configMapRef or secretRef must be set.
+                      properties:
+                        name:
+                          description: Name of the referent.
+                          type: string
+                      required:
+                      - name
+                      type: object
+                    subPath:
+                      description: |-
+                        SubPath mounts a single key from the ConfigMap/Secret as a file at MountPath
+                        instead of mounting the entire map as a directory.
+                      type: string
+                  required:
+                  - mountPath
+                  type: object
+                type: array
               nodeSelector:
                 additionalProperties:
                   type: string
@@ -1389,6 +1538,56 @@ spec:
                       Use for flags not explicitly supported in the API
                     items:
                       type: string
+                    type: array
+                  extraMounts:
+                    description: |-
+                      ExtraMounts specifies additional ConfigMaps or Secrets to mount into the publish pod.
+                      These are merged with spec-level extraMounts.
+                    items:
+                      description: ExtraMount defines an additional ConfigMap or Secret
+                        to mount into a job pod.
+                      properties:
+                        configMapRef:
+                          description: |-
+                            ConfigMapRef references a ConfigMap to mount.
+                            Exactly one of configMapRef or secretRef must be set.
+                          properties:
+                            name:
+                              description: Name of the referent.
+                              type: string
+                          required:
+                          - name
+                          type: object
+                        mountPath:
+                          description: |-
+                            MountPath is the absolute path where the volume will be mounted in the container.
+                            Must not conflict with reserved system paths.
+                          pattern: ^/.*
+                          type: string
+                        readOnly:
+                          default: true
+                          description: ReadOnly controls whether the mount is read-only.
+                            Defaults to true.
+                          type: boolean
+                        secretRef:
+                          description: |-
+                            SecretRef references a Secret to mount.
+                            Exactly one of configMapRef or secretRef must be set.
+                          properties:
+                            name:
+                              description: Name of the referent.
+                              type: string
+                          required:
+                          - name
+                          type: object
+                        subPath:
+                          description: |-
+                            SubPath mounts a single key from the ConfigMap/Secret as a file at MountPath
+                            instead of mounting the entire map as a directory.
+                          type: string
+                      required:
+                      - mountPath
+                      type: object
                     type: array
                   retry:
                     description: Retry policy for publish failures
@@ -1705,6 +1904,44 @@ spec:
                   Set to false to disable PVC creation for simple jobs that don't need artifact persistence
                   Defaults to true (PVC created for all build jobs)
                 type: boolean
+              volumeSizes:
+                description: |-
+                  VolumeSizes allows customizing the size limits of EmptyDir volumes mounted in job pods.
+                  Configurable volumes: workspace (default 10Gi), output (default 10Gi), tmp (default 1Gi), home (default 1Gi).
+                properties:
+                  home:
+                    anyOf:
+                    - type: integer
+                    - type: string
+                    description: 'Home is the size limit for the home directory EmptyDir
+                      volume (default: 1Gi).'
+                    pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                    x-kubernetes-int-or-string: true
+                  output:
+                    anyOf:
+                    - type: integer
+                    - type: string
+                    description: 'Output is the size limit for the output EmptyDir
+                      volume (default: 10Gi).'
+                    pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                    x-kubernetes-int-or-string: true
+                  tmp:
+                    anyOf:
+                    - type: integer
+                    - type: string
+                    description: 'Tmp is the size limit for the /tmp EmptyDir volume
+                      (default: 1Gi).'
+                    pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                    x-kubernetes-int-or-string: true
+                  workspace:
+                    anyOf:
+                    - type: integer
+                    - type: string
+                    description: 'Workspace is the size limit for the workspace EmptyDir
+                      volume (default: 10Gi).'
+                    pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                    x-kubernetes-int-or-string: true
+                type: object
             required:
             - action
             - serviceAccountName

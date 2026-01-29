@@ -12,7 +12,7 @@ func (in *ExtraMount) DeepCopyInto(out *ExtraMount) {
 		*out = new(LocalObjectReference)
 		**out = **in
 	}
-	if in.SecretRef != nil { // pragma: allowlist secret
+	if in.SecretRef != nil {
 		in, out := &in.SecretRef, &out.SecretRef
 		*out = new(LocalObjectReference)
 		**out = **in

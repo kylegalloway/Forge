@@ -50,7 +50,7 @@ repos:
     hooks:
       - id: detect-secrets
         args: ['--baseline', '.secrets.baseline']
-        exclude: '^(go\.sum|\.secrets\.baseline|examples/|docs/rca/|docs/development/)'
+        exclude: '^(go\.sum|\.secrets\.baseline|examples/|docs/rca/|docs/development/|.*zz_generated\..*\.go)'
 
   # Shell script linting
   - repo: https://github.com/shellcheck-py/shellcheck-py

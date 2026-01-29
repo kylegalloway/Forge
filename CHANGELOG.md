@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.11.3] - 2026-01-28
+
 ### Fixed
 - In-cluster kubeconfig generation no longer writes literal `${SA_DIR}` in certificate-authority path. Shell variables inside single-quoted printf format strings are not expanded, causing deploy jobs to fail with "unable to read certificate-authority /tmp/.kube/${SA_DIR}/ca.crt" errors.
 
@@ -570,7 +572,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial project setup and build infrastructure
 - CI/CD pipeline configuration for automated testing and releases
 
-[Unreleased]: https://github.com/kylegalloway/forge/compare/v0.11.2...HEAD
+[Unreleased]: https://github.com/kylegalloway/forge/compare/v0.11.3...HEAD
+[0.11.3]: https://github.com/kylegalloway/forge/compare/v0.11.2...v0.11.3
 [0.11.2]: https://github.com/kylegalloway/forge/compare/v0.11.1...v0.11.2
 [0.11.1]: https://github.com/kylegalloway/forge/compare/v0.11.0...v0.11.1
 [0.11.0]: https://github.com/kylegalloway/forge/compare/v0.10.0...v0.11.0

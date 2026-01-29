@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- ExtraMounts support for ZarfPackageJob and UDSBundleJob resources. Users can now mount existing ConfigMaps and Secrets into job pods via `spec.extraMounts` (applied to all actions) and per-action `extraMounts` fields (e.g., `spec.build.extraMounts`). Both levels are merged additively with duplicate mount path validation. Reserved system paths are protected.
+
 ## [0.11.4] - 2026-01-28
 
 ### Fixed

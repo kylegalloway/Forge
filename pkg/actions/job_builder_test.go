@@ -4,6 +4,9 @@ import (
 	"strings"
 	"testing"
 
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
+
 	"github.com/kylegalloway/forge/pkg/apis/common"
 )
 
@@ -296,5 +299,148 @@ func TestJobBuilder_WithExtraMounts(t *testing.T) {
 	}
 	if !foundSecretMount {
 		t.Error("volume mount extra-mount-1 not found")
+	}
+}
+
+func findVolumeSizeLimit(t *testing.T, volumes []corev1.Volume, name string) resource.Quantity {
+	t.Helper()
+	for _, v := range volumes {
+		if v.Name == name && v.EmptyDir != nil && v.EmptyDir.SizeLimit != nil {
+			return *v.EmptyDir.SizeLimit
+		}
+	}
+	t.Fatalf("volume %q not found or has no SizeLimit", name)
+	return resource.Quantity{}
+}
+
+func TestJobBuilder_WithWorkspaceVolume_NilVolumeSizes(t *testing.T) {
+	builder := NewJobBuilder("test-job", "default").
+		WithContainerName("test").
+		WithContainerImage("test:latest").
+		WithCommand([]string{"/bin/sh", "-c"}).
+		WithArgs([]string{"echo hello"}).
+		WithWorkspaceVolume(nil)
+
+	job := builder.Build()
+	volumes := job.Spec.Template.Spec.Volumes
+
+	workspace := findVolumeSizeLimit(t, volumes, "workspace")
+	output := findVolumeSizeLimit(t, volumes, "output")
+
+	if expected := resource.MustParse("10Gi"); !workspace.Equal(expected) {
+		t.Errorf("workspace size = %s, want %s", workspace.String(), expected.String())
+	}
+	if expected := resource.MustParse("10Gi"); !output.Equal(expected) {
+		t.Errorf("output size = %s, want %s", output.String(), expected.String())
+	}
+}
+
+func TestJobBuilder_WithWorkspaceVolume_CustomSizes(t *testing.T) {
+	vs := &common.VolumeSizes{
+		Workspace: Ptr(resource.MustParse("50Gi")),
+		Output:    Ptr(resource.MustParse("25Gi")),
+	}
+
+	builder := NewJobBuilder("test-job", "default").
+		WithContainerName("test").
+		WithContainerImage("test:latest").
+		WithCommand([]string{"/bin/sh", "-c"}).
+		WithArgs([]string{"echo hello"}).
+		WithWorkspaceVolume(vs)
+
+	job := builder.Build()
+	volumes := job.Spec.Template.Spec.Volumes
+
+	workspace := findVolumeSizeLimit(t, volumes, "workspace")
+	output := findVolumeSizeLimit(t, volumes, "output")
+
+	if expected := resource.MustParse("50Gi"); !workspace.Equal(expected) {
+		t.Errorf("workspace size = %s, want %s", workspace.String(), expected.String())
+	}
+	if expected := resource.MustParse("25Gi"); !output.Equal(expected) {
+		t.Errorf("output size = %s, want %s", output.String(), expected.String())
+	}
+}
+
+func TestJobBuilder_WithWorkspaceVolume_PartialOverride(t *testing.T) {
+	vs := &common.VolumeSizes{
+		Workspace: Ptr(resource.MustParse("50Gi")),
+		// Output not set — should default to 10Gi
+	}
+
+	builder := NewJobBuilder("test-job", "default").
+		WithContainerName("test").
+		WithContainerImage("test:latest").
+		WithCommand([]string{"/bin/sh", "-c"}).
+		WithArgs([]string{"echo hello"}).
+		WithWorkspaceVolume(vs)
+
+	job := builder.Build()
+	volumes := job.Spec.Template.Spec.Volumes
+
+	workspace := findVolumeSizeLimit(t, volumes, "workspace")
+	output := findVolumeSizeLimit(t, volumes, "output")
+
+	if expected := resource.MustParse("50Gi"); !workspace.Equal(expected) {
+		t.Errorf("workspace size = %s, want %s", workspace.String(), expected.String())
+	}
+	if expected := resource.MustParse("10Gi"); !output.Equal(expected) {
+		t.Errorf("output size = %s, want %s", output.String(), expected.String())
+	}
+}
+
+func TestJobBuilder_Build_CustomTmpAndHomeSizes(t *testing.T) {
+	vs := &common.VolumeSizes{
+		Tmp:  Ptr(resource.MustParse("5Gi")),
+		Home: Ptr(resource.MustParse("2Gi")),
+	}
+
+	builder := NewJobBuilder("test-job", "default").
+		WithContainerName("test").
+		WithContainerImage("test:latest").
+		WithCommand([]string{"/bin/sh", "-c"}).
+		WithArgs([]string{"echo hello"}).
+		WithWorkspaceVolume(vs).
+		WithUserConfig(1000) // sets homeDir
+
+	job := builder.Build()
+	volumes := job.Spec.Template.Spec.Volumes
+
+	tmp := findVolumeSizeLimit(t, volumes, "tmp")
+	home := findVolumeSizeLimit(t, volumes, "home")
+
+	if expected := resource.MustParse("5Gi"); !tmp.Equal(expected) {
+		t.Errorf("tmp size = %s, want %s", tmp.String(), expected.String())
+	}
+	if expected := resource.MustParse("2Gi"); !home.Equal(expected) {
+		t.Errorf("home size = %s, want %s", home.String(), expected.String())
+	}
+}
+
+func TestJobBuilder_Build_PartialTmpOnly(t *testing.T) {
+	vs := &common.VolumeSizes{
+		Tmp: Ptr(resource.MustParse("3Gi")),
+		// Home not set — should default to 1Gi
+	}
+
+	builder := NewJobBuilder("test-job", "default").
+		WithContainerName("test").
+		WithContainerImage("test:latest").
+		WithCommand([]string{"/bin/sh", "-c"}).
+		WithArgs([]string{"echo hello"}).
+		WithWorkspaceVolume(vs).
+		WithUserConfig(1000)
+
+	job := builder.Build()
+	volumes := job.Spec.Template.Spec.Volumes
+
+	tmp := findVolumeSizeLimit(t, volumes, "tmp")
+	home := findVolumeSizeLimit(t, volumes, "home")
+
+	if expected := resource.MustParse("3Gi"); !tmp.Equal(expected) {
+		t.Errorf("tmp size = %s, want %s", tmp.String(), expected.String())
+	}
+	if expected := resource.MustParse("1Gi"); !home.Equal(expected) {
+		t.Errorf("home size = %s, want %s", home.String(), expected.String())
 	}
 }

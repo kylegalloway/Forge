@@ -2,6 +2,7 @@ package zarf
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -804,4 +805,151 @@ func findSubstring(s, substr string) bool {
 		}
 	}
 	return false
+}
+
+func TestBuildHandlerExecute_WithExtraMounts(t *testing.T) {
+	kubeClient := kubefake.NewClientset()
+	handler := NewBuildHandler(kubeClient, testhelpers.MustNewMetrics(), telemetry.NewTracer())
+
+	pkg := &zarfv1alpha3.ZarfPackageJob{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-build-extra-mounts",
+			Namespace: "default",
+		},
+		Spec: zarfv1alpha3.ZarfPackageJobSpec{
+			ServiceAccountName: "test-sa",
+			Action:             zarfv1alpha3.ActionBuild,
+			Source: zarfv1alpha3.PackageSource{
+				Type: zarfv1alpha3.SourceTypeGit,
+				Git: &zarfv1alpha3.GitSource{
+					URL: "https://github.com/test/repo",
+				},
+			},
+			ExtraMounts: []common.ExtraMount{
+				{
+					ConfigMapRef: &common.LocalObjectReference{Name: "my-configmap"},
+					MountPath:    "/etc/config",
+				},
+			},
+			Build: &zarfv1alpha3.BuildConfig{
+				ExtraMounts: []common.ExtraMount{
+					{
+						SecretRef: &common.LocalObjectReference{Name: "my-secret"},
+						MountPath: "/etc/secret",
+					},
+				},
+			},
+		},
+	}
+
+	result, err := handler.Execute(context.Background(), pkg, "")
+	if err != nil {
+		t.Fatalf("BuildHandler.Execute() with extra mounts failed: %v", err)
+	}
+	if result == nil {
+		t.Fatal("Expected non-nil result")
+	}
+
+	// Verify the job was created
+	jobs, err := kubeClient.BatchV1().Jobs("default").List(context.Background(), metav1.ListOptions{})
+	if err != nil {
+		t.Fatalf("Failed to list jobs: %v", err)
+	}
+	if len(jobs.Items) != 1 {
+		t.Fatalf("Expected 1 job, got %d", len(jobs.Items))
+	}
+
+	job := jobs.Items[0]
+
+	// Verify extra mount volumes are present
+	foundExtraMount0 := false
+	foundExtraMount1 := false
+	for _, vol := range job.Spec.Template.Spec.Volumes {
+		if vol.Name == "extra-mount-0" {
+			foundExtraMount0 = true
+			if vol.ConfigMap == nil || vol.ConfigMap.Name != "my-configmap" {
+				t.Error("extra-mount-0 volume not configured as expected ConfigMap")
+			}
+		}
+		if vol.Name == "extra-mount-1" {
+			foundExtraMount1 = true
+			if vol.Secret == nil || vol.Secret.SecretName != "my-secret" { // pragma: allowlist secret
+				t.Error("extra-mount-1 volume not configured as expected Secret")
+			}
+		}
+	}
+	if !foundExtraMount0 {
+		t.Error("extra-mount-0 volume not found in job spec")
+	}
+	if !foundExtraMount1 {
+		t.Error("extra-mount-1 volume not found in job spec")
+	}
+
+	// Verify extra mount volume mounts are on the container
+	foundMount0 := false
+	foundMount1 := false
+	for _, mount := range job.Spec.Template.Spec.Containers[0].VolumeMounts {
+		if mount.Name == "extra-mount-0" {
+			foundMount0 = true
+			if mount.MountPath != "/etc/config" {
+				t.Errorf("extra-mount-0 mount path = %q, want %q", mount.MountPath, "/etc/config")
+			}
+		}
+		if mount.Name == "extra-mount-1" {
+			foundMount1 = true
+			if mount.MountPath != "/etc/secret" {
+				t.Errorf("extra-mount-1 mount path = %q, want %q", mount.MountPath, "/etc/secret")
+			}
+		}
+	}
+	if !foundMount0 {
+		t.Error("extra-mount-0 volume mount not found on container")
+	}
+	if !foundMount1 {
+		t.Error("extra-mount-1 volume mount not found on container")
+	}
+}
+
+func TestBuildHandlerExecute_WithExtraMountsConflict(t *testing.T) {
+	kubeClient := kubefake.NewClientset()
+	handler := NewBuildHandler(kubeClient, testhelpers.MustNewMetrics(), telemetry.NewTracer())
+
+	pkg := &zarfv1alpha3.ZarfPackageJob{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-build-extra-mounts-conflict",
+			Namespace: "default",
+		},
+		Spec: zarfv1alpha3.ZarfPackageJobSpec{
+			ServiceAccountName: "test-sa",
+			Action:             zarfv1alpha3.ActionBuild,
+			Source: zarfv1alpha3.PackageSource{
+				Type: zarfv1alpha3.SourceTypeGit,
+				Git: &zarfv1alpha3.GitSource{
+					URL: "https://github.com/test/repo",
+				},
+			},
+			ExtraMounts: []common.ExtraMount{
+				{
+					ConfigMapRef: &common.LocalObjectReference{Name: "spec-configmap"},
+					MountPath:    "/etc/custom",
+				},
+			},
+			Build: &zarfv1alpha3.BuildConfig{
+				ExtraMounts: []common.ExtraMount{
+					{
+						SecretRef: &common.LocalObjectReference{Name: "build-secret"},
+						MountPath: "/etc/custom",
+					},
+				},
+			},
+		},
+	}
+
+	_, err := handler.Execute(context.Background(), pkg, "")
+	if err == nil {
+		t.Fatal("Expected error for conflicting extraMounts, got nil")
+	}
+	if !strings.Contains(err.Error(), "extraMounts") {
+		t.Errorf("Expected error to contain 'extraMounts', got: %v", err)
+	}
 }

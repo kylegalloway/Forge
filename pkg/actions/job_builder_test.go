@@ -3,6 +3,8 @@ package actions
 import (
 	"strings"
 	"testing"
+
+	"github.com/kylegalloway/forge/pkg/apis/common"
 )
 
 func TestJobBuilder_DebugMode(t *testing.T) {
@@ -175,5 +177,124 @@ func TestShouldDebugAction(t *testing.T) {
 					tt.debugMode, tt.debugActions, tt.currentAction, got, tt.want)
 			}
 		})
+	}
+}
+
+func TestJobBuilder_WithExtraMounts(t *testing.T) {
+	mounts := []common.ExtraMount{
+		{
+			ConfigMapRef: &common.LocalObjectReference{Name: "my-config"},
+			MountPath:    "/etc/my-config",
+		},
+		{
+			SecretRef: &common.LocalObjectReference{Name: "my-secret"},
+			MountPath: "/etc/my-secret/credentials",
+			SubPath:   "credentials",
+			ReadOnly:  Ptr(false),
+		},
+	}
+
+	builder := NewJobBuilder("extra-mount-test", "default").
+		WithContainerName("test-container").
+		WithContainerImage("test-image:latest").
+		WithCommand([]string{"/bin/sh", "-c"}).
+		WithArgs([]string{"echo hello"}).
+		WithExtraMounts(mounts)
+
+	job := builder.Build()
+
+	if len(job.Spec.Template.Spec.Containers) == 0 {
+		t.Fatal("expected at least one container")
+	}
+
+	// Collect volumes and volume mounts from the built job
+	volumes := job.Spec.Template.Spec.Volumes
+	container := job.Spec.Template.Spec.Containers[0]
+	volumeMounts := container.VolumeMounts
+
+	// --- Verify volumes ---
+
+	// Find extra-mount-0 (ConfigMap)
+	var foundCMVol bool
+	for _, v := range volumes {
+		if v.Name == "extra-mount-0" {
+			foundCMVol = true
+			if v.ConfigMap == nil {
+				t.Error("extra-mount-0 should have a ConfigMapVolumeSource")
+			} else if v.ConfigMap.Name != "my-config" {
+				t.Errorf("extra-mount-0 ConfigMap name = %q, want %q", v.ConfigMap.Name, "my-config")
+			}
+			if v.Secret != nil { // pragma: allowlist secret
+				t.Error("extra-mount-0 should not have a SecretVolumeSource")
+			}
+			break
+		}
+	}
+	if !foundCMVol {
+		t.Error("volume extra-mount-0 not found")
+	}
+
+	// Find extra-mount-1 (Secret)
+	var foundSecretVol bool
+	for _, v := range volumes {
+		if v.Name == "extra-mount-1" {
+			foundSecretVol = true // pragma: allowlist secret
+			if v.Secret == nil {  // pragma: allowlist secret
+				t.Error("extra-mount-1 should have a SecretVolumeSource")
+			} else if v.Secret.SecretName != "my-secret" { // pragma: allowlist secret
+				t.Errorf("extra-mount-1 Secret name = %q, want %q", v.Secret.SecretName, "my-secret")
+			}
+			if v.ConfigMap != nil {
+				t.Error("extra-mount-1 should not have a ConfigMapVolumeSource")
+			}
+			break
+		}
+	}
+	if !foundSecretVol {
+		t.Error("volume extra-mount-1 not found")
+	}
+
+	// --- Verify volume mounts ---
+
+	// Find mount for extra-mount-0 (ConfigMap mount)
+	var foundCMMount bool
+	for _, vm := range volumeMounts {
+		if vm.Name == "extra-mount-0" {
+			foundCMMount = true
+			if vm.MountPath != "/etc/my-config" {
+				t.Errorf("extra-mount-0 MountPath = %q, want %q", vm.MountPath, "/etc/my-config")
+			}
+			if !vm.ReadOnly {
+				t.Error("extra-mount-0 should default to ReadOnly=true")
+			}
+			if vm.SubPath != "" {
+				t.Errorf("extra-mount-0 SubPath = %q, want empty", vm.SubPath)
+			}
+			break
+		}
+	}
+	if !foundCMMount {
+		t.Error("volume mount extra-mount-0 not found")
+	}
+
+	// Find mount for extra-mount-1 (Secret mount with SubPath and ReadOnly=false)
+	var foundSecretMount bool
+	for _, vm := range volumeMounts {
+		if vm.Name == "extra-mount-1" {
+			foundSecretMount = true // pragma: allowlist secret
+			if vm.MountPath != "/etc/my-secret/credentials" {
+				t.Errorf("extra-mount-1 MountPath = %q, want %q", vm.MountPath, "/etc/my-secret/credentials")
+			}
+			if vm.ReadOnly {
+				t.Error("extra-mount-1 should have ReadOnly=false when explicitly set")
+			}
+			if vm.SubPath != "credentials" {
+				t.Errorf("extra-mount-1 SubPath = %q, want %q", vm.SubPath, "credentials")
+			}
+			break
+		}
+	}
+	if !foundSecretMount {
+		t.Error("volume mount extra-mount-1 not found")
 	}
 }

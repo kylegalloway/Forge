@@ -1112,3 +1112,143 @@ func TestCreateHandlerBuildUDSCommandWithVariables(t *testing.T) {
 		})
 	}
 }
+
+// TestCreateHandlerExecute_WithExtraMounts tests that create handler correctly creates a job with extra mounts
+func TestCreateHandlerExecute_WithExtraMounts(t *testing.T) {
+	kubeClient := kubefake.NewClientset()
+	handler := NewCreateHandler(kubeClient, testhelpers.MustNewMetrics(), telemetry.NewTracer())
+
+	bundle := &udsv1alpha3.UDSBundleJob{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-create-extramounts",
+			Namespace: "default",
+		},
+		Spec: udsv1alpha3.UDSBundleJobSpec{
+			ServiceAccountName: "test-sa",
+			Action:             udsv1alpha3.ActionCreate,
+			Source: udsv1alpha3.PackageSource{
+				Type: udsv1alpha3.SourceTypeGit,
+				Git: &udsv1alpha3.GitSource{
+					URL: "https://github.com/test/repo",
+					Ref: "main",
+				},
+			},
+			ExtraMounts: []common.ExtraMount{
+				{
+					ConfigMapRef: &common.LocalObjectReference{Name: "shared-config"},
+					MountPath:    "/etc/shared",
+				},
+			},
+			Create: &udsv1alpha3.CreateConfig{
+				ExtraMounts: []common.ExtraMount{
+					{
+						SecretRef: &common.LocalObjectReference{Name: "override-secret"},
+						MountPath: "/workspace/overrides",
+					},
+				},
+			},
+		},
+	}
+
+	result, err := handler.Execute(context.Background(), bundle, "")
+	if err != nil {
+		t.Fatalf("Execute() unexpected error: %v", err)
+	}
+	if result == nil {
+		t.Fatal("Execute() returned nil result")
+	}
+
+	// List jobs from kubeClient to verify the job was created
+	jobs, err := kubeClient.BatchV1().Jobs("default").List(context.Background(), metav1.ListOptions{})
+	if err != nil {
+		t.Fatalf("Failed to list jobs: %v", err)
+	}
+	if len(jobs.Items) != 1 {
+		t.Fatalf("Expected 1 job, got %d", len(jobs.Items))
+	}
+
+	job := jobs.Items[0]
+
+	// Verify the job's volumes contain the extra mount volumes
+	foundExtraMount0 := false
+	foundExtraMount1 := false
+	for _, vol := range job.Spec.Template.Spec.Volumes {
+		if vol.Name == "extra-mount-0" {
+			foundExtraMount0 = true
+		}
+		if vol.Name == "extra-mount-1" {
+			foundExtraMount1 = true
+		}
+	}
+	if !foundExtraMount0 {
+		t.Error("Expected volume 'extra-mount-0' not found in job volumes")
+	}
+	if !foundExtraMount1 {
+		t.Error("Expected volume 'extra-mount-1' not found in job volumes")
+	}
+
+	// Verify the container's volume mounts include the extra mount paths
+	container := job.Spec.Template.Spec.Containers[0]
+	foundSharedMount := false
+	foundOverridesMount := false
+	for _, vm := range container.VolumeMounts {
+		if vm.MountPath == "/etc/shared" {
+			foundSharedMount = true
+		}
+		if vm.MountPath == "/workspace/overrides" {
+			foundOverridesMount = true
+		}
+	}
+	if !foundSharedMount {
+		t.Error("Expected volume mount at '/etc/shared' not found in container volume mounts")
+	}
+	if !foundOverridesMount {
+		t.Error("Expected volume mount at '/workspace/overrides' not found in container volume mounts")
+	}
+}
+
+// TestCreateHandlerExecute_WithExtraMountsConflict tests that duplicate mountPaths are rejected
+func TestCreateHandlerExecute_WithExtraMountsConflict(t *testing.T) {
+	kubeClient := kubefake.NewClientset()
+	handler := NewCreateHandler(kubeClient, testhelpers.MustNewMetrics(), telemetry.NewTracer())
+
+	bundle := &udsv1alpha3.UDSBundleJob{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-create-extramounts-conflict",
+			Namespace: "default",
+		},
+		Spec: udsv1alpha3.UDSBundleJobSpec{
+			ServiceAccountName: "test-sa",
+			Action:             udsv1alpha3.ActionCreate,
+			Source: udsv1alpha3.PackageSource{
+				Type: udsv1alpha3.SourceTypeGit,
+				Git: &udsv1alpha3.GitSource{
+					URL: "https://github.com/test/repo",
+					Ref: "main",
+				},
+			},
+			ExtraMounts: []common.ExtraMount{
+				{
+					ConfigMapRef: &common.LocalObjectReference{Name: "custom-config"},
+					MountPath:    "/etc/custom",
+				},
+			},
+			Create: &udsv1alpha3.CreateConfig{
+				ExtraMounts: []common.ExtraMount{
+					{
+						SecretRef: &common.LocalObjectReference{Name: "custom-secret"},
+						MountPath: "/etc/custom",
+					},
+				},
+			},
+		},
+	}
+
+	_, err := handler.Execute(context.Background(), bundle, "")
+	if err == nil {
+		t.Fatal("Execute() expected error for duplicate mountPath, got nil")
+	}
+	if !strings.Contains(err.Error(), "extraMounts") {
+		t.Errorf("Execute() error = %q, expected it to contain 'extraMounts'", err.Error())
+	}
+}

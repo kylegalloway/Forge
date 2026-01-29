@@ -44,6 +44,7 @@ type JobBuilder struct {
 	containerSecurityContext *corev1.SecurityContext
 	serviceAccountName       string
 	debugMode                bool
+	volumeSizes              *common.VolumeSizes
 }
 
 // NewJobBuilder creates a new JobBuilder with basic metadata.
@@ -195,9 +196,21 @@ func (b *JobBuilder) WithInitContainers(containers []corev1.Container) *JobBuild
 
 // WithWorkspaceVolume adds workspace and output EmptyDir volumes.
 // Volumes have size limits for Kyverno/PSS compliance: 10Gi for workspace, 10Gi for output.
-func (b *JobBuilder) WithWorkspaceVolume() *JobBuilder {
+// Custom sizes can be provided via volumeSizes; nil or unset fields use the defaults.
+func (b *JobBuilder) WithWorkspaceVolume(volumeSizes *common.VolumeSizes) *JobBuilder {
+	b.volumeSizes = volumeSizes
+
 	workspaceSizeLimit := resource.MustParse("10Gi")
 	outputSizeLimit := resource.MustParse("10Gi")
+	if volumeSizes != nil {
+		if volumeSizes.Workspace != nil {
+			workspaceSizeLimit = *volumeSizes.Workspace
+		}
+		if volumeSizes.Output != nil {
+			outputSizeLimit = *volumeSizes.Output
+		}
+	}
+
 	b.volumes = append(b.volumes,
 		corev1.Volume{
 			Name: "workspace",
@@ -601,6 +614,9 @@ func (b *JobBuilder) Build() *batchv1.Job {
 	// Add /tmp emptyDir volume for containers with readOnlyRootFilesystem
 	// This allows tools to write temporary files (required for Kyverno/PSS compliance)
 	tmpSizeLimit := resource.MustParse("1Gi")
+	if b.volumeSizes != nil && b.volumeSizes.Tmp != nil {
+		tmpSizeLimit = *b.volumeSizes.Tmp
+	}
 	b.volumes = append(b.volumes, corev1.Volume{
 		Name: "tmp",
 		VolumeSource: corev1.VolumeSource{
@@ -618,6 +634,9 @@ func (b *JobBuilder) Build() *batchv1.Job {
 	// This allows tools to write config files to their home directory (e.g., .cache, .config)
 	if b.homeDir != "" {
 		homeSizeLimit := resource.MustParse("1Gi")
+		if b.volumeSizes != nil && b.volumeSizes.Home != nil {
+			homeSizeLimit = *b.volumeSizes.Home
+		}
 		b.volumes = append(b.volumes, corev1.Volume{
 			Name: "home",
 			VolumeSource: corev1.VolumeSource{

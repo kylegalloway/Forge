@@ -131,7 +131,7 @@ func (handler *CreateHandler) createBundleJob(ctx context.Context, bundle *udsv1
 		WithActiveDeadlineSeconds(activeDeadlineSeconds).
 		WithTTLSecondsAfterFinished(3600).
 		WithInitContainers(initContainers).
-		WithWorkspaceVolume().
+		WithWorkspaceVolume(bundle.Spec.VolumeSizes).
 		WithArtifactPVC(artifactPVCName).
 		WithDebugMode(actions.ShouldDebugAction(bundle.GetDebugMode() || constants.DebugMode, bundle.GetDebugActions(), constants.ActionCreate))
 

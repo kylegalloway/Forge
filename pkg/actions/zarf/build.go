@@ -135,7 +135,7 @@ func (handler *BuildHandler) createBuildJob(ctx context.Context, pkg *zarfv1alph
 		WithActiveDeadlineSeconds(activeDeadlineSeconds).
 		WithTTLSecondsAfterFinished(3600).
 		WithInitContainers(initContainers).
-		WithWorkspaceVolume().
+		WithWorkspaceVolume(pkg.Spec.VolumeSizes).
 		WithArtifactPVC(artifactPVCName).
 		WithDebugMode(actions.ShouldDebugAction(pkg.GetDebugMode() || constants.DebugMode, pkg.GetDebugActions(), constants.ActionBuild))
 

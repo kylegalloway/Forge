@@ -139,7 +139,7 @@ func (handler *DeployHandler) createDeployJob(ctx context.Context, bundle *udsv1
 		WithActiveDeadlineSeconds(activeDeadlineSeconds).
 		WithTTLSecondsAfterFinished(3600).
 		WithInitContainers(initContainers).
-		WithWorkspaceVolume().
+		WithWorkspaceVolume(bundle.Spec.VolumeSizes).
 		WithArtifactPVC(artifactPVCName).
 		WithServiceAccountName(bundle.Spec.ServiceAccountName).
 		WithDebugMode(actions.ShouldDebugAction(bundle.GetDebugMode() || constants.DebugMode, bundle.GetDebugActions(), constants.ActionDeploy))

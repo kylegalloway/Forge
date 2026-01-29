@@ -139,7 +139,7 @@ func (handler *PublishHandler) createPublishJob(ctx context.Context, pkg *zarfv1
 		WithActiveDeadlineSeconds(activeDeadlineSeconds).
 		WithTTLSecondsAfterFinished(3600).
 		WithInitContainers(initContainers).
-		WithWorkspaceVolume().
+		WithWorkspaceVolume(pkg.Spec.VolumeSizes).
 		WithArtifactPVC(artifactPVCName).
 		WithDebugMode(actions.ShouldDebugAction(pkg.GetDebugMode() || constants.DebugMode, pkg.GetDebugActions(), constants.ActionPublish))
 

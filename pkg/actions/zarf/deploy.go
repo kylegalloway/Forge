@@ -138,7 +138,7 @@ func (handler *DeployHandler) createDeployJob(ctx context.Context, pkg *zarfv1al
 		WithActiveDeadlineSeconds(activeDeadlineSeconds).
 		WithTTLSecondsAfterFinished(3600).
 		WithInitContainers(initContainers).
-		WithWorkspaceVolume().
+		WithWorkspaceVolume(pkg.Spec.VolumeSizes).
 		WithArtifactPVC(artifactPVCName).
 		WithDebugMode(actions.ShouldDebugAction(pkg.GetDebugMode() || constants.DebugMode, pkg.GetDebugActions(), constants.ActionDeploy))
 

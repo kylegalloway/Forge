@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- In-cluster kubeconfig generation no longer writes literal `${SA_DIR}` in certificate-authority path. Shell variables inside single-quoted printf format strings are not expanded, causing deploy jobs to fail with "unable to read certificate-authority /tmp/.kube/${SA_DIR}/ca.crt" errors.
+
 ### Changed
 - LICENSE now includes proper copyright attribution (2025 Kyle Galloway) instead of placeholder text
 

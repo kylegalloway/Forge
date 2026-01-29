@@ -130,7 +130,7 @@ const (
 		`mkdir -p /tmp/.kube && ` +
 		`TOKEN=$(cat ${SA_DIR}/token) && ` +
 		`API_SERVER="${KUBERNETES_SERVICE_HOST:-kubernetes.default.svc}:${KUBERNETES_SERVICE_PORT:-443}" && ` +
-		`printf 'apiVersion: v1\nkind: Config\nclusters:\n- cluster:\n    certificate-authority: ${SA_DIR}/ca.crt\n    server: https://%s\n  name: in-cluster\ncontexts:\n- context:\n    cluster: in-cluster\n    namespace: default\n    user: service-account\n  name: in-cluster\ncurrent-context: in-cluster\nusers:\n- name: service-account\n  user:\n    token: %s\n' "$API_SERVER" "$TOKEN" > /tmp/.kube/config && ` +
+		`printf 'apiVersion: v1\nkind: Config\nclusters:\n- cluster:\n    certificate-authority: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt\n    server: https://%s\n  name: in-cluster\ncontexts:\n- context:\n    cluster: in-cluster\n    namespace: default\n    user: service-account\n  name: in-cluster\ncurrent-context: in-cluster\nusers:\n- name: service-account\n  user:\n    token: %s\n' "$API_SERVER" "$TOKEN" > /tmp/.kube/config && ` +
 		`export KUBECONFIG=/tmp/.kube/config && `
 )
 

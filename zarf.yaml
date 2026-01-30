@@ -2,7 +2,7 @@ kind: ZarfPackageConfig
 metadata:
   name: forge
   description: "Forge - Kubernetes controller for managing Zarf package and UDS bundle operations"
-  version: "0.11.5"
+  version: "0.11.6"
   url: https://github.com/kylegalloway/forge
   authors: Kyle Galloway
   architecture: multi
@@ -17,28 +17,28 @@ components:
       - name: forge
         localPath: chart/forge
         namespace: forge-system
-        version: 0.11.5
+        version: 0.11.6
         valuesFiles:
           - chart/forge/values.yaml
     images:
       # Forge controller image
-      - ghcr.io/kylegalloway/forge/forge-controller:v0.11.5
+      - ghcr.io/kylegalloway/forge/forge-controller:v0.11.6
       # Forge webhook image
-      - ghcr.io/kylegalloway/forge/forge-webhook:v0.11.5
+      - ghcr.io/kylegalloway/forge/forge-webhook:v0.11.6
 
   # Forge Zarf package job image for running ZarfPackageJobs
   - name: zarfpackagejob
     description: "Forge container image used by ZarfPackageJobs to run package build/deploy/publish jobs"
     required: true
     images:
-      - ghcr.io/kylegalloway/forge/zarfpackagejob:v0.11.5
+      - ghcr.io/kylegalloway/forge/zarfpackagejob:v0.11.6
 
   # Forge UDS bundle job image for running UDSBundleJobs
   - name: udsbundlejob
     description: "Forge container image used by UDSBundleJobs to run bundle create/deploy/publish jobs"
     required: true
     images:
-      - ghcr.io/kylegalloway/forge/udsbundlejob:v0.11.5
+      - ghcr.io/kylegalloway/forge/udsbundlejob:v0.11.6
 
   # Optional: Image scanning tools
   - name: image-scanning

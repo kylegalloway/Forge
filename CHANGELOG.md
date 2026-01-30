@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.11.6] - 2026-01-30
+
 ### Fixed
 - Zarf publish handler was not passing `spec.serviceAccountName` to the publish job pod. This caused `credentialRef.type=Node` (IRSA) to fail because the pod used the default service account instead of the one annotated with the IAM role ARN.
 
@@ -593,7 +595,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial project setup and build infrastructure
 - CI/CD pipeline configuration for automated testing and releases
 
-[Unreleased]: https://github.com/kylegalloway/forge/compare/v0.11.5...HEAD
+[Unreleased]: https://github.com/kylegalloway/forge/compare/v0.11.6...HEAD
+[0.11.6]: https://github.com/kylegalloway/forge/compare/v0.11.5...v0.11.6
 [0.11.5]: https://github.com/kylegalloway/forge/compare/v0.11.4...v0.11.5
 [0.11.4]: https://github.com/kylegalloway/forge/compare/v0.11.3...v0.11.4
 [0.11.3]: https://github.com/kylegalloway/forge/compare/v0.11.2...v0.11.3

@@ -141,6 +141,7 @@ func (handler *PublishHandler) createPublishJob(ctx context.Context, pkg *zarfv1
 		WithInitContainers(initContainers).
 		WithWorkspaceVolume(pkg.Spec.VolumeSizes).
 		WithArtifactPVC(artifactPVCName).
+		WithServiceAccountName(pkg.Spec.ServiceAccountName).
 		WithDebugMode(actions.ShouldDebugAction(pkg.GetDebugMode() || constants.DebugMode, pkg.GetDebugActions(), constants.ActionPublish))
 
 	// Add source credential volume if OCI source with credentials

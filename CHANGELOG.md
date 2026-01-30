@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Zarf publish handler was not passing `spec.serviceAccountName` to the publish job pod. This caused `credentialRef.type=Node` (IRSA) to fail because the pod used the default service account instead of the one annotated with the IAM role ARN.
+
 ## [0.11.5] - 2026-01-29
 
 ### Fixed

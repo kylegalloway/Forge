@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.11.7] - 2026-01-30
+
 ### Fixed
 - Zarf deploy handler produced a malformed command (`zarf package deploy  --confirm`) for standalone Deploy actions because `artifactPath` was empty. Now falls back to searching the workspace (`/workspace/*.tar.zst`), matching the UDS deploy handler's behavior.
 
@@ -598,7 +600,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial project setup and build infrastructure
 - CI/CD pipeline configuration for automated testing and releases
 
-[Unreleased]: https://github.com/kylegalloway/forge/compare/v0.11.6...HEAD
+[Unreleased]: https://github.com/kylegalloway/forge/compare/v0.11.7...HEAD
+[0.11.7]: https://github.com/kylegalloway/forge/compare/v0.11.6...v0.11.7
 [0.11.6]: https://github.com/kylegalloway/forge/compare/v0.11.5...v0.11.6
 [0.11.5]: https://github.com/kylegalloway/forge/compare/v0.11.4...v0.11.5
 [0.11.4]: https://github.com/kylegalloway/forge/compare/v0.11.3...v0.11.4

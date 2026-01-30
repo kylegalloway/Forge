@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Zarf deploy handler produced a malformed command (`zarf package deploy  --confirm`) for standalone Deploy actions because `artifactPath` was empty. Now falls back to searching the workspace (`/workspace/*.tar.zst`), matching the UDS deploy handler's behavior.
+
 ## [0.11.6] - 2026-01-30
 
 ### Fixed

@@ -217,8 +217,15 @@ func (handler *DeployHandler) createDeployJob(ctx context.Context, pkg *zarfv1al
 func (handler *DeployHandler) buildDeployCommand(pkg *zarfv1alpha3.ZarfPackageJob, artifactPath string) (string, error) {
 	deploy := pkg.Spec.Deploy
 
+	// Determine package path - use artifactPath if provided (multi-action workflow),
+	// otherwise search workspace for package (standalone deploy)
+	packagePath := artifactPath
+	if packagePath == "" {
+		packagePath = constants.VolumeMountPathWorkspace + "/*.tar.zst"
+	}
+
 	// Base command
-	cmd := fmt.Sprintf("zarf package deploy %s --confirm", artifactPath)
+	cmd := fmt.Sprintf("zarf package deploy %s --confirm", packagePath)
 
 	// Add components if specified
 	if len(deploy.Components) > 0 {

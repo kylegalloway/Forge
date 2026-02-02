@@ -196,7 +196,7 @@ func (handler *CreateHandler) buildUDSCommand(bundle *udsv1alpha3.UDSBundleJob, 
 	// UDS bundle create command
 	// UDS CLI creates the bundle in the current directory (no --output-directory flag)
 	// We create in workspace then move to the target directory
-	cmd := "uds create . --confirm && mv uds-bundle-*.tar.zst " + outputDir + "/"
+	cmd := "uds create . --confirm"
 
 	// Add structured flags and variables if specified in Create config
 	if bundle.Spec.Create != nil {
@@ -227,6 +227,9 @@ func (handler *CreateHandler) buildUDSCommand(bundle *udsv1alpha3.UDSBundleJob, 
 			}
 		}
 	}
+
+	// Add output move command
+	cmd = fmt.Sprintf("%s && mv uds-bundle-*.tar.zst %s/", cmd, outputDir)
 
 	return cmd, workingDir, nil
 }

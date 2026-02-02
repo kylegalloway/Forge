@@ -28,7 +28,8 @@ RUN apk add --no-cache \
     bash \
     docker-cli \
     aws-cli \
-    kubectl
+    kubectl \
+    yq-go
 
 # Set shell to use pipefail
 SHELL ["/bin/ash", "-eo", "pipefail", "-c"]

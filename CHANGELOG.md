@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.11.8] - 2026-02-02
+
 ### Fixed
 - UDS bundle create command was malformed when using structured flags (`--flavor`, `--architecture`, `--skip-sbom`) or `--set` variables. The `mv` command to move the output artifact was concatenated before the flags were appended, resulting in flags being placed after the `&& mv ...` portion of the shell command. Moved the `mv` append to after all flags and extra args are built.
 
@@ -606,7 +608,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial project setup and build infrastructure
 - CI/CD pipeline configuration for automated testing and releases
 
-[Unreleased]: https://github.com/kylegalloway/forge/compare/v0.11.7...HEAD
+[Unreleased]: https://github.com/kylegalloway/forge/compare/v0.11.8...HEAD
+[0.11.8]: https://github.com/kylegalloway/forge/compare/v0.11.7...v0.11.8
 [0.11.7]: https://github.com/kylegalloway/forge/compare/v0.11.6...v0.11.7
 [0.11.6]: https://github.com/kylegalloway/forge/compare/v0.11.5...v0.11.6
 [0.11.5]: https://github.com/kylegalloway/forge/compare/v0.11.4...v0.11.5

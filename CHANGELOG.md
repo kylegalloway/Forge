@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- UDS bundle create command was malformed when using structured flags (`--flavor`, `--architecture`, `--skip-sbom`) or `--set` variables. The `mv` command to move the output artifact was concatenated before the flags were appended, resulting in flags being placed after the `&& mv ...` portion of the shell command. Moved the `mv` append to after all flags and extra args are built.
+
+### Changed
+- Added `yq-go` to both `udsbundlejob` and `zarfpackagejob` container images for YAML processing support.
+
 ## [0.11.7] - 2026-01-30
 
 ### Fixed

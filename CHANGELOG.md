@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- UDS runner pre-tasks (`preTasks`) for CreateConfig and DeployConfig. Users can now run `uds run <task-name> --set KEY=VALUE` commands before the main `uds create` or `uds deploy` command. Pre-tasks execute in order, and for deploy actions they run after kubeconfig setup so they have cluster access. Task names and variable keys/values are validated against command injection. The `tasks.yaml` file is expected to be present in the workspace from the source checkout.
+
 ### Fixed
 - UDS create and Zarf build handlers were not passing `spec.serviceAccountName` to the job pod, causing pods to use the namespace default service account. This broke RBAC enforcement and `credentialRef.type=Node` (IRSA) for create/build actions.
 

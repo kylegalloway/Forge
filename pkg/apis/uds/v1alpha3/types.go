@@ -315,6 +315,19 @@ type RetryPolicy struct {
 	RetryableErrors []string `json:"retryableErrors,omitempty"`
 }
 
+// RunnerPreTask defines a UDS runner task to execute before the main action.
+// Each pre-task runs 'uds run <name> --set KEY=VALUE' for each variable.
+type RunnerPreTask struct {
+	// Name is the UDS runner task name to execute
+	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:MinLength=1
+	Name string `json:"name"`
+
+	// Variables are key-value pairs passed as --set KEY=VALUE flags to 'uds run'
+	// +optional
+	Variables map[string]string `json:"variables,omitempty"`
+}
+
 // CreateConfig defines configuration for bundle creation
 type CreateConfig struct {
 	// ExtraMounts specifies additional ConfigMaps or Secrets to mount into the create pod.
@@ -354,6 +367,12 @@ type CreateConfig struct {
 	// SkipSBOM disables SBOM generation for faster builds
 	// +optional
 	SkipSBOM bool `json:"skipSBOM,omitempty"`
+
+	// PreTasks are UDS runner tasks to execute before 'uds create'
+	// Tasks are run in order using 'uds run <name> --set KEY=VALUE'
+	// The tasks.yaml file must be present in the workspace (from the source checkout)
+	// +optional
+	PreTasks []RunnerPreTask `json:"preTasks,omitempty"`
 
 	// ExtraArgs are additional CLI arguments passed to 'uds create'
 	// Use for flags not explicitly supported in the API
@@ -520,6 +539,13 @@ type DeployConfig struct {
 	// This passes --retries to uds deploy
 	// +optional
 	Retries *int `json:"retries,omitempty"`
+
+	// PreTasks are UDS runner tasks to execute before 'uds deploy'
+	// Tasks are run in order using 'uds run <name> --set KEY=VALUE'
+	// The tasks.yaml file must be present in the workspace (from the source checkout)
+	// Pre-tasks run after kubeconfig setup so they have cluster access if needed
+	// +optional
+	PreTasks []RunnerPreTask `json:"preTasks,omitempty"`
 
 	// ExtraArgs are additional CLI arguments passed to 'uds deploy'
 	// Use for flags not explicitly supported in the API

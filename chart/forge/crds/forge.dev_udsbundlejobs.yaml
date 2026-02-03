@@ -1052,6 +1052,30 @@ spec:
                   flavor:
                     description: Flavor specifies which bundle flavor to create
                     type: string
+                  preTasks:
+                    description: |-
+                      PreTasks are UDS runner tasks to execute before 'uds create'
+                      Tasks are run in order using 'uds run <name> --set KEY=VALUE'
+                      The tasks.yaml file must be present in the workspace (from the source checkout)
+                    items:
+                      description: |-
+                        RunnerPreTask defines a UDS runner task to execute before the main action.
+                        Each pre-task runs 'uds run <name> --set KEY=VALUE' for each variable.
+                      properties:
+                        name:
+                          description: Name is the UDS runner task name to execute
+                          minLength: 1
+                          type: string
+                        variables:
+                          additionalProperties:
+                            type: string
+                          description: Variables are key-value pairs passed as --set
+                            KEY=VALUE flags to 'uds run'
+                          type: object
+                      required:
+                      - name
+                      type: object
+                    type: array
                   registryCredentialRef:
                     description: |-
                       RegistryCredentialRef references a Secret with registry credentials for pulling
@@ -1260,6 +1284,31 @@ spec:
                   namespace:
                     description: Namespace to deploy into (if applicable)
                     type: string
+                  preTasks:
+                    description: |-
+                      PreTasks are UDS runner tasks to execute before 'uds deploy'
+                      Tasks are run in order using 'uds run <name> --set KEY=VALUE'
+                      The tasks.yaml file must be present in the workspace (from the source checkout)
+                      Pre-tasks run after kubeconfig setup so they have cluster access if needed
+                    items:
+                      description: |-
+                        RunnerPreTask defines a UDS runner task to execute before the main action.
+                        Each pre-task runs 'uds run <name> --set KEY=VALUE' for each variable.
+                      properties:
+                        name:
+                          description: Name is the UDS runner task name to execute
+                          minLength: 1
+                          type: string
+                        variables:
+                          additionalProperties:
+                            type: string
+                          description: Variables are key-value pairs passed as --set
+                            KEY=VALUE flags to 'uds run'
+                          type: object
+                      required:
+                      - name
+                      type: object
+                    type: array
                   resourceSelector:
                     description: |-
                       ResourceSelector specifies how to discover existing resources to adopt

@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - UDS create and Zarf build handlers were not passing `spec.serviceAccountName` to the job pod, causing pods to use the namespace default service account. This broke RBAC enforcement and `credentialRef.type=Node` (IRSA) for create/build actions.
+- Debug mode's `kubectl exec` instruction referenced `$POD_NAMESPACE` which is never set in the pod environment, resulting in an empty `-n` flag. The namespace is now embedded directly into the debug script at build time from the job's metadata.
 
 ## [0.11.8] - 2026-02-02
 

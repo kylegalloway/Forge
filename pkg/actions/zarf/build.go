@@ -137,6 +137,7 @@ func (handler *BuildHandler) createBuildJob(ctx context.Context, pkg *zarfv1alph
 		WithInitContainers(initContainers).
 		WithWorkspaceVolume(pkg.Spec.VolumeSizes).
 		WithArtifactPVC(artifactPVCName).
+		WithServiceAccountName(pkg.Spec.ServiceAccountName).
 		WithDebugMode(actions.ShouldDebugAction(pkg.GetDebugMode() || constants.DebugMode, pkg.GetDebugActions(), constants.ActionBuild))
 
 	// Add docker-config volume if OCI source with credentials

@@ -133,6 +133,7 @@ func (handler *CreateHandler) createBundleJob(ctx context.Context, bundle *udsv1
 		WithInitContainers(initContainers).
 		WithWorkspaceVolume(bundle.Spec.VolumeSizes).
 		WithArtifactPVC(artifactPVCName).
+		WithServiceAccountName(bundle.Spec.ServiceAccountName).
 		WithDebugMode(actions.ShouldDebugAction(bundle.GetDebugMode() || constants.DebugMode, bundle.GetDebugActions(), constants.ActionCreate))
 
 	// Add git credentials volume if needed

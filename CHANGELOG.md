@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- UDS create and Zarf build handlers were not passing `spec.serviceAccountName` to the job pod, causing pods to use the namespace default service account. This broke RBAC enforcement and `credentialRef.type=Node` (IRSA) for create/build actions.
+
 ## [0.11.8] - 2026-02-02
 
 ### Fixed

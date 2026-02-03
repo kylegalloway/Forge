@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.11.15] - 2026-02-03
+
 ### Fixed
 - UDS standalone deploy and publish searched for `/workspace/uds-bundle-*.tar.zst`, but the S3 init container downloads to `/workspace/package.tar.zst` (a generic fixed filename). The overly specific glob pattern meant S3-sourced UDS bundles silently failed to find the downloaded file. Broadened the standalone glob to `*.tar.zst`, matching the pattern Zarf deploy already uses. This works for all source types since the workspace is a clean emptyDir volume.
 
@@ -654,7 +656,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial project setup and build infrastructure
 - CI/CD pipeline configuration for automated testing and releases
 
-[Unreleased]: https://github.com/kylegalloway/forge/compare/v0.11.14...HEAD
+[Unreleased]: https://github.com/kylegalloway/forge/compare/v0.11.15...HEAD
+[0.11.15]: https://github.com/kylegalloway/forge/compare/v0.11.14...v0.11.15
 [0.11.14]: https://github.com/kylegalloway/forge/compare/v0.11.13...v0.11.14
 [0.11.13]: https://github.com/kylegalloway/forge/compare/v0.11.12...v0.11.13
 [0.11.12]: https://github.com/kylegalloway/forge/compare/v0.11.11...v0.11.12

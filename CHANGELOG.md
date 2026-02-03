@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.11.12] - 2026-02-03
+
 ### Fixed
 - Chained action jobs (BuildPublish, CreatePublish, BuildDeploy, CreateDeploy, BuildPublishDeploy, CreatePublishDeploy) were unconditionally creating source-fetching init containers (git clone, OCI pull, S3 download) in the publish/deploy step, even though the artifact was already available in the shared `/artifacts` PVC from the preceding build/create step. This caused unnecessary source fetches, wasted time, and could fail if source credentials were unavailable to the chained pod. Init containers and source credential volumes are now skipped when an artifact PVC is present.
 
@@ -638,7 +640,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial project setup and build infrastructure
 - CI/CD pipeline configuration for automated testing and releases
 
-[Unreleased]: https://github.com/kylegalloway/forge/compare/v0.11.11...HEAD
+[Unreleased]: https://github.com/kylegalloway/forge/compare/v0.11.12...HEAD
+[0.11.12]: https://github.com/kylegalloway/forge/compare/v0.11.11...v0.11.12
 [0.11.11]: https://github.com/kylegalloway/forge/compare/v0.11.10...v0.11.11
 [0.11.10]: https://github.com/kylegalloway/forge/compare/v0.11.9...v0.11.10
 [0.11.9]: https://github.com/kylegalloway/forge/compare/v0.11.8...v0.11.9

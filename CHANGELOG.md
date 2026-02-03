@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.11.13] - 2026-02-03
+
 ### Fixed
 - UDS deploy handler set `WithServiceAccountName` inside the builder chain (before credential volumes), diverging from the Zarf deploy handler which sets it as a separate statement immediately before kubeconfig volume setup. Moved service account name setup to group it with kubeconfig volume configuration, matching the Zarf pattern and ensuring consistent ordering of service-account-related operations.
 - In-cluster kubeconfig setup script had shell `$(cmd)` command substitutions that Kubernetes' container args expansion interpreted as `$(VAR_NAME)` references, replacing them with empty strings. This caused `TOKEN` and `CA_DATA` to be empty, producing a broken kubeconfig. Rewrote the script as a readable multiline constant with automatic `$(` → `$$(` escaping, and replaced `printf` with `%s` format specifiers with `echo -e` using inline `${VAR}` references.
@@ -644,7 +646,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial project setup and build infrastructure
 - CI/CD pipeline configuration for automated testing and releases
 
-[Unreleased]: https://github.com/kylegalloway/forge/compare/v0.11.12...HEAD
+[Unreleased]: https://github.com/kylegalloway/forge/compare/v0.11.13...HEAD
+[0.11.13]: https://github.com/kylegalloway/forge/compare/v0.11.12...v0.11.13
 [0.11.12]: https://github.com/kylegalloway/forge/compare/v0.11.11...v0.11.12
 [0.11.11]: https://github.com/kylegalloway/forge/compare/v0.11.10...v0.11.11
 [0.11.10]: https://github.com/kylegalloway/forge/compare/v0.11.9...v0.11.10

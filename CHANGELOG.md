@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- UDS deploy handler set `WithServiceAccountName` inside the builder chain (before credential volumes), diverging from the Zarf deploy handler which sets it as a separate statement immediately before kubeconfig volume setup. Moved service account name setup to group it with kubeconfig volume configuration, matching the Zarf pattern and ensuring consistent ordering of service-account-related operations.
+
 ## [0.11.12] - 2026-02-03
 
 ### Fixed

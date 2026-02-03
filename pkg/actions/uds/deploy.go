@@ -145,7 +145,6 @@ func (handler *DeployHandler) createDeployJob(ctx context.Context, bundle *udsv1
 		WithInitContainers(initContainers).
 		WithWorkspaceVolume(bundle.Spec.VolumeSizes).
 		WithArtifactPVC(artifactPVCName).
-		WithServiceAccountName(bundle.Spec.ServiceAccountName).
 		WithDebugMode(actions.ShouldDebugAction(bundle.GetDebugMode() || constants.DebugMode, bundle.GetDebugActions(), constants.ActionDeploy))
 
 	// Add env vars
@@ -174,6 +173,9 @@ func (handler *DeployHandler) createDeployJob(ctx context.Context, bundle *udsv1
 			}
 		}
 	}
+
+	// Add ServiceAccount and appropriate kubeconfig volume based on deploy target
+	builder.WithServiceAccountName(bundle.Spec.ServiceAccountName)
 
 	// Add kubeconfig volume based on deploy target
 	if bundle.Spec.Deploy.Target == udsv1alpha3.DeployTargetExternalCluster {

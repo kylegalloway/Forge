@@ -108,7 +108,7 @@ spec:
         mountPath: /etc/create-config
         readOnly: true
     # Pre-tasks to run before the create action (optional, UDS-only)
-    # Each task runs 'uds run <name>' with optional --set variables
+    # Each task runs 'uds run -f <name>' with optional --set variables
     preTasks:
       - name: setup-env
         variables:
@@ -223,7 +223,7 @@ spec:
           name: deploy-overrides
         mountPath: /etc/deploy-overrides
     # Pre-tasks to run before the deploy action (optional, UDS-only)
-    # Each task runs 'uds run <name>' with optional --set variables
+    # Each task runs 'uds run -f <name>' with optional --set variables
     preTasks:
       - name: pre-deploy-check
         variables:

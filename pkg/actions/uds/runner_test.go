@@ -24,8 +24,8 @@ func TestBuildPreTaskCommands_SingleTaskNoVars(t *testing.T) {
 		{Name: "setup-deps"},
 	}
 	result := buildPreTaskCommands(tasks)
-	if result != "uds run setup-deps" {
-		t.Errorf("buildPreTaskCommands() = %q, want %q", result, "uds run setup-deps")
+	if result != "uds run -f setup-deps" {
+		t.Errorf("buildPreTaskCommands() = %q, want %q", result, "uds run -f setup-deps")
 	}
 }
 
@@ -39,8 +39,8 @@ func TestBuildPreTaskCommands_SingleTaskWithVars(t *testing.T) {
 		},
 	}
 	result := buildPreTaskCommands(tasks)
-	if !strings.HasPrefix(result, "uds run setup-deps") {
-		t.Errorf("buildPreTaskCommands() = %q, want prefix %q", result, "uds run setup-deps")
+	if !strings.HasPrefix(result, "uds run -f setup-deps") {
+		t.Errorf("buildPreTaskCommands() = %q, want prefix %q", result, "uds run -f setup-deps")
 	}
 	if !strings.Contains(result, "--set ZARF_VERSION=0.40.0") {
 		t.Errorf("buildPreTaskCommands() = %q, want to contain %q", result, "--set ZARF_VERSION=0.40.0")
@@ -60,19 +60,19 @@ func TestBuildPreTaskCommands_MultipleTasks(t *testing.T) {
 	result := buildPreTaskCommands(tasks)
 
 	// Should contain both tasks joined by &&
-	if !strings.Contains(result, "uds run setup-deps") {
-		t.Errorf("buildPreTaskCommands() = %q, missing 'uds run setup-deps'", result)
+	if !strings.Contains(result, "uds run -f setup-deps") {
+		t.Errorf("buildPreTaskCommands() = %q, missing 'uds run -f setup-deps'", result)
 	}
-	if !strings.Contains(result, "uds run generate-config") {
-		t.Errorf("buildPreTaskCommands() = %q, missing 'uds run generate-config'", result)
+	if !strings.Contains(result, "uds run -f generate-config") {
+		t.Errorf("buildPreTaskCommands() = %q, missing 'uds run -f generate-config'", result)
 	}
 	if !strings.Contains(result, " && ") {
 		t.Errorf("buildPreTaskCommands() = %q, missing ' && ' separator", result)
 	}
 
 	// Verify order: setup-deps comes before generate-config
-	setupIdx := strings.Index(result, "uds run setup-deps")
-	configIdx := strings.Index(result, "uds run generate-config")
+	setupIdx := strings.Index(result, "uds run -f setup-deps")
+	configIdx := strings.Index(result, "uds run -f generate-config")
 	if setupIdx >= configIdx {
 		t.Errorf("buildPreTaskCommands() tasks in wrong order: setup-deps at %d, generate-config at %d", setupIdx, configIdx)
 	}

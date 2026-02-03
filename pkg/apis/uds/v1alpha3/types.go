@@ -316,7 +316,7 @@ type RetryPolicy struct {
 }
 
 // RunnerPreTask defines a UDS runner task to execute before the main action.
-// Each pre-task runs 'uds run <name> --set KEY=VALUE' for each variable.
+// Each pre-task runs 'uds run -f <name> --set KEY=VALUE' for each variable.
 type RunnerPreTask struct {
 	// Name is the UDS runner task name to execute
 	// +kubebuilder:validation:Required
@@ -364,7 +364,7 @@ type CreateConfig struct {
 	SkipSBOM bool `json:"skipSBOM,omitempty"`
 
 	// PreTasks are UDS runner tasks to execute before 'uds create'
-	// Tasks are run in order using 'uds run <name> --set KEY=VALUE'
+	// Tasks are run in order using 'uds run -f <name> --set KEY=VALUE'
 	// The tasks.yaml file must be present in the workspace (from the source checkout)
 	// +optional
 	PreTasks []RunnerPreTask `json:"preTasks,omitempty"`
@@ -536,7 +536,7 @@ type DeployConfig struct {
 	Retries *int `json:"retries,omitempty"`
 
 	// PreTasks are UDS runner tasks to execute before 'uds deploy'
-	// Tasks are run in order using 'uds run <name> --set KEY=VALUE'
+	// Tasks are run in order using 'uds run -f <name> --set KEY=VALUE'
 	// The tasks.yaml file must be present in the workspace (from the source checkout)
 	// Pre-tasks run after kubeconfig setup so they have cluster access if needed
 	// +optional

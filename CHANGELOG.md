@@ -7,13 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Pre-task runner commands were missing the `-f` flag, running `uds run <name>` instead of `uds run -f <name>`. Without `-f`, `uds run` does not read the tasks file and the task name is not resolved correctly. Updated the runner, CRDs, types, docs, reference YAMLs, and tests.
+
 ### Removed
 - `variables` field from `CreateConfig` (`spec.create.variables`). The `uds create` CLI does not accept `--set` flags; variables/set flags are only valid on pre-tasks (`preTasks[].variables`) which pass them to `uds run`.
 
 ## [0.11.9] - 2026-02-02
 
 ### Added
-- UDS runner pre-tasks (`preTasks`) for CreateConfig and DeployConfig. Users can now run `uds run <task-name> --set KEY=VALUE` commands before the main `uds create` or `uds deploy` command. Pre-tasks execute in order, and for deploy actions they run after kubeconfig setup so they have cluster access. Task names and variable keys/values are validated against command injection. The `tasks.yaml` file is expected to be present in the workspace from the source checkout.
+- UDS runner pre-tasks (`preTasks`) for CreateConfig and DeployConfig. Users can now run `uds run -f <task-name> --set KEY=VALUE` commands before the main `uds create` or `uds deploy` command. Pre-tasks execute in order, and for deploy actions they run after kubeconfig setup so they have cluster access. Task names and variable keys/values are validated against command injection. The `tasks.yaml` file is expected to be present in the workspace from the source checkout.
 - Documentation for `extraMounts`, `volumeSizes`, and `preTasks` features in the User Guide with examples and mount rules.
 - Reference YAML files (`zarfpackagejob-reference.yaml`, `udsbundlejob-reference.yaml`) now document `extraMounts` (spec-level and per-action), `volumeSizes`, and `preTasks` (UDS-only) fields.
 

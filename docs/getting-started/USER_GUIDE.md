@@ -1153,7 +1153,7 @@ All fields are optional. Unset fields use the defaults shown above.
 
 ## Pre-Tasks (UDS Only)
 
-UDS bundle jobs support `preTasks` that run UDS runner tasks before the main action. Pre-tasks are available on `create` and `deploy` actions. Each pre-task executes `uds run <name>` with optional `--set KEY=VALUE` flags.
+UDS bundle jobs support `preTasks` that run UDS runner tasks before the main action. Pre-tasks are available on `create` and `deploy` actions. Each pre-task executes `uds run -f <name>` with optional `--set KEY=VALUE` flags.
 
 ```yaml
 apiVersion: forge.dev/v1alpha3

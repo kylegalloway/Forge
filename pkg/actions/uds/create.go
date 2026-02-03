@@ -232,6 +232,12 @@ func (handler *CreateHandler) buildUDSCommand(bundle *udsv1alpha3.UDSBundleJob, 
 	// Add output move command
 	cmd = fmt.Sprintf("%s && mv uds-bundle-*.tar.zst %s/", cmd, outputDir)
 
+	// Prepend pre-task commands if specified
+	if bundle.Spec.Create != nil && len(bundle.Spec.Create.PreTasks) > 0 {
+		preTaskCmd := buildPreTaskCommands(bundle.Spec.Create.PreTasks)
+		cmd = preTaskCmd + " && " + cmd
+	}
+
 	return cmd, workingDir, nil
 }
 

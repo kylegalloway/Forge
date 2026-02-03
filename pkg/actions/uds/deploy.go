@@ -252,6 +252,12 @@ func (handler *DeployHandler) buildDeployCommand(bundle *udsv1alpha3.UDSBundleJo
 		}
 	}
 
+	// Insert pre-task commands before uds deploy but after kubeconfig setup
+	if len(deploy.PreTasks) > 0 {
+		preTaskCmd := buildPreTaskCommands(deploy.PreTasks)
+		cmd = preTaskCmd + " && " + cmd
+	}
+
 	// Configure kubeconfig based on deploy target
 	if deploy.Target == udsv1alpha3.DeployTargetExternalCluster {
 		// External cluster: mount kubeconfig from secret

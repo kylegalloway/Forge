@@ -393,7 +393,7 @@ func (validator *UDSBundleJobValidator) validateDeploy(sa *corev1.ServiceAccount
 	return fmt.Errorf("deploy target %s is not allowed by ServiceAccount %s (allowed: %s)", deploy.Target, sa.Name, allowedTargets)
 }
 
-// validateExtraArgs validates all extraArgs fields for command injection
+// validateExtraArgs validates all extraArgs and preTasks fields for command injection
 func (validator *UDSBundleJobValidator) validateExtraArgs(spec *udsv1alpha3.UDSBundleJobSpec) error {
 	// Validate create.extraArgs
 	if spec.Create != nil && len(spec.Create.ExtraArgs) > 0 {
@@ -402,10 +402,24 @@ func (validator *UDSBundleJobValidator) validateExtraArgs(spec *udsv1alpha3.UDSB
 		}
 	}
 
+	// Validate create.preTasks
+	if spec.Create != nil && len(spec.Create.PreTasks) > 0 {
+		if err := validation.ValidatePreTasks(spec.Create.PreTasks); err != nil {
+			return fmt.Errorf("create.%w", err)
+		}
+	}
+
 	// Validate deploy.extraArgs
 	if spec.Deploy != nil && len(spec.Deploy.ExtraArgs) > 0 {
 		if err := validation.ValidateExtraArgs(spec.Deploy.ExtraArgs); err != nil {
 			return fmt.Errorf("deploy.extraArgs: %w", err)
+		}
+	}
+
+	// Validate deploy.preTasks
+	if spec.Deploy != nil && len(spec.Deploy.PreTasks) > 0 {
+		if err := validation.ValidatePreTasks(spec.Deploy.PreTasks); err != nil {
+			return fmt.Errorf("deploy.%w", err)
 		}
 	}
 

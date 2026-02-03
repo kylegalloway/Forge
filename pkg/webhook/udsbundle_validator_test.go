@@ -475,6 +475,139 @@ func TestValidateUDSPackageSource_UnknownType(t *testing.T) {
 	}
 }
 
+func TestValidateExtraArgs_PreTasks(t *testing.T) {
+	kubeClient := fake.NewClientset()
+	validator := NewUDSBundleJobValidator(kubeClient)
+
+	// Create ServiceAccount with permissions
+	sa := &corev1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-sa-pretasks",
+			Namespace: "default",
+			Annotations: map[string]string{
+				constants.AnnotationAllowedActions:       "Create,Deploy",
+				constants.AnnotationAllowedSourceRepos:   "https://github.com/test/*",
+				constants.AnnotationAllowedDeployTargets: "InCluster",
+			},
+		},
+	}
+	_, err := kubeClient.CoreV1().ServiceAccounts("default").Create(context.Background(), sa, metav1.CreateOptions{})
+	if err != nil {
+		t.Fatalf("Failed to create ServiceAccount: %v", err)
+	}
+
+	tests := []struct {
+		name    string
+		bundle  *udsv1alpha3.UDSBundleJob
+		wantErr bool
+	}{
+		{
+			name: "valid create with pre-tasks",
+			bundle: &udsv1alpha3.UDSBundleJob{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-pretask-valid",
+					Namespace: "default",
+				},
+				Spec: udsv1alpha3.UDSBundleJobSpec{
+					ServiceAccountName: "test-sa-pretasks",
+					Action:             udsv1alpha3.ActionCreate,
+					Source: udsv1alpha3.PackageSource{
+						Type: udsv1alpha3.SourceTypeGit,
+						Git:  &udsv1alpha3.GitSource{URL: "https://github.com/test/repo", Ref: "main"},
+					},
+					Create: &udsv1alpha3.CreateConfig{
+						PreTasks: []udsv1alpha3.RunnerPreTask{
+							{Name: "setup-deps", Variables: map[string]string{"VERSION": "1.0"}},
+							{Name: "generate-config"},
+						},
+					},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "create with injection in pre-task name",
+			bundle: &udsv1alpha3.UDSBundleJob{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-pretask-injection",
+					Namespace: "default",
+				},
+				Spec: udsv1alpha3.UDSBundleJobSpec{
+					ServiceAccountName: "test-sa-pretasks",
+					Action:             udsv1alpha3.ActionCreate,
+					Source: udsv1alpha3.PackageSource{
+						Type: udsv1alpha3.SourceTypeGit,
+						Git:  &udsv1alpha3.GitSource{URL: "https://github.com/test/repo", Ref: "main"},
+					},
+					Create: &udsv1alpha3.CreateConfig{
+						PreTasks: []udsv1alpha3.RunnerPreTask{
+							{Name: "task; rm -rf /"},
+						},
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "deploy with valid pre-tasks",
+			bundle: &udsv1alpha3.UDSBundleJob{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-pretask-deploy",
+					Namespace: "default",
+				},
+				Spec: udsv1alpha3.UDSBundleJobSpec{
+					ServiceAccountName: "test-sa-pretasks",
+					Action:             udsv1alpha3.ActionDeploy,
+					Source: udsv1alpha3.PackageSource{
+						Type: udsv1alpha3.SourceTypeGit,
+						Git:  &udsv1alpha3.GitSource{URL: "https://github.com/test/repo", Ref: "main"},
+					},
+					Deploy: &udsv1alpha3.DeployConfig{
+						Target: udsv1alpha3.DeployTargetInCluster,
+						PreTasks: []udsv1alpha3.RunnerPreTask{
+							{Name: "pre-deploy-check"},
+						},
+					},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "deploy with injection in pre-task variable",
+			bundle: &udsv1alpha3.UDSBundleJob{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-pretask-deploy-injection",
+					Namespace: "default",
+				},
+				Spec: udsv1alpha3.UDSBundleJobSpec{
+					ServiceAccountName: "test-sa-pretasks",
+					Action:             udsv1alpha3.ActionDeploy,
+					Source: udsv1alpha3.PackageSource{
+						Type: udsv1alpha3.SourceTypeGit,
+						Git:  &udsv1alpha3.GitSource{URL: "https://github.com/test/repo", Ref: "main"},
+					},
+					Deploy: &udsv1alpha3.DeployConfig{
+						Target: udsv1alpha3.DeployTargetInCluster,
+						PreTasks: []udsv1alpha3.RunnerPreTask{
+							{Name: "task", Variables: map[string]string{"KEY": "val$(whoami)"}},
+						},
+					},
+				},
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validator.ValidateUDSBundleJob(context.Background(), tt.bundle)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ValidateUDSBundleJob() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
 func TestValidateUDSBundleJob_CompleteWorkflow(t *testing.T) {
 	kubeClient := fake.NewClientset()
 	validator := NewUDSBundleJobValidator(kubeClient)

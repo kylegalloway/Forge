@@ -126,19 +126,19 @@ helm repo update
 helm install forge forge/forge \
   --namespace forge-system \
   --create-namespace \
-  --version 0.11.8
+  --version 0.11.9
 ```
 
 **Container Images**:
-- `ghcr.io/kylegalloway/forge/forge-controller:v0.11.8`
-- `ghcr.io/kylegalloway/forge/forge-webhook:v0.11.8`
-- `ghcr.io/kylegalloway/forge/zarfpackagejob:v0.11.8` (used by ZarfPackageJobs)
+- `ghcr.io/kylegalloway/forge/forge-controller:v0.11.9`
+- `ghcr.io/kylegalloway/forge/forge-webhook:v0.11.9`
+- `ghcr.io/kylegalloway/forge/zarfpackagejob:v0.11.9` (used by ZarfPackageJobs)
 
 **Custom Configuration**:
 
 ```bash
 helm install forge forge/forge \
-  --version 0.11.8 \
+  --version 0.11.9 \
   --namespace forge-system \
   --create-namespace \
   --set controller.replicaCount=2 \
@@ -163,8 +163,8 @@ helm repo add forge https://kylegalloway.github.io/forge
 helm install forge forge/forge --namespace forge-system --create-namespace --wait
 
 # Pull and load Zarf Package Job image (Kind can't pull from registries)
-docker pull ghcr.io/kylegalloway/forge/zarfpackagejob:v0.11.8
-kind load docker-image ghcr.io/kylegalloway/forge/zarfpackagejob:v0.11.8 --name forge-test
+docker pull ghcr.io/kylegalloway/forge/zarfpackagejob:v0.11.9
+kind load docker-image ghcr.io/kylegalloway/forge/zarfpackagejob:v0.11.9 --name forge-test
 ```
 
 📖 **Testing Guide**: See [docs/development/KIND_TESTING_PUBLIC_IMAGES.md](docs/development/KIND_TESTING_PUBLIC_IMAGES.md) for complete testing setup

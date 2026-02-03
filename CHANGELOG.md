@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.11.9] - 2026-02-02
+
 ### Added
 - UDS runner pre-tasks (`preTasks`) for CreateConfig and DeployConfig. Users can now run `uds run <task-name> --set KEY=VALUE` commands before the main `uds create` or `uds deploy` command. Pre-tasks execute in order, and for deploy actions they run after kubeconfig setup so they have cluster access. Task names and variable keys/values are validated against command injection. The `tasks.yaml` file is expected to be present in the workspace from the source checkout.
 - Documentation for `extraMounts`, `volumeSizes`, and `preTasks` features in the User Guide with examples and mount rules.
@@ -620,7 +622,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial project setup and build infrastructure
 - CI/CD pipeline configuration for automated testing and releases
 
-[Unreleased]: https://github.com/kylegalloway/forge/compare/v0.11.8...HEAD
+[Unreleased]: https://github.com/kylegalloway/forge/compare/v0.11.9...HEAD
+[0.11.9]: https://github.com/kylegalloway/forge/compare/v0.11.8...v0.11.9
 [0.11.8]: https://github.com/kylegalloway/forge/compare/v0.11.7...v0.11.8
 [0.11.7]: https://github.com/kylegalloway/forge/compare/v0.11.6...v0.11.7
 [0.11.6]: https://github.com/kylegalloway/forge/compare/v0.11.5...v0.11.6

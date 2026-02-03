@@ -30,13 +30,6 @@ func (in *CreateConfig) DeepCopyInto(out *CreateConfig) {
 		*out = new(common.SecretReference)
 		**out = **in
 	}
-	if in.Variables != nil {
-		in, out := &in.Variables, &out.Variables
-		*out = make(map[string]string, len(*in))
-		for key, val := range *in {
-			(*out)[key] = val
-		}
-	}
 	if in.PreTasks != nil {
 		in, out := &in.PreTasks, &out.PreTasks
 		*out = make([]RunnerPreTask, len(*in))

@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed
+- `variables` field from `CreateConfig` (`spec.create.variables`). The `uds create` CLI does not accept `--set` flags; variables/set flags are only valid on pre-tasks (`preTasks[].variables`) which pass them to `uds run`.
+
 ## [0.11.9] - 2026-02-02
 
 ### Added

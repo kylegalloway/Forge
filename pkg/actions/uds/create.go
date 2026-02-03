@@ -214,11 +214,6 @@ func (handler *CreateHandler) buildUDSCommand(bundle *udsv1alpha3.UDSBundleJob, 
 			cmd = fmt.Sprintf("%s --skip-sbom", cmd)
 		}
 
-		// Variables
-		for key, value := range create.Variables {
-			cmd = fmt.Sprintf("%s --set %s=%s", cmd, key, value)
-		}
-
 		// ExtraArgs (validated and shell-escaped)
 		if len(create.ExtraArgs) > 0 {
 			var err error

@@ -90,10 +90,6 @@ spec:
     registryCredentialRef:
       name: registry-credentials
       namespace: default  # optional
-    # UDS variables for bundle creation (optional)
-    variables:
-      MY_VAR: my-value
-      ANOTHER_VAR: another-value
     # Bundle flavor to create (optional)
     flavor: upstream
     # Target architecture (optional)

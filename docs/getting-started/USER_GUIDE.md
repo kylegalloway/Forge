@@ -258,27 +258,6 @@ spec:
 
 #### UDS Bundle Variables
 
-**Create Variables** (`spec.create.variables`):
-Variables passed to `uds create` during the bundle creation phase.
-
-```yaml
-apiVersion: forge.dev/v1alpha3
-kind: UDSBundleJob
-metadata:
-  name: create-with-vars
-spec:
-  action: Create
-  source:
-    type: Git
-    git:
-      url: https://github.com/myorg/my-bundle
-      ref: main
-  create:
-    variables:
-      BUNDLE_VERSION: "2.0.0"
-      ENVIRONMENT: "production"
-```
-
 **Deploy Variables** (`spec.deploy.variables`):
 Variables passed to `uds deploy` during the bundle deploy phase.
 
@@ -545,10 +524,6 @@ spec:
     git:
       url: https://github.com/prometheus/prometheus
       ref: v2.45.0
-  # Optional: Pass variables to uds create
-  create:
-    variables:
-      BUNDLE_VERSION: "2.45.0"
 ```
 
 Apply with:

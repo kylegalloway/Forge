@@ -351,11 +351,6 @@ type CreateConfig struct {
 	// +optional
 	RegistryCredentialRef *common.SecretReference `json:"registryCredentialRef,omitempty"`
 
-	// Variables are UDS variables to set during bundle creation
-	// These are passed as --set KEY=VALUE flags to 'uds create'
-	// +optional
-	Variables map[string]string `json:"variables,omitempty"`
-
 	// Flavor specifies which bundle flavor to create
 	// +optional
 	Flavor string `json:"flavor,omitempty"`

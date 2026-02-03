@@ -979,137 +979,38 @@ func TestDeployHandlerExecute_ExternalClusterWithContext(t *testing.T) {
 	}
 }
 
-func TestCreateHandlerBuildUDSCommandWithVariables(t *testing.T) {
+func TestCreateHandlerBuildUDSCommandNoSetFlags(t *testing.T) {
 	handler := &CreateHandler{}
 
-	tests := []struct {
-		name            string
-		bundle          *udsv1alpha3.UDSBundleJob
-		artifactPVCName string
-		wantContains    []string
-		wantNotContains []string
-	}{
-		{
-			name: "create without variables",
-			bundle: &udsv1alpha3.UDSBundleJob{
-				Spec: udsv1alpha3.UDSBundleJobSpec{
-					Source: udsv1alpha3.PackageSource{
-						Type: udsv1alpha3.SourceTypeGit,
-						Git: &udsv1alpha3.GitSource{
-							URL: "https://github.com/test/repo",
-						},
-					},
+	bundle := &udsv1alpha3.UDSBundleJob{
+		Spec: udsv1alpha3.UDSBundleJobSpec{
+			Source: udsv1alpha3.PackageSource{
+				Type: udsv1alpha3.SourceTypeGit,
+				Git: &udsv1alpha3.GitSource{
+					URL: "https://github.com/test/repo",
 				},
 			},
-			artifactPVCName: "",
-			wantContains:    []string{"uds create", "--confirm", "mv uds-bundle-*.tar.zst"},
-			wantNotContains: []string{"--set"},
-		},
-		{
-			name: "create with single variable",
-			bundle: &udsv1alpha3.UDSBundleJob{
-				Spec: udsv1alpha3.UDSBundleJobSpec{
-					Source: udsv1alpha3.PackageSource{
-						Type: udsv1alpha3.SourceTypeGit,
-						Git: &udsv1alpha3.GitSource{
-							URL: "https://github.com/test/repo",
-						},
-					},
-					Create: &udsv1alpha3.CreateConfig{
-						Variables: map[string]string{
-							"BUNDLE_VERSION": "2.0.0",
-						},
-					},
-				},
-			},
-			artifactPVCName: "",
-			wantContains:    []string{"uds create", "--set BUNDLE_VERSION=2.0.0"},
-		},
-		{
-			name: "create with multiple variables",
-			bundle: &udsv1alpha3.UDSBundleJob{
-				Spec: udsv1alpha3.UDSBundleJobSpec{
-					Source: udsv1alpha3.PackageSource{
-						Type: udsv1alpha3.SourceTypeGit,
-						Git: &udsv1alpha3.GitSource{
-							URL: "https://github.com/test/repo",
-						},
-					},
-					Create: &udsv1alpha3.CreateConfig{
-						Variables: map[string]string{
-							"BUNDLE_VERSION": "2.0.0",
-							"ENVIRONMENT":    "production",
-						},
-					},
-				},
-			},
-			artifactPVCName: "",
-			wantContains:    []string{"uds create", "--set BUNDLE_VERSION=2.0.0", "--set ENVIRONMENT=production"},
-		},
-		{
-			name: "create with PVC and variables",
-			bundle: &udsv1alpha3.UDSBundleJob{
-				Spec: udsv1alpha3.UDSBundleJobSpec{
-					Source: udsv1alpha3.PackageSource{
-						Type: udsv1alpha3.SourceTypeGit,
-						Git: &udsv1alpha3.GitSource{
-							URL: "https://github.com/test/repo",
-						},
-					},
-					Create: &udsv1alpha3.CreateConfig{
-						Variables: map[string]string{
-							"VERSION": "3.0.0",
-						},
-					},
-				},
-			},
-			artifactPVCName: "my-pvc",
-			wantContains:    []string{"uds create", "/artifacts", "--set VERSION=3.0.0"},
-		},
-		{
-			name: "create with empty variables map",
-			bundle: &udsv1alpha3.UDSBundleJob{
-				Spec: udsv1alpha3.UDSBundleJobSpec{
-					Source: udsv1alpha3.PackageSource{
-						Type: udsv1alpha3.SourceTypeGit,
-						Git: &udsv1alpha3.GitSource{
-							URL: "https://github.com/test/repo",
-						},
-					},
-					Create: &udsv1alpha3.CreateConfig{
-						Variables: map[string]string{},
-					},
-				},
-			},
-			artifactPVCName: "",
-			wantContains:    []string{"uds create"},
-			wantNotContains: []string{"--set"},
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			cmd, workingDir, err := handler.buildUDSCommand(tt.bundle, tt.artifactPVCName)
-			if err != nil {
-				t.Fatalf("buildUDSCommand() unexpected error: %v", err)
-			}
+	cmd, workingDir, err := handler.buildUDSCommand(bundle, "")
+	if err != nil {
+		t.Fatalf("buildUDSCommand() unexpected error: %v", err)
+	}
 
-			if workingDir != "/workspace" {
-				t.Errorf("buildUDSCommand() workingDir = %v, want /workspace", workingDir)
-			}
+	if workingDir != "/workspace" {
+		t.Errorf("buildUDSCommand() workingDir = %v, want /workspace", workingDir)
+	}
 
-			for _, want := range tt.wantContains {
-				if !strings.Contains(cmd, want) {
-					t.Errorf("buildUDSCommand() cmd = %q, want to contain %q", cmd, want)
-				}
-			}
+	wantContains := []string{"uds create", "--confirm", "mv uds-bundle-*.tar.zst"}
+	for _, want := range wantContains {
+		if !strings.Contains(cmd, want) {
+			t.Errorf("buildUDSCommand() cmd = %q, want to contain %q", cmd, want)
+		}
+	}
 
-			for _, notWant := range tt.wantNotContains {
-				if strings.Contains(cmd, notWant) {
-					t.Errorf("buildUDSCommand() cmd = %q, should not contain %q", cmd, notWant)
-				}
-			}
-		})
+	if strings.Contains(cmd, "--set") {
+		t.Errorf("buildUDSCommand() cmd = %q, should not contain --set flags", cmd)
 	}
 }
 

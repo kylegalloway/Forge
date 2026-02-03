@@ -20,6 +20,7 @@ package constants
 
 import (
 	"os"
+	"strings"
 	"time"
 )
 
@@ -119,27 +120,33 @@ const (
 
 	// DefaultArtifactPath is the default path where built artifacts are stored.
 	DefaultArtifactPath = "/workspace/package.tar.zst"
-
-	// InClusterKubeconfigSetup is a shell script snippet that generates a kubeconfig
-	// from the pod's service account token for in-cluster deployments.
-	// This is needed because Zarf/UDS CLIs don't auto-detect in-cluster config.
-	// The CA certificate is base64-encoded and embedded directly (certificate-authority-data)
-	// to avoid file path issues. The token is read and trimmed of whitespace.
-	// The API server endpoint is determined from environment variables
-	// (KUBERNETES_SERVICE_HOST and KUBERNETES_SERVICE_PORT).
-	InClusterKubeconfigSetup = `SA_DIR=/var/run/secrets/kubernetes.io/serviceaccount && ` +
-		`mkdir -p /tmp/.kube && ` +
-		`echo "[kubeconfig] Reading token from ${SA_DIR}/token" && ` +
-		`TOKEN=$(cat ${SA_DIR}/token | tr -d '\n') && ` +
-		`echo "[kubeconfig] Reading CA cert from ${SA_DIR}/ca.crt" && ` +
-		`CA_DATA=$(base64 -w0 ${SA_DIR}/ca.crt 2>/dev/null || base64 ${SA_DIR}/ca.crt | tr -d '\n') && ` +
-		`API_SERVER="${KUBERNETES_SERVICE_HOST:-kubernetes.default.svc}:${KUBERNETES_SERVICE_PORT:-443}" && ` +
-		`echo "[kubeconfig] API server: https://${API_SERVER}" && ` +
-		`printf 'apiVersion: v1\nkind: Config\nclusters:\n- cluster:\n    certificate-authority-data: %s\n    server: https://%s\n  name: in-cluster\ncontexts:\n- context:\n    cluster: in-cluster\n    namespace: default\n    user: service-account\n  name: in-cluster\ncurrent-context: in-cluster\nusers:\n- name: service-account\n  user:\n    token: %s\n' "$CA_DATA" "$API_SERVER" "$TOKEN" > /tmp/.kube/config && ` +
-		`export KUBECONFIG=/tmp/.kube/config && ` +
-		`echo "[kubeconfig] Testing API server connectivity..." && ` +
-		`if kubectl cluster-info --request-timeout=10s >/dev/null 2>&1; then echo "[kubeconfig] Cluster connectivity verified"; else echo "[kubeconfig] WARNING: kubectl test failed, Zarf will retry"; fi && `
 )
+
+// kubeconfigSetupScript is a shell script that generates an in-cluster kubeconfig
+// from the pod's service account token. This is needed because Zarf/UDS CLIs
+// don't auto-detect in-cluster config. Written as natural shell for readability;
+// the $( -> $$( escaping for Kubernetes container args is applied automatically
+// when building InClusterKubeconfigSetup.
+const kubeconfigSetupScript = `set -e
+SA_DIR=/var/run/secrets/kubernetes.io/serviceaccount
+mkdir -p /tmp/.kube
+echo "[kubeconfig] Reading token from ${SA_DIR}/token"
+TOKEN=$(cat ${SA_DIR}/token | tr -d '\n')
+echo "[kubeconfig] Reading CA cert from ${SA_DIR}/ca.crt"
+CA_DATA=$(base64 -w0 ${SA_DIR}/ca.crt 2>/dev/null || base64 ${SA_DIR}/ca.crt | tr -d '\n')
+API_SERVER="${KUBERNETES_SERVICE_HOST:-kubernetes.default.svc}:${KUBERNETES_SERVICE_PORT:-443}"
+echo "[kubeconfig] API server: https://${API_SERVER}"
+echo -e "apiVersion: v1\nkind: Config\nclusters:\n- cluster:\n    certificate-authority-data: ${CA_DATA}\n    server: https://${API_SERVER}\n  name: in-cluster\ncontexts:\n- context:\n    cluster: in-cluster\n    namespace: default\n    user: service-account\n  name: in-cluster\ncurrent-context: in-cluster\nusers:\n- name: service-account\n  user:\n    token: ${TOKEN}" > /tmp/.kube/config
+export KUBECONFIG=/tmp/.kube/config
+echo "[kubeconfig] Testing API server connectivity..."
+if kubectl cluster-info --request-timeout=10s >/dev/null 2>&1; then echo "[kubeconfig] Cluster connectivity verified"; else echo "[kubeconfig] WARNING: kubectl test failed, Zarf will retry"; fi
+`
+
+// InClusterKubeconfigSetup is the Kubernetes-safe form of kubeconfigSetupScript.
+// Kubernetes expands $(VAR) references in container args before the shell runs,
+// which destroys shell command substitutions like $(cat ...). The $( -> $$(
+// replacement uses Kubernetes' escape syntax to preserve them as literal $(.
+var InClusterKubeconfigSetup = strings.ReplaceAll(kubeconfigSetupScript, "$(", "$$(")
 
 // ZarfCLIImage is the container image for Zarf CLI operations.
 // It can be overridden via the FORGE_ZARF_CLI_IMAGE environment variable.

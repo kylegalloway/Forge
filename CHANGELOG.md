@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.11.11] - 2026-02-02
+
 ### Added
 - Configurable artifact PVC size via `spec.volumeSizes.artifactStorage` (default: 10Gi). Previously the artifact PVC was hardcoded to 10Gi with no way to override.
 
@@ -633,7 +635,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial project setup and build infrastructure
 - CI/CD pipeline configuration for automated testing and releases
 
-[Unreleased]: https://github.com/kylegalloway/forge/compare/v0.11.10...HEAD
+[Unreleased]: https://github.com/kylegalloway/forge/compare/v0.11.11...HEAD
+[0.11.11]: https://github.com/kylegalloway/forge/compare/v0.11.10...v0.11.11
 [0.11.10]: https://github.com/kylegalloway/forge/compare/v0.11.9...v0.11.10
 [0.11.9]: https://github.com/kylegalloway/forge/compare/v0.11.8...v0.11.9
 [0.11.8]: https://github.com/kylegalloway/forge/compare/v0.11.7...v0.11.8

@@ -9,10 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - UDS runner pre-tasks (`preTasks`) for CreateConfig and DeployConfig. Users can now run `uds run <task-name> --set KEY=VALUE` commands before the main `uds create` or `uds deploy` command. Pre-tasks execute in order, and for deploy actions they run after kubeconfig setup so they have cluster access. Task names and variable keys/values are validated against command injection. The `tasks.yaml` file is expected to be present in the workspace from the source checkout.
+- Documentation for `extraMounts`, `volumeSizes`, and `preTasks` features in the User Guide with examples and mount rules.
+- Reference YAML files (`zarfpackagejob-reference.yaml`, `udsbundlejob-reference.yaml`) now document `extraMounts` (spec-level and per-action), `volumeSizes`, and `preTasks` (UDS-only) fields.
 
 ### Fixed
 - UDS create and Zarf build handlers were not passing `spec.serviceAccountName` to the job pod, causing pods to use the namespace default service account. This broke RBAC enforcement and `credentialRef.type=Node` (IRSA) for create/build actions.
 - Debug mode's `kubectl exec` instruction referenced `$POD_NAMESPACE` which is never set in the pod environment, resulting in an empty `-n` flag. The namespace is now embedded directly into the debug script at build time from the job's metadata.
+- Incorrect ServiceAccount annotation names in UDS policy examples and User Guide. Replaced stale names (`allowed-git-repos`, `allowed-oci-registries`, `allowed-s3-buckets`, `allowed-deploy-namespaces`) with the actual annotation names used by the controller (`allowed-source-repos`, `allowed-source-registries`, `allowed-publish-registries`, `allowed-source-buckets`, `allowed-publish-buckets`, `allowed-deploy-targets`).
+- S3 credential secret key names in CI/CD example and User Guide troubleshooting section. Replaced `aws_access_key_id`/`aws_secret_access_key`/`aws_session_token` with the correct `access-key-id`/`secret-access-key`/`session-token` keys.
+- Removed dead link to `V1ALPHA2_MIGRATION.md` from the User Guide.
 
 ## [0.11.8] - 2026-02-02
 

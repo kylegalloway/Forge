@@ -487,7 +487,7 @@ func (ctrl *GenericController[T]) ReadyzHandler() http.HandlerFunc {
 }
 
 // EnsureArtifactPVC creates or ensures a PVC for artifact sharing exists
-func EnsureArtifactPVC(ctx context.Context, kubeClient kubernetes.Interface, namespace, pvcName string, _ apiscommon.PackageResource) error {
+func EnsureArtifactPVC(ctx context.Context, kubeClient kubernetes.Interface, namespace, pvcName string, res apiscommon.PackageResource) error {
 	// Check if it exists and create if needed
 	_, err := kubeClient.CoreV1().PersistentVolumeClaims(namespace).Get(ctx, pvcName, metav1.GetOptions{})
 	if err == nil {
@@ -497,6 +497,11 @@ func EnsureArtifactPVC(ctx context.Context, kubeClient kubernetes.Interface, nam
 
 	if !errors.IsNotFound(err) {
 		return fmt.Errorf("failed to check for existing PVC: %w", err)
+	}
+
+	storageSize := resource.MustParse(DefaultArtifactStorageSize)
+	if vs := res.GetVolumeSizes(); vs != nil && vs.ArtifactStorage != nil {
+		storageSize = *vs.ArtifactStorage
 	}
 
 	// Create PVC
@@ -516,7 +521,7 @@ func EnsureArtifactPVC(ctx context.Context, kubeClient kubernetes.Interface, nam
 			},
 			Resources: corev1.VolumeResourceRequirements{
 				Requests: corev1.ResourceList{
-					corev1.ResourceStorage: resource.MustParse(DefaultArtifactStorageSize),
+					corev1.ResourceStorage: storageSize,
 				},
 			},
 		},
@@ -527,7 +532,7 @@ func EnsureArtifactPVC(ctx context.Context, kubeClient kubernetes.Interface, nam
 		return fmt.Errorf("failed to create artifact PVC: %w", err)
 	}
 
-	klog.InfoS("Created artifact PVC", "pvc", pvcName, "namespace", namespace, "size", DefaultArtifactStorageSize)
+	klog.InfoS("Created artifact PVC", "pvc", pvcName, "namespace", namespace, "size", storageSize.String())
 	return nil
 }
 

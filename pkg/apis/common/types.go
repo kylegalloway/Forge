@@ -3,8 +3,8 @@ package common
 
 import "k8s.io/apimachinery/pkg/api/resource"
 
-// VolumeSizes allows users to individually configure the sizes of EmptyDir volumes
-// mounted in job pods. All fields are optional — unset fields keep their defaults.
+// VolumeSizes allows users to individually configure the sizes of volumes
+// used in job pods. All fields are optional — unset fields keep their defaults.
 // +k8s:deepcopy-gen=true
 type VolumeSizes struct {
 	// Workspace is the size limit for the workspace EmptyDir volume (default: 10Gi).
@@ -22,6 +22,11 @@ type VolumeSizes struct {
 	// Home is the size limit for the home directory EmptyDir volume (default: 1Gi).
 	// +optional
 	Home *resource.Quantity `json:"home,omitempty"`
+
+	// ArtifactStorage is the size of the artifact PVC (default: 10Gi).
+	// Only applies when useArtifactPVC is true.
+	// +optional
+	ArtifactStorage *resource.Quantity `json:"artifactStorage,omitempty"`
 }
 
 // SecretReference contains information to locate a secret

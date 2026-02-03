@@ -1906,9 +1906,18 @@ spec:
                 type: boolean
               volumeSizes:
                 description: |-
-                  VolumeSizes allows customizing the size limits of EmptyDir volumes mounted in job pods.
-                  Configurable volumes: workspace (default 10Gi), output (default 10Gi), tmp (default 1Gi), home (default 1Gi).
+                  VolumeSizes allows customizing the size limits of volumes used in job pods.
+                  Configurable volumes: workspace (default 10Gi), output (default 10Gi), tmp (default 1Gi), home (default 1Gi), artifactStorage (default 10Gi).
                 properties:
+                  artifactStorage:
+                    anyOf:
+                    - type: integer
+                    - type: string
+                    description: |-
+                      ArtifactStorage is the size of the artifact PVC (default: 10Gi).
+                      Only applies when useArtifactPVC is true.
+                    pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                    x-kubernetes-int-or-string: true
                   home:
                     anyOf:
                     - type: integer

@@ -155,8 +155,8 @@ type UDSBundleJobSpec struct {
 	// +optional
 	ExtraMounts []common.ExtraMount `json:"extraMounts,omitempty"`
 
-	// VolumeSizes allows customizing the size limits of EmptyDir volumes mounted in job pods.
-	// Configurable volumes: workspace (default 10Gi), output (default 10Gi), tmp (default 1Gi), home (default 1Gi).
+	// VolumeSizes allows customizing the size limits of volumes used in job pods.
+	// Configurable volumes: workspace (default 10Gi), output (default 10Gi), tmp (default 1Gi), home (default 1Gi), artifactStorage (default 10Gi).
 	// +optional
 	VolumeSizes *common.VolumeSizes `json:"volumeSizes,omitempty"`
 
@@ -727,4 +727,9 @@ func (u *UDSBundleJob) GetDebugMode() bool {
 // Returns the list of actions to run in debug mode
 func (u *UDSBundleJob) GetDebugActions() []string {
 	return u.Spec.DebugActions
+}
+
+// GetVolumeSizes implements the PackageResource interface
+func (u *UDSBundleJob) GetVolumeSizes() *common.VolumeSizes {
+	return u.Spec.VolumeSizes
 }

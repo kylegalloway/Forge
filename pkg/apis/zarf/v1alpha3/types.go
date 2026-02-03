@@ -156,8 +156,8 @@ type ZarfPackageJobSpec struct {
 	// +optional
 	ExtraMounts []common.ExtraMount `json:"extraMounts,omitempty"`
 
-	// VolumeSizes allows customizing the size limits of EmptyDir volumes mounted in job pods.
-	// Configurable volumes: workspace (default 10Gi), output (default 10Gi), tmp (default 1Gi), home (default 1Gi).
+	// VolumeSizes allows customizing the size limits of volumes used in job pods.
+	// Configurable volumes: workspace (default 10Gi), output (default 10Gi), tmp (default 1Gi), home (default 1Gi), artifactStorage (default 10Gi).
 	// +optional
 	VolumeSizes *common.VolumeSizes `json:"volumeSizes,omitempty"`
 
@@ -721,4 +721,9 @@ func (z *ZarfPackageJob) GetDebugMode() bool {
 // Returns the list of actions to run in debug mode
 func (z *ZarfPackageJob) GetDebugActions() []string {
 	return z.Spec.DebugActions
+}
+
+// GetVolumeSizes implements the PackageResource interface
+func (z *ZarfPackageJob) GetVolumeSizes() *common.VolumeSizes {
+	return z.Spec.VolumeSizes
 }

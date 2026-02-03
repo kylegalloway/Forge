@@ -34,4 +34,7 @@ type PackageResource interface {
 	// If empty and debugMode is true, all actions run in debug mode
 	// If non-empty, only listed actions run in debug mode
 	GetDebugActions() []string
+
+	// GetVolumeSizes returns the configured volume sizes, or nil if not set
+	GetVolumeSizes() *VolumeSizes
 }

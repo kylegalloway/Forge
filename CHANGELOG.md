@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.11.10] - 2026-02-02
+
 ### Fixed
 - Pre-task runner commands were missing the `-f` flag, running `uds run <name>` instead of `uds run -f <name>`. Without `-f`, `uds run` does not read the tasks file and the task name is not resolved correctly. Updated the runner, CRDs, types, docs, reference YAMLs, and tests.
 
@@ -628,7 +630,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial project setup and build infrastructure
 - CI/CD pipeline configuration for automated testing and releases
 
-[Unreleased]: https://github.com/kylegalloway/forge/compare/v0.11.9...HEAD
+[Unreleased]: https://github.com/kylegalloway/forge/compare/v0.11.10...HEAD
+[0.11.10]: https://github.com/kylegalloway/forge/compare/v0.11.9...v0.11.10
 [0.11.9]: https://github.com/kylegalloway/forge/compare/v0.11.8...v0.11.9
 [0.11.8]: https://github.com/kylegalloway/forge/compare/v0.11.7...v0.11.8
 [0.11.7]: https://github.com/kylegalloway/forge/compare/v0.11.6...v0.11.7

@@ -299,14 +299,14 @@ make kind-zarfpackagejob
 
 ```bash
 # For Podman:
-podman build -t localhost/zarfpackagejob:v0.11.9 images/zarfpackagejob/
-podman save localhost/zarfpackagejob:v0.11.9 -o /tmp/zarfpackagejob.tar
+podman build -t localhost/zarfpackagejob:v0.11.10 images/zarfpackagejob/
+podman save localhost/zarfpackagejob:v0.11.10 -o /tmp/zarfpackagejob.tar
 kind load image-archive /tmp/zarfpackagejob.tar --name forge-dev
 rm /tmp/zarfpackagejob.tar
 
 # For Docker:
-docker build -t localhost/zarfpackagejob:v0.11.9 images/zarfpackagejob/
-kind load docker-image localhost/zarfpackagejob:v0.11.9 --name forge-dev
+docker build -t localhost/zarfpackagejob:v0.11.10 images/zarfpackagejob/
+kind load docker-image localhost/zarfpackagejob:v0.11.10 --name forge-dev
 ```
 
 Without this image, Zarf build/deploy jobs will fail with `ImagePullBackOff`.
@@ -601,7 +601,7 @@ kind load docker-image localhost/forge-controller:latest --name forge-dev
 kind load docker-image localhost/forge-webhook:latest --name forge-dev
 
 # Zarf CLI
-docker build -t localhost/zarfpackagejob:v0.11.9 images/zarfpackagejob/
+docker build -t localhost/zarfpackagejob:v0.11.10 images/zarfpackagejob/
 kind load docker-image localhost/zarf:v0.68.1 --name forge-dev
 ```
 

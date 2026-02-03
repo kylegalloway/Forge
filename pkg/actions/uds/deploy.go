@@ -222,7 +222,7 @@ func (handler *DeployHandler) buildDeployCommand(bundle *udsv1alpha3.UDSBundleJo
 	if artifactPath != "" {
 		bundlePath = artifactPath
 	} else {
-		bundlePath = constants.VolumeMountPathWorkspace + "/uds-bundle-*.tar.zst"
+		bundlePath = constants.VolumeMountPathWorkspace + "/*.tar.zst"
 	}
 
 	// Base command

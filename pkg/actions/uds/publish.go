@@ -202,7 +202,7 @@ func (handler *PublishHandler) buildPublishCommand(bundle *udsv1alpha3.UDSBundle
 	// otherwise search workspace for bundle (standalone publish)
 	bundlePath := artifactPath
 	if bundlePath == "" {
-		bundlePath = constants.VolumeMountPathWorkspace + "/uds-bundle-*.tar.zst"
+		bundlePath = constants.VolumeMountPathWorkspace + "/*.tar.zst"
 	}
 
 	// Use shared destination adapter to generate the publish command

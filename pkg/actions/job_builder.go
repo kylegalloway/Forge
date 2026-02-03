@@ -45,6 +45,7 @@ type JobBuilder struct {
 	serviceAccountName       string
 	debugMode                bool
 	volumeSizes              *common.VolumeSizes
+	inClusterKubeconfig      bool
 }
 
 // NewJobBuilder creates a new JobBuilder with basic metadata.
@@ -424,6 +425,7 @@ func (b *JobBuilder) WithCustomEnvVar(env corev1.EnvVar) *JobBuilder {
 
 // WithKubeconfigVolume adds a kubeconfig secret volume and mount for external cluster deployment.
 // If secretName is empty, nothing is added. If key is empty, defaults to "kubeconfig".
+// Also sets the KUBECONFIG environment variable so the deploy command doesn't need to.
 func (b *JobBuilder) WithKubeconfigVolume(secretName, key string) *JobBuilder {
 	if secretName == "" {
 		return b
@@ -435,7 +437,7 @@ func (b *JobBuilder) WithKubeconfigVolume(secretName, key string) *JobBuilder {
 
 	// Add volume
 	b.volumes = append(b.volumes, corev1.Volume{
-		Name: "kubeconfig",
+		Name: constants.VolumeNameKubeconfig,
 		VolumeSource: corev1.VolumeSource{
 			Secret: &corev1.SecretVolumeSource{
 				SecretName: secretName,
@@ -451,11 +453,32 @@ func (b *JobBuilder) WithKubeconfigVolume(secretName, key string) *JobBuilder {
 
 	// Add volume mount
 	b.volumeMounts = append(b.volumeMounts, corev1.VolumeMount{
-		Name:      "kubeconfig",
+		Name:      constants.VolumeNameKubeconfig,
 		MountPath: constants.VolumeMountPathKubeconfig,
 		ReadOnly:  true,
 	})
 
+	// Set KUBECONFIG env var so the deploy command doesn't need to export it
+	b.envVars = append(b.envVars, corev1.EnvVar{
+		Name:  "KUBECONFIG",
+		Value: constants.VolumeMountPathKubeconfig + "/kubeconfig",
+	})
+
+	return b
+}
+
+// WithInClusterKubeconfig configures in-cluster kubeconfig generation via an init container.
+// This adds:
+//   - A projected service account volume for the SA token
+//   - An emptyDir volume for the generated kubeconfig
+//   - An init container that generates the kubeconfig from the SA token
+//   - The KUBECONFIG environment variable pointing to the generated file
+//
+// This approach works correctly with debug mode since the init container runs
+// before the main container, making the kubeconfig available when a user execs
+// into a debug pod.
+func (b *JobBuilder) WithInClusterKubeconfig() *JobBuilder {
+	b.inClusterKubeconfig = true
 	return b
 }
 
@@ -474,68 +497,6 @@ func (b *JobBuilder) WithContainerSecurityContext(ctx *corev1.SecurityContext) *
 // WithServiceAccountName sets the service account name for the pod.
 func (b *JobBuilder) WithServiceAccountName(name string) *JobBuilder {
 	b.serviceAccountName = name
-	return b
-}
-
-// WithProjectedServiceAccountVolume adds a projected volume for the service account token.
-// This provides explicit control over token mounting with:
-// - Short-lived service account token (1 hour expiration)
-// - CA certificate from kube-root-ca.crt ConfigMap
-// - Namespace from downward API
-// The volume is mounted at /var/run/secrets/kubernetes.io/serviceaccount for compatibility
-// with the InClusterKubeconfigSetup script.
-func (b *JobBuilder) WithProjectedServiceAccountVolume() *JobBuilder {
-	expirationSeconds := int64(3600) // 1 hour token expiration
-
-	b.volumes = append(b.volumes, corev1.Volume{
-		Name: "kube-api-access",
-		VolumeSource: corev1.VolumeSource{
-			Projected: &corev1.ProjectedVolumeSource{
-				Sources: []corev1.VolumeProjection{
-					{
-						ServiceAccountToken: &corev1.ServiceAccountTokenProjection{
-							Path:              "token",
-							ExpirationSeconds: &expirationSeconds,
-							// No audience specified - uses API server's default audience
-							// This ensures compatibility across different cluster configurations
-						},
-					},
-					{
-						ConfigMap: &corev1.ConfigMapProjection{
-							LocalObjectReference: corev1.LocalObjectReference{
-								Name: "kube-root-ca.crt",
-							},
-							Items: []corev1.KeyToPath{
-								{
-									Key:  "ca.crt",
-									Path: "ca.crt",
-								},
-							},
-						},
-					},
-					{
-						DownwardAPI: &corev1.DownwardAPIProjection{
-							Items: []corev1.DownwardAPIVolumeFile{
-								{
-									Path: "namespace",
-									FieldRef: &corev1.ObjectFieldSelector{
-										FieldPath: "metadata.namespace",
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-	})
-
-	b.volumeMounts = append(b.volumeMounts, corev1.VolumeMount{
-		Name:      "kube-api-access",
-		MountPath: "/var/run/secrets/kubernetes.io/serviceaccount",
-		ReadOnly:  true,
-	})
-
 	return b
 }
 
@@ -629,6 +590,96 @@ func (b *JobBuilder) Build() *batchv1.Job {
 		Name:      "tmp",
 		MountPath: "/tmp",
 	})
+
+	// Add in-cluster kubeconfig init container if configured
+	if b.inClusterKubeconfig {
+		// Add projected service account volume for the SA token
+		expirationSeconds := int64(3600) // 1 hour token expiration
+		b.volumes = append(b.volumes, corev1.Volume{
+			Name: "kube-api-access",
+			VolumeSource: corev1.VolumeSource{
+				Projected: &corev1.ProjectedVolumeSource{
+					Sources: []corev1.VolumeProjection{
+						{
+							ServiceAccountToken: &corev1.ServiceAccountTokenProjection{
+								Path:              "token",
+								ExpirationSeconds: &expirationSeconds,
+							},
+						},
+						{
+							ConfigMap: &corev1.ConfigMapProjection{
+								LocalObjectReference: corev1.LocalObjectReference{
+									Name: "kube-root-ca.crt",
+								},
+								Items: []corev1.KeyToPath{
+									{
+										Key:  "ca.crt",
+										Path: "ca.crt",
+									},
+								},
+							},
+						},
+						{
+							DownwardAPI: &corev1.DownwardAPIProjection{
+								Items: []corev1.DownwardAPIVolumeFile{
+									{
+										Path: "namespace",
+										FieldRef: &corev1.ObjectFieldSelector{
+											FieldPath: "metadata.namespace",
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		})
+
+		// Add kubeconfig emptyDir volume (shared between init container and main container)
+		b.volumes = append(b.volumes, corev1.Volume{
+			Name: constants.VolumeNameKubeconfig,
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			},
+		})
+
+		// Mount kubeconfig volume in main container (read-only)
+		b.volumeMounts = append(b.volumeMounts, corev1.VolumeMount{
+			Name:      constants.VolumeNameKubeconfig,
+			MountPath: constants.VolumeMountPathKubeconfig,
+			ReadOnly:  true,
+		})
+
+		// Set KUBECONFIG env var for main container
+		b.envVars = append(b.envVars, corev1.EnvVar{
+			Name:  "KUBECONFIG",
+			Value: constants.VolumeMountPathKubeconfig + "/kubeconfig",
+		})
+
+		// Create init container that generates the kubeconfig
+		kubeconfigInit := corev1.Container{
+			Name:    "kubeconfig-init",
+			Image:   b.containerImage,
+			Command: []string{"/bin/sh", "-c"},
+			Args:    []string{constants.KubeconfigInitScript},
+			VolumeMounts: []corev1.VolumeMount{
+				{
+					Name:      "kube-api-access",
+					MountPath: "/var/run/secrets/kubernetes.io/serviceaccount",
+					ReadOnly:  true,
+				},
+				{
+					Name:      constants.VolumeNameKubeconfig,
+					MountPath: "/kubeconfig",
+				},
+			},
+			SecurityContext: containerSecCtx,
+		}
+
+		// Prepend kubeconfig init container before any source retrieval init containers
+		b.initContainers = append([]corev1.Container{kubeconfigInit}, b.initContainers...)
+	}
 
 	// Add home directory emptyDir volume if configured via WithUserConfig or WithHomeDir
 	// This allows tools to write config files to their home directory (e.g., .cache, .config)

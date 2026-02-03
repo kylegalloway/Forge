@@ -15,6 +15,7 @@ import (
 	"github.com/kylegalloway/forge/pkg/actions"
 	"github.com/kylegalloway/forge/pkg/apis/common"
 	udsv1alpha3 "github.com/kylegalloway/forge/pkg/apis/uds/v1alpha3"
+	"github.com/kylegalloway/forge/pkg/constants"
 	testhelpers "github.com/kylegalloway/forge/pkg/controller/testing"
 	"github.com/kylegalloway/forge/pkg/destinations"
 	"github.com/kylegalloway/forge/pkg/telemetry"
@@ -973,9 +974,20 @@ func TestDeployHandlerExecute_ExternalClusterWithContext(t *testing.T) {
 		t.Errorf("Expected command to contain '--kubeconfig-context production-cluster', got: %s", cmdArgs)
 	}
 
-	// Verify kubeconfig is exported
-	if !strings.Contains(cmdArgs, "export KUBECONFIG=") {
-		t.Errorf("Expected command to export KUBECONFIG, got: %s", cmdArgs)
+	// Verify KUBECONFIG is set as env var (not exported in command string)
+	foundKubeconfigEnv := false
+	for _, env := range container.Env {
+		if env.Name == "KUBECONFIG" {
+			foundKubeconfigEnv = true
+			expectedPath := constants.VolumeMountPathKubeconfig + "/kubeconfig"
+			if env.Value != expectedPath {
+				t.Errorf("Expected KUBECONFIG env var to be %q, got %q", expectedPath, env.Value)
+			}
+			break
+		}
+	}
+	if !foundKubeconfigEnv {
+		t.Error("Expected KUBECONFIG env var to be set")
 	}
 }
 

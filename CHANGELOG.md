@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- In-cluster kubeconfig setup was embedded as a shell script prepended to deploy command strings, which broke in debug mode because the `Build()` method embedded the full multiline script (with newlines, quotes, and shell metacharacters) inside an `echo` statement via `fmt.Sprintf`. Moved kubeconfig generation to a dedicated init container (`kubeconfig-init`) that writes the config to a shared emptyDir volume. This works correctly in both normal and debug mode, since init containers run before the main container regardless. The KUBECONFIG env var is now set by the JobBuilder for both in-cluster and external cluster paths, removing all command-string manipulation.
+
 ## [0.11.13] - 2026-02-03
 
 ### Fixed

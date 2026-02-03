@@ -444,3 +444,116 @@ func TestJobBuilder_Build_PartialTmpOnly(t *testing.T) {
 		t.Errorf("home size = %s, want %s", home.String(), expected.String())
 	}
 }
+
+func TestJobBuilder_WithInClusterKubeconfig(t *testing.T) {
+	builder := NewJobBuilder("deploy-test", "default").
+		WithContainerName("zarf-deploy").
+		WithContainerImage("test-image:latest").
+		WithCommand([]string{"/bin/sh", "-c"}).
+		WithArgs([]string{"zarf package deploy /workspace/*.tar.zst --confirm"}).
+		WithInClusterKubeconfig()
+
+	job := builder.Build()
+
+	// Verify kubeconfig-init is present as an init container
+	initContainers := job.Spec.Template.Spec.InitContainers
+	if len(initContainers) == 0 {
+		t.Fatal("expected kubeconfig-init init container")
+	}
+	if initContainers[0].Name != "kubeconfig-init" {
+		t.Errorf("expected first init container name = kubeconfig-init, got %s", initContainers[0].Name)
+	}
+	if initContainers[0].Image != "test-image:latest" {
+		t.Errorf("expected init container to use same image, got %s", initContainers[0].Image)
+	}
+
+	// Verify KUBECONFIG env var on main container
+	container := job.Spec.Template.Spec.Containers[0]
+	foundEnv := false
+	for _, env := range container.Env {
+		if env.Name == "KUBECONFIG" {
+			foundEnv = true
+			if env.Value != "/etc/kubeconfig/kubeconfig" {
+				t.Errorf("expected KUBECONFIG = /etc/kubeconfig/kubeconfig, got %s", env.Value)
+			}
+		}
+	}
+	if !foundEnv {
+		t.Error("KUBECONFIG env var not found on main container")
+	}
+
+	// Verify kubeconfig volume exists
+	foundVol := false
+	for _, vol := range job.Spec.Template.Spec.Volumes {
+		if vol.Name == "kubeconfig" {
+			foundVol = true
+			if vol.EmptyDir == nil {
+				t.Error("kubeconfig volume should be an emptyDir")
+			}
+		}
+	}
+	if !foundVol {
+		t.Error("kubeconfig volume not found")
+	}
+
+	// Verify main container has kubeconfig mount (read-only)
+	foundMount := false
+	for _, mount := range container.VolumeMounts {
+		if mount.Name == "kubeconfig" {
+			foundMount = true
+			if !mount.ReadOnly {
+				t.Error("kubeconfig mount should be read-only on main container")
+			}
+		}
+	}
+	if !foundMount {
+		t.Error("kubeconfig volume mount not found on main container")
+	}
+
+	// Verify the deploy command is clean (no kubeconfig setup script)
+	if !strings.Contains(container.Args[0], "zarf package deploy") {
+		t.Errorf("expected clean deploy command, got: %s", container.Args[0])
+	}
+}
+
+func TestJobBuilder_WithInClusterKubeconfig_DebugMode(t *testing.T) {
+	builder := NewJobBuilder("deploy-debug", "default").
+		WithContainerName("zarf-deploy").
+		WithContainerImage("test-image:latest").
+		WithCommand([]string{"/bin/sh", "-c"}).
+		WithArgs([]string{"zarf package deploy /workspace/*.tar.zst --confirm"}).
+		WithInClusterKubeconfig().
+		WithDebugMode(true)
+
+	job := builder.Build()
+
+	// kubeconfig-init should still be present in debug mode
+	initContainers := job.Spec.Template.Spec.InitContainers
+	if len(initContainers) == 0 {
+		t.Fatal("expected kubeconfig-init init container in debug mode")
+	}
+	if initContainers[0].Name != "kubeconfig-init" {
+		t.Errorf("expected first init container = kubeconfig-init, got %s", initContainers[0].Name)
+	}
+
+	// Debug script should NOT contain any kubeconfig setup shell code
+	container := job.Spec.Template.Spec.Containers[0]
+	debugArg := container.Args[0]
+	if strings.Contains(debugArg, "SA_DIR") || strings.Contains(debugArg, "base64") {
+		t.Error("debug script should not contain kubeconfig setup shell code")
+	}
+	if !strings.Contains(debugArg, "DEBUG MODE ENABLED") {
+		t.Error("expected debug mode script")
+	}
+
+	// KUBECONFIG env var should still be set (available when user execs in)
+	foundEnv := false
+	for _, env := range container.Env {
+		if env.Name == "KUBECONFIG" {
+			foundEnv = true
+		}
+	}
+	if !foundEnv {
+		t.Error("KUBECONFIG env var should be set even in debug mode")
+	}
+}

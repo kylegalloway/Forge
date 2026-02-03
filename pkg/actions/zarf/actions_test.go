@@ -528,7 +528,7 @@ func TestDeployHandlerExecute_LocalSource(t *testing.T) {
 		t.Fatal("Expected non-nil result")
 	}
 
-	// Verify no init containers for local source
+	// Verify init containers: only kubeconfig-init for in-cluster deploy (no source init containers for local source)
 	jobs, err := kubeClient.BatchV1().Jobs("default").List(context.Background(), metav1.ListOptions{})
 	if err != nil {
 		t.Fatalf("Failed to list jobs: %v", err)
@@ -539,8 +539,11 @@ func TestDeployHandlerExecute_LocalSource(t *testing.T) {
 	}
 
 	job := jobs.Items[0]
-	if len(job.Spec.Template.Spec.InitContainers) != 0 {
-		t.Errorf("Expected 0 init containers for local source, got %d", len(job.Spec.Template.Spec.InitContainers))
+	if len(job.Spec.Template.Spec.InitContainers) != 1 {
+		t.Errorf("Expected 1 init container (kubeconfig-init) for local source in-cluster deploy, got %d", len(job.Spec.Template.Spec.InitContainers))
+	}
+	if len(job.Spec.Template.Spec.InitContainers) > 0 && job.Spec.Template.Spec.InitContainers[0].Name != "kubeconfig-init" {
+		t.Errorf("Expected init container named 'kubeconfig-init', got %q", job.Spec.Template.Spec.InitContainers[0].Name)
 	}
 }
 

@@ -186,8 +186,8 @@ func (handler *DeployHandler) createDeployJob(ctx context.Context, pkg *zarfv1al
 		}
 		builder.WithKubeconfigVolume(kubeconfigSecretName, kubeconfigKey)
 	} else {
-		// In-cluster: add projected volume for SA token with explicit control
-		builder.WithProjectedServiceAccountVolume()
+		// In-cluster: generate kubeconfig from SA token via init container
+		builder.WithInClusterKubeconfig()
 	}
 
 	// Add extra mounts (merged: spec-level + deploy-level)
@@ -266,16 +266,13 @@ func (handler *DeployHandler) buildDeployCommand(pkg *zarfv1alpha3.ZarfPackageJo
 		}
 	}
 
-	// Configure kubeconfig based on deploy target
+	// Add kubeconfig context flag for external cluster deploys.
+	// The KUBECONFIG env var is set by the builder (WithKubeconfigVolume / WithInClusterKubeconfig),
+	// so no command-level export is needed.
 	if deploy.Target == zarfv1alpha3.DeployTargetExternalCluster {
-		// External cluster: mount kubeconfig from secret
-		cmd = fmt.Sprintf("export KUBECONFIG=%s/kubeconfig && %s", constants.VolumeMountPathKubeconfig, cmd)
 		if deploy.ExternalCluster != nil && deploy.ExternalCluster.Context != "" {
 			cmd = fmt.Sprintf("%s --kubeconfig-context=%s", cmd, deploy.ExternalCluster.Context)
 		}
-	} else {
-		// In-cluster: generate kubeconfig from service account token
-		cmd = constants.InClusterKubeconfigSetup + cmd
 	}
 
 	return cmd, nil

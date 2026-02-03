@@ -188,8 +188,8 @@ func (handler *DeployHandler) createDeployJob(ctx context.Context, bundle *udsv1
 		}
 		builder.WithKubeconfigVolume(kubeconfigSecretName, kubeconfigKey)
 	} else {
-		// In-cluster: add projected volume for SA token with explicit control
-		builder.WithProjectedServiceAccountVolume()
+		// In-cluster: generate kubeconfig from SA token via init container
+		builder.WithInClusterKubeconfig()
 	}
 
 	// Add extra mounts (merged: spec-level + deploy-level)
@@ -267,17 +267,13 @@ func (handler *DeployHandler) buildDeployCommand(bundle *udsv1alpha3.UDSBundleJo
 		cmd = preTaskCmd + " && " + cmd
 	}
 
-	// Configure kubeconfig based on deploy target
+	// Add kubeconfig context flag for external cluster deploys.
+	// The KUBECONFIG env var is set by the builder (WithKubeconfigVolume / WithInClusterKubeconfig),
+	// so no command-level export is needed.
 	if deploy.Target == udsv1alpha3.DeployTargetExternalCluster {
-		// External cluster: mount kubeconfig from secret
-		cmd = fmt.Sprintf("export KUBECONFIG=%s/kubeconfig && ", constants.VolumeMountPathKubeconfig) + cmd
-		// Add context flag if specified
 		if deploy.ExternalCluster != nil && deploy.ExternalCluster.Context != "" {
 			cmd += fmt.Sprintf(" --kubeconfig-context %s", deploy.ExternalCluster.Context)
 		}
-	} else {
-		// In-cluster: generate kubeconfig from service account token
-		cmd = constants.InClusterKubeconfigSetup + cmd
 	}
 
 	return cmd, nil

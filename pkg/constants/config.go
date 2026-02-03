@@ -122,31 +122,30 @@ const (
 	DefaultArtifactPath = "/workspace/package.tar.zst"
 )
 
-// kubeconfigSetupScript is a shell script that generates an in-cluster kubeconfig
-// from the pod's service account token. This is needed because Zarf/UDS CLIs
-// don't auto-detect in-cluster config. Written as natural shell for readability;
-// the $( -> $$( escaping for Kubernetes container args is applied automatically
-// when building InClusterKubeconfigSetup.
-const kubeconfigSetupScript = `set -e
+// VolumeNameKubeconfig is the volume name for the generated in-cluster kubeconfig.
+const VolumeNameKubeconfig = "kubeconfig"
+
+// kubeconfigInitScript is a shell script for an init container that generates
+// an in-cluster kubeconfig from the pod's service account token and writes it
+// to a shared volume. This is needed because Zarf/UDS CLIs don't auto-detect
+// in-cluster config. Uses echo -e with \n rather than a heredoc to avoid
+// fragility with whitespace/delimiter handling in Kubernetes container args.
+// The $( -> $$( escaping for Kubernetes container args is applied automatically.
+const kubeconfigInitScript = `set -e
 SA_DIR=/var/run/secrets/kubernetes.io/serviceaccount
-mkdir -p /tmp/.kube
-echo "[kubeconfig] Reading token from ${SA_DIR}/token"
 TOKEN=$(cat ${SA_DIR}/token | tr -d '\n')
-echo "[kubeconfig] Reading CA cert from ${SA_DIR}/ca.crt"
 CA_DATA=$(base64 -w0 ${SA_DIR}/ca.crt 2>/dev/null || base64 ${SA_DIR}/ca.crt | tr -d '\n')
 API_SERVER="${KUBERNETES_SERVICE_HOST:-kubernetes.default.svc}:${KUBERNETES_SERVICE_PORT:-443}"
-echo "[kubeconfig] API server: https://${API_SERVER}"
-echo -e "apiVersion: v1\nkind: Config\nclusters:\n- cluster:\n    certificate-authority-data: ${CA_DATA}\n    server: https://${API_SERVER}\n  name: in-cluster\ncontexts:\n- context:\n    cluster: in-cluster\n    namespace: default\n    user: service-account\n  name: in-cluster\ncurrent-context: in-cluster\nusers:\n- name: service-account\n  user:\n    token: ${TOKEN}" > /tmp/.kube/config
-export KUBECONFIG=/tmp/.kube/config
-echo "[kubeconfig] Testing API server connectivity..."
-if kubectl cluster-info --request-timeout=10s >/dev/null 2>&1; then echo "[kubeconfig] Cluster connectivity verified"; else echo "[kubeconfig] WARNING: kubectl test failed, Zarf will retry"; fi
+echo "[kubeconfig-init] Generating kubeconfig for https://${API_SERVER}"
+echo -e "apiVersion: v1\nkind: Config\nclusters:\n- cluster:\n    certificate-authority-data: ${CA_DATA}\n    server: https://${API_SERVER}\n  name: in-cluster\ncontexts:\n- context:\n    cluster: in-cluster\n    namespace: default\n    user: service-account\n  name: in-cluster\ncurrent-context: in-cluster\nusers:\n- name: service-account\n  user:\n    token: ${TOKEN}" > /kubeconfig/kubeconfig
+echo "[kubeconfig-init] Config written successfully"
 `
 
-// InClusterKubeconfigSetup is the Kubernetes-safe form of kubeconfigSetupScript.
+// KubeconfigInitScript is the Kubernetes-safe form of kubeconfigInitScript.
 // Kubernetes expands $(VAR) references in container args before the shell runs,
 // which destroys shell command substitutions like $(cat ...). The $( -> $$(
 // replacement uses Kubernetes' escape syntax to preserve them as literal $(.
-var InClusterKubeconfigSetup = strings.ReplaceAll(kubeconfigSetupScript, "$(", "$$(")
+var KubeconfigInitScript = strings.ReplaceAll(kubeconfigInitScript, "$(", "$$(")
 
 // ZarfCLIImage is the container image for Zarf CLI operations.
 // It can be overridden via the FORGE_ZARF_CLI_IMAGE environment variable.

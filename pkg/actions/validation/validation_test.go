@@ -1,9 +1,11 @@
 package validation
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/kylegalloway/forge/pkg/apis/common"
+	udsv1alpha3 "github.com/kylegalloway/forge/pkg/apis/uds/v1alpha3"
 )
 
 func TestValidateExtraArgs(t *testing.T) {
@@ -297,6 +299,171 @@ func TestValidateExtraMounts(t *testing.T) {
 			err := ValidateExtraMounts(tt.mounts)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ValidateExtraMounts() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestValidatePreTasks(t *testing.T) {
+	tests := []struct {
+		name          string
+		preTasks      []udsv1alpha3.RunnerPreTask
+		wantErr       bool
+		errorContains string
+	}{
+		{
+			name:     "nil pre-tasks",
+			preTasks: nil,
+			wantErr:  false,
+		},
+		{
+			name:     "empty pre-tasks",
+			preTasks: []udsv1alpha3.RunnerPreTask{},
+			wantErr:  false,
+		},
+		{
+			name: "valid single task without vars",
+			preTasks: []udsv1alpha3.RunnerPreTask{
+				{Name: "setup-deps"},
+			},
+			wantErr: false,
+		},
+		{
+			name: "valid single task with vars",
+			preTasks: []udsv1alpha3.RunnerPreTask{
+				{
+					Name: "setup-deps",
+					Variables: map[string]string{
+						"ZARF_VERSION": "0.40.0",
+					},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "valid multiple tasks",
+			preTasks: []udsv1alpha3.RunnerPreTask{
+				{Name: "setup-deps", Variables: map[string]string{"VERSION": "1.0"}},
+				{Name: "generate-config"},
+			},
+			wantErr: false,
+		},
+		{
+			name: "empty task name",
+			preTasks: []udsv1alpha3.RunnerPreTask{
+				{Name: ""},
+			},
+			wantErr:       true,
+			errorContains: "name is required",
+		},
+		{
+			name: "task name with semicolon",
+			preTasks: []udsv1alpha3.RunnerPreTask{
+				{Name: "task; rm -rf /"},
+			},
+			wantErr:       true,
+			errorContains: "forbidden character",
+		},
+		{
+			name: "task name with ampersand",
+			preTasks: []udsv1alpha3.RunnerPreTask{
+				{Name: "task && malicious"},
+			},
+			wantErr:       true,
+			errorContains: "forbidden character",
+		},
+		{
+			name: "task name with pipe",
+			preTasks: []udsv1alpha3.RunnerPreTask{
+				{Name: "task | cat /etc/passwd"},
+			},
+			wantErr:       true,
+			errorContains: "forbidden character",
+		},
+		{
+			name: "task name with dollar sign",
+			preTasks: []udsv1alpha3.RunnerPreTask{
+				{Name: "task$HOME"},
+			},
+			wantErr:       true,
+			errorContains: "forbidden character",
+		},
+		{
+			name: "task name with backtick",
+			preTasks: []udsv1alpha3.RunnerPreTask{
+				{Name: "task`whoami`"},
+			},
+			wantErr:       true,
+			errorContains: "forbidden character",
+		},
+		{
+			name: "task name with whitespace",
+			preTasks: []udsv1alpha3.RunnerPreTask{
+				{Name: "task name"},
+			},
+			wantErr:       true,
+			errorContains: "whitespace",
+		},
+		{
+			name: "variable key with injection",
+			preTasks: []udsv1alpha3.RunnerPreTask{
+				{
+					Name: "valid-task",
+					Variables: map[string]string{
+						"KEY;rm": "value",
+					},
+				},
+			},
+			wantErr:       true,
+			errorContains: "key contains forbidden character",
+		},
+		{
+			name: "variable value with injection",
+			preTasks: []udsv1alpha3.RunnerPreTask{
+				{
+					Name: "valid-task",
+					Variables: map[string]string{
+						"KEY": "value$(whoami)",
+					},
+				},
+			},
+			wantErr:       true,
+			errorContains: "value contains forbidden character",
+		},
+		{
+			name: "variable key with whitespace",
+			preTasks: []udsv1alpha3.RunnerPreTask{
+				{
+					Name: "valid-task",
+					Variables: map[string]string{
+						"KEY NAME": "value",
+					},
+				},
+			},
+			wantErr:       true,
+			errorContains: "key contains whitespace",
+		},
+		{
+			name: "second task invalid",
+			preTasks: []udsv1alpha3.RunnerPreTask{
+				{Name: "valid-task"},
+				{Name: "bad;task"},
+			},
+			wantErr:       true,
+			errorContains: "preTasks[1]",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := ValidatePreTasks(tt.preTasks)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ValidatePreTasks() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if tt.wantErr && tt.errorContains != "" && err != nil {
+				if !strings.Contains(err.Error(), tt.errorContains) {
+					t.Errorf("ValidatePreTasks() error = %q, want to contain %q", err.Error(), tt.errorContains)
+				}
 			}
 		})
 	}

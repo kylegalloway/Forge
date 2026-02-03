@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/kylegalloway/forge/pkg/apis/common"
+	udsv1alpha3 "github.com/kylegalloway/forge/pkg/apis/uds/v1alpha3"
 )
 
 // ValidateExtraArgs ensures extra args don't contain shell metacharacters
@@ -104,4 +105,46 @@ func MergeExtraMounts(topLevel, perAction []common.ExtraMount) ([]common.ExtraMo
 		return nil, err
 	}
 	return merged, nil
+}
+
+// ValidatePreTasks validates that pre-task names and variable keys/values
+// do not contain shell metacharacters that could enable command injection.
+func ValidatePreTasks(preTasks []udsv1alpha3.RunnerPreTask) error {
+	// Forbidden characters that could enable command injection
+	forbidden := []string{";", "|", "&", "$", "`", "(", ")", "{", "}", "<", ">", "\n", "\r"}
+
+	for i, task := range preTasks {
+		if task.Name == "" {
+			return fmt.Errorf("preTasks[%d]: name is required", i)
+		}
+		if containsForbidden(task.Name, forbidden) {
+			return fmt.Errorf("preTasks[%d].name: contains forbidden character in %q", i, task.Name)
+		}
+		// Also reject whitespace in task names since they're used as CLI arguments
+		if strings.ContainsAny(task.Name, " \t") {
+			return fmt.Errorf("preTasks[%d].name: contains whitespace in %q", i, task.Name)
+		}
+		for key, value := range task.Variables {
+			if containsForbidden(key, forbidden) {
+				return fmt.Errorf("preTasks[%d].variables: key contains forbidden character in %q", i, key)
+			}
+			if strings.ContainsAny(key, " \t") {
+				return fmt.Errorf("preTasks[%d].variables: key contains whitespace in %q", i, key)
+			}
+			if containsForbidden(value, forbidden) {
+				return fmt.Errorf("preTasks[%d].variables: value contains forbidden character in %q", i, value)
+			}
+		}
+	}
+	return nil
+}
+
+// containsForbidden checks if s contains any of the forbidden substrings.
+func containsForbidden(s string, forbidden []string) bool {
+	for _, char := range forbidden {
+		if strings.Contains(s, char) {
+			return true
+		}
+	}
+	return false
 }

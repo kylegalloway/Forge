@@ -825,8 +825,8 @@ metadata:
   namespace: forge-system
   annotations:
     forge.dev/allowed-actions: "Create,Deploy"
-    forge.dev/allowed-git-repos: "github.com/cncf/*,github.com/myorg/*"
-    forge.dev/allowed-deploy-namespaces: "uds-dev,uds-staging"
+    forge.dev/allowed-source-repos: "github.com/cncf/*,github.com/myorg/*"
+    forge.dev/allowed-deploy-targets: "uds-dev,uds-staging"
     # No OCI or S3 access (internal builds only)
 ```
 
@@ -850,11 +850,13 @@ All annotations use the prefix `forge.dev/`:
 
 | Annotation | Values | Description |
 |------------|--------|-------------|
-| `allowed-actions` | `create`, `publish`, `deploy` | Comma-separated list of allowed actions |
-| `allowed-git-repos` | `*` or glob patterns | Git repository patterns (e.g., `github.com/myorg/*`) |
-| `allowed-oci-registries` | `*` or glob patterns | OCI registry patterns (e.g., `ghcr.io/myorg/*`) |
-| `allowed-s3-buckets` | `*` or bucket names | S3 bucket names (comma-separated) |
-| `allowed-deploy-namespaces` | `*` or namespace names | Target deployment namespaces (comma-separated) |
+| `allowed-actions` | `Create`, `Publish`, `Deploy` | Comma-separated list of allowed actions |
+| `allowed-source-repos` | `*` or glob patterns | Source Git repository patterns (e.g., `github.com/myorg/*`) |
+| `allowed-source-registries` | `*` or glob patterns | Source OCI registry patterns (e.g., `ghcr.io/myorg/*`) |
+| `allowed-publish-registries` | `*` or glob patterns | Publish OCI registry patterns (e.g., `ghcr.io/myorg/*`) |
+| `allowed-source-buckets` | `*` or bucket names | Source S3 bucket names (comma-separated) |
+| `allowed-publish-buckets` | `*` or bucket names | Publish S3 bucket names (comma-separated) |
+| `allowed-deploy-targets` | `*` or namespace names | Target deployment namespaces (comma-separated) |
 
 ### Example ServiceAccount Configurations
 
@@ -877,10 +879,12 @@ metadata:
   namespace: forge-system
   annotations:
     forge.dev/allowed-actions: "Create,Publish,Deploy"
-    forge.dev/allowed-git-repos: "*"
-    forge.dev/allowed-oci-registries: "*"
-    forge.dev/allowed-deploy-namespaces: "*"
-    forge.dev/allowed-s3-buckets: "*"
+    forge.dev/allowed-source-repos: "*"
+    forge.dev/allowed-source-registries: "*"
+    forge.dev/allowed-publish-registries: "*"
+    forge.dev/allowed-deploy-targets: "*"
+    forge.dev/allowed-source-buckets: "*"
+    forge.dev/allowed-publish-buckets: "*"
 ```
 
 **Warning**: Not recommended for production. Use only in controlled development environments.
@@ -897,8 +901,8 @@ metadata:
   namespace: forge-system
   annotations:
     forge.dev/allowed-actions: "Create,Deploy"
-    forge.dev/allowed-git-repos: "github.com/cncf/*,github.com/myorg/*"
-    forge.dev/allowed-deploy-namespaces: "uds-dev,uds-staging"
+    forge.dev/allowed-source-repos: "github.com/cncf/*,github.com/myorg/*"
+    forge.dev/allowed-deploy-targets: "uds-dev,uds-staging"
     # No OCI or S3 access (internal builds only)
 ```
 
@@ -914,9 +918,10 @@ metadata:
   namespace: forge-system
   annotations:
     forge.dev/allowed-actions: "Create,Publish"
-    forge.dev/allowed-git-repos: "github.com/myorg/*,gitlab.mycompany.com/*"
-    forge.dev/allowed-oci-registries: "registry.mycompany.com/*"
-    forge.dev/allowed-s3-buckets: "mycompany-uds-bundles,mycompany-uds-bundles-staging"
+    forge.dev/allowed-source-repos: "github.com/myorg/*,gitlab.mycompany.com/*"
+    forge.dev/allowed-source-registries: "registry.mycompany.com/*"
+    forge.dev/allowed-publish-registries: "registry.mycompany.com/*"
+    forge.dev/allowed-publish-buckets: "mycompany-uds-bundles,mycompany-uds-bundles-staging"
     # No deployment permissions (separation of concerns)
 ```
 
@@ -1078,6 +1083,126 @@ kubectl logs -n forge-system -l app.kubernetes.io/component=controller -f | grep
 kubectl logs -n forge-system -l app.kubernetes.io/component=controller -f | grep 'job="debug-my-build"'
 ```
 
+## Extra Mounts
+
+Forge allows you to mount ConfigMaps and Secrets into job containers using `extraMounts`. Mounts can be defined at the spec level (applied to all actions) or at the per-action level (applied only to that action). Per-action mounts are merged with spec-level mounts; if mount paths conflict, per-action mounts take precedence.
+
+### Spec-Level Extra Mounts
+
+```yaml
+apiVersion: forge.dev/v1alpha3
+kind: ZarfPackageJob
+metadata:
+  name: build-with-mounts
+spec:
+  serviceAccountName: default
+  action: Build
+  source:
+    type: Git
+    git:
+      url: https://github.com/myorg/my-package
+      ref: main
+  extraMounts:
+    - configMapRef:
+        name: shared-config
+      mountPath: /etc/shared-config
+      readOnly: true
+    - secretRef:
+        name: signing-key
+      mountPath: /etc/signing/key.pem
+      subPath: key.pem
+      readOnly: true
+```
+
+### Per-Action Extra Mounts
+
+```yaml
+apiVersion: forge.dev/v1alpha3
+kind: ZarfPackageJob
+metadata:
+  name: build-publish-with-mounts
+spec:
+  serviceAccountName: default
+  action: BuildPublish
+  source:
+    type: Git
+    git:
+      url: https://github.com/myorg/my-package
+      ref: main
+  build:
+    extraMounts:
+      - configMapRef:
+          name: build-config
+        mountPath: /etc/build-config
+  publish:
+    extraMounts:
+      - secretRef:
+          name: publish-creds
+        mountPath: /etc/publish-creds
+        readOnly: true
+```
+
+### Mount Rules
+
+- Exactly one of `configMapRef` or `secretRef` must be set per mount
+- `mountPath` must be an absolute path
+- Reserved paths cannot be used: `/workspace`, `/output`, `/artifacts`, `/tmp`, `/home/zarf`, `/home/uds`, and others used by Forge internally
+- No duplicate mount paths within the same scope
+- `readOnly` defaults to `true`
+
+## Volume Sizes
+
+Forge job pods use EmptyDir volumes for workspace, output, tmp, and home directories. You can customize the size limits using `volumeSizes` at the spec level.
+
+```yaml
+apiVersion: forge.dev/v1alpha3
+kind: ZarfPackageJob
+metadata:
+  name: large-build
+spec:
+  serviceAccountName: default
+  action: Build
+  source:
+    type: Git
+    git:
+      url: https://github.com/myorg/large-package
+      ref: main
+  volumeSizes:
+    workspace: 20Gi  # default: 10Gi
+    output: 15Gi     # default: 10Gi
+    tmp: 2Gi         # default: 1Gi
+    home: 2Gi        # default: 1Gi
+```
+
+All fields are optional. Unset fields use the defaults shown above.
+
+## Pre-Tasks (UDS Only)
+
+UDS bundle jobs support `preTasks` that run UDS runner tasks before the main action. Pre-tasks are available on `create` and `deploy` actions. Each pre-task executes `uds run <name>` with optional `--set KEY=VALUE` flags.
+
+```yaml
+apiVersion: forge.dev/v1alpha3
+kind: UDSBundleJob
+metadata:
+  name: create-with-pretasks
+spec:
+  serviceAccountName: uds-bundle-operator
+  action: Create
+  source:
+    type: Git
+    git:
+      url: https://github.com/myorg/my-bundle
+      ref: main
+  create:
+    preTasks:
+      - name: setup-env
+        variables:
+          REGISTRY: "ghcr.io/myorg"
+      - name: pull-deps
+```
+
+Pre-tasks execute sequentially in order before the main action begins. Task names must not contain shell metacharacters (`;`, `|`, `&`, `$`, etc.) for security.
+
 ## Troubleshooting
 
 ### Job Failures
@@ -1209,7 +1334,7 @@ action "create" not allowed by ServiceAccount annotations
     annotations:
       forge.dev/allowed-source-repos: "https://github.com/myorg/*"  # ✅ pattern matches
       # or for UDS
-      forge.dev/allowed-git-repos: "github.com/myorg/*"  # ✅ pattern matches
+      forge.dev/allowed-source-repos: "github.com/myorg/*"  # ✅ pattern matches
     ```
 
     Example: `github.com/myorg/bundle` matches `github.com/myorg/*`
@@ -1297,9 +1422,9 @@ If S3 upload/download fails:
     ```
 
     Required fields:
-    - `aws_access_key_id`
-    - `aws_secret_access_key`
-    - Optional: `aws_session_token` (for temporary credentials)
+    - `access-key-id`
+    - `secret-access-key`
+    - Optional: `session-token` (for temporary credentials)
 
 3. **Test bucket access** (from a test pod):
 
@@ -1635,7 +1760,6 @@ kubectl forge debug my-package-build --preserve-pod
 - **Deployment Guide**: [DEPLOYMENT.md](DEPLOYMENT.md) - Helm installation and configuration
 - **Developer Guide**: [KIND_SETUP.md](KIND_SETUP.md) - Local development with KIND
 - **Namespace-Scoped Deployment**: [NAMESPACE_SCOPED_DEPLOYMENT.md](../operations/NAMESPACE_SCOPED_DEPLOYMENT.md)
-- **Migration Guide**: [V1ALPHA2_MIGRATION.md](../operations/V1ALPHA2_MIGRATION.md) - v1alpha1 → v1alpha2 migration
 
 ### Examples
 

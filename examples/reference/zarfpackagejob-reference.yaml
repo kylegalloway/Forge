@@ -105,6 +105,13 @@ spec:
     extraArgs:
       - "--max-package-size"
       - "100"
+    # Extra volume mounts for this action (optional, merged with spec-level extraMounts)
+    # Per-action mounts override spec-level mounts if mount paths conflict
+    extraMounts:
+      - configMapRef:
+          name: build-config
+        mountPath: /etc/build-config
+        readOnly: true
     # Retry policy for build failures (optional)
     retry:
       # Max retry attempts (optional, default: 3, range: 0-10)
@@ -130,6 +137,13 @@ spec:
     # Additional CLI flags for 'zarf package publish' (optional)
     extraArgs:
       - "--insecure"
+    # Extra volume mounts for this action (optional, merged with spec-level extraMounts)
+    extraMounts:
+      - secretRef:
+          name: publish-signing-key
+        mountPath: /etc/signing
+        subPath: key.pem
+        readOnly: true
     # Retry policy (optional, same structure as build.retry)
     retry:
       maxRetries: 3
@@ -203,6 +217,11 @@ spec:
     # Additional CLI flags for 'zarf package deploy' (optional)
     extraArgs:
       - "--confirm"
+    # Extra volume mounts for this action (optional, merged with spec-level extraMounts)
+    extraMounts:
+      - configMapRef:
+          name: deploy-overrides
+        mountPath: /etc/deploy-overrides
     # Retry policy (optional, same structure as build.retry)
     retry:
       maxRetries: 3
@@ -293,6 +312,28 @@ spec:
   # Keep PVC after job completion (optional, default: true)
   # Set to false for automatic cleanup
   retainArtifactPVC: true
+
+  # Extra volume mounts applied to all action pods (optional)
+  # Mount ConfigMaps or Secrets into job containers
+  # Per-action extraMounts are merged with these; per-action takes precedence on path conflicts
+  extraMounts:
+    - configMapRef:
+        name: shared-config
+      mountPath: /etc/shared-config
+      readOnly: true
+    - secretRef:
+        name: signing-key
+      mountPath: /etc/signing/key.pem
+      subPath: key.pem
+      readOnly: true
+
+  # Custom sizes for EmptyDir volumes used by job pods (optional)
+  # Unset fields use defaults: workspace=10Gi, output=10Gi, tmp=1Gi, home=1Gi
+  volumeSizes:
+    workspace: 20Gi
+    output: 15Gi
+    tmp: 2Gi
+    home: 2Gi
 
   # Enable debug mode for this job (optional, default: false)
   # Pods wait instead of running commands, allowing kubectl exec for inspection

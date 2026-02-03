@@ -666,7 +666,7 @@ echo "Pod is ready for debugging. The original command was:"
 echo "  %s"
 echo ""
 echo "To inspect the environment, exec into this pod:"
-echo "  kubectl exec -it $HOSTNAME -n $POD_NAMESPACE -- /bin/sh"
+echo "  kubectl exec -it $HOSTNAME -n %s -- /bin/sh"
 echo ""
 echo "When done debugging, signal completion to continue:"
 echo "  touch /tmp/debug-complete"
@@ -680,7 +680,7 @@ exit 0`
 		if len(b.args) > 0 {
 			originalCmd = b.args[0]
 		}
-		containerArgs = []string{fmt.Sprintf(debugScript, originalCmd)}
+		containerArgs = []string{fmt.Sprintf(debugScript, originalCmd, b.job.Namespace)}
 		// Set extended TTL for debug pods (1 hour) to allow time for inspection
 		debugTTL := int32(3600)
 		b.job.Spec.TTLSecondsAfterFinished = &debugTTL

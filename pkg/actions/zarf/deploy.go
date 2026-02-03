@@ -97,10 +97,14 @@ func (handler *DeployHandler) createDeployJob(ctx context.Context, pkg *zarfv1al
 		return nil, fmt.Errorf("failed to build deploy command: %w", err)
 	}
 
-	// Build init containers for artifact retrieval (if needed)
-	initContainers, err := handler.buildInitContainers(pkg, artifactPath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to build init containers: %w", err)
+	// Build init containers for artifact retrieval (only for standalone deploy,
+	// not for chained actions where artifacts are already in the PVC)
+	var initContainers []corev1.Container
+	if artifactPVCName == "" {
+		initContainers, err = handler.buildInitContainers(pkg, artifactPath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to build init containers: %w", err)
+		}
 	}
 
 	// Parse timeout and retry policy
@@ -147,22 +151,25 @@ func (handler *DeployHandler) createDeployJob(ctx context.Context, pkg *zarfv1al
 		builder.WithEnvVar(envVar.Name, envVar.Value)
 	}
 
-	// Add source credential volume if OCI source with credentials
-	if pkg.Spec.Source.Type == zarfv1alpha3.SourceTypeOCI && pkg.Spec.Source.OCI != nil && pkg.Spec.Source.OCI.CredentialRef != nil { // pragma: allowlist secret
-		builder.WithDockerConfigSecret(pkg.Spec.Source.OCI.CredentialRef.Name) // pragma: allowlist secret
-	}
-
-	// Add S3 credentials volume if S3 source with file credentials
-	if pkg.Spec.Source.Type == zarfv1alpha3.SourceTypeS3 && pkg.Spec.Source.S3 != nil {
-		if vol := sources.GetS3CredentialVolume(pkg.Spec.Source.S3.CredentialRef); vol != nil { // pragma: allowlist secret
-			builder.WithCustomVolume(*vol)
+	// Add source credential volumes only for standalone deploy (not chained actions)
+	if artifactPVCName == "" {
+		// Add source credential volume if OCI source with credentials
+		if pkg.Spec.Source.Type == zarfv1alpha3.SourceTypeOCI && pkg.Spec.Source.OCI != nil && pkg.Spec.Source.OCI.CredentialRef != nil { // pragma: allowlist secret
+			builder.WithDockerConfigSecret(pkg.Spec.Source.OCI.CredentialRef.Name) // pragma: allowlist secret
 		}
-	}
 
-	// Add git credentials volume if Git source with credentials
-	if pkg.Spec.Source.Type == zarfv1alpha3.SourceTypeGit && pkg.Spec.Source.Git != nil {
-		if vol := sources.GetGitCredentialVolume(pkg.Spec.Source.Git.CredentialRef, pkg.Spec.Source.Git.DisableCloneCredentials); vol != nil { // pragma: allowlist secret
-			builder.WithCustomVolume(*vol)
+		// Add S3 credentials volume if S3 source with file credentials
+		if pkg.Spec.Source.Type == zarfv1alpha3.SourceTypeS3 && pkg.Spec.Source.S3 != nil {
+			if vol := sources.GetS3CredentialVolume(pkg.Spec.Source.S3.CredentialRef); vol != nil { // pragma: allowlist secret
+				builder.WithCustomVolume(*vol)
+			}
+		}
+
+		// Add git credentials volume if Git source with credentials
+		if pkg.Spec.Source.Type == zarfv1alpha3.SourceTypeGit && pkg.Spec.Source.Git != nil {
+			if vol := sources.GetGitCredentialVolume(pkg.Spec.Source.Git.CredentialRef, pkg.Spec.Source.Git.DisableCloneCredentials); vol != nil { // pragma: allowlist secret
+				builder.WithCustomVolume(*vol)
+			}
 		}
 	}
 

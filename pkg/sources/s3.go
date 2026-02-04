@@ -2,6 +2,7 @@ package sources
 
 import (
 	"fmt"
+	"path"
 
 	"github.com/kylegalloway/forge/pkg/actions"
 	"github.com/kylegalloway/forge/pkg/apis/common"
@@ -39,20 +40,25 @@ func (source *S3Source) GetInitContainer(pkg *zarfv1alpha3.ZarfPackageJob) (*cor
 
 	// Use common builder with Zarf UID and image
 	return BuildS3InitContainer(config, int64(constants.DefaultZarfUID),
-		constants.ZarfCLIImage, constants.ZarfArtifactFilename)
+		constants.ZarfCLIImage)
 }
 
 // BuildS3InitContainer creates an init container for S3 downloads
 // This is shared between Zarf and UDS sources, with configurable runAsUser.
 // The image parameter specifies which container image to use (the caller's CLI image,
-// which already includes aws-cli). The artifactFilename specifies the download target
-// filename (e.g. "package.tar.zst" for Zarf, "bundle.tar.zst" for UDS).
-func BuildS3InitContainer(config *S3SourceConfig, runAsUser int64, image, artifactFilename string) (*corev1.Container, error) {
+// which already includes aws-cli). The original filename from the S3 key is preserved
+// so that CLI tools that validate naming conventions (e.g. uds-bundle-*, zarf-package-*)
+// can identify the artifact correctly.
+func BuildS3InitContainer(config *S3SourceConfig, runAsUser int64, image string) (*corev1.Container, error) {
 	if config == nil {
 		return nil, fmt.Errorf("s3 source configuration is missing")
 	}
 
 	s3Path := fmt.Sprintf("s3://%s/%s", config.Bucket, config.Key)
+
+	// Preserve the original filename from the S3 key so that CLI tools
+	// that validate naming conventions can identify the artifact.
+	artifactFilename := path.Base(config.Key)
 
 	// Build download command
 	var downloadCmd string

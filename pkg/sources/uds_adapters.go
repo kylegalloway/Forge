@@ -51,7 +51,7 @@ func GetUDSInitContainer(bundle *udsv1alpha3.UDSBundleJob) (*corev1.Container, e
 
 		// Use common builder with UDS UID and image
 		return BuildS3InitContainer(config, int64(constants.DefaultUDSUID),
-			constants.UDSCLIImage, constants.UDSArtifactFilename)
+			constants.UDSCLIImage)
 
 	case udsv1alpha3.SourceTypeOCI:
 		ociSource := bundle.Spec.Source.OCI

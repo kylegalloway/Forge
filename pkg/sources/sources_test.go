@@ -365,10 +365,11 @@ func TestS3SourceGetInitContainer(t *testing.T) {
 				if container.Image != constants.ZarfCLIImage {
 					t.Errorf("Expected image %s, got %s", constants.ZarfCLIImage, container.Image)
 				}
-				// Verify download command contains the correct artifact filename
-				if len(container.Args) > 0 && !strings.Contains(container.Args[0], constants.ZarfArtifactFilename) {
-					t.Errorf("Expected download command to contain %s, got %s",
-						constants.ZarfArtifactFilename, container.Args[0])
+				// Verify download command preserves the original filename from the S3 key
+				expectedFilename := "test.tar.zst" // basename of Key "packages/test.tar.zst"
+				if len(container.Args) > 0 && !strings.Contains(container.Args[0], expectedFilename) {
+					t.Errorf("Expected download command to contain original S3 key filename %s, got %s",
+						expectedFilename, container.Args[0])
 				}
 			}
 		})

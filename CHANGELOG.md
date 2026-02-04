@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- S3 init container downloaded artifacts with a hardcoded generic filename (`bundle.tar.zst` for UDS, `package.tar.zst` for Zarf), discarding the original S3 key filename. Both UDS CLI and Zarf CLI validate artifact naming conventions (e.g. `uds-bundle-<name>-<arch>-<version>.tar.zst`), so the renamed files were rejected as invalid despite having correct content. The download now preserves the original filename from the S3 key using `path.Base(config.Key)`.
+
 ## [0.11.16] - 2026-02-03
 
 ### Fixed

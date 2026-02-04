@@ -28,7 +28,7 @@ controller:
     repository: ghcr.io/kylegalloway/forge/forge-controller
     pullPolicy: IfNotPresent
     # Tag defaults to Chart.Version if empty
-    tag: "v0.11.16"
+    tag: "v0.11.17"
 
   # Image pull secrets (add if using private registry)
   imagePullSecrets: []
@@ -122,7 +122,7 @@ webhook:
     repository: ghcr.io/kylegalloway/forge/forge-webhook
     pullPolicy: IfNotPresent
     # Tag defaults to Chart.Version if empty
-    tag: "v0.11.16"
+    tag: "v0.11.17"
 
   # Resource limits and requests
   resources:
@@ -165,14 +165,14 @@ webhook:
 zarfCLI:
   image:
     repository: ghcr.io/kylegalloway/forge/zarfpackagejob
-    tag: v0.11.16
+    tag: v0.11.17
     pullPolicy: IfNotPresent
 
 # UDS CLI image for Jobs
 udsCLI:
   image:
     repository: ghcr.io/kylegalloway/forge/udsbundlejob
-    tag: v0.11.16
+    tag: v0.11.17
     pullPolicy: IfNotPresent
 
 # Init container images for source fetching

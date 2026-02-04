@@ -1,11 +1,13 @@
 package sources
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/kylegalloway/forge/pkg/actions"
 	"github.com/kylegalloway/forge/pkg/apis/common"
 	zarfv1alpha3 "github.com/kylegalloway/forge/pkg/apis/zarf/v1alpha3"
+	"github.com/kylegalloway/forge/pkg/constants"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -358,6 +360,15 @@ func TestS3SourceGetInitContainer(t *testing.T) {
 				}
 				if container.Name != "s3-download" {
 					t.Errorf("Expected container name 's3-download', got %s", container.Name)
+				}
+				// Verify the init container uses the Zarf CLI image (not amazon/aws-cli)
+				if container.Image != constants.ZarfCLIImage {
+					t.Errorf("Expected image %s, got %s", constants.ZarfCLIImage, container.Image)
+				}
+				// Verify download command contains the correct artifact filename
+				if len(container.Args) > 0 && !strings.Contains(container.Args[0], constants.ZarfArtifactFilename) {
+					t.Errorf("Expected download command to contain %s, got %s",
+						constants.ZarfArtifactFilename, container.Args[0])
 				}
 			}
 		})

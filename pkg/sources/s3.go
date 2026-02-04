@@ -37,13 +37,17 @@ func (source *S3Source) GetInitContainer(pkg *zarfv1alpha3.ZarfPackageJob) (*cor
 		CredentialRef: s3Source.CredentialRef, // pragma: allowlist secret
 	}
 
-	// Use common builder with Zarf UID
-	return BuildS3InitContainer(config, int64(constants.DefaultZarfUID))
+	// Use common builder with Zarf UID and image
+	return BuildS3InitContainer(config, int64(constants.DefaultZarfUID),
+		constants.ZarfCLIImage, constants.ZarfArtifactFilename)
 }
 
 // BuildS3InitContainer creates an init container for S3 downloads
-// This is shared between Zarf and UDS sources, with configurable runAsUser
-func BuildS3InitContainer(config *S3SourceConfig, runAsUser int64) (*corev1.Container, error) {
+// This is shared between Zarf and UDS sources, with configurable runAsUser.
+// The image parameter specifies which container image to use (the caller's CLI image,
+// which already includes aws-cli). The artifactFilename specifies the download target
+// filename (e.g. "package.tar.zst" for Zarf, "bundle.tar.zst" for UDS).
+func BuildS3InitContainer(config *S3SourceConfig, runAsUser int64, image, artifactFilename string) (*corev1.Container, error) {
 	if config == nil {
 		return nil, fmt.Errorf("s3 source configuration is missing")
 	}
@@ -54,12 +58,12 @@ func BuildS3InitContainer(config *S3SourceConfig, runAsUser int64) (*corev1.Cont
 	var downloadCmd string
 	if config.Endpoint != "" {
 		// S3-compatible storage (MinIO, etc.)
-		downloadCmd = fmt.Sprintf("aws s3 cp %s %s/package.tar.zst --endpoint-url %s --region %s",
-			s3Path, constants.VolumeMountPathWorkspace, config.Endpoint, config.Region)
+		downloadCmd = fmt.Sprintf("aws s3 cp %s %s/%s --endpoint-url %s --region %s",
+			s3Path, constants.VolumeMountPathWorkspace, artifactFilename, config.Endpoint, config.Region)
 	} else {
 		// Standard AWS S3
-		downloadCmd = fmt.Sprintf("aws s3 cp %s %s/package.tar.zst --region %s",
-			s3Path, constants.VolumeMountPathWorkspace, config.Region)
+		downloadCmd = fmt.Sprintf("aws s3 cp %s %s/%s --region %s",
+			s3Path, constants.VolumeMountPathWorkspace, artifactFilename, config.Region)
 	}
 
 	env := []corev1.EnvVar{
@@ -137,7 +141,7 @@ func BuildS3InitContainer(config *S3SourceConfig, runAsUser int64) (*corev1.Cont
 
 	return &corev1.Container{
 		Name:         "s3-download",
-		Image:        constants.ImageAWSCLI,
+		Image:        image,
 		Command:      []string{"/bin/sh", "-c"},
 		Args:         []string{downloadCmd},
 		Env:          env,

@@ -2,7 +2,6 @@
 //
 // These images are used for source fetching operations:
 //   - ImageGitClone: Alpine-based Git for cloning repositories
-//   - ImageAWSCLI: Amazon AWS CLI for S3 downloads
 //   - ImageCrane: Google crane tool for OCI registry operations
 //
 // All images use pinned versions for security and reproducibility.
@@ -15,9 +14,6 @@ const (
 	// DefaultImageGitClone is the default image for Git clone init containers.
 	DefaultImageGitClone = "alpine/git:v2.43.0"
 
-	// DefaultImageAWSCLI is the default image for AWS CLI init containers.
-	DefaultImageAWSCLI = "amazon/aws-cli:2.15.0"
-
 	// DefaultImageCrane is the default image for OCI pull init containers.
 	DefaultImageCrane = "gcr.io/go-containerregistry/crane:v0.19.0"
 
@@ -28,10 +24,6 @@ const (
 // ImageGitClone is the container image for Git clone init containers.
 // It can be overridden via the FORGE_GIT_CLONE_IMAGE environment variable.
 var ImageGitClone = getImageEnvOrDefault("FORGE_GIT_CLONE_IMAGE", DefaultImageGitClone)
-
-// ImageAWSCLI is the container image for AWS CLI init containers.
-// It can be overridden via the FORGE_AWS_CLI_IMAGE environment variable.
-var ImageAWSCLI = getImageEnvOrDefault("FORGE_AWS_CLI_IMAGE", DefaultImageAWSCLI)
 
 // ImageCrane is the container image for OCI pull init containers.
 // It can be overridden via the FORGE_CRANE_IMAGE environment variable.

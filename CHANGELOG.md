@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- S3 init container used `amazon/aws-cli:2.15.0` (Amazon Linux), which lacks the expected UIDs (1000/65532) and uses a different AWS CLI build (Python/glibc vs musl), causing corrupt downloads. The init container now uses the caller's own CLI image (Zarf or UDS), which already includes `aws-cli` via Alpine apk. Also parameterized the artifact filename so UDS downloads to `bundle.tar.zst` instead of `package.tar.zst`.
+
+### Removed
+- `ImageAWSCLI` / `DefaultImageAWSCLI` constants and `FORGE_AWS_CLI_IMAGE` env var override. The S3 init container now reuses the caller's CLI image directly.
+
 ## [0.11.15] - 2026-02-03
 
 ### Fixed

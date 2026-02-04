@@ -49,8 +49,9 @@ func GetUDSInitContainer(bundle *udsv1alpha3.UDSBundleJob) (*corev1.Container, e
 			CredentialRef: s3Source.CredentialRef, // pragma: allowlist secret
 		}
 
-		// Use common builder with UDS UID
-		return BuildS3InitContainer(config, int64(constants.DefaultUDSUID))
+		// Use common builder with UDS UID and image
+		return BuildS3InitContainer(config, int64(constants.DefaultUDSUID),
+			constants.UDSCLIImage, constants.UDSArtifactFilename)
 
 	case udsv1alpha3.SourceTypeOCI:
 		ociSource := bundle.Spec.Source.OCI

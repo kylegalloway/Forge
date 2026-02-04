@@ -118,8 +118,17 @@ const (
 	// ContainerNameUDSDeploy is the container name for UDS bundle deploy Jobs.
 	ContainerNameUDSDeploy = "uds-deploy"
 
-	// DefaultArtifactPath is the default path where built artifacts are stored.
-	DefaultArtifactPath = "/workspace/package.tar.zst"
+	// ZarfArtifactFilename is the filename for Zarf package artifacts.
+	ZarfArtifactFilename = "package.tar.zst"
+
+	// UDSArtifactFilename is the filename for UDS bundle artifacts.
+	UDSArtifactFilename = "bundle.tar.zst"
+
+	// DefaultArtifactPath is the default path where built Zarf artifacts are stored.
+	DefaultArtifactPath = VolumeMountPathWorkspace + "/" + ZarfArtifactFilename
+
+	// DefaultUDSArtifactPath is the default path where built UDS artifacts are stored.
+	DefaultUDSArtifactPath = VolumeMountPathWorkspace + "/" + UDSArtifactFilename
 )
 
 // VolumeNameKubeconfig is the volume name for the generated in-cluster kubeconfig.

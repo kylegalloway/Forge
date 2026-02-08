@@ -10,7 +10,6 @@ import (
 	"github.com/spf13/cobra"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
-	"k8s.io/client-go/kubernetes"
 )
 
 // CancelOptions holds options for the cancel command
@@ -31,20 +30,20 @@ func NewCancelCommand(configFlags *genericclioptions.ConfigFlags) *cobra.Command
 	}
 
 	cmd := &cobra.Command{
-		Use:   "cancel JOB_NAME",
-		Short: "Cancel a running or pending Forge job",
-		Long: `Cancel a Forge job by deleting the underlying Kubernetes Job.
+		Use:   "cancel RESOURCE_NAME",
+		Short: "Cancel a running or pending Forge resource",
+		Long: `Cancel a Forge resource by deleting the underlying Kubernetes Job(s).
 
 This stops any running pods and prevents the job from completing.
 Use --delete-pvc to also remove the artifact PVC (data will be lost).`,
-		Example: `  # Cancel a running job
-  kubectl forge cancel my-package-build
+		Example: `  # Cancel a running resource
+  kubectl forge cancel my-package
 
   # Cancel and delete the artifact PVC
-  kubectl forge cancel my-package-build --delete-pvc
+  kubectl forge cancel my-package --delete-pvc
 
   # Force delete without confirmation
-  kubectl forge cancel my-package-build --force`,
+  kubectl forge cancel my-package --force`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			o.JobName = args[0]
@@ -60,43 +59,50 @@ Use --delete-pvc to also remove the artifact PVC (data will be lost).`,
 
 // Run executes the cancel command
 func (o *CancelOptions) Run(ctx context.Context) error {
-	restConfig, err := o.configFlags.ToRESTConfig()
-	if err != nil {
-		return fmt.Errorf("failed to create REST config: %w", err)
-	}
-
-	kubeClient, err := kubernetes.NewForConfig(restConfig)
-	if err != nil {
-		return fmt.Errorf("failed to create Kubernetes client: %w", err)
-	}
-
-	forgeClient, err := kubectl.NewClientFromFlags(o.configFlags)
+	client, err := kubectl.NewClientFromFlags(o.configFlags)
 	if err != nil {
 		return fmt.Errorf("failed to create Forge client: %w", err)
 	}
 
 	namespace := kubectl.GetNamespace(o.configFlags)
 
-	// Find the job first
-	job, err := forgeClient.FindJob(ctx, namespace, o.JobName)
+	// Resolve CRD resource
+	resource, err := client.GetForgeResource(ctx, namespace, o.JobName)
 	if err != nil {
-		return fmt.Errorf("failed to find job %s: %w", o.JobName, err)
+		return fmt.Errorf("failed to find resource %s: %w", o.JobName, err)
+	}
+
+	// Collect all active batch Job names from operations
+	var jobNames []string
+	for _, op := range resource.Operations {
+		if op.JobName != "" {
+			jobNames = append(jobNames, op.JobName)
+		}
+	}
+
+	if len(jobNames) == 0 {
+		return fmt.Errorf("no batch Jobs found for resource %s", o.JobName)
 	}
 
 	// Find artifact PVC if we need to delete it
 	var pvcName string
 	if o.DeletePVC {
-		pvcName, err = forgeClient.FindArtifactPVC(ctx, job)
-		if err != nil {
+		// Try to find PVC from the first batch Job
+		job, jobErr := client.FindJob(ctx, namespace, jobNames[0])
+		if jobErr == nil {
+			pvcName, _ = client.FindArtifactPVC(ctx, job) //nolint:errcheck // Best-effort PVC lookup
+		}
+		if pvcName == "" {
 			//nolint:errcheck // Writing to stderr in CLI context
-			fmt.Fprintf(o.IOStreams.ErrOut, "Warning: failed to find artifact PVC: %v\n", err)
+			fmt.Fprintf(o.IOStreams.ErrOut, "Warning: could not find artifact PVC for resource %s\n", o.JobName)
 		}
 	}
 
 	// Confirm unless --force
 	if !o.Force {
 		//nolint:errcheck // Writing to stdout in CLI context
-		fmt.Fprintf(o.IOStreams.Out, "This will cancel job %s/%s\n", namespace, o.JobName)
+		fmt.Fprintf(o.IOStreams.Out, "This will cancel resource %s/%s by deleting %d batch Job(s)\n",
+			namespace, o.JobName, len(jobNames))
 		if pvcName != "" {
 			//nolint:errcheck // Writing to stdout in CLI context
 			fmt.Fprintf(o.IOStreams.Out, "This will also delete PVC %s (all artifact data will be lost)\n", pvcName)
@@ -114,20 +120,22 @@ func (o *CancelOptions) Run(ctx context.Context) error {
 		}
 	}
 
-	// Delete the job with propagation policy to delete pods
+	// Delete all batch Jobs for this resource
 	propagationPolicy := metav1.DeletePropagationForeground
-	err = kubeClient.BatchV1().Jobs(namespace).Delete(ctx, o.JobName, metav1.DeleteOptions{
-		PropagationPolicy: &propagationPolicy,
-	})
-	if err != nil {
-		return fmt.Errorf("failed to delete job: %w", err)
+	for _, jobName := range jobNames {
+		err = client.DeleteJob(ctx, namespace, jobName, &propagationPolicy)
+		if err != nil {
+			//nolint:errcheck // Writing to stderr in CLI context
+			fmt.Fprintf(o.IOStreams.ErrOut, "Warning: failed to delete batch Job %s: %v\n", jobName, err)
+			continue
+		}
+		//nolint:errcheck // Writing to stdout in CLI context
+		fmt.Fprintf(o.IOStreams.Out, "Batch Job %s deleted\n", jobName)
 	}
-	//nolint:errcheck // Writing to stdout in CLI context
-	fmt.Fprintf(o.IOStreams.Out, "Job %s deleted\n", o.JobName)
 
 	// Delete PVC if requested
 	if pvcName != "" {
-		err = kubeClient.CoreV1().PersistentVolumeClaims(namespace).Delete(ctx, pvcName, metav1.DeleteOptions{})
+		err = client.DeletePVC(ctx, namespace, pvcName)
 		if err != nil {
 			return fmt.Errorf("failed to delete PVC %s: %w", pvcName, err)
 		}

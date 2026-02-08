@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- CRD-first architecture for kubectl-forge: all commands now query ZarfPackageJob/UDSBundleJob CRDs directly instead of only operating on batch/v1 Jobs, surfacing operation phases, retry counts, artifact locations, and messages from CRD status
+- Dynamic Kubernetes client in `pkg/kubectl` for querying CRDs via unstructured objects (`GetForgeResource`, `ListForgeResources`, `GetActiveJob`, `ResolveJobForAction`)
+- `--action` flag on `get logs`, `get pods`, `get events`, `download`, `debug`, and `get job` commands to target specific operations (build, create, publish, deploy)
+- `--wide` flag on `list` command showing per-operation status summary
+- CRD-level diagnostics in `diagnose` command: high retry count detection, stuck retrying, queued too long, failed with no batch Job
+- "Queued" phase colorization in CLI output
 - Comprehensive unit test coverage for action chaining logic, JobBuilder features (debug mode, extra mounts, volume sizes, in-cluster kubeconfig, security context, tolerations, affinity), job monitor status tracking, webhook validators (Zarf and UDS), source handlers (Git, S3, OCI, Local), and destination handlers (S3, OCI, Local)
 - E2E test fixtures for multi-action chains (BuildPublishDeploy, CreatePublish, CreatePublishDeploy), extra mounts, volume sizes, and debug mode
 - Shared informer + rate-limiting work queue pattern replacing direct watch-based event loop in GenericController for improved scalability
@@ -20,11 +26,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - E2E tests for controller HA validation (test 12) and concurrency limits validation (test 13): Helm template rendering, leader election wiring, PDB, anti-affinity, workers, concurrency flags
 
 ### Changed
+- kubectl-forge commands now accept CRD resource names instead of batch Job names; batch Job names still work via fallback resolution
+- `retry` and `cancel` commands use client's dynamic client instead of creating separate clients
+- `status` command job summary now queries CRDs directly, enabling retry count warnings and queued resource detection
+- `list` command table columns updated: NAME, TYPE, ACTION, PHASE, MESSAGE, AGE (with optional OPERATIONS in wide mode)
 - Deployment guide: HA section rewritten to reflect automatic PDB/anti-affinity when `replicaCount > 1`, added concurrency limits example, custom affinity override documentation
 - Runbook: scaling section updated with HA commands (was "no leader election yet"), added concurrency/backpressure metrics and performance tuning parameters
 - Chart READMEs: added HA/concurrency/leader election configuration reference, updated chart structure listing with PDB files
 
 ### Fixed
+- kubectl-forge plugin broken against live clusters: commands now properly resolve CRD resources and their associated batch Jobs instead of failing with runtime errors
 - Helm chart `leaderElection.enabled: true` was dead config — the `--enable-leader-election` flag was never passed to the controller binary, so multiple replicas would cause duplicate reconciliation with no leader coordination
 - Default CLI image constants (`DefaultZarfCLIImage`, `DefaultUDSCLIImage`) referenced `v0.11.1` instead of `v0.11.17`
 - Stale version references across documentation: `v0.6.0` and `v0.11.1` updated to `v0.11.17` in deployment guide, chart README, troubleshooting guide, image READMEs, and Makefile

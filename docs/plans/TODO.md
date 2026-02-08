@@ -2,8 +2,6 @@
 
 ## Manually added
 
-* **kubectl-forge plugin not working** - Investigate and fix the kubectl forge CLI plugin (unknown root cause)
-
 ## Production Readiness (High Priority)
 
 ### Critical Operational Concerns

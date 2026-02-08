@@ -18,6 +18,7 @@ type DebugOptions struct {
 	IOStreams   genericclioptions.IOStreams
 
 	JobName       string
+	Action        string
 	FailedOnly    bool
 	Container     string
 	Shell         string
@@ -36,31 +37,35 @@ func NewDebugCommand(configFlags *genericclioptions.ConfigFlags) *cobra.Command 
 	}
 
 	cmd := &cobra.Command{
-		Use:   "debug JOB_NAME",
-		Short: "Debug a failed or running Forge job",
-		Long: `Debug a Forge job by exec'ing into the job's pod or creating a debug pod.
+		Use:   "debug RESOURCE_NAME",
+		Short: "Debug a failed or running Forge resource",
+		Long: `Debug a Forge resource by exec'ing into the batch Job's pod or creating a debug pod.
 
-This command helps you debug failed jobs by:
-1. Finding the failed pod(s) for a job
+This command helps you debug failed resources by:
+1. Finding the failed pod(s) for a resource's batch Job
 2. Exec'ing into the pod with an interactive shell
 3. Optionally creating a new debug pod with the same volumes
 
+Use --action to target a specific operation (build, create, publish, deploy).
 If the pod has already been deleted, you can use --preserve-pod to prevent
 automatic cleanup and keep pods around for debugging.`,
-		Example: `  # Debug a failed job (exec into the pod)
-  kubectl forge debug my-package-build --failed
+		Example: `  # Debug a failed resource (exec into the pod)
+  kubectl forge debug my-package --failed
+
+  # Debug a specific operation
+  kubectl forge debug my-package --action build
 
   # Debug using a specific container (for multi-container pods)
-  kubectl forge debug my-package-build --container zarf-build
+  kubectl forge debug my-package --container zarf-build
 
   # Use bash instead of default sh
-  kubectl forge debug my-package-build --shell /bin/bash
+  kubectl forge debug my-package --shell /bin/bash
 
   # Create a new debug pod with access to the workspace
-  kubectl forge debug my-package-build --copy-workspace
+  kubectl forge debug my-package --copy-workspace
 
   # Use a custom debug image
-  kubectl forge debug my-package-build --debug-image ubuntu:22.04`,
+  kubectl forge debug my-package --debug-image ubuntu:22.04`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			o.JobName = args[0]
@@ -68,6 +73,7 @@ automatic cleanup and keep pods around for debugging.`,
 		},
 	}
 
+	cmd.Flags().StringVarP(&o.Action, "action", "a", "", "Debug a specific operation (build, create, publish, deploy)")
 	cmd.Flags().BoolVar(&o.FailedOnly, "failed", true, "Only debug failed pods")
 	cmd.Flags().StringVarP(&o.Container, "container", "c", "", "Container name (for multi-container pods)")
 	cmd.Flags().StringVar(&o.Shell, "shell", "/bin/sh", "Shell to use for exec")
@@ -83,25 +89,29 @@ automatic cleanup and keep pods around for debugging.`,
 // Run executes the debug command
 func (o *DebugOptions) Run(ctx context.Context) error {
 	//nolint:errcheck // Writing to stdout in CLI context
-	fmt.Fprintf(o.IOStreams.Out, "Debugging job: %s\n", o.JobName)
+	fmt.Fprintf(o.IOStreams.Out, "Debugging resource: %s\n", o.JobName)
 
-	// Get Kubernetes client
 	client, err := kubectl.NewClientFromFlags(o.configFlags)
 	if err != nil {
 		return fmt.Errorf("failed to create Kubernetes client: %w", err)
 	}
 
-	// Get namespace
 	namespace := kubectl.GetNamespace(o.configFlags)
 
-	// Find the job
-	job, err := client.FindJob(ctx, namespace, o.JobName)
+	// Resolve CRD resource
+	resource, err := client.GetForgeResource(ctx, namespace, o.JobName)
 	if err != nil {
-		return fmt.Errorf("failed to find job: %w", err)
+		return fmt.Errorf("failed to find resource %s: %w", o.JobName, err)
+	}
+
+	// Resolve to batch Job via CRD status
+	job, err := client.GetActiveJob(ctx, resource, o.Action)
+	if err != nil {
+		return fmt.Errorf("failed to find batch Job for resource %s: %w", o.JobName, err)
 	}
 
 	//nolint:errcheck // Writing to stdout in CLI context
-	fmt.Fprintf(o.IOStreams.Out, "Found job: %s/%s\n", job.Namespace, job.Name)
+	fmt.Fprintf(o.IOStreams.Out, "Found batch Job: %s/%s\n", job.Namespace, job.Name)
 
 	// Find pods for the job
 	pods, err := client.FindJobPods(ctx, job, o.FailedOnly)
@@ -111,9 +121,9 @@ func (o *DebugOptions) Run(ctx context.Context) error {
 
 	if len(pods) == 0 {
 		if o.FailedOnly {
-			return fmt.Errorf("no failed pods found for job %s (pod may have been deleted or job succeeded)", o.JobName)
+			return fmt.Errorf("no failed pods found for resource %s (pod may have been deleted or job succeeded)", o.JobName)
 		}
-		return fmt.Errorf("no pods found for job %s", o.JobName)
+		return fmt.Errorf("no pods found for resource %s", o.JobName)
 	}
 
 	// Show available pods if there are multiple

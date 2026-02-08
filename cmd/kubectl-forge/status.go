@@ -312,25 +312,30 @@ func (o *StatusOptions) getJobsSummary(ctx context.Context, client *kubectl.Clie
 	summary := JobsSummary{}
 	var warnings []string
 
-	// List all jobs across all namespaces
-	jobs, err := client.ListJobs(ctx, "", "all")
+	// List all resources across all namespaces via CRDs
+	resources, err := client.ListForgeResources(ctx, "", "all")
 	if err != nil {
 		return summary, warnings
 	}
 
 	stuckThreshold := time.Hour
-	retryThreshold := 3
+	retryThreshold := int32(3)
 
-	for _, job := range jobs {
-		switch job.Phase {
+	for _, r := range resources {
+		switch r.Phase {
 		case constants.PhasePending:
 			summary.Pending++
+		case constants.PhaseQueued:
+			summary.Pending++
+			age := time.Since(r.CreatedAt)
+			if age > 10*time.Minute {
+				warnings = append(warnings, fmt.Sprintf("Resource queued > 10 minutes: %s/%s", r.Namespace, r.Name))
+			}
 		case constants.PhaseRunning:
 			summary.Running++
-			// Check for stuck jobs
-			age, _ := parseAge(job.Age) //nolint:errcheck // Best effort age parsing
+			age := time.Since(r.CreatedAt)
 			if age > stuckThreshold {
-				warnings = append(warnings, fmt.Sprintf("Job running > 1 hour: %s/%s", job.Namespace, job.Name))
+				warnings = append(warnings, fmt.Sprintf("Resource running > 1 hour: %s/%s", r.Namespace, r.Name))
 			}
 		case constants.PhaseCompleted:
 			summary.Completed++
@@ -338,25 +343,17 @@ func (o *StatusOptions) getJobsSummary(ctx context.Context, client *kubectl.Clie
 			summary.Failed++
 		case constants.PhaseRetrying:
 			summary.Retrying++
-			// Note: We'd need CRD access to check retry count
-			_ = retryThreshold
+			// Check retry counts from CRD status
+			for _, op := range r.Operations {
+				if op.RetryCount > retryThreshold {
+					warnings = append(warnings, fmt.Sprintf("High retry count (%d) for %s/%s operation %s",
+						op.RetryCount, r.Namespace, r.Name, op.Name))
+				}
+			}
 		}
 	}
 
 	return summary, warnings
-}
-
-// parseAge parses a duration string like "5m", "2h", "3d" into a time.Duration
-func parseAge(age string) (time.Duration, error) {
-	if strings.HasSuffix(age, "d") {
-		days := strings.TrimSuffix(age, "d")
-		var d int
-		if _, err := fmt.Sscanf(days, "%d", &d); err != nil {
-			return 0, err
-		}
-		return time.Duration(d) * 24 * time.Hour, nil
-	}
-	return time.ParseDuration(age)
 }
 
 func (o *StatusOptions) printStatus(s SystemStatus) error {

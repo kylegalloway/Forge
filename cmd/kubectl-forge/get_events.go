@@ -31,6 +31,7 @@ type GetEventsOptions struct {
 	IOStreams   genericclioptions.IOStreams
 
 	JobName      string
+	Action       string
 	OutputFormat string
 	AllEvents    bool
 }
@@ -43,23 +44,27 @@ func NewGetEventsCommand(configFlags *genericclioptions.ConfigFlags) *cobra.Comm
 	}
 
 	cmd := &cobra.Command{
-		Use:   "events JOB_NAME",
-		Short: "Get events for a Forge job",
-		Long: `Get Kubernetes events associated with a Forge job and its pods.
+		Use:   "events RESOURCE_NAME",
+		Short: "Get events for a Forge resource",
+		Long: `Get Kubernetes events associated with a Forge resource's batch Job and its pods.
 
 By default, only Warning events are shown. Use --all to see all event types.
+Use --action to target a specific operation (build, create, publish, deploy).
 Events are sorted by last seen time, most recent last.`,
-		Example: `  # Get warning events for a job
-  kubectl forge get events my-package-build
+		Example: `  # Get warning events for a resource
+  kubectl forge get events my-package
+
+  # Get events for a specific operation
+  kubectl forge get events my-package --action build
 
   # Get all events (including Normal)
-  kubectl forge get events my-package-build --all
+  kubectl forge get events my-package --all
 
   # Get events in JSON format
-  kubectl forge get events my-package-build --output json
+  kubectl forge get events my-package --output json
 
   # Get events in YAML format
-  kubectl forge get events my-package-build --output yaml`,
+  kubectl forge get events my-package --output yaml`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			o.JobName = args[0]
@@ -67,6 +72,7 @@ Events are sorted by last seen time, most recent last.`,
 		},
 	}
 
+	cmd.Flags().StringVarP(&o.Action, "action", "a", "", "Show events for a specific operation (build, create, publish, deploy)")
 	cmd.Flags().StringVarP(&o.OutputFormat, "output", "o", "table", "Output format (table, json, yaml)")
 	cmd.Flags().BoolVar(&o.AllEvents, "all", false, "Show all events, not just warnings")
 
@@ -87,14 +93,20 @@ func (o *GetEventsOptions) Run(ctx context.Context) error {
 
 	namespace := kubectl.GetNamespace(o.configFlags)
 
-	// Verify job exists first
-	_, err = client.FindJob(ctx, namespace, o.JobName)
+	// Resolve CRD resource
+	resource, err := client.GetForgeResource(ctx, namespace, o.JobName)
 	if err != nil {
-		return fmt.Errorf("failed to find job %s: %w", o.JobName, err)
+		return fmt.Errorf("failed to find resource %s: %w", o.JobName, err)
 	}
 
-	// Get events for job and related resources
-	events, err := client.GetJobEvents(ctx, namespace, o.JobName, o.AllEvents)
+	// Resolve to batch Job via CRD status
+	job, err := client.GetActiveJob(ctx, resource, o.Action)
+	if err != nil {
+		return fmt.Errorf("failed to find batch Job for resource %s: %w", o.JobName, err)
+	}
+
+	// Get events for the batch Job and related resources
+	events, err := client.GetJobEvents(ctx, namespace, job.Name, o.AllEvents)
 	if err != nil {
 		return fmt.Errorf("failed to get events: %w", err)
 	}
@@ -102,10 +114,10 @@ func (o *GetEventsOptions) Run(ctx context.Context) error {
 	if len(events) == 0 {
 		if o.AllEvents {
 			//nolint:errcheck // Writing to stdout in CLI context
-			fmt.Fprintf(o.IOStreams.Out, "No events found for job %s\n", o.JobName)
+			fmt.Fprintf(o.IOStreams.Out, "No events found for resource %s\n", o.JobName)
 		} else {
 			//nolint:errcheck // Writing to stdout in CLI context
-			fmt.Fprintf(o.IOStreams.Out, "No warning events found for job %s (use --all to see all events)\n", o.JobName)
+			fmt.Fprintf(o.IOStreams.Out, "No warning events found for resource %s (use --all to see all events)\n", o.JobName)
 		}
 		return nil
 	}

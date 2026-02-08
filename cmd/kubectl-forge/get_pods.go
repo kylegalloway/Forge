@@ -42,6 +42,7 @@ type GetPodsOptions struct {
 	IOStreams   genericclioptions.IOStreams
 
 	JobName      string
+	Action       string
 	OutputFormat string
 	ShowAll      bool
 }
@@ -54,23 +55,27 @@ func NewGetPodsCommand(configFlags *genericclioptions.ConfigFlags) *cobra.Comman
 	}
 
 	cmd := &cobra.Command{
-		Use:   "pods JOB_NAME",
-		Short: "Get pods associated with a Forge job",
-		Long: `Get information about pods running a Forge job.
+		Use:   "pods RESOURCE_NAME",
+		Short: "Get pods associated with a Forge resource",
+		Long: `Get information about pods running a Forge resource's batch Job.
 
 Shows pod name, status, ready state, restarts, age, node, and IP address.
+Use --action to target a specific operation (build, create, publish, deploy).
 Use --output to get detailed container information in JSON or YAML format.`,
-		Example: `  # Get pods for a job (table format)
-  kubectl forge get pods my-package-build
+		Example: `  # Get pods for a resource (table format)
+  kubectl forge get pods my-package
+
+  # Get pods for a specific operation
+  kubectl forge get pods my-package --action build
 
   # Get pods in JSON format (includes container details)
-  kubectl forge get pods my-package-build --output json
+  kubectl forge get pods my-package --output json
 
   # Get pods in YAML format
-  kubectl forge get pods my-package-build --output yaml
+  kubectl forge get pods my-package --output yaml
 
   # Include all pods (including terminated)
-  kubectl forge get pods my-package-build --show-all`,
+  kubectl forge get pods my-package --show-all`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			o.JobName = args[0]
@@ -78,6 +83,7 @@ Use --output to get detailed container information in JSON or YAML format.`,
 		},
 	}
 
+	cmd.Flags().StringVarP(&o.Action, "action", "a", "", "Show pods for a specific operation (build, create, publish, deploy)")
 	cmd.Flags().StringVarP(&o.OutputFormat, "output", "o", "table", "Output format (table, json, yaml)")
 	cmd.Flags().BoolVar(&o.ShowAll, "show-all", false, "Show all pods including terminated")
 
@@ -98,19 +104,26 @@ func (o *GetPodsOptions) Run(ctx context.Context) error {
 
 	namespace := kubectl.GetNamespace(o.configFlags)
 
-	job, err := client.FindJob(ctx, namespace, o.JobName)
+	// Resolve CRD resource
+	resource, err := client.GetForgeResource(ctx, namespace, o.JobName)
 	if err != nil {
-		return fmt.Errorf("failed to find job %s: %w", o.JobName, err)
+		return fmt.Errorf("failed to find resource %s: %w", o.JobName, err)
+	}
+
+	// Resolve to batch Job via CRD status
+	job, err := client.GetActiveJob(ctx, resource, o.Action)
+	if err != nil {
+		return fmt.Errorf("failed to find batch Job for resource %s: %w", o.JobName, err)
 	}
 
 	pods, err := client.FindJobPods(ctx, job, false)
 	if err != nil {
-		return fmt.Errorf("failed to find pods for job %s: %w", o.JobName, err)
+		return fmt.Errorf("failed to find pods for job %s: %w", job.Name, err)
 	}
 
 	if len(pods) == 0 {
 		//nolint:errcheck // Writing to stdout in CLI context
-		fmt.Fprintf(o.IOStreams.Out, "No pods found for job %s\n", o.JobName)
+		fmt.Fprintf(o.IOStreams.Out, "No pods found for resource %s\n", o.JobName)
 		return nil
 	}
 

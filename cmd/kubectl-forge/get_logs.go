@@ -18,6 +18,7 @@ type GetLogsOptions struct {
 	IOStreams   genericclioptions.IOStreams
 
 	JobName       string
+	Action        string
 	Follow        bool
 	Container     string
 	Previous      bool
@@ -36,38 +37,42 @@ func NewGetLogsCommand(configFlags *genericclioptions.ConfigFlags) *cobra.Comman
 	}
 
 	cmd := &cobra.Command{
-		Use:   "logs JOB_NAME",
-		Short: "Get logs from a Forge job's pod(s)",
-		Long: `Get logs from pods associated with a Forge job.
+		Use:   "logs RESOURCE_NAME",
+		Short: "Get logs from a Forge resource's pod(s)",
+		Long: `Get logs from pods associated with a Forge resource.
 
-This command finds the pod(s) running the specified job and retrieves their logs.
-Supports following logs in real-time, filtering by container, and saving to file.`,
-		Example: `  # Get logs from a job
-  kubectl forge get logs my-package-build
+This command finds the pod(s) running the specified resource's batch Job and
+retrieves their logs. Use --action to target a specific operation (build,
+create, publish, deploy).`,
+		Example: `  # Get logs from a resource
+  kubectl forge get logs my-package
+
+  # Get logs for a specific operation
+  kubectl forge get logs my-package --action build
 
   # Follow log output in real-time
-  kubectl forge get logs my-package-build --follow
+  kubectl forge get logs my-package --follow
 
   # Get logs from a specific container
-  kubectl forge get logs my-package-build --container zarf-build
+  kubectl forge get logs my-package --container zarf-build
 
   # Get logs from previous container instance (after restart)
-  kubectl forge get logs my-package-build --previous
+  kubectl forge get logs my-package --previous
 
   # Save logs to a file (also prints to stdout)
-  kubectl forge get logs my-package-build -S build.log
+  kubectl forge get logs my-package -S build.log
 
   # Get logs from all containers (init + regular)
-  kubectl forge get logs my-package-build --all-containers
+  kubectl forge get logs my-package --all-containers
 
   # Include timestamps in output
-  kubectl forge get logs my-package-build --timestamps
+  kubectl forge get logs my-package --timestamps
 
   # Get last 100 lines
-  kubectl forge get logs my-package-build --tail 100
+  kubectl forge get logs my-package --tail 100
 
   # Get logs from last 5 minutes
-  kubectl forge get logs my-package-build --since 300`,
+  kubectl forge get logs my-package --since 300`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			o.JobName = args[0]
@@ -76,6 +81,7 @@ Supports following logs in real-time, filtering by container, and saving to file
 	}
 
 	// Add flags
+	cmd.Flags().StringVarP(&o.Action, "action", "a", "", "Show logs for a specific operation (build, create, publish, deploy)")
 	cmd.Flags().BoolVarP(&o.Follow, "follow", "f", false, "Follow log output in real-time")
 	cmd.Flags().StringVarP(&o.Container, "container", "c", "", "Specific container name")
 	cmd.Flags().BoolVar(&o.Previous, "previous", false, "Print logs from previous container instance")
@@ -90,29 +96,33 @@ Supports following logs in real-time, filtering by container, and saving to file
 
 // Run executes the get logs command
 func (o *GetLogsOptions) Run(ctx context.Context) error {
-	// Get Kubernetes client
 	client, err := kubectl.NewClientFromFlags(o.configFlags)
 	if err != nil {
 		return fmt.Errorf("failed to create Kubernetes client: %w", err)
 	}
 
-	// Get namespace
 	namespace := kubectl.GetNamespace(o.configFlags)
 
-	// Find the job
-	job, err := client.FindJob(ctx, namespace, o.JobName)
+	// Resolve CRD resource
+	resource, err := client.GetForgeResource(ctx, namespace, o.JobName)
 	if err != nil {
-		return fmt.Errorf("failed to find job %s: %w", o.JobName, err)
+		return fmt.Errorf("failed to find resource %s: %w", o.JobName, err)
+	}
+
+	// Resolve to batch Job via CRD status
+	job, err := client.GetActiveJob(ctx, resource, o.Action)
+	if err != nil {
+		return fmt.Errorf("failed to find batch Job for resource %s: %w", o.JobName, err)
 	}
 
 	// Find pods for the job
 	pods, err := client.FindJobPods(ctx, job, false)
 	if err != nil {
-		return fmt.Errorf("failed to find pods for job %s: %w", o.JobName, err)
+		return fmt.Errorf("failed to find pods for job %s: %w", job.Name, err)
 	}
 
 	if len(pods) == 0 {
-		return fmt.Errorf("no pods found for job %s", o.JobName)
+		return fmt.Errorf("no pods found for job %s", job.Name)
 	}
 
 	// Prepare output writer

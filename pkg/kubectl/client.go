@@ -12,9 +12,12 @@ import (
 
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
+	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
@@ -29,19 +32,40 @@ import (
 
 // Client wraps Kubernetes clients for kubectl-forge operations
 type Client struct {
-	kubeClient kubernetes.Interface
-	restConfig *rest.Config
-	scheme     *runtime.Scheme
+	kubeClient    kubernetes.Interface
+	dynamicClient dynamic.Interface
+	restConfig    *rest.Config
+	scheme        *runtime.Scheme
 }
 
-// JobInfo contains information about a Forge job for listing
-type JobInfo struct {
-	Namespace string
-	Name      string
-	Type      string // "zarf" or "uds"
-	Action    string
-	Phase     string
-	Age       string
+// ForgeResource is a unified representation of a ZarfPackageJob or UDSBundleJob CRD
+type ForgeResource struct {
+	Name           string                     `json:"name" yaml:"name"`
+	Namespace      string                     `json:"namespace" yaml:"namespace"`
+	ResourceType   string                     `json:"resourceType" yaml:"resourceType"` // "ZarfPackageJob" or "UDSBundleJob"
+	Action         string                     `json:"action" yaml:"action"`
+	Phase          string                     `json:"phase" yaml:"phase"`
+	Message        string                     `json:"message,omitempty" yaml:"message,omitempty"`
+	CreatedAt      time.Time                  `json:"createdAt" yaml:"createdAt"`
+	LastUpdateTime *time.Time                 `json:"lastUpdateTime,omitempty" yaml:"lastUpdateTime,omitempty"`
+	Operations     []OperationInfo            `json:"operations,omitempty" yaml:"operations,omitempty"`
+	Labels         map[string]string          `json:"labels,omitempty" yaml:"labels,omitempty"`
+	Annotations    map[string]string          `json:"annotations,omitempty" yaml:"annotations,omitempty"`
+	Raw            *unstructured.Unstructured `json:"-" yaml:"-"`
+}
+
+// OperationInfo contains status details for a single operation (build/create/publish/deploy)
+type OperationInfo struct {
+	Name              string     `json:"name" yaml:"name"`
+	Phase             string     `json:"phase,omitempty" yaml:"phase,omitempty"`
+	Message           string     `json:"message,omitempty" yaml:"message,omitempty"`
+	ArtifactLocation  string     `json:"artifactLocation,omitempty" yaml:"artifactLocation,omitempty"`
+	JobName           string     `json:"jobName,omitempty" yaml:"jobName,omitempty"`
+	RetryCount        int32      `json:"retryCount,omitempty" yaml:"retryCount,omitempty"`
+	LastFailureReason string     `json:"lastFailureReason,omitempty" yaml:"lastFailureReason,omitempty"`
+	StartTime         *time.Time `json:"startTime,omitempty" yaml:"startTime,omitempty"`
+	CompletionTime    *time.Time `json:"completionTime,omitempty" yaml:"completionTime,omitempty"`
+	NextRetryTime     *time.Time `json:"nextRetryTime,omitempty" yaml:"nextRetryTime,omitempty"`
 }
 
 // NewClientFromFlags creates a new Client from CLI flags
@@ -54,6 +78,11 @@ func NewClientFromFlags(configFlags *genericclioptions.ConfigFlags) (*Client, er
 	kubeClient, err := kubernetes.NewForConfig(restConfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Kubernetes client: %w", err)
+	}
+
+	dynamicClient, err := dynamic.NewForConfig(restConfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create dynamic client: %w", err)
 	}
 
 	// Register Forge CRDs with scheme
@@ -69,10 +98,16 @@ func NewClientFromFlags(configFlags *genericclioptions.ConfigFlags) (*Client, er
 	}
 
 	return &Client{
-		kubeClient: kubeClient,
-		restConfig: restConfig,
-		scheme:     forgeScheme,
+		kubeClient:    kubeClient,
+		dynamicClient: dynamicClient,
+		restConfig:    restConfig,
+		scheme:        forgeScheme,
 	}, nil
+}
+
+// DynamicClient returns the dynamic client for direct CRD operations
+func (c *Client) DynamicClient() dynamic.Interface {
+	return c.dynamicClient
 }
 
 // GetNamespace returns the namespace from config flags or default
@@ -82,6 +117,132 @@ func GetNamespace(configFlags *genericclioptions.ConfigFlags) string {
 		namespace = *configFlags.Namespace
 	}
 	return namespace
+}
+
+// GetForgeResource fetches a ForgeResource by name, trying both ZarfPackageJob and UDSBundleJob GVRs.
+// If neither CRD is found, it falls back to finding a batch Job with that name and resolving
+// back to the CRD via the forge.dev/package label.
+func (c *Client) GetForgeResource(ctx context.Context, namespace, name string) (*ForgeResource, error) {
+	// Try ZarfPackageJob first
+	obj, err := c.dynamicClient.Resource(constants.ZarfPackageJobGVR).Namespace(namespace).Get(ctx, name, metav1.GetOptions{})
+	if err == nil {
+		return c.unstructuredToForgeResource(obj, "ZarfPackageJob")
+	}
+
+	// Try UDSBundleJob
+	obj, err = c.dynamicClient.Resource(constants.UDSBundleJobGVR).Namespace(namespace).Get(ctx, name, metav1.GetOptions{})
+	if err == nil {
+		return c.unstructuredToForgeResource(obj, "UDSBundleJob")
+	}
+	if !errors.IsNotFound(err) {
+		return nil, fmt.Errorf("failed to get UDSBundleJob %s: %w", name, err)
+	}
+
+	// Fallback: try finding a batch Job by that name and resolve back to CRD
+	job, jobErr := c.kubeClient.BatchV1().Jobs(namespace).Get(ctx, name, metav1.GetOptions{})
+	if jobErr == nil {
+		pkgName := job.Labels[constants.LabelPackage]
+		if pkgName != "" {
+			// Try to resolve the CRD by the package label
+			res, resolveErr := c.GetForgeResource(ctx, namespace, pkgName)
+			if resolveErr == nil {
+				return res, nil
+			}
+		}
+	}
+
+	return nil, fmt.Errorf("resource %q not found as ZarfPackageJob, UDSBundleJob, or batch Job in namespace %s", name, namespace)
+}
+
+// ListForgeResources lists ForgeResources of the given type ("zarf", "uds", or "all")
+func (c *Client) ListForgeResources(ctx context.Context, namespace, resourceType string) ([]ForgeResource, error) {
+	var resources []ForgeResource
+
+	if resourceType == "all" || resourceType == "zarf" {
+		list, err := c.dynamicClient.Resource(constants.ZarfPackageJobGVR).Namespace(namespace).List(ctx, metav1.ListOptions{})
+		if err != nil && !errors.IsNotFound(err) {
+			return nil, fmt.Errorf("failed to list ZarfPackageJobs: %w", err)
+		}
+		if list != nil {
+			for i := range list.Items {
+				r, err := c.unstructuredToForgeResource(&list.Items[i], "ZarfPackageJob")
+				if err != nil {
+					continue
+				}
+				resources = append(resources, *r)
+			}
+		}
+	}
+
+	if resourceType == "all" || resourceType == "uds" {
+		list, err := c.dynamicClient.Resource(constants.UDSBundleJobGVR).Namespace(namespace).List(ctx, metav1.ListOptions{})
+		if err != nil && !errors.IsNotFound(err) {
+			return nil, fmt.Errorf("failed to list UDSBundleJobs: %w", err)
+		}
+		if list != nil {
+			for i := range list.Items {
+				r, err := c.unstructuredToForgeResource(&list.Items[i], "UDSBundleJob")
+				if err != nil {
+					continue
+				}
+				resources = append(resources, *r)
+			}
+		}
+	}
+
+	return resources, nil
+}
+
+// ResolveJobForAction returns the batch Job name for a specific operation within a ForgeResource.
+// action should be lowercase: "build", "create", "publish", "deploy"
+func ResolveJobForAction(resource *ForgeResource, action string) (string, error) {
+	for _, op := range resource.Operations {
+		if strings.EqualFold(op.Name, action) {
+			if op.JobName == "" {
+				return "", fmt.Errorf("operation %q has no associated batch Job (may not have started or was cleaned up)", action)
+			}
+			return op.JobName, nil
+		}
+	}
+	return "", fmt.Errorf("operation %q not found in resource %s (available: %s)", action, resource.Name, availableOps(resource))
+}
+
+// GetActiveJob finds the most relevant batch Job for a ForgeResource.
+// Priority: active (Running) > failed > completed, most recent first.
+// If action is non-empty, it filters to that specific operation.
+func (c *Client) GetActiveJob(ctx context.Context, resource *ForgeResource, action string) (*batchv1.Job, error) {
+	if action != "" {
+		jobName, err := ResolveJobForAction(resource, action)
+		if err != nil {
+			return nil, err
+		}
+		return c.FindJob(ctx, resource.Namespace, jobName)
+	}
+
+	// Find the most relevant operation's job
+	var bestOp *OperationInfo
+	for i := range resource.Operations {
+		op := &resource.Operations[i]
+		if op.JobName == "" {
+			continue
+		}
+		if bestOp == nil {
+			bestOp = op
+			continue
+		}
+		// Prefer active > failed > completed
+		if opPriority(op.Phase) > opPriority(bestOp.Phase) {
+			bestOp = op
+		} else if opPriority(op.Phase) == opPriority(bestOp.Phase) && op.StartTime != nil && bestOp.StartTime != nil && op.StartTime.After(*bestOp.StartTime) {
+			bestOp = op
+		}
+	}
+
+	if bestOp == nil || bestOp.JobName == "" {
+		return nil, fmt.Errorf("no batch Jobs found for resource %s", resource.Name)
+	}
+
+	return c.FindJob(ctx, resource.Namespace, bestOp.JobName)
 }
 
 // FindJob finds a Kubernetes Job by name
@@ -515,65 +676,9 @@ func (c *Client) DeleteJob(ctx context.Context, namespace, name string, propagat
 	return c.kubeClient.BatchV1().Jobs(namespace).Delete(ctx, name, opts)
 }
 
-// ListJobs lists Forge jobs (ZarfPackageJobs and UDSBundleJobs)
-func (c *Client) ListJobs(ctx context.Context, namespace, jobType string) ([]JobInfo, error) {
-	var jobs []JobInfo
-
-	// This is a simplified version - in reality, you'd use a dynamic client
-	// to query the CRDs directly. For now, we'll list Kubernetes Jobs
-	// and filter by Forge labels.
-
-	listOptions := metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("app in (%s,%s)", constants.LabelAppValueZarf, constants.LabelAppValueUDS),
-	}
-
-	jobList, err := c.kubeClient.BatchV1().Jobs(namespace).List(ctx, listOptions)
-	if err != nil {
-		return nil, err
-	}
-
-	for _, job := range jobList.Items {
-		resourceType := job.Labels["resource-type"]
-		action := job.Labels[constants.LabelAction]
-
-		// Skip if type filter doesn't match
-		if jobType != "all" {
-			if jobType == "zarf" && resourceType != "zarfpackagejob" {
-				continue
-			}
-			if jobType == "uds" && resourceType != "udsbundlejob" {
-				continue
-			}
-		}
-
-		phase := "Unknown"
-		switch {
-		case job.Status.Succeeded > 0:
-			phase = constants.PhaseCompleted
-		case job.Status.Failed > 0:
-			phase = constants.PhaseFailed
-		case job.Status.Active > 0:
-			phase = constants.PhaseRunning
-		}
-
-		age := time.Since(job.CreationTimestamp.Time).Round(time.Second).String()
-
-		typeStr := "zarf"
-		if resourceType == "udsbundlejob" {
-			typeStr = "uds"
-		}
-
-		jobs = append(jobs, JobInfo{
-			Namespace: job.Namespace,
-			Name:      job.Name,
-			Type:      typeStr,
-			Action:    action,
-			Phase:     phase,
-			Age:       age,
-		})
-	}
-
-	return jobs, nil
+// DeletePVC deletes a PersistentVolumeClaim
+func (c *Client) DeletePVC(ctx context.Context, namespace, name string) error {
+	return c.kubeClient.CoreV1().PersistentVolumeClaims(namespace).Delete(ctx, name, metav1.DeleteOptions{})
 }
 
 // LogOptions configures log retrieval from pods
@@ -694,6 +799,143 @@ func (c *Client) GetJobEvents(ctx context.Context, namespace, jobName string, al
 	}
 
 	return events, nil
+}
+
+// unstructuredToForgeResource converts an unstructured CRD object to a ForgeResource
+func (c *Client) unstructuredToForgeResource(obj *unstructured.Unstructured, resourceType string) (*ForgeResource, error) {
+	r := &ForgeResource{
+		Name:         obj.GetName(),
+		Namespace:    obj.GetNamespace(),
+		ResourceType: resourceType,
+		CreatedAt:    obj.GetCreationTimestamp().Time,
+		Labels:       obj.GetLabels(),
+		Annotations:  obj.GetAnnotations(),
+		Raw:          obj,
+	}
+
+	// Extract spec.action
+	//nolint:errcheck // Best-effort field extraction from unstructured object
+	action, _, _ := unstructured.NestedString(obj.Object, "spec", "action")
+	r.Action = action
+
+	// Extract top-level status
+	//nolint:errcheck // Best-effort field extraction from unstructured object
+	phase, _, _ := unstructured.NestedString(obj.Object, "status", "phase")
+	r.Phase = phase
+
+	//nolint:errcheck // Best-effort field extraction from unstructured object
+	message, _, _ := unstructured.NestedString(obj.Object, "status", "message")
+	r.Message = message
+
+	//nolint:errcheck // Best-effort field extraction from unstructured object
+	lastUpdate, _, _ := unstructured.NestedString(obj.Object, "status", "lastUpdateTime")
+	if lastUpdate != "" {
+		if t, err := time.Parse(time.RFC3339, lastUpdate); err == nil {
+			r.LastUpdateTime = &t
+		}
+	}
+
+	// Extract operation statuses
+	var opFields []string
+	switch resourceType {
+	case "ZarfPackageJob":
+		opFields = []string{
+			constants.StatusFieldBuild,
+			constants.StatusFieldPublish,
+			constants.StatusFieldDeploy,
+		}
+	case "UDSBundleJob":
+		opFields = []string{
+			constants.StatusFieldCreate,
+			constants.StatusFieldPublish,
+			constants.StatusFieldDeploy,
+		}
+	}
+
+	for _, field := range opFields {
+		//nolint:errcheck // Best-effort field extraction from unstructured object
+		opMap, exists, _ := unstructured.NestedMap(obj.Object, "status", field)
+		if !exists || opMap == nil {
+			continue
+		}
+
+		opName := strings.TrimSuffix(field, "Status")
+		op := OperationInfo{Name: opName}
+
+		if v, ok := opMap["phase"].(string); ok {
+			op.Phase = v
+		}
+		if v, ok := opMap["message"].(string); ok {
+			op.Message = v
+		}
+		if v, ok := opMap["artifactLocation"].(string); ok {
+			op.ArtifactLocation = v
+		}
+		if v, ok := opMap["jobName"].(string); ok {
+			op.JobName = v
+		}
+		if v, ok := opMap["lastFailureReason"].(string); ok {
+			op.LastFailureReason = v
+		}
+		if v, ok := opMap["retryCount"].(int64); ok {
+			//nolint:gosec // G115: retry count is bounded by CRD validation
+			op.RetryCount = int32(v)
+		}
+		if v, ok := opMap["retryCount"].(float64); ok {
+			//nolint:gosec // G115: retry count is bounded by CRD validation
+			op.RetryCount = int32(v)
+		}
+
+		if v, ok := opMap["startTime"].(string); ok {
+			if t, err := time.Parse(time.RFC3339, v); err == nil {
+				op.StartTime = &t
+			}
+		}
+		if v, ok := opMap["completionTime"].(string); ok {
+			if t, err := time.Parse(time.RFC3339, v); err == nil {
+				op.CompletionTime = &t
+			}
+		}
+		if v, ok := opMap["nextRetryTime"].(string); ok {
+			if t, err := time.Parse(time.RFC3339, v); err == nil {
+				op.NextRetryTime = &t
+			}
+		}
+
+		r.Operations = append(r.Operations, op)
+	}
+
+	return r, nil
+}
+
+// opPriority returns a priority value for sorting operations by relevance
+func opPriority(phase string) int {
+	switch phase {
+	case constants.PhaseRunning:
+		return 4
+	case constants.PhaseRetrying:
+		return 3
+	case constants.PhaseFailed:
+		return 2
+	case constants.PhasePending, constants.PhaseQueued:
+		return 1
+	case constants.PhaseCompleted:
+		return 0
+	default:
+		return -1
+	}
+}
+
+// availableOps returns a comma-separated list of operation names in a ForgeResource
+func availableOps(resource *ForgeResource) string {
+	var ops []string
+	for _, op := range resource.Operations {
+		ops = append(ops, op.Name)
+	}
+	if len(ops) == 0 {
+		return "none"
+	}
+	return strings.Join(ops, ", ")
 }
 
 // TTY handles terminal sizing for interactive exec

@@ -26,48 +26,59 @@ func NewRootCommand() *cobra.Command {
 
 	rootCmd := &cobra.Command{
 		Use:   "kubectl-forge",
-		Short: "kubectl plugin for Forge - Kubernetes job orchestrator for Zarf and UDS",
-		Long: `kubectl-forge provides developer-friendly commands for working with Forge jobs.
+		Short: "kubectl plugin for Forge - debugging and diagnostics for Zarf/UDS resources",
+		Long: `kubectl-forge provides developer-friendly commands for debugging and managing
+Forge resources (ZarfPackageJobs and UDSBundleJobs).
 
 Forge is a Kubernetes operator that orchestrates Zarf package and UDS bundle builds,
-publications, and deployments. This plugin simplifies common developer workflows like
-downloading artifacts and debugging failed jobs.`,
+publications, and deployments. This plugin queries CRD status directly to surface
+operation phases, retry counts, artifact locations, and messages. All commands
+accept CRD resource names (not batch Job names).`,
 		Version: version,
 		Example: `  # Check Forge system status
   kubectl forge status
 
-  # List all jobs in current namespace
+  # List all resources in current namespace
   kubectl forge list
 
-  # Diagnose problems with a job
-  kubectl forge diagnose my-package-build
+  # List with per-operation status summary
+  kubectl forge list --wide
 
-  # Get detailed job information
-  kubectl forge get job my-package-build
+  # Diagnose problems with a resource
+  kubectl forge diagnose my-package
 
-  # Get logs from a job
-  kubectl forge get logs my-package-build --follow
+  # Get detailed resource information
+  kubectl forge get job my-package
 
-  # Get pods for a job
-  kubectl forge get pods my-package-build
+  # Get info for a specific operation
+  kubectl forge get job my-package --action build
 
-  # Get events for a job
-  kubectl forge get events my-package-build
+  # Get logs from a resource
+  kubectl forge get logs my-package --follow
 
-  # Download artifacts from a completed job
-  kubectl forge download my-package-build
+  # Get logs for a specific operation
+  kubectl forge get logs my-package --action build
 
-  # Debug a failed job (exec into the pod)
-  kubectl forge debug my-package-build --failed
+  # Get pods for a resource
+  kubectl forge get pods my-package
+
+  # Get events for a resource
+  kubectl forge get events my-package
+
+  # Download artifacts from a completed resource
+  kubectl forge download my-package
+
+  # Debug a failed resource (exec into the pod)
+  kubectl forge debug my-package --failed
 
   # Get controller logs (for operators)
   kubectl forge logs controller
 
-  # Cancel a running job
-  kubectl forge cancel my-package-build
+  # Cancel a running resource
+  kubectl forge cancel my-package
 
-  # Retry a failed job
-  kubectl forge retry my-package-build`,
+  # Retry a failed resource
+  kubectl forge retry my-package`,
 		SilenceUsage: true,
 	}
 

@@ -82,28 +82,30 @@ func NewDiagnoseCommand(configFlags *genericclioptions.ConfigFlags) *cobra.Comma
 	}
 
 	cmd := &cobra.Command{
-		Use:   "diagnose JOB_NAME",
-		Short: "Diagnose problems with a Forge job",
-		Long: `Automatically diagnose problems with a Forge job.
+		Use:   "diagnose RESOURCE_NAME",
+		Short: "Diagnose problems with a Forge resource",
+		Long: `Automatically diagnose problems with a ZarfPackageJob or UDSBundleJob.
 
-This command analyzes a job and its pods to find common issues like:
+This command analyzes the CRD status and its associated batch Jobs/pods to find common issues like:
+- High retry counts (> 3 retries)
+- Stuck in Retrying state (nextRetryTime in the past)
+- Queued for too long (> 10 minutes)
+- Failed with no batch Job (cleaned up)
 - Container failures (OOMKilled, CrashLoopBackOff, ImagePullBackOff)
-- Scheduling problems
-- Resource constraints
-- Configuration errors
+- Scheduling problems and resource constraints
 
 It shows warning events, relevant logs, and provides suggestions for fixing issues.`,
-		Example: `  # Diagnose a failed job
-  kubectl forge diagnose my-package-build
+		Example: `  # Diagnose a failed resource
+  kubectl forge diagnose my-package
 
   # Diagnose with verbose output (all events, not just warnings)
-  kubectl forge diagnose my-package-build --verbose
+  kubectl forge diagnose my-package --verbose
 
   # Show more log lines
-  kubectl forge diagnose my-package-build --logs-lines 50
+  kubectl forge diagnose my-package --logs-lines 50
 
   # Output in JSON format for scripting
-  kubectl forge diagnose my-package-build --output json`,
+  kubectl forge diagnose my-package --output json`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			o.JobName = args[0]
@@ -132,26 +134,14 @@ func (o *DiagnoseOptions) Run(ctx context.Context) error {
 
 	namespace := kubectl.GetNamespace(o.configFlags)
 
-	// Find the job
-	job, err := client.FindJob(ctx, namespace, o.JobName)
+	// Get the CRD resource first
+	resource, err := client.GetForgeResource(ctx, namespace, o.JobName)
 	if err != nil {
-		return fmt.Errorf("failed to find job %s: %w", o.JobName, err)
+		return fmt.Errorf("failed to find resource %s: %w", o.JobName, err)
 	}
 
-	// Find pods for the job
-	pods, err := client.FindJobPods(ctx, job, false)
-	if err != nil {
-		return fmt.Errorf("failed to find pods for job %s: %w", o.JobName, err)
-	}
-
-	// Get events
-	events, err := client.GetJobEvents(ctx, namespace, o.JobName, o.Verbose)
-	if err != nil {
-		return fmt.Errorf("failed to get events: %w", err)
-	}
-
-	// Build diagnosis
-	result := o.buildDiagnosis(ctx, client, job, pods, events)
+	// Build diagnosis starting from CRD-level info
+	result := o.buildDiagnosisFromCRD(ctx, client, resource)
 
 	// Output
 	printer := kubectl.NewPrinter(format, o.IOStreams.Out)
@@ -166,30 +156,146 @@ func (o *DiagnoseOptions) Run(ctx context.Context) error {
 	}
 }
 
-func (o *DiagnoseOptions) buildDiagnosis(ctx context.Context, client *kubectl.Client, job *batchv1.Job, pods []*corev1.Pod, events []corev1.Event) DiagnoseResult {
+func (o *DiagnoseOptions) buildDiagnosisFromCRD(ctx context.Context, client *kubectl.Client, resource *kubectl.ForgeResource) DiagnoseResult {
 	result := DiagnoseResult{
 		Job: JobDiagnosis{
-			Name:      job.Name,
-			Namespace: job.Namespace,
-			Type:      job.Labels["resource-type"],
-			Action:    job.Labels[constants.LabelAction],
-			Age:       formatDuration(time.Since(job.CreationTimestamp.Time)),
+			Name:      resource.Name,
+			Namespace: resource.Namespace,
+			Type:      resource.ResourceType,
+			Action:    resource.Action,
+			Phase:     resource.Phase,
+			Message:   resource.Message,
+			Age:       formatDuration(time.Since(resource.CreatedAt)),
 		},
 	}
 
-	// Determine phase
-	switch {
-	case job.Status.Succeeded > 0:
-		result.Job.Phase = constants.PhaseCompleted
-	case job.Status.Failed > 0:
-		result.Job.Phase = constants.PhaseFailed
-	case job.Status.Active > 0:
-		result.Job.Phase = constants.PhaseRunning
-	default:
-		result.Job.Phase = constants.PhasePending
+	// CRD-level problem detection
+	o.detectCRDProblems(resource, &result)
+
+	// For each operation with a jobName, run pod/container analysis
+	for _, op := range resource.Operations {
+		if op.JobName == "" {
+			if op.Phase == constants.PhaseFailed {
+				result.Problems = append(result.Problems, Problem{
+					Severity: "warning",
+					Resource: fmt.Sprintf("%s/%s (operation: %s)", resource.ResourceType, resource.Name, op.Name),
+					Issue:    "Failed with no batch Job",
+					Details:  "The batch Job was cleaned up or never created. Check controller logs for details.",
+				})
+			}
+			continue
+		}
+
+		job, err := client.FindJob(ctx, resource.Namespace, op.JobName)
+		if err != nil {
+			result.Problems = append(result.Problems, Problem{
+				Severity: "warning",
+				Resource: fmt.Sprintf("Job/%s (operation: %s)", op.JobName, op.Name),
+				Issue:    "Batch Job not found",
+				Details:  fmt.Sprintf("Referenced job %s not found: %v", op.JobName, err),
+			})
+			continue
+		}
+
+		pods, err := client.FindJobPods(ctx, job, false)
+		if err != nil {
+			continue
+		}
+
+		events, err := client.GetJobEvents(ctx, resource.Namespace, op.JobName, o.Verbose)
+		if err != nil {
+			continue
+		}
+
+		// Analyze job-level conditions
+		o.analyzeJobConditions(job, &result)
+
+		// Analyze pods
+		for _, pod := range pods {
+			problems, logs := o.analyzePod(ctx, client, pod)
+			result.Problems = append(result.Problems, problems...)
+			result.Logs = append(result.Logs, logs...)
+		}
+
+		// Process events
+		sort.Slice(events, func(i, j int) bool {
+			return events[i].LastTimestamp.Before(&events[j].LastTimestamp)
+		})
+
+		for _, e := range events {
+			age := "unknown"
+			if !e.LastTimestamp.IsZero() {
+				age = formatDuration(time.Since(e.LastTimestamp.Time))
+			}
+			result.Events = append(result.Events, EventSummary{
+				Age:     age,
+				Type:    e.Type,
+				Reason:  e.Reason,
+				Object:  fmt.Sprintf("%s/%s", e.InvolvedObject.Kind, e.InvolvedObject.Name),
+				Message: e.Message,
+			})
+		}
 	}
 
-	// Check for job-level issues
+	// Generate suggestions based on problems
+	result.Suggestions = o.generateSuggestions(result.Problems, result.Events)
+
+	return result
+}
+
+func (o *DiagnoseOptions) detectCRDProblems(resource *kubectl.ForgeResource, result *DiagnoseResult) {
+	crdRef := fmt.Sprintf("%s/%s", resource.ResourceType, resource.Name)
+
+	for _, op := range resource.Operations {
+		opRef := fmt.Sprintf("%s (operation: %s)", crdRef, op.Name)
+
+		// High retry count
+		if op.RetryCount > 3 {
+			result.Problems = append(result.Problems, Problem{
+				Severity: "warning",
+				Resource: opRef,
+				Issue:    fmt.Sprintf("High retry count: %d", op.RetryCount),
+				Details:  "Operation has been retried many times. Check for persistent failures.",
+			})
+		}
+
+		// Stuck in Retrying with nextRetryTime in the past
+		if op.Phase == constants.PhaseRetrying && op.NextRetryTime != nil && op.NextRetryTime.Before(time.Now()) {
+			stuckFor := formatDuration(time.Since(*op.NextRetryTime))
+			result.Problems = append(result.Problems, Problem{
+				Severity: "error",
+				Resource: opRef,
+				Issue:    "Stuck in Retrying state",
+				Details:  fmt.Sprintf("Next retry was scheduled %s ago but has not been processed. Controller may be down or stuck.", stuckFor),
+			})
+		}
+
+		// Failed with last failure reason
+		if op.Phase == constants.PhaseFailed && op.LastFailureReason != "" {
+			result.Problems = append(result.Problems, Problem{
+				Severity: "error",
+				Resource: opRef,
+				Issue:    "Operation failed",
+				Details:  op.LastFailureReason,
+			})
+		}
+	}
+
+	// Queued for too long
+	if resource.Phase == constants.PhaseQueued {
+		queuedDuration := time.Since(resource.CreatedAt)
+		if queuedDuration > 10*time.Minute {
+			result.Problems = append(result.Problems, Problem{
+				Severity: "warning",
+				Resource: crdRef,
+				Issue:    fmt.Sprintf("Queued for %s", formatDuration(queuedDuration)),
+				Details:  "Resource has been queued for over 10 minutes. Check queue capacity and controller health.",
+			})
+		}
+	}
+}
+
+func (o *DiagnoseOptions) analyzeJobConditions(job *batchv1.Job, result *DiagnoseResult) {
 	for _, cond := range job.Status.Conditions {
 		if cond.Type == batchv1.JobFailed && cond.Status == corev1.ConditionTrue {
 			result.Problems = append(result.Problems, Problem{
@@ -198,42 +304,8 @@ func (o *DiagnoseOptions) buildDiagnosis(ctx context.Context, client *kubectl.Cl
 				Issue:    "Job failed",
 				Details:  cond.Message,
 			})
-			if cond.Message != "" {
-				result.Job.Message = cond.Message
-			}
 		}
 	}
-
-	// Analyze pods
-	for _, pod := range pods {
-		problems, logs := o.analyzePod(ctx, client, pod)
-		result.Problems = append(result.Problems, problems...)
-		result.Logs = append(result.Logs, logs...)
-	}
-
-	// Process events
-	sort.Slice(events, func(i, j int) bool {
-		return events[i].LastTimestamp.Before(&events[j].LastTimestamp)
-	})
-
-	for _, e := range events {
-		age := "unknown"
-		if !e.LastTimestamp.IsZero() {
-			age = formatDuration(time.Since(e.LastTimestamp.Time))
-		}
-		result.Events = append(result.Events, EventSummary{
-			Age:     age,
-			Type:    e.Type,
-			Reason:  e.Reason,
-			Object:  fmt.Sprintf("%s/%s", e.InvolvedObject.Kind, e.InvolvedObject.Name),
-			Message: e.Message,
-		})
-	}
-
-	// Generate suggestions based on problems
-	result.Suggestions = o.generateSuggestions(result.Problems, events)
-
-	return result
 }
 
 func (o *DiagnoseOptions) analyzePod(ctx context.Context, client *kubectl.Client, pod *corev1.Pod) ([]Problem, []ContainerLogs) {
@@ -399,7 +471,7 @@ func (o *DiagnoseOptions) getContainerLogs(ctx context.Context, client *kubectl.
 	return strings.TrimSpace(buf.String())
 }
 
-func (o *DiagnoseOptions) generateSuggestions(problems []Problem, events []corev1.Event) []string {
+func (o *DiagnoseOptions) generateSuggestions(problems []Problem, events []EventSummary) []string {
 	var suggestions []string
 	seen := make(map[string]bool)
 
@@ -427,6 +499,17 @@ func (o *DiagnoseOptions) generateSuggestions(problems []Problem, events []corev
 		case strings.Contains(p.Issue, "config error"):
 			addSuggestion("Check ConfigMap and Secret references in the job spec")
 			addSuggestion("Verify all referenced resources exist in the namespace")
+		case strings.Contains(p.Issue, "High retry count"):
+			addSuggestion("Review the last failure reason and fix the root cause before retrying")
+			addSuggestion("Consider increasing resource limits if failures are resource-related")
+		case strings.Contains(p.Issue, "Stuck in Retrying"):
+			addSuggestion("Check if the Forge controller is running: kubectl forge status")
+			addSuggestion("Check controller logs: kubectl forge logs controller")
+		case strings.Contains(p.Issue, "Queued for"):
+			addSuggestion("Check queue capacity and concurrency limits in the controller configuration")
+			addSuggestion("Check if the Forge controller is running: kubectl forge status")
+		case strings.Contains(p.Issue, "Failed with no batch Job"):
+			addSuggestion("Check controller logs for job creation failures: kubectl forge logs controller")
 		}
 	}
 
@@ -451,16 +534,17 @@ func (o *DiagnoseOptions) generateSuggestions(problems []Problem, events []corev
 
 func (o *DiagnoseOptions) printDiagnosis(d DiagnoseResult) error {
 	w := o.IOStreams.Out
+	colors := NewColorWriter(w)
 
 	// Job header
 	//nolint:errcheck // Writing to stdout in CLI context
-	fmt.Fprintf(w, "Job: %s (%s)\n", d.Job.Name, d.Job.Type)
+	fmt.Fprintf(w, "Resource: %s (%s)\n", d.Job.Name, d.Job.Type)
 	//nolint:errcheck // Writing to stdout in CLI context
 	fmt.Fprintf(w, "Namespace: %s\n", d.Job.Namespace)
 	//nolint:errcheck // Writing to stdout in CLI context
 	fmt.Fprintf(w, "Action: %s\n", d.Job.Action)
 	//nolint:errcheck // Writing to stdout in CLI context
-	fmt.Fprintf(w, "Phase: %s\n", d.Job.Phase)
+	fmt.Fprintf(w, "Phase: %s\n", colors.Phase(d.Job.Phase))
 	//nolint:errcheck // Writing to stdout in CLI context
 	fmt.Fprintf(w, "Age: %s\n", d.Job.Age)
 	if d.Job.Message != "" {
@@ -475,9 +559,9 @@ func (o *DiagnoseOptions) printDiagnosis(d DiagnoseResult) error {
 		//nolint:errcheck // Writing to stdout in CLI context
 		fmt.Fprintf(w, "--- Problems Found ---\n")
 		for _, p := range d.Problems {
-			marker := "!"
+			marker := colors.WarningMarker()
 			if p.Severity == "error" {
-				marker = "X"
+				marker = colors.Status(false)
 			}
 			//nolint:errcheck // Writing to stdout in CLI context
 			fmt.Fprintf(w, "%s %s: %s\n", marker, p.Resource, p.Issue)

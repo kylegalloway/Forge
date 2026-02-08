@@ -10,7 +10,6 @@ import (
 	"github.com/kylegalloway/forge/pkg/constants"
 	"github.com/kylegalloway/forge/pkg/kubectl"
 	"github.com/spf13/cobra"
-	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 )
@@ -19,28 +18,33 @@ import (
 type JobDetails struct {
 	Name        string            `json:"name" yaml:"name"`
 	Namespace   string            `json:"namespace" yaml:"namespace"`
-	Labels      map[string]string `json:"labels" yaml:"labels"`
-	Annotations map[string]string `json:"annotations,omitempty" yaml:"annotations,omitempty"`
-	Package     string            `json:"package" yaml:"package"`
+	Type        string            `json:"type" yaml:"type"`
 	Action      string            `json:"action" yaml:"action"`
-	JobType     string            `json:"jobType" yaml:"jobType"`
+	Phase       string            `json:"phase" yaml:"phase"`
+	Message     string            `json:"message,omitempty" yaml:"message,omitempty"`
 	CreatedAt   string            `json:"createdAt" yaml:"createdAt"`
 	Age         string            `json:"age" yaml:"age"`
-	Status      JobStatusDetails  `json:"status" yaml:"status"`
-	Pods        []PodSummary      `json:"pods" yaml:"pods"`
+	Labels      map[string]string `json:"labels,omitempty" yaml:"labels,omitempty"`
+	Annotations map[string]string `json:"annotations,omitempty" yaml:"annotations,omitempty"`
+	Operations  []OperationDetail `json:"operations,omitempty" yaml:"operations,omitempty"`
 	Volumes     []VolumeInfo      `json:"volumes,omitempty" yaml:"volumes,omitempty"`
 	Conditions  []ConditionInfo   `json:"conditions,omitempty" yaml:"conditions,omitempty"`
 }
 
-// JobStatusDetails contains job status information
-type JobStatusDetails struct {
-	Active      int32  `json:"active" yaml:"active"`
-	Succeeded   int32  `json:"succeeded" yaml:"succeeded"`
-	Failed      int32  `json:"failed" yaml:"failed"`
-	StartTime   string `json:"startTime,omitempty" yaml:"startTime,omitempty"`
-	CompletedAt string `json:"completedAt,omitempty" yaml:"completedAt,omitempty"`
-	Duration    string `json:"duration,omitempty" yaml:"duration,omitempty"`
-	Phase       string `json:"phase" yaml:"phase"`
+// OperationDetail contains detailed info for a single operation
+type OperationDetail struct {
+	Name              string       `json:"name" yaml:"name"`
+	Phase             string       `json:"phase" yaml:"phase"`
+	Message           string       `json:"message,omitempty" yaml:"message,omitempty"`
+	JobName           string       `json:"jobName,omitempty" yaml:"jobName,omitempty"`
+	RetryCount        int32        `json:"retryCount,omitempty" yaml:"retryCount,omitempty"`
+	ArtifactLocation  string       `json:"artifactLocation,omitempty" yaml:"artifactLocation,omitempty"`
+	LastFailureReason string       `json:"lastFailureReason,omitempty" yaml:"lastFailureReason,omitempty"`
+	StartTime         string       `json:"startTime,omitempty" yaml:"startTime,omitempty"`
+	CompletionTime    string       `json:"completionTime,omitempty" yaml:"completionTime,omitempty"`
+	Duration          string       `json:"duration,omitempty" yaml:"duration,omitempty"`
+	NextRetryTime     string       `json:"nextRetryTime,omitempty" yaml:"nextRetryTime,omitempty"`
+	Pods              []PodSummary `json:"pods,omitempty" yaml:"pods,omitempty"`
 }
 
 // PodSummary contains summary information about a pod
@@ -74,6 +78,7 @@ type GetJobOptions struct {
 
 	JobName      string
 	OutputFormat string
+	Action       string
 }
 
 // NewGetJobCommand creates the get job subcommand
@@ -84,20 +89,21 @@ func NewGetJobCommand(configFlags *genericclioptions.ConfigFlags) *cobra.Command
 	}
 
 	cmd := &cobra.Command{
-		Use:   "job JOB_NAME",
-		Short: "Get detailed information about a Forge job",
-		Long: `Get detailed information about a Forge job, similar to kubectl describe.
+		Use:   "job RESOURCE_NAME",
+		Short: "Get detailed information about a Forge resource",
+		Long: `Get detailed information about a ZarfPackageJob or UDSBundleJob, similar to kubectl describe.
 
-Shows job metadata, status, conditions, pods, volumes, and labels.
+Shows CRD-level metadata, status, per-operation details (phase, retry count,
+artifact location, timing), associated batch Job pods, volumes, and conditions.
 Use --output json or --output yaml for machine-readable output.`,
-		Example: `  # Get job details (describe-like format)
-  kubectl forge get job my-package-build
+		Example: `  # Get resource details (describe-like format)
+  kubectl forge get job my-package
 
-  # Get job details in JSON format
-  kubectl forge get job my-package-build --output json
+  # Get resource details in JSON format
+  kubectl forge get job my-package --output json
 
-  # Get job details in YAML format
-  kubectl forge get job my-package-build --output yaml`,
+  # Show details for a specific operation
+  kubectl forge get job my-package --action build`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			o.JobName = args[0]
@@ -106,6 +112,7 @@ Use --output json or --output yaml for machine-readable output.`,
 	}
 
 	cmd.Flags().StringVarP(&o.OutputFormat, "output", "o", "table", "Output format (table, json, yaml)")
+	cmd.Flags().StringVarP(&o.Action, "action", "a", "", "Show details for a specific operation (build, create, publish, deploy)")
 
 	return cmd
 }
@@ -124,17 +131,12 @@ func (o *GetJobOptions) Run(ctx context.Context) error {
 
 	namespace := kubectl.GetNamespace(o.configFlags)
 
-	job, err := client.FindJob(ctx, namespace, o.JobName)
+	resource, err := client.GetForgeResource(ctx, namespace, o.JobName)
 	if err != nil {
-		return fmt.Errorf("failed to find job %s: %w", o.JobName, err)
+		return fmt.Errorf("failed to find resource %s: %w", o.JobName, err)
 	}
 
-	pods, err := client.FindJobPods(ctx, job, false)
-	if err != nil {
-		return fmt.Errorf("failed to find pods for job %s: %w", o.JobName, err)
-	}
-
-	details := o.toJobDetails(job, pods)
+	details := o.toJobDetails(ctx, client, resource)
 
 	printer := kubectl.NewPrinter(format, o.IOStreams.Out)
 
@@ -148,162 +150,213 @@ func (o *GetJobOptions) Run(ctx context.Context) error {
 	}
 }
 
-func (o *GetJobOptions) toJobDetails(job *batchv1.Job, pods []*corev1.Pod) JobDetails {
+func (o *GetJobOptions) toJobDetails(ctx context.Context, client *kubectl.Client, resource *kubectl.ForgeResource) JobDetails {
 	details := JobDetails{
-		Name:        job.Name,
-		Namespace:   job.Namespace,
-		Labels:      job.Labels,
-		Annotations: job.Annotations,
-		Package:     job.Labels[constants.LabelPackage],
-		Action:      job.Labels[constants.LabelAction],
-		JobType:     job.Labels["resource-type"],
-		CreatedAt:   job.CreationTimestamp.Format(time.RFC3339),
-		Age:         formatDuration(time.Since(job.CreationTimestamp.Time)),
+		Name:        resource.Name,
+		Namespace:   resource.Namespace,
+		Type:        resource.ResourceType,
+		Action:      resource.Action,
+		Phase:       resource.Phase,
+		Message:     resource.Message,
+		CreatedAt:   resource.CreatedAt.Format(time.RFC3339),
+		Age:         formatDuration(time.Since(resource.CreatedAt)),
+		Labels:      resource.Labels,
+		Annotations: resource.Annotations,
 	}
 
-	// Status
-	details.Status = JobStatusDetails{
-		Active:    job.Status.Active,
-		Succeeded: job.Status.Succeeded,
-		Failed:    job.Status.Failed,
-	}
-
-	if job.Status.StartTime != nil {
-		details.Status.StartTime = job.Status.StartTime.Format(time.RFC3339)
-	}
-	if job.Status.CompletionTime != nil {
-		details.Status.CompletedAt = job.Status.CompletionTime.Format(time.RFC3339)
-		if job.Status.StartTime != nil {
-			duration := job.Status.CompletionTime.Sub(job.Status.StartTime.Time)
-			details.Status.Duration = duration.Round(time.Second).String()
+	// Build operation details
+	for _, op := range resource.Operations {
+		// If --action is set, only show that operation
+		if o.Action != "" && op.Name != o.Action {
+			continue
 		}
-	}
 
-	// Determine phase
-	switch {
-	case job.Status.Succeeded > 0:
-		details.Status.Phase = constants.PhaseCompleted
-	case job.Status.Failed > 0:
-		details.Status.Phase = constants.PhaseFailed
-	case job.Status.Active > 0:
-		details.Status.Phase = constants.PhaseRunning
-	default:
-		details.Status.Phase = constants.PhasePending
-	}
+		opDetail := OperationDetail{
+			Name:              op.Name,
+			Phase:             op.Phase,
+			Message:           op.Message,
+			JobName:           op.JobName,
+			RetryCount:        op.RetryCount,
+			ArtifactLocation:  op.ArtifactLocation,
+			LastFailureReason: op.LastFailureReason,
+		}
 
-	// Pods
-	for _, pod := range pods {
-		ready := 0
-		var restarts int32
-		for _, cs := range pod.Status.ContainerStatuses {
-			if cs.Ready {
-				ready++
+		if op.StartTime != nil {
+			opDetail.StartTime = op.StartTime.Format(time.RFC3339)
+		}
+		if op.CompletionTime != nil {
+			opDetail.CompletionTime = op.CompletionTime.Format(time.RFC3339)
+			if op.StartTime != nil {
+				duration := op.CompletionTime.Sub(*op.StartTime)
+				opDetail.Duration = duration.Round(time.Second).String()
 			}
-			restarts += cs.RestartCount
 		}
-		details.Pods = append(details.Pods, PodSummary{
-			Name:     pod.Name,
-			Status:   string(pod.Status.Phase),
-			Ready:    fmt.Sprintf("%d/%d", ready, len(pod.Spec.Containers)),
-			Restarts: restarts,
-			Age:      formatDuration(time.Since(pod.CreationTimestamp.Time)),
-		})
-	}
-
-	// Volumes
-	for _, vol := range job.Spec.Template.Spec.Volumes {
-		v := VolumeInfo{Name: vol.Name}
-		switch {
-		case vol.PersistentVolumeClaim != nil:
-			v.Type = constants.VolumeTypePersistentVolumeClaim
-			v.ClaimName = vol.PersistentVolumeClaim.ClaimName
-		case vol.ConfigMap != nil:
-			v.Type = constants.VolumeTypeConfigMap
-			v.ClaimName = vol.ConfigMap.Name
-		case vol.Secret != nil: // pragma: allowlist secret
-			v.Type = constants.VolumeTypeSecret // pragma: allowlist secret
-			v.ClaimName = vol.Secret.SecretName
-		case vol.EmptyDir != nil:
-			v.Type = constants.VolumeTypeEmptyDir
-		case vol.HostPath != nil:
-			v.Type = constants.VolumeTypeHostPath
-			v.ClaimName = vol.HostPath.Path
-		default:
-			v.Type = constants.VolumeTypeOther
+		if op.NextRetryTime != nil {
+			opDetail.NextRetryTime = op.NextRetryTime.Format(time.RFC3339)
 		}
-		details.Volumes = append(details.Volumes, v)
-	}
 
-	// Conditions
-	for _, cond := range job.Status.Conditions {
-		details.Conditions = append(details.Conditions, ConditionInfo{
-			Type:    string(cond.Type),
-			Status:  string(cond.Status),
-			Reason:  cond.Reason,
-			Message: cond.Message,
-		})
+		// Fetch batch Job pods if the operation has a jobName
+		if op.JobName != "" {
+			job, jobErr := client.FindJob(ctx, resource.Namespace, op.JobName)
+			if jobErr == nil {
+				pods, podsErr := client.FindJobPods(ctx, job, false)
+				if podsErr == nil {
+					for _, pod := range pods {
+						opDetail.Pods = append(opDetail.Pods, toPodSummary(pod))
+					}
+				}
+
+				// Volumes (from first operation's job)
+				if len(details.Volumes) == 0 {
+					for _, vol := range job.Spec.Template.Spec.Volumes {
+						details.Volumes = append(details.Volumes, toVolumeInfo(vol))
+					}
+				}
+
+				// Conditions
+				if len(details.Conditions) == 0 {
+					for _, cond := range job.Status.Conditions {
+						details.Conditions = append(details.Conditions, ConditionInfo{
+							Type:    string(cond.Type),
+							Status:  string(cond.Status),
+							Reason:  cond.Reason,
+							Message: cond.Message,
+						})
+					}
+				}
+			}
+		}
+
+		details.Operations = append(details.Operations, opDetail)
 	}
 
 	return details
 }
 
+func toPodSummary(pod *corev1.Pod) PodSummary {
+	ready := 0
+	var restarts int32
+	for _, cs := range pod.Status.ContainerStatuses {
+		if cs.Ready {
+			ready++
+		}
+		restarts += cs.RestartCount
+	}
+	return PodSummary{
+		Name:     pod.Name,
+		Status:   string(pod.Status.Phase),
+		Ready:    fmt.Sprintf("%d/%d", ready, len(pod.Spec.Containers)),
+		Restarts: restarts,
+		Age:      formatDuration(time.Since(pod.CreationTimestamp.Time)),
+	}
+}
+
+func toVolumeInfo(vol corev1.Volume) VolumeInfo {
+	v := VolumeInfo{Name: vol.Name}
+	switch {
+	case vol.PersistentVolumeClaim != nil:
+		v.Type = constants.VolumeTypePersistentVolumeClaim
+		v.ClaimName = vol.PersistentVolumeClaim.ClaimName
+	case vol.ConfigMap != nil:
+		v.Type = constants.VolumeTypeConfigMap
+		v.ClaimName = vol.ConfigMap.Name
+	case vol.Secret != nil: // pragma: allowlist secret
+		v.Type = constants.VolumeTypeSecret // pragma: allowlist secret
+		v.ClaimName = vol.Secret.SecretName
+	case vol.EmptyDir != nil:
+		v.Type = constants.VolumeTypeEmptyDir
+	case vol.HostPath != nil:
+		v.Type = constants.VolumeTypeHostPath
+		v.ClaimName = vol.HostPath.Path
+	default:
+		v.Type = constants.VolumeTypeOther
+	}
+	return v
+}
+
 func (o *GetJobOptions) printDescribeFormat(d JobDetails) error {
 	w := o.IOStreams.Out
+	colors := NewColorWriter(w)
 
 	//nolint:errcheck // Writing to stdout in CLI context
 	fmt.Fprintf(w, "Name:           %s\n", d.Name)
 	//nolint:errcheck // Writing to stdout in CLI context
 	fmt.Fprintf(w, "Namespace:      %s\n", d.Namespace)
 	//nolint:errcheck // Writing to stdout in CLI context
-	fmt.Fprintf(w, "Package:        %s\n", d.Package)
+	fmt.Fprintf(w, "Type:           %s\n", d.Type)
 	//nolint:errcheck // Writing to stdout in CLI context
 	fmt.Fprintf(w, "Action:         %s\n", d.Action)
 	//nolint:errcheck // Writing to stdout in CLI context
-	fmt.Fprintf(w, "Job Type:       %s\n", d.JobType)
+	fmt.Fprintf(w, "Phase:          %s\n", colors.Phase(d.Phase))
+	if d.Message != "" {
+		//nolint:errcheck // Writing to stdout in CLI context
+		fmt.Fprintf(w, "Message:        %s\n", d.Message)
+	}
 	//nolint:errcheck // Writing to stdout in CLI context
 	fmt.Fprintf(w, "Age:            %s\n", d.Age)
 	//nolint:errcheck // Writing to stdout in CLI context
 	fmt.Fprintln(w)
 
-	//nolint:errcheck // Writing to stdout in CLI context
-	fmt.Fprintf(w, "Status:\n")
-	//nolint:errcheck // Writing to stdout in CLI context
-	fmt.Fprintf(w, "  Phase:        %s\n", d.Status.Phase)
-	//nolint:errcheck // Writing to stdout in CLI context
-	fmt.Fprintf(w, "  Active:       %d\n", d.Status.Active)
-	//nolint:errcheck // Writing to stdout in CLI context
-	fmt.Fprintf(w, "  Succeeded:    %d\n", d.Status.Succeeded)
-	//nolint:errcheck // Writing to stdout in CLI context
-	fmt.Fprintf(w, "  Failed:       %d\n", d.Status.Failed)
-	if d.Status.StartTime != "" {
+	// Operations
+	if len(d.Operations) > 0 {
 		//nolint:errcheck // Writing to stdout in CLI context
-		fmt.Fprintf(w, "  Start Time:   %s\n", d.Status.StartTime)
-	}
-	if d.Status.CompletedAt != "" {
-		//nolint:errcheck // Writing to stdout in CLI context
-		fmt.Fprintf(w, "  Completed At: %s\n", d.Status.CompletedAt)
-	}
-	if d.Status.Duration != "" {
-		//nolint:errcheck // Writing to stdout in CLI context
-		fmt.Fprintf(w, "  Duration:     %s\n", d.Status.Duration)
-	}
-	//nolint:errcheck // Writing to stdout in CLI context
-	fmt.Fprintln(w)
+		fmt.Fprintf(w, "Operations:\n")
+		for _, op := range d.Operations {
+			phase := colors.Phase(op.Phase)
+			if op.Phase == "" {
+				phase = colors.Phase("Pending")
+			}
+			//nolint:errcheck // Writing to stdout in CLI context
+			fmt.Fprintf(w, "  - %s:\n", op.Name)
+			//nolint:errcheck // Writing to stdout in CLI context
+			fmt.Fprintf(w, "      Phase:          %s\n", phase)
+			if op.Message != "" {
+				//nolint:errcheck // Writing to stdout in CLI context
+				fmt.Fprintf(w, "      Message:        %s\n", op.Message)
+			}
+			if op.JobName != "" {
+				//nolint:errcheck // Writing to stdout in CLI context
+				fmt.Fprintf(w, "      Job:            %s\n", op.JobName)
+			}
+			if op.RetryCount > 0 {
+				//nolint:errcheck // Writing to stdout in CLI context
+				fmt.Fprintf(w, "      Retry Count:    %d\n", op.RetryCount)
+			}
+			if op.ArtifactLocation != "" {
+				//nolint:errcheck // Writing to stdout in CLI context
+				fmt.Fprintf(w, "      Artifacts:      %s\n", op.ArtifactLocation)
+			}
+			if op.LastFailureReason != "" {
+				//nolint:errcheck // Writing to stdout in CLI context
+				fmt.Fprintf(w, "      Last Failure:   %s\n", op.LastFailureReason)
+			}
+			if op.StartTime != "" {
+				//nolint:errcheck // Writing to stdout in CLI context
+				fmt.Fprintf(w, "      Start Time:     %s\n", op.StartTime)
+			}
+			if op.CompletionTime != "" {
+				//nolint:errcheck // Writing to stdout in CLI context
+				fmt.Fprintf(w, "      Completed At:   %s\n", op.CompletionTime)
+			}
+			if op.Duration != "" {
+				//nolint:errcheck // Writing to stdout in CLI context
+				fmt.Fprintf(w, "      Duration:       %s\n", op.Duration)
+			}
+			if op.NextRetryTime != "" {
+				//nolint:errcheck // Writing to stdout in CLI context
+				fmt.Fprintf(w, "      Next Retry:     %s\n", op.NextRetryTime)
+			}
 
-	if len(d.Pods) > 0 {
-		//nolint:errcheck // Writing to stdout in CLI context
-		fmt.Fprintf(w, "Pods:\n")
-		for _, p := range d.Pods {
-			//nolint:errcheck // Writing to stdout in CLI context
-			fmt.Fprintf(w, "  - %s\n", p.Name)
-			//nolint:errcheck // Writing to stdout in CLI context
-			fmt.Fprintf(w, "      Status:   %s\n", p.Status)
-			//nolint:errcheck // Writing to stdout in CLI context
-			fmt.Fprintf(w, "      Ready:    %s\n", p.Ready)
-			//nolint:errcheck // Writing to stdout in CLI context
-			fmt.Fprintf(w, "      Restarts: %d\n", p.Restarts)
-			//nolint:errcheck // Writing to stdout in CLI context
-			fmt.Fprintf(w, "      Age:      %s\n", p.Age)
+			// Pods for this operation
+			if len(op.Pods) > 0 {
+				//nolint:errcheck // Writing to stdout in CLI context
+				fmt.Fprintf(w, "      Pods:\n")
+				for _, p := range op.Pods {
+					//nolint:errcheck // Writing to stdout in CLI context
+					fmt.Fprintf(w, "        - %s (%s, Ready: %s, Restarts: %d, Age: %s)\n",
+						p.Name, p.Status, p.Ready, p.Restarts, p.Age)
+				}
+			}
 		}
 		//nolint:errcheck // Writing to stdout in CLI context
 		fmt.Fprintln(w)

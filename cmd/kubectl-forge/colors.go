@@ -89,6 +89,8 @@ func (c *ColorWriter) Phase(phase string) string {
 		return colorYellow + phase + colorReset
 	case "Retrying":
 		return colorPurple + phase + colorReset
+	case "Queued":
+		return colorCyan + phase + colorReset
 	default:
 		return phase
 	}

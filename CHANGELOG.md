@@ -10,6 +10,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Comprehensive unit test coverage for action chaining logic, JobBuilder features (debug mode, extra mounts, volume sizes, in-cluster kubeconfig, security context, tolerations, affinity), job monitor status tracking, webhook validators (Zarf and UDS), source handlers (Git, S3, OCI, Local), and destination handlers (S3, OCI, Local)
 - E2E test fixtures for multi-action chains (BuildPublishDeploy, CreatePublish, CreatePublishDeploy), extra mounts, volume sizes, and debug mode
+- Shared informer + rate-limiting work queue pattern replacing direct watch-based event loop in GenericController for improved scalability
+- Job informer cache in GenericJobMonitor replacing direct `Jobs().List()` API calls, reducing API server load
+- Configurable concurrency limits: `--max-concurrent-jobs-per-namespace` and `--max-concurrent-jobs-global` flags with `PhaseQueued` backpressure support
+- Backpressure metrics: `forge.jobs.concurrent_active`, `forge.controller.queued_jobs`, `forge.controller.backpressure_events` (OpenTelemetry)
+- Helm chart values for concurrency configuration (`controller.concurrency.maxJobsPerNamespace`, `controller.concurrency.maxJobsGlobal`)
 
 ### Fixed
 - Default CLI image constants (`DefaultZarfCLIImage`, `DefaultUDSCLIImage`) referenced `v0.11.1` instead of `v0.11.17`

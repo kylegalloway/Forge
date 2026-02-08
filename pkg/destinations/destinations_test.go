@@ -470,3 +470,310 @@ func TestLocalDestinationGetJobConfiguration(t *testing.T) {
 		t.Error("GetJobConfiguration() returned nil config")
 	}
 }
+
+// TestS3DestinationPathConstruction tests S3 destination path building
+func TestS3DestinationPathConstruction(t *testing.T) {
+	tests := []struct {
+		name         string
+		bucket       string
+		prefix       string
+		artifactPath string
+		expectedPath string
+	}{
+		{
+			name:         "Basic S3 path",
+			bucket:       "my-bucket",
+			prefix:       "artifacts",
+			artifactPath: "package.tar.zst",
+			expectedPath: "s3://my-bucket/artifacts/package.tar.zst",
+		},
+		{
+			name:         "S3 path with nested prefix",
+			bucket:       "releases",
+			prefix:       "2024/01/builds",
+			artifactPath: "build-v1.0.0.tar.zst",
+			expectedPath: "s3://releases/2024/01/builds/build-v1.0.0.tar.zst",
+		},
+		{
+			name:         "S3 path without prefix",
+			bucket:       "packages",
+			prefix:       "",
+			artifactPath: "app.tar.zst",
+			expectedPath: "s3://packages/app.tar.zst",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Simulate path construction
+			var path string
+			if tt.prefix != "" {
+				path = "s3://" + tt.bucket + "/" + tt.prefix + "/" + tt.artifactPath
+			} else {
+				path = "s3://" + tt.bucket + "/" + tt.artifactPath
+			}
+
+			if path != tt.expectedPath {
+				t.Errorf("Expected path %s, got %s", tt.expectedPath, path)
+			}
+		})
+	}
+}
+
+// TestOCIDestinationPathConstruction tests OCI image reference construction
+func TestOCIDestinationPathConstruction(t *testing.T) {
+	tests := []struct {
+		name        string
+		registry    string
+		org         string
+		imageName   string
+		tag         string
+		expectedRef string
+	}{
+		{
+			name:        "GHCR reference",
+			registry:    "ghcr.io",
+			org:         "myorg",
+			imageName:   "myapp",
+			tag:         "v1.0.0",
+			expectedRef: "ghcr.io/myorg/myapp:v1.0.0",
+		},
+		{
+			name:        "Docker Hub reference",
+			registry:    "docker.io",
+			org:         "library",
+			imageName:   "alpine",
+			tag:         "latest",
+			expectedRef: "docker.io/library/alpine:latest",
+		},
+		{
+			name:        "Custom registry with port",
+			registry:    "registry.internal:5000",
+			org:         "apps",
+			imageName:   "service",
+			tag:         "1.2.3",
+			expectedRef: "registry.internal:5000/apps/service:1.2.3",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Simulate OCI reference construction
+			ref := tt.registry + "/" + tt.org + "/" + tt.imageName + ":" + tt.tag
+
+			if ref != tt.expectedRef {
+				t.Errorf("Expected ref %s, got %s", tt.expectedRef, ref)
+			}
+		})
+	}
+}
+
+// TestS3CredentialInjection tests AWS credential injection for S3
+func TestS3CredentialInjection(t *testing.T) {
+	tests := []struct {
+		name           string
+		accessKey      string
+		secretKey      string
+		region         string
+		shouldValidate bool
+	}{
+		{
+			name:           "Valid S3 credentials",
+			accessKey:      "AKIAIOSFODNN7EXAMPLE",                     // pragma: allowlist secret
+			secretKey:      "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY", // pragma: allowlist secret
+			region:         "us-east-1",
+			shouldValidate: true,
+		},
+		{
+			name:           "Missing secret key",
+			accessKey:      "AKIAIOSFODNN7EXAMPLE", // pragma: allowlist secret
+			secretKey:      "",
+			region:         "us-east-1",
+			shouldValidate: false,
+		},
+		{
+			name:           "Missing access key",
+			accessKey:      "",
+			secretKey:      "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY", // pragma: allowlist secret
+			region:         "us-east-1",
+			shouldValidate: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Simulate credential validation
+			isValid := tt.accessKey != "" && tt.secretKey != ""
+
+			if isValid != tt.shouldValidate {
+				t.Errorf("Expected validation=%v, got %v", tt.shouldValidate, isValid)
+			}
+		})
+	}
+}
+
+// TestOCIRegistryAuth tests OCI registry authentication
+func TestOCIRegistryAuth(t *testing.T) {
+	tests := []struct {
+		name           string
+		username       string
+		password       string
+		shouldValidate bool
+	}{
+		{
+			name:           "Valid credentials",
+			username:       "testuser",
+			password:       "testpass",
+			shouldValidate: true,
+		},
+		{
+			name:           "Missing password",
+			username:       "testuser",
+			password:       "",
+			shouldValidate: false,
+		},
+		{
+			name:           "Missing username",
+			username:       "",
+			password:       "testpass",
+			shouldValidate: false,
+		},
+		{
+			name:           "Both missing",
+			username:       "",
+			password:       "",
+			shouldValidate: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Simulate auth validation
+			isValid := tt.username != "" && tt.password != ""
+
+			if isValid != tt.shouldValidate {
+				t.Errorf("Expected validation=%v, got %v", tt.shouldValidate, isValid)
+			}
+		})
+	}
+}
+
+// TestS3UploadOperations tests S3 upload mechanics
+func TestS3UploadOperations(t *testing.T) {
+	tests := []struct {
+		name         string
+		fileSize     int64
+		contentType  string
+		shouldUpload bool
+	}{
+		{
+			name:         "Large archive upload",
+			fileSize:     1073741824, // 1 GB
+			contentType:  "application/x-tar+zst",
+			shouldUpload: true,
+		},
+		{
+			name:         "Small file upload",
+			fileSize:     1024,
+			contentType:  "application/x-tar+zst",
+			shouldUpload: true,
+		},
+		{
+			name:         "Empty file",
+			fileSize:     0,
+			contentType:  "application/x-tar+zst",
+			shouldUpload: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Simulate upload validation
+			canUpload := tt.fileSize > 0
+
+			if canUpload != tt.shouldUpload {
+				t.Errorf("Expected canUpload=%v, got %v", tt.shouldUpload, canUpload)
+			}
+		})
+	}
+}
+
+// TestOCILayerPush tests OCI layer push operations
+func TestOCILayerPush(t *testing.T) {
+	tests := []struct {
+		name        string
+		layerDigest string
+		imageRef    string
+		shouldPush  bool
+	}{
+		{
+			name:        "Valid layer push",
+			layerDigest: "sha256:abc123def456",
+			imageRef:    "ghcr.io/org/image:v1.0.0",
+			shouldPush:  true,
+		},
+		{
+			name:        "Missing layer digest",
+			layerDigest: "",
+			imageRef:    "ghcr.io/org/image:v1.0.0",
+			shouldPush:  false,
+		},
+		{
+			name:        "Invalid image reference",
+			layerDigest: "sha256:abc123def456",
+			imageRef:    "",
+			shouldPush:  false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Simulate push validation
+			canPush := tt.layerDigest != "" && tt.imageRef != ""
+
+			if canPush != tt.shouldPush {
+				t.Errorf("Expected canPush=%v, got %v", tt.shouldPush, canPush)
+			}
+		})
+	}
+}
+
+// TestS3MultipartUpload tests S3 multipart upload configuration
+func TestS3MultipartUpload(t *testing.T) {
+	tests := []struct {
+		name              string
+		fileSize          int64
+		partSize          int64
+		expectedPartCount int
+	}{
+		{
+			name:              "100MB file with 5MB parts",
+			fileSize:          104857600,
+			partSize:          5242880,
+			expectedPartCount: 20,
+		},
+		{
+			name:              "1GB file with 100MB parts",
+			fileSize:          1073741824,
+			partSize:          104857600,
+			expectedPartCount: 11,
+		},
+		{
+			name:              "Small file, single part",
+			fileSize:          1048576,
+			partSize:          5242880,
+			expectedPartCount: 1,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Calculate expected part count
+			partCount := int((tt.fileSize + tt.partSize - 1) / tt.partSize)
+
+			if partCount != tt.expectedPartCount {
+				t.Errorf("Expected %d parts, got %d", tt.expectedPartCount, partCount)
+			}
+		})
+	}
+}

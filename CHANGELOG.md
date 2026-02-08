@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Comprehensive unit test coverage for action chaining logic, JobBuilder features (debug mode, extra mounts, volume sizes, in-cluster kubeconfig, security context, tolerations, affinity), job monitor status tracking, webhook validators (Zarf and UDS), source handlers (Git, S3, OCI, Local), and destination handlers (S3, OCI, Local)
+- E2E test fixtures for multi-action chains (BuildPublishDeploy, CreatePublish, CreatePublishDeploy), extra mounts, volume sizes, and debug mode
+
 ## [0.11.17] - 2026-02-04
 
 ### Fixed

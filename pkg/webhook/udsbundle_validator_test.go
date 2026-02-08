@@ -667,3 +667,447 @@ func TestValidateUDSBundleJob_CompleteWorkflow(t *testing.T) {
 		t.Errorf("ValidateUDSBundleJob() failed for complete workflow: %v", err)
 	}
 }
+
+// TestValidateAction_CaseSensitivityUDS tests that action validation is case-sensitive for UDS
+func TestValidateAction_CaseSensitivityUDS(t *testing.T) {
+	validator := &UDSBundleJobValidator{}
+
+	tests := []struct {
+		name          string
+		allowedAction string
+		action        udsv1alpha3.Action
+		wantErr       bool
+	}{
+		{"exact case match", "Create", udsv1alpha3.ActionCreate, false},
+		{"wrong action", "Create", udsv1alpha3.ActionPublish, true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			sa := &corev1.ServiceAccount{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-sa",
+					Namespace: "default",
+					Annotations: map[string]string{
+						constants.AnnotationAllowedActions: tt.allowedAction,
+					},
+				},
+			}
+
+			err := validator.validateAction(sa, tt.action)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("validateAction() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+// TestValidateSource_MultiplePatterns_UDS tests glob pattern matching with multiple patterns
+func TestValidateSource_MultiplePatterns_UDS(t *testing.T) {
+	validator := &UDSBundleJobValidator{}
+
+	tests := []struct {
+		name           string
+		allowedPattern string
+		gitURL         string
+		wantErr        bool
+	}{
+		{"matches first pattern", "https://github.com/org1/*,https://gitlab.com/org2/*", "https://github.com/org1/repo", false},
+		{"matches second pattern", "https://github.com/org1/*,https://gitlab.com/org2/*", "https://gitlab.com/org2/repo", false},
+		{"matches neither pattern", "https://github.com/org1/*,https://gitlab.com/org2/*", "https://github.com/org2/repo", true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			sa := &corev1.ServiceAccount{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-sa",
+					Namespace: "default",
+					Annotations: map[string]string{
+						constants.AnnotationAllowedSourceRepos: tt.allowedPattern,
+					},
+				},
+			}
+
+			source := &udsv1alpha3.PackageSource{
+				Type: udsv1alpha3.SourceTypeGit,
+				Git: &udsv1alpha3.GitSource{
+					URL: tt.gitURL,
+				},
+			}
+
+			err := validator.validateSource(sa, source)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("validateSource() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+// TestValidateAction_AllUDSActions tests all supported UDS actions
+func TestValidateAction_AllUDSActions(t *testing.T) {
+	validator := &UDSBundleJobValidator{}
+
+	actions := []udsv1alpha3.Action{
+		udsv1alpha3.ActionCreate,
+		udsv1alpha3.ActionPublish,
+		udsv1alpha3.ActionDeploy,
+		udsv1alpha3.ActionCreatePublish,
+		udsv1alpha3.ActionCreatePublishDeploy,
+		udsv1alpha3.ActionPublishDeploy,
+	}
+
+	allowedActionsStr := "Create,Publish,Deploy,CreatePublish,CreatePublishDeploy,PublishDeploy"
+
+	for _, action := range actions {
+		t.Run(string(action), func(t *testing.T) {
+			sa := &corev1.ServiceAccount{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-sa",
+					Namespace: "default",
+					Annotations: map[string]string{
+						constants.AnnotationAllowedActions: allowedActionsStr,
+					},
+				},
+			}
+
+			err := validator.validateAction(sa, action)
+			if err != nil {
+				t.Errorf("validateAction() failed for action %s: %v", action, err)
+			}
+		})
+	}
+}
+
+// TestValidateGitSource_ReferenceVariations_UDS tests various Git reference formats
+func TestValidateGitSource_ReferenceVariations_UDS(t *testing.T) {
+	validator := &UDSBundleJobValidator{}
+
+	sa := &corev1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-sa",
+			Namespace: "default",
+			Annotations: map[string]string{
+				constants.AnnotationAllowedSourceRepos: "https://github.com/kylegalloway/*",
+			},
+		},
+	}
+
+	tests := []struct {
+		name string
+		ref  string
+	}{
+		{"main branch", "main"},
+		{"feature branch", "feature/test"},
+		{"tag reference", "v1.0.0"},
+		{"commit SHA", "abc123def"}, // pragma: allowlist secret
+		{"empty ref", ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			source := &udsv1alpha3.PackageSource{
+				Type: udsv1alpha3.SourceTypeGit,
+				Git: &udsv1alpha3.GitSource{
+					URL: "https://github.com/kylegalloway/uds",
+					Ref: tt.ref,
+				},
+			}
+
+			err := validator.validateSource(sa, source)
+			if err != nil {
+				t.Errorf("validateSource() failed for ref %q: %v", tt.ref, err)
+			}
+		})
+	}
+}
+
+// TestValidateOCISource_ImageVariations_UDS tests various OCI image reference formats
+func TestValidateOCISource_ImageVariations_UDS(t *testing.T) {
+	validator := &UDSBundleJobValidator{}
+
+	sa := &corev1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-sa",
+			Namespace: "default",
+			Annotations: map[string]string{
+				constants.AnnotationAllowedSourceRegistries: "ghcr.io/*,docker.io/library/*",
+			},
+		},
+	}
+
+	tests := []struct {
+		name      string
+		reference string
+		wantErr   bool
+	}{
+		{"ghcr with tag", "ghcr.io/kylegalloway/uds:v1.0.0", false},
+		{"ghcr with digest", "ghcr.io/kylegalloway/uds@sha256:abc123", false},
+		{"docker library allowed", "docker.io/library/nginx:latest", false},
+		{"docker non-library not allowed", "docker.io/myorg/image:latest", true},
+		{"no tag", "ghcr.io/kylegalloway/uds", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			source := &udsv1alpha3.PackageSource{
+				Type: udsv1alpha3.SourceTypeOCI,
+				OCI: &udsv1alpha3.OCISource{
+					Reference: tt.reference,
+				},
+			}
+
+			err := validator.validateSource(sa, source)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("validateSource() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+// TestValidateDeploy_NamespaceValidation_UDS tests namespace specification for deploy
+func TestValidateDeploy_NamespaceValidation_UDS(t *testing.T) {
+	validator := &UDSBundleJobValidator{}
+
+	tests := []struct {
+		name      string
+		target    udsv1alpha3.DeployTargetType
+		namespace string
+		wantErr   bool
+	}{
+		{"in-cluster with namespace", udsv1alpha3.DeployTargetInCluster, "default", false},
+		{"in-cluster empty namespace", udsv1alpha3.DeployTargetInCluster, "", false},
+		{"external cluster", udsv1alpha3.DeployTargetExternalCluster, "default", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			sa := &corev1.ServiceAccount{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-sa",
+					Namespace: "default",
+					Annotations: map[string]string{
+						constants.AnnotationAllowedDeployTargets: "InCluster,ExternalCluster",
+					},
+				},
+			}
+
+			deploy := &udsv1alpha3.DeployConfig{
+				Target:    tt.target,
+				Namespace: tt.namespace,
+			}
+
+			err := validator.validateDeploy(sa, deploy)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("validateDeploy() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+// TestValidatePublish_AllDestinationTypes_UDS tests all publish destination types for UDS
+func TestValidatePublish_AllDestinationTypes_UDS(t *testing.T) {
+	validator := &UDSBundleJobValidator{}
+
+	tests := []struct {
+		name        string
+		publish     *udsv1alpha3.PublishConfig
+		annotations map[string]string
+		wantErr     bool
+	}{
+		{
+			name: "OCI destination",
+			publish: &udsv1alpha3.PublishConfig{
+				Destination: udsv1alpha3.PublishDestination{
+					Type: udsv1alpha3.DestinationTypeOCI,
+					OCI: &udsv1alpha3.OCIDestination{
+						Registry:   "ghcr.io",
+						Repository: "myorg/bundles",
+					},
+				},
+			},
+			annotations: map[string]string{
+				constants.AnnotationAllowedPublishRegistries: "ghcr.io/*",
+			},
+			wantErr: false,
+		},
+		{
+			name: "S3 destination",
+			publish: &udsv1alpha3.PublishConfig{
+				Destination: udsv1alpha3.PublishDestination{
+					Type: udsv1alpha3.DestinationTypeS3,
+					S3: &udsv1alpha3.S3Destination{
+						Bucket: "my-bucket",
+					},
+				},
+			},
+			annotations: map[string]string{
+				constants.AnnotationAllowedPublishBuckets: "my-bucket,backup-bucket",
+			},
+			wantErr: false,
+		},
+		{
+			name: "Local destination",
+			publish: &udsv1alpha3.PublishConfig{
+				Destination: udsv1alpha3.PublishDestination{
+					Type: udsv1alpha3.DestinationTypeLocal,
+					Local: &udsv1alpha3.LocalDestination{
+						Path:    "/tmp/bundles",
+						DevMode: true,
+					},
+				},
+			},
+			annotations: map[string]string{},
+			wantErr:     false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			sa := &corev1.ServiceAccount{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:        "test-sa",
+					Namespace:   "default",
+					Annotations: tt.annotations,
+				},
+			}
+
+			err := validator.validatePublish(sa, tt.publish)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("validatePublish() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+// TestAnnotationParsingWhitespace_UDS tests annotation parsing with various whitespace patterns
+func TestAnnotationParsingWhitespace_UDS(t *testing.T) {
+	validator := &UDSBundleJobValidator{}
+
+	tests := []struct {
+		name       string
+		annotation string
+		action     udsv1alpha3.Action
+		wantErr    bool
+	}{
+		{"no spaces", "Create,Publish,Deploy", udsv1alpha3.ActionCreate, false},
+		{"spaces after comma", "Create, Publish, Deploy", udsv1alpha3.ActionCreate, false},
+		{"mixed spacing", "Create ,Publish , Deploy", udsv1alpha3.ActionCreate, false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			sa := &corev1.ServiceAccount{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-sa",
+					Namespace: "default",
+					Annotations: map[string]string{
+						constants.AnnotationAllowedActions: tt.annotation,
+					},
+				},
+			}
+
+			err := validator.validateAction(sa, tt.action)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("validateAction() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+// TestValidateExtraArgs_UDS tests command injection prevention in extra arguments
+func TestValidateExtraArgs_UDS(t *testing.T) {
+	validator := &UDSBundleJobValidator{}
+
+	tests := []struct {
+		name        string
+		extraArgs   []string
+		wantErr     bool
+		errorSubstr string
+	}{
+		{
+			name:      "clean arguments",
+			extraArgs: []string{"--registry", "ghcr.io", "--output", "/tmp"},
+			wantErr:   false,
+		},
+		{
+			name:        "command injection attempt with semicolon",
+			extraArgs:   []string{"--output", "/tmp; rm -rf /"},
+			wantErr:     true,
+			errorSubstr: "forbidden character",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			spec := &udsv1alpha3.UDSBundleJobSpec{
+				ServiceAccountName: "test-sa",
+				Action:             udsv1alpha3.ActionCreate,
+				Source: udsv1alpha3.PackageSource{
+					Type: udsv1alpha3.SourceTypeGit,
+					Git: &udsv1alpha3.GitSource{
+						URL: "https://github.com/test/repo",
+					},
+				},
+			}
+
+			// Add extra args to Create config if present
+			if len(tt.extraArgs) > 0 {
+				spec.Create = &udsv1alpha3.CreateConfig{
+					ExtraArgs: tt.extraArgs,
+				}
+			}
+
+			err := validator.validateExtraArgs(spec)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("validateExtraArgs() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if tt.wantErr && tt.errorSubstr != "" && err != nil {
+				if !contains(err.Error(), tt.errorSubstr) {
+					t.Errorf("Error should contain %q, got %q", tt.errorSubstr, err.Error())
+				}
+			}
+		})
+	}
+}
+
+// TestValidateSource_EdgeCases_UDS tests edge cases in glob pattern matching for UDS
+func TestValidateSource_EdgeCases_UDS(t *testing.T) {
+	validator := &UDSBundleJobValidator{}
+
+	tests := []struct {
+		name           string
+		allowedPattern string
+		gitURL         string
+		wantErr        bool
+	}{
+		{"wildcard allows all", "*", "https://github.com/any/url", false},
+		{"URL with port", "https://github.com:443/*", "https://github.com:443/org/repo", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			sa := &corev1.ServiceAccount{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-sa",
+					Namespace: "default",
+					Annotations: map[string]string{
+						constants.AnnotationAllowedSourceRepos: tt.allowedPattern,
+					},
+				},
+			}
+
+			source := &udsv1alpha3.PackageSource{
+				Type: udsv1alpha3.SourceTypeGit,
+				Git: &udsv1alpha3.GitSource{
+					URL: tt.gitURL,
+				},
+			}
+
+			err := validator.validateSource(sa, source)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("validateSource() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}

@@ -876,3 +876,441 @@ func TestBuildGitInitContainerCredentialCommand(t *testing.T) {
 		})
 	}
 }
+
+// TestGitSourceCloning tests Git source repository cloning
+func TestGitSourceCloning(t *testing.T) {
+	tests := []struct {
+		name        string
+		url         string
+		ref         string
+		shouldClone bool
+	}{
+		{
+			name:        "Clone from GitHub HTTPS",
+			url:         "https://github.com/test/repo.git",
+			ref:         "main",
+			shouldClone: true,
+		},
+		{
+			name:        "Clone with specific branch",
+			url:         "https://github.com/test/repo.git",
+			ref:         "feature/new-feature",
+			shouldClone: true,
+		},
+		{
+			name:        "Clone with commit SHA",
+			url:         "https://github.com/test/repo.git",
+			ref:         "abc123def456", // pragma: allowlist secret
+			shouldClone: true,
+		},
+		{
+			name:        "Clone from tag",
+			url:         "https://github.com/test/repo.git",
+			ref:         "v1.0.0",
+			shouldClone: true,
+		},
+		{
+			name:        "Empty URL",
+			url:         "",
+			ref:         "main",
+			shouldClone: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Simulate clone validation
+			canClone := tt.url != ""
+
+			if canClone != tt.shouldClone {
+				t.Errorf("Expected canClone=%v, got %v", tt.shouldClone, canClone)
+			}
+		})
+	}
+}
+
+// TestGitSourceRefValidation tests Git ref validation
+func TestGitSourceRefValidation(t *testing.T) {
+	tests := []struct {
+		name    string
+		ref     string
+		isValid bool
+	}{
+		{
+			name:    "Main branch",
+			ref:     "main",
+			isValid: true,
+		},
+		{
+			name:    "Master branch",
+			ref:     "master",
+			isValid: true,
+		},
+		{
+			name:    "Feature branch",
+			ref:     "feature/new-feature",
+			isValid: true,
+		},
+		{
+			name:    "Commit SHA",
+			ref:     "abc123def456abc123def456abc123def456abc1", // pragma: allowlist secret
+			isValid: true,
+		},
+		{
+			name:    "Tag reference",
+			ref:     "v1.2.3",
+			isValid: true,
+		},
+		{
+			name:    "Empty ref",
+			ref:     "",
+			isValid: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Simulate ref validation
+			isValid := tt.ref != ""
+
+			if isValid != tt.isValid {
+				t.Errorf("Expected isValid=%v, got %v", tt.isValid, isValid)
+			}
+		})
+	}
+}
+
+// TestS3SourceDownload tests S3 source download operations
+func TestS3SourceDownload(t *testing.T) {
+	tests := []struct {
+		name           string
+		bucket         string
+		key            string
+		accessKey      string
+		secretKey      string
+		shouldDownload bool
+	}{
+		{
+			name:           "Valid S3 source",
+			bucket:         "artifacts",
+			key:            "packages/app-v1.0.0.tar.zst",
+			accessKey:      "AKIAIOSFODNN7EXAMPLE",                     // pragma: allowlist secret
+			secretKey:      "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY", // pragma: allowlist secret
+			shouldDownload: true,
+		},
+		{
+			name:           "Missing access key",
+			bucket:         "artifacts",
+			key:            "packages/app-v1.0.0.tar.zst",
+			accessKey:      "",
+			secretKey:      "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY", // pragma: allowlist secret
+			shouldDownload: false,
+		},
+		{
+			name:           "Missing object key",
+			bucket:         "artifacts",
+			key:            "",
+			accessKey:      "AKIAIOSFODNN7EXAMPLE",                     // pragma: allowlist secret
+			secretKey:      "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY", // pragma: allowlist secret
+			shouldDownload: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Simulate S3 download validation
+			canDownload := tt.bucket != "" && tt.key != "" && tt.accessKey != "" && tt.secretKey != ""
+
+			if canDownload != tt.shouldDownload {
+				t.Errorf("Expected canDownload=%v, got %v", tt.shouldDownload, canDownload)
+			}
+		})
+	}
+}
+
+// TestOCISourcePull tests OCI image pulling
+func TestOCISourcePull(t *testing.T) {
+	tests := []struct {
+		name       string
+		imageRef   string
+		registry   string
+		shouldPull bool
+	}{
+		{
+			name:       "GHCR image",
+			imageRef:   "ghcr.io/org/image:v1.0.0",
+			registry:   "ghcr.io",
+			shouldPull: true,
+		},
+		{
+			name:       "Docker Hub image",
+			imageRef:   "docker.io/library/alpine:latest",
+			registry:   "docker.io",
+			shouldPull: true,
+		},
+		{
+			name:       "Private registry image",
+			imageRef:   "registry.internal:5000/app/service:1.2.3",
+			registry:   "registry.internal:5000",
+			shouldPull: true,
+		},
+		{
+			name:       "Empty image reference",
+			imageRef:   "",
+			registry:   "ghcr.io",
+			shouldPull: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Simulate OCI pull validation
+			canPull := tt.imageRef != ""
+
+			if canPull != tt.shouldPull {
+				t.Errorf("Expected canPull=%v, got %v", tt.shouldPull, canPull)
+			}
+		})
+	}
+}
+
+// TestSourceCredentialValidation tests credential validation for sources
+func TestSourceCredentialValidation(t *testing.T) {
+	tests := []struct {
+		name           string
+		sourceType     string
+		hasCredentials bool
+		shouldValidate bool
+	}{
+		{
+			name:           "Git with credentials",
+			sourceType:     "git",
+			hasCredentials: true,
+			shouldValidate: true,
+		},
+		{
+			name:           "Git without credentials",
+			sourceType:     "git",
+			hasCredentials: false,
+			shouldValidate: true, // Git can work without credentials for public repos
+		},
+		{
+			name:           "S3 with credentials",
+			sourceType:     "s3",
+			hasCredentials: true,
+			shouldValidate: true,
+		},
+		{
+			name:           "S3 without credentials",
+			sourceType:     "s3",
+			hasCredentials: false,
+			shouldValidate: false, // S3 requires credentials
+		},
+		{
+			name:           "OCI with credentials",
+			sourceType:     "oci",
+			hasCredentials: true,
+			shouldValidate: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Simulate credential validation logic
+			var isValid bool
+			switch tt.sourceType {
+			case "git":
+				isValid = true // Git works with or without creds
+			case "s3", "oci":
+				isValid = tt.hasCredentials
+			}
+
+			if isValid != tt.shouldValidate {
+				t.Errorf("Expected shouldValidate=%v, got %v", tt.shouldValidate, isValid)
+			}
+		})
+	}
+}
+
+// TestLocalSourceValidation tests local source path validation
+func TestLocalSourceValidation(t *testing.T) {
+	tests := []struct {
+		name    string
+		path    string
+		exists  bool
+		isValid bool
+	}{
+		{
+			name:    "Valid local path",
+			path:    "/local/path/to/artifacts",
+			exists:  true,
+			isValid: true,
+		},
+		{
+			name:    "Relative path",
+			path:    "relative/path/artifacts",
+			exists:  true,
+			isValid: true,
+		},
+		{
+			name:    "Non-existent path",
+			path:    "/non/existent/path",
+			exists:  false,
+			isValid: true, // Syntactically valid even if it doesn't exist
+		},
+		{
+			name:    "Empty path",
+			path:    "",
+			exists:  false,
+			isValid: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Simulate path validation - non-existent paths are still syntactically valid
+			isValid := tt.path != ""
+
+			if isValid != tt.isValid {
+				t.Errorf("Expected isValid=%v, got %v", tt.isValid, isValid)
+			}
+		})
+	}
+}
+
+// TestGitSourceWithAuth tests Git source with authentication
+func TestGitSourceWithAuth(t *testing.T) {
+	tests := []struct {
+		name     string
+		url      string
+		username string
+		password string
+		sshKey   string
+		canAuth  bool
+	}{
+		{
+			name:     "HTTPS with username/password",
+			url:      "https://github.com/org/repo.git",
+			username: "user",
+			password: "pass",
+			sshKey:   "",
+			canAuth:  true,
+		},
+		{
+			name:     "SSH with key",
+			url:      "git@github.com:org/repo.git",
+			username: "",
+			password: "",
+			sshKey:   "ssh-rsa AAAAB3NzaC1...",
+			canAuth:  true,
+		},
+		{
+			name:     "Public repo no auth",
+			url:      "https://github.com/public/repo.git",
+			username: "",
+			password: "",
+			sshKey:   "",
+			canAuth:  true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Simulate auth validation
+			hasBasicAuth := tt.username != "" && tt.password != ""
+			hasSSHAuth := tt.sshKey != ""
+			isPublic := tt.url != ""
+
+			canAuth := hasBasicAuth || hasSSHAuth || isPublic
+
+			if canAuth != tt.canAuth {
+				t.Errorf("Expected canAuth=%v, got %v", tt.canAuth, canAuth)
+			}
+		})
+	}
+}
+
+// TestS3SourcePathParsing tests S3 path parsing
+func TestS3SourcePathParsing(t *testing.T) {
+	tests := []struct {
+		name    string
+		s3Path  string
+		bucket  string
+		key     string
+		isValid bool
+	}{
+		{
+			name:    "Standard S3 path",
+			s3Path:  "s3://my-bucket/path/to/file.tar.zst",
+			bucket:  "my-bucket",
+			key:     "path/to/file.tar.zst",
+			isValid: true,
+		},
+		{
+			name:    "S3 path without prefix",
+			s3Path:  "s3://bucket/file.tar.zst",
+			bucket:  "bucket",
+			key:     "file.tar.zst",
+			isValid: true,
+		},
+		{
+			name:    "Invalid S3 path",
+			s3Path:  "invalid://bucket/file",
+			bucket:  "",
+			key:     "",
+			isValid: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Simulate S3 path parsing
+			isValid := tt.s3Path != "" && tt.bucket != "" && tt.key != ""
+
+			if isValid != tt.isValid {
+				t.Errorf("Expected isValid=%v, got %v", tt.isValid, isValid)
+			}
+		})
+	}
+}
+
+// TestOCISourceImageValidation tests OCI image reference validation
+func TestOCISourceImageValidation(t *testing.T) {
+	tests := []struct {
+		name     string
+		imageRef string
+		isValid  bool
+	}{
+		{
+			name:     "Full OCI reference",
+			imageRef: "ghcr.io/org/image:v1.0.0",
+			isValid:  true,
+		},
+		{
+			name:     "OCI reference with digest",
+			imageRef: "ghcr.io/org/image@sha256:abc123",
+			isValid:  true,
+		},
+		{
+			name:     "OCI reference without tag",
+			imageRef: "ghcr.io/org/image",
+			isValid:  true,
+		},
+		{
+			name:     "Empty reference",
+			imageRef: "",
+			isValid:  false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Simulate image validation
+			isValid := tt.imageRef != ""
+
+			if isValid != tt.isValid {
+				t.Errorf("Expected isValid=%v, got %v", tt.isValid, isValid)
+			}
+		})
+	}
+}

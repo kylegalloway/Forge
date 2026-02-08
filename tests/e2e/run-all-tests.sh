@@ -237,6 +237,38 @@ TESTS_TOTAL=$((TESTS_TOTAL + 1))
 cd ..
 echo ""
 
+# Test 6: Controller HA Validation
+echo "=================================="
+echo "Test 06: Controller HA Validation"
+echo "=================================="
+cd 12-controller-ha
+if ./test.sh; then
+    echo -e "${GREEN}✓ Test 06 PASSED${NC}"
+    TESTS_PASSED=$((TESTS_PASSED + 1))
+else
+    echo -e "${RED}✗ Test 06 FAILED${NC}"
+    TESTS_FAILED=$((TESTS_FAILED + 1))
+fi
+TESTS_TOTAL=$((TESTS_TOTAL + 1))
+cd ..
+echo ""
+
+# Test 7: Concurrency Limits Validation
+echo "=================================="
+echo "Test 07: Concurrency Limits Validation"
+echo "=================================="
+cd 13-concurrency-limits
+if ./test.sh; then
+    echo -e "${GREEN}✓ Test 07 PASSED${NC}"
+    TESTS_PASSED=$((TESTS_PASSED + 1))
+else
+    echo -e "${RED}✗ Test 07 FAILED${NC}"
+    TESTS_FAILED=$((TESTS_FAILED + 1))
+fi
+TESTS_TOTAL=$((TESTS_TOTAL + 1))
+cd ..
+echo ""
+
 # Print summary
 echo "=================================="
 echo "Test Suite Summary"

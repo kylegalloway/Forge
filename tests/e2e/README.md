@@ -30,6 +30,13 @@ Simple, automated tests for Forge functionality that work on both local Kind clu
 | **10-volume-sizes** | Custom volume sizing (VolumeSizes feature) | ~4 min | Sufficient cluster storage |
 | **11-debug-mode** | Debug mode and pod introspection | ~2 min | kubectl exec capability |
 
+### Infrastructure Validation Tests
+
+| Test | Description | Duration | Prerequisites |
+|------|-------------|----------|---------------|
+| **12-controller-ha** | Controller HA: leader election, PDB, anti-affinity, workers | ~10 sec | helm CLI, controller deployed |
+| **13-concurrency-limits** | Concurrency limits: flags, backpressure, metrics | ~10 sec | helm CLI, controller deployed |
+
 ## Quick Start
 
 ### Run All Tests (Automated)
@@ -88,6 +95,12 @@ New and advanced Forge features validated in integrated scenarios.
 **ExtraMounts (09):** ConfigMap and Secret mounting into job containers
 **VolumeSizes (10):** Custom volume capacity configuration
 **Debug Mode (11):** Interactive debugging and pod introspection
+
+### Infrastructure Tests (12-13)
+Helm template rendering and operational infrastructure validation.
+
+**Controller HA (12):** Leader election wiring, PDB creation, anti-affinity, worker count, LE parameters
+**Concurrency Limits (13):** Per-namespace/global job limits, workers flag, backpressure metrics
 
 ## Prerequisites
 

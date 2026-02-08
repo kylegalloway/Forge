@@ -17,6 +17,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Helm chart values for concurrency configuration (`controller.concurrency.maxJobsPerNamespace`, `controller.concurrency.maxJobsGlobal`)
 - Controller HA infrastructure: PodDisruptionBudget (when `replicaCount > 1`), pod anti-affinity for hostname spreading, configurable worker count (`--workers` flag / `controller.workers` value)
 - Configurable leader election parameters: `--leader-election-lease-duration`, `--leader-election-renew-deadline`, `--leader-election-retry-period`, `--leader-election-namespace` flags with corresponding Helm values
+- E2E tests for controller HA validation (test 12) and concurrency limits validation (test 13): Helm template rendering, leader election wiring, PDB, anti-affinity, workers, concurrency flags
+
+### Changed
+- Deployment guide: HA section rewritten to reflect automatic PDB/anti-affinity when `replicaCount > 1`, added concurrency limits example, custom affinity override documentation
+- Runbook: scaling section updated with HA commands (was "no leader election yet"), added concurrency/backpressure metrics and performance tuning parameters
+- Chart READMEs: added HA/concurrency/leader election configuration reference, updated chart structure listing with PDB files
 
 ### Fixed
 - Helm chart `leaderElection.enabled: true` was dead config — the `--enable-leader-election` flag was never passed to the controller binary, so multiple replicas would cause duplicate reconciliation with no leader coordination

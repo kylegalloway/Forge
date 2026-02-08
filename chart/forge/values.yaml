@@ -103,6 +103,13 @@ controller:
     port: 8080
     path: /metrics
 
+  # Concurrency limits for job creation
+  concurrency:
+    # Maximum concurrent jobs per namespace (0 = unlimited)
+    maxJobsPerNamespace: 0
+    # Maximum concurrent jobs globally (0 = unlimited)
+    maxJobsGlobal: 0
+
   # Health check endpoints
   healthCheck:
     port: 8081

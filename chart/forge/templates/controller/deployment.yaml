@@ -33,9 +33,15 @@ spec:
         imagePullPolicy: {{ .Values.controller.image.pullPolicy }}
         command:
         - /controller
-        {{- with .Values.controller.args }}
         args:
+        {{- with .Values.controller.args }}
           {{- toYaml . | nindent 10 }}
+        {{- end }}
+        {{- if gt (int .Values.controller.concurrency.maxJobsPerNamespace) 0 }}
+          - "--max-concurrent-jobs-per-namespace={{ .Values.controller.concurrency.maxJobsPerNamespace }}"
+        {{- end }}
+        {{- if gt (int .Values.controller.concurrency.maxJobsGlobal) 0 }}
+          - "--max-concurrent-jobs-global={{ .Values.controller.concurrency.maxJobsGlobal }}"
         {{- end }}
         env:
         - name: FORGE_ZARF_CLI_IMAGE

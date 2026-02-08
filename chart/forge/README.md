@@ -29,11 +29,14 @@ See [values.yaml](values.yaml) for all configuration options.
 
 ### Key Configuration Areas
 
-- **Controller**: Deployment, resources, security settings
+- **Controller**: Deployment, resources, concurrency limits, workers, reliability (PDB)
 - **Webhook**: Admission webhook configuration
+- **Leader Election**: HA coordination parameters (enabled by default)
 - **Metrics**: Metrics endpoint configuration (for external Prometheus)
 - **RBAC**: Service account and permissions
 - **Network Policies**: Pod communication restrictions
+
+When `controller.replicaCount > 1`, the chart automatically creates a PodDisruptionBudget and configures pod anti-affinity to spread replicas across nodes.
 
 ## What Gets Deployed
 

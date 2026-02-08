@@ -76,18 +76,20 @@ chart/forge/
 ├── values.yaml                         # Default values
 ├── crds/                               # Custom Resource Definitions
 │   ├── forge.dev_zarfpackagejobs.yaml
-│   └── forge.dev_udsbundlejobs.yaml   # v1alpha2 API
+│   └── forge.dev_udsbundlejobs.yaml
 └── templates/                          # Kubernetes manifests templates
     ├── _helpers.tpl                    # Template helpers
     ├── NOTES.txt                       # Post-install notes
     ├── namespace.yaml                  # Namespace
     ├── controller/                     # Controller resources
     │   ├── deployment.yaml
+    │   ├── poddisruptionbudget.yaml   # PDB (when replicaCount > 1)
     │   ├── serviceaccount.yaml
     │   ├── rbac.yaml
     │   └── service.yaml
     ├── webhook/                        # Webhook resources
     │   ├── deployment.yaml
+    │   ├── poddisruptionbudget.yaml   # PDB (when replicaCount > 1)
     │   ├── service.yaml
     │   ├── rbac.yaml
     │   └── validatingwebhookconfiguration.yaml
@@ -114,6 +116,28 @@ controller:
       cpu: 100m
       memory: 128Mi
 ```
+
+#### High Availability & Concurrency
+
+```yaml
+controller:
+  replicaCount: 3              # Multiple replicas for HA
+  workers: 2                   # Worker goroutines (increase for throughput)
+  concurrency:
+    maxJobsPerNamespace: 5     # Per-namespace job limit (0 = unlimited)
+    maxJobsGlobal: 20          # Cluster-wide job limit (0 = unlimited)
+  reliability:
+    pdb:
+      minAvailable: 1          # PDB (auto-created when replicaCount > 1)
+
+leaderElection:
+  enabled: true                # Leader election for multi-replica coordination
+  leaseDuration: 15s           # How long a leader holds the lease
+  renewDeadline: 10s           # How long the leader tries to renew
+  retryPeriod: 2s              # How often non-leaders try to acquire
+```
+
+When `replicaCount > 1`, the chart automatically creates a PodDisruptionBudget and configures pod anti-affinity to spread replicas across nodes.
 
 #### Webhook Settings
 
@@ -397,8 +421,9 @@ See [values.yaml](forge/values.yaml) for complete configuration options with inl
 
 Key sections:
 
-- `controller` - Controller deployment configuration
+- `controller` - Controller deployment, concurrency limits, workers, reliability
 - `webhook` - Webhook deployment configuration
+- `leaderElection` - Leader election parameters for HA
 - `zarfCLI` - Zarf CLI image configuration for jobs
 - `serviceAccount` - ServiceAccount configuration
 - `rbac` - RBAC configuration

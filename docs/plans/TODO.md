@@ -27,20 +27,13 @@
 
 ### Scalability & Performance
 
-* **Job queue management and throttling** - No limit on concurrent jobs, can overwhelm cluster scheduler:
-  * ✅ Configurable max concurrent jobs per namespace
-  * ✅ Global cluster-wide job quota
+* **Job queue management and throttling** - Partial (concurrency limits, backpressure, and metrics implemented):
   * Priority queue for jobs (high/normal/low priority)
   * Fair scheduling across teams/namespaces
-  * ✅ Backpressure when queue is full
-  * ✅ Job queueing metrics and visibility
 
-* **Controller performance optimization** - Single controller handles all namespaces, potential bottleneck at scale:
-  * ✅ Leader election for HA controller
+* **Controller performance optimization** - Partial (HA, informer caches, and watch filtering implemented):
   * Namespace sharding across multiple controller instances
-  * ✅ Watch filtering to reduce API server load (informer + label-filtered watches)
   * Reconciliation batching for high-churn scenarios
-  * ✅ Cache tuning and optimization (informer caches replace API List polling)
   * Performance benchmarking suite (100+ concurrent jobs)
 
 ### GitOps & Integration

@@ -117,12 +117,19 @@ kubectl logs -n forge-system -l app=forge-controller --since=1h | grep -i error
 - `forge_reconcile_errors_total` - Reconciliation errors
 - `forge_builds_failed_total` - Failed builds
 
+**Concurrency & Backpressure Metrics** (when concurrency limits are enabled):
+
+- `forge_jobs_concurrent_active` - Currently active jobs (gauge)
+- `forge_controller_queued_jobs` - Jobs waiting for capacity (gauge)
+- `forge_controller_backpressure_events` - Times jobs were queued due to limits (counter)
+
 **Alert if:**
 
 - Job failure rate > 10% over 15 minutes
 - Reconcile errors > 5 per minute
 - Controller pod restarts
 - Webhook validation failures > 20%
+- Queued jobs > 50 for > 5 minutes (backpressure buildup)
 
 ### Common Tasks
 
@@ -626,14 +633,41 @@ Forge is stateless - all state is in Kubernetes. Recovery:
 
 **How to scale:**
 
-Currently single replica (no leader election yet). For HA:
+Leader election is enabled by default. Increasing `replicaCount` automatically adds PodDisruptionBudget and pod anti-affinity:
 
-```yaml
-# Phase 4: Production Hardening required first
-spec:
-  replicas: 3
-  # Add leader election
-  # Add anti-affinity
+```bash
+helm upgrade forge forge/forge \
+  --set controller.replicaCount=3 \
+  --namespace forge-system
+```
+
+This gives you:
+
+- Leader election for controller coordination
+- PodDisruptionBudget (minAvailable: 1)
+- Pod anti-affinity across nodes
+- Configurable work queue parallelism (`controller.workers`)
+
+**Verify HA status:**
+
+```bash
+# Check leader election lease
+kubectl get lease -n forge-system forge-controller-lock -o yaml
+
+# Check PDB
+kubectl get pdb -n forge-system
+
+# Check pod spread
+kubectl get pods -n forge-system -l app=forge-controller -o wide
+```
+
+**Tune concurrency limits** to prevent cluster overload:
+
+```bash
+helm upgrade forge forge/forge \
+  --set controller.concurrency.maxJobsPerNamespace=5 \
+  --set controller.concurrency.maxJobsGlobal=20 \
+  --namespace forge-system
 ```
 
 ### Vertical Scaling
@@ -672,11 +706,24 @@ spec:
 
 ### Performance Tuning
 
-**Reconciliation Rate:**
+**Worker Goroutines:**
 
-- Default: Every 10 minutes for each ZarfPackageJob
-- Immediate on spec changes
-- Adjust via controller flags if needed
+- Default: 2 workers processing the reconciliation queue
+- Increase for high-throughput environments: `--set controller.workers=4`
+- More workers = faster reconciliation but higher API server load
+
+**Concurrency Limits:**
+
+- Per-namespace: `controller.concurrency.maxJobsPerNamespace` (0 = unlimited)
+- Global: `controller.concurrency.maxJobsGlobal` (0 = unlimited)
+- Queued jobs are automatically dispatched when capacity frees up
+
+**Leader Election Timing:**
+
+- Lease duration: `leaderElection.leaseDuration` (default: 15s)
+- Renew deadline: `leaderElection.renewDeadline` (default: 10s)
+- Retry period: `leaderElection.retryPeriod` (default: 2s)
+- Faster values = quicker failover but more API server traffic
 
 **Job Cleanup:**
 

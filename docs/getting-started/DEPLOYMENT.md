@@ -129,16 +129,48 @@ helm install forge forge/forge \
 
 ### High Availability
 
-For production environments:
+For production environments with multiple controller replicas. Leader election is enabled by default, and pod anti-affinity + PodDisruptionBudget are automatically configured when `replicaCount > 1`:
 
 ```bash
 helm install forge forge/forge \
   --namespace forge-system \
   --create-namespace \
   --set controller.replicaCount=3 \
-  --set webhook.replicaCount=3 \
-  --set leaderElection.enabled=true
+  --set webhook.replicaCount=3
 ```
+
+This automatically provides:
+
+- **Leader election** for controller coordination (enabled by default)
+- **PodDisruptionBudget** ensuring at least 1 replica during disruptions
+- **Pod anti-affinity** spreading replicas across nodes
+- **Configurable workers** for reconciliation throughput (`controller.workers`)
+
+Leader election timing can be tuned if needed:
+
+```bash
+helm install forge forge/forge \
+  --namespace forge-system \
+  --create-namespace \
+  --set controller.replicaCount=3 \
+  --set leaderElection.leaseDuration=20s \
+  --set leaderElection.renewDeadline=15s \
+  --set leaderElection.retryPeriod=3s
+```
+
+### Job Concurrency Limits
+
+Control how many jobs can run simultaneously to prevent cluster overload:
+
+```bash
+helm install forge forge/forge \
+  --namespace forge-system \
+  --create-namespace \
+  --set controller.concurrency.maxJobsPerNamespace=5 \
+  --set controller.concurrency.maxJobsGlobal=20
+```
+
+Jobs exceeding the limit enter a `Queued` phase with backpressure and are automatically dispatched when capacity becomes available. Metrics are exposed for monitoring queue depth and backpressure events.
 
 ### Enable Network Policies
 
@@ -387,21 +419,9 @@ helm install forge forge/forge \
   --set controller.resources.requests.memory=1Gi
 ```
 
-### Pod Anti-Affinity (HA)
+### Custom Pod Affinity
 
-For high availability, spread controller replicas across nodes:
-
-```bash
-helm install forge forge/forge \
-  --namespace forge-system \
-  --create-namespace \
-  --set controller.replicaCount=3 \
-  --set controller.affinity.podAntiAffinity.preferredDuringSchedulingIgnoredDuringExecution[0].weight=100 \
-  --set controller.affinity.podAntiAffinity.preferredDuringSchedulingIgnoredDuringExecution[0].podAffinityTerm.labelSelector.matchLabels.app=forge-controller \
-  --set controller.affinity.podAntiAffinity.preferredDuringSchedulingIgnoredDuringExecution[0].podAffinityTerm.topologyKey=kubernetes.io/hostname
-```
-
-Or use a custom values file:
+When `controller.replicaCount > 1`, the chart automatically configures preferred pod anti-affinity to spread replicas across nodes. To override with custom affinity rules (e.g., zone spreading or required anti-affinity), set `controller.affinity`:
 
 ```yaml
 # custom-values.yaml
@@ -409,13 +429,11 @@ controller:
   replicaCount: 3
   affinity:
     podAntiAffinity:
-      preferredDuringSchedulingIgnoredDuringExecution:
-      - weight: 100
-        podAffinityTerm:
-          labelSelector:
-            matchLabels:
-              app.kubernetes.io/component: controller
-          topologyKey: kubernetes.io/hostname
+      requiredDuringSchedulingIgnoredDuringExecution:
+      - labelSelector:
+          matchLabels:
+            app.kubernetes.io/component: controller
+        topologyKey: topology.kubernetes.io/zone
 ```
 
 ```bash
@@ -424,6 +442,8 @@ helm install forge forge/forge \
   --create-namespace \
   -f custom-values.yaml
 ```
+
+Setting `controller.affinity` replaces the automatic anti-affinity entirely, giving you full control.
 
 ## Troubleshooting
 

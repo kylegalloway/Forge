@@ -1,0 +1,14 @@
+{{- if gt (int .Values.controller.replicaCount) 1 -}}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "forge.fullname" . }}-controller
+  namespace: {{ include "forge.namespace" . }}
+  labels:
+    {{- include "forge.controller.labels" . | nindent 4 }}
+spec:
+  minAvailable: {{ .Values.controller.reliability.pdb.minAvailable }}
+  selector:
+    matchLabels:
+      {{- include "forge.controller.selectorLabels" . | nindent 6 }}
+{{- end }}

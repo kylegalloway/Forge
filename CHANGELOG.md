@@ -15,8 +15,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Configurable concurrency limits: `--max-concurrent-jobs-per-namespace` and `--max-concurrent-jobs-global` flags with `PhaseQueued` backpressure support
 - Backpressure metrics: `forge.jobs.concurrent_active`, `forge.controller.queued_jobs`, `forge.controller.backpressure_events` (OpenTelemetry)
 - Helm chart values for concurrency configuration (`controller.concurrency.maxJobsPerNamespace`, `controller.concurrency.maxJobsGlobal`)
+- Controller HA infrastructure: PodDisruptionBudget (when `replicaCount > 1`), pod anti-affinity for hostname spreading, configurable worker count (`--workers` flag / `controller.workers` value)
+- Configurable leader election parameters: `--leader-election-lease-duration`, `--leader-election-renew-deadline`, `--leader-election-retry-period`, `--leader-election-namespace` flags with corresponding Helm values
 
 ### Fixed
+- Helm chart `leaderElection.enabled: true` was dead config — the `--enable-leader-election` flag was never passed to the controller binary, so multiple replicas would cause duplicate reconciliation with no leader coordination
 - Default CLI image constants (`DefaultZarfCLIImage`, `DefaultUDSCLIImage`) referenced `v0.11.1` instead of `v0.11.17`
 - Stale version references across documentation: `v0.6.0` and `v0.11.1` updated to `v0.11.17` in deployment guide, chart README, troubleshooting guide, image READMEs, and Makefile
 - CRD short name `zp` corrected to `zpj` in CONTRIBUTING.md examples

@@ -43,6 +43,16 @@ spec:
         {{- if gt (int .Values.controller.concurrency.maxJobsGlobal) 0 }}
           - "--max-concurrent-jobs-global={{ .Values.controller.concurrency.maxJobsGlobal }}"
         {{- end }}
+        {{- if .Values.leaderElection.enabled }}
+          - "--enable-leader-election"
+          - "--leader-election-lease-duration={{ .Values.leaderElection.leaseDuration }}"
+          - "--leader-election-renew-deadline={{ .Values.leaderElection.renewDeadline }}"
+          - "--leader-election-retry-period={{ .Values.leaderElection.retryPeriod }}"
+          - "--leader-election-namespace={{ include "forge.namespace" . }}"
+        {{- end }}
+        {{- if ne (int .Values.controller.workers) 2 }}
+          - "--workers={{ .Values.controller.workers }}"
+        {{- end }}
         env:
         - name: FORGE_ZARF_CLI_IMAGE
           value: "{{ .Values.zarfCLI.image.repository }}:{{ .Values.zarfCLI.image.tag }}"
@@ -79,9 +89,19 @@ spec:
       nodeSelector:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- with .Values.controller.affinity }}
+      {{- if .Values.controller.affinity }}
       affinity:
-        {{- toYaml . | nindent 8 }}
+        {{- toYaml .Values.controller.affinity | nindent 8 }}
+      {{- else if gt (int .Values.controller.replicaCount) 1 }}
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  {{- include "forge.controller.selectorLabels" . | nindent 18 }}
+              topologyKey: kubernetes.io/hostname
       {{- end }}
       {{- with .Values.controller.tolerations }}
       tolerations:

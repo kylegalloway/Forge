@@ -16,6 +16,10 @@ type ConcurrencyConfig struct {
 	// MaxConcurrentJobsGlobal limits total concurrent jobs across all namespaces.
 	// 0 means unlimited.
 	MaxConcurrentJobsGlobal int
+
+	// NumWorkers is the number of worker goroutines processing the work queue.
+	// 0 means use the default (2).
+	NumWorkers int
 }
 
 // ConcurrencyLimiter checks whether new jobs can be created based on

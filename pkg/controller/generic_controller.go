@@ -256,7 +256,11 @@ func (ctrl *GenericController[T]) runWithInformer(ctx context.Context) error {
 	go ctrl.monitor.Start(ctx)
 
 	// Start worker goroutines
-	for i := 0; i < numWorkers; i++ {
+	workers := numWorkers
+	if ctrl.config.Concurrency.NumWorkers > 0 {
+		workers = ctrl.config.Concurrency.NumWorkers
+	}
+	for i := 0; i < workers; i++ {
 		go ctrl.runWorker(ctx)
 	}
 

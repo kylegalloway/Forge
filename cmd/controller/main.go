@@ -37,6 +37,11 @@ var (
 	enableLeaderElection          bool
 	maxConcurrentJobsPerNamespace int
 	maxConcurrentJobsGlobal       int
+	workers                       int
+	leaderElectionLeaseDuration   time.Duration
+	leaderElectionRenewDeadline   time.Duration
+	leaderElectionRetryPeriod     time.Duration
+	leaderElectionNamespace       string
 )
 
 func main() {
@@ -56,6 +61,7 @@ func main() {
 	concurrencyConfig := controller.ConcurrencyConfig{
 		MaxConcurrentJobsPerNamespace: maxConcurrentJobsPerNamespace,
 		MaxConcurrentJobsGlobal:       maxConcurrentJobsGlobal,
+		NumWorkers:                    workers,
 	}
 
 	// Create both Zarf and UDS controllers using generic controller pattern
@@ -80,6 +86,11 @@ func parseFlags() {
 	flag.BoolVar(&enableLeaderElection, "enable-leader-election", false, "Enable leader election for high availability.")
 	flag.IntVar(&maxConcurrentJobsPerNamespace, "max-concurrent-jobs-per-namespace", 0, "Maximum concurrent jobs per namespace (0 = unlimited).")
 	flag.IntVar(&maxConcurrentJobsGlobal, "max-concurrent-jobs-global", 0, "Maximum concurrent jobs globally (0 = unlimited).")
+	flag.IntVar(&workers, "workers", 2, "Number of worker goroutines processing the work queue.")
+	flag.DurationVar(&leaderElectionLeaseDuration, "leader-election-lease-duration", 15*time.Second, "Leader election lease duration.")
+	flag.DurationVar(&leaderElectionRenewDeadline, "leader-election-renew-deadline", 10*time.Second, "Leader election renew deadline.")
+	flag.DurationVar(&leaderElectionRetryPeriod, "leader-election-retry-period", 2*time.Second, "Leader election retry period.")
+	flag.StringVar(&leaderElectionNamespace, "leader-election-namespace", "", "Namespace for leader election lease. Defaults to FORGE_NAMESPACE env or 'forge-system'.")
 	flag.Parse()
 }
 
@@ -236,6 +247,14 @@ func runControllers(ctx context.Context, zarfCtrl, udsCtrl interface{ Run(contex
 	if enableLeaderElection {
 		logger.Info(ctx, "Leader election enabled")
 		leConfig := leaderelection.DefaultConfig()
+		leConfig.LeaseDuration = leaderElectionLeaseDuration
+		leConfig.RenewDeadline = leaderElectionRenewDeadline
+		leConfig.RetryPeriod = leaderElectionRetryPeriod
+		if leaderElectionNamespace != "" {
+			leConfig.LockNamespace = leaderElectionNamespace
+		} else if ns := os.Getenv("FORGE_NAMESPACE"); ns != "" {
+			leConfig.LockNamespace = ns
+		}
 		err := leaderelection.RunWithLeaderElection(ctx, kubeClient, leConfig, func(ctx context.Context) {
 			// Run both controllers concurrently
 			errChan := make(chan error, 2)

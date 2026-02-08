@@ -116,6 +116,14 @@ controller:
     livenessPath: /healthz
     readinessPath: /readyz
 
+  # Number of worker goroutines processing the work queue
+  workers: 2
+
+  # Reliability configuration (for HA deployments with replicaCount > 1)
+  reliability:
+    pdb:
+      minAvailable: 1
+
 # Webhook Configuration
 webhook:
   # Enable webhook deployment
@@ -212,6 +220,9 @@ rbac:
 # Leader Election (for HA controller)
 leaderElection:
   enabled: true
+  leaseDuration: 15s
+  renewDeadline: 10s
+  retryPeriod: 2s
 
 # Network policies
 networkPolicies:

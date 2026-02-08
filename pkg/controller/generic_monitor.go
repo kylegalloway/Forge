@@ -23,6 +23,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/cache"
 	"k8s.io/klog/v2"
 )
 
@@ -61,6 +62,30 @@ type GenericJobMonitor[T apiscommon.PackageResource] struct {
 
 	// Status updater function - injected from controller
 	statusUpdater func(ctx context.Context, obj *unstructured.Unstructured, phase, message string, opStatus map[string]interface{}) error
+
+	// jobStore provides cached job data from a shared informer (optional, falls back to API calls)
+	jobStore cache.Store
+
+	// requeueFunc is called when a job completes/fails and frees capacity,
+	// triggering re-reconciliation of queued resources
+	requeueFunc func(namespace string)
+}
+
+// MonitorOption is a functional option for configuring the GenericJobMonitor.
+type MonitorOption[T apiscommon.PackageResource] func(*GenericJobMonitor[T])
+
+// WithJobStore sets the job cache store for the monitor, replacing API List calls.
+func WithJobStore[T apiscommon.PackageResource](store cache.Store) MonitorOption[T] {
+	return func(m *GenericJobMonitor[T]) {
+		m.jobStore = store
+	}
+}
+
+// WithRequeueFunc sets the requeue function called when a job completes/fails.
+func WithRequeueFunc[T apiscommon.PackageResource](fn func(namespace string)) MonitorOption[T] {
+	return func(m *GenericJobMonitor[T]) {
+		m.requeueFunc = fn
+	}
 }
 
 // NewGenericJobMonitor creates a new generic job monitor
@@ -75,8 +100,9 @@ func NewGenericJobMonitor[T apiscommon.PackageResource](
 	publishHandler common.ActionHandler[T],
 	deployHandler common.ActionHandler[T],
 	statusUpdater func(ctx context.Context, obj *unstructured.Unstructured, phase, message string, opStatus map[string]interface{}) error,
+	opts ...MonitorOption[T],
 ) *GenericJobMonitor[T] {
-	return &GenericJobMonitor[T]{
+	m := &GenericJobMonitor[T]{
 		kubeClient:     kubeClient,
 		dynamicClient:  dynamicClient,
 		namespace:      namespace,
@@ -89,6 +115,10 @@ func NewGenericJobMonitor[T apiscommon.PackageResource](
 		deployHandler:  deployHandler,
 		statusUpdater:  statusUpdater,
 	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
 }
 
 // Start begins monitoring jobs
@@ -111,35 +141,59 @@ func (m *GenericJobMonitor[T]) Start(ctx context.Context) {
 	}
 }
 
-// checkJobStatuses checks all jobs with the configured label selector
+// checkJobStatuses checks all jobs with the configured label selector.
+// When a jobStore is configured, it reads from the informer cache instead of making API calls.
 func (m *GenericJobMonitor[T]) checkJobStatuses(ctx context.Context) error {
 	startTime := time.Now()
 
 	m.logger.Debug(ctx, "Starting job status check",
 		"labelSelector", m.config.LabelSelector,
 		"namespace", m.namespace,
+		"usingCache", m.jobStore != nil,
 	)
 
-	jobs, err := m.kubeClient.BatchV1().Jobs(m.namespace).List(ctx, metav1.ListOptions{
-		LabelSelector: m.config.LabelSelector,
-	})
-	if err != nil {
-		return fmt.Errorf("failed to list jobs: %w", err)
+	var jobsToProcess []*batchv1.Job
+
+	if m.jobStore != nil {
+		// Read from informer cache - no API call needed
+		items := m.jobStore.List()
+		for _, item := range items {
+			job, ok := item.(*batchv1.Job)
+			if !ok {
+				continue
+			}
+			// Filter by namespace if watching a specific namespace
+			if m.namespace != "" && job.Namespace != m.namespace {
+				continue
+			}
+			jobsToProcess = append(jobsToProcess, job)
+		}
+	} else {
+		// Fall back to API List call
+		jobs, err := m.kubeClient.BatchV1().Jobs(m.namespace).List(ctx, metav1.ListOptions{
+			LabelSelector: m.config.LabelSelector,
+		})
+		if err != nil {
+			return fmt.Errorf("failed to list jobs: %w", err)
+		}
+		for i := range jobs.Items {
+			jobsToProcess = append(jobsToProcess, &jobs.Items[i])
+		}
 	}
 
 	m.logger.Debug(ctx, "Found jobs to check",
-		"jobCount", len(jobs.Items),
+		"jobCount", len(jobsToProcess),
 	)
 
-	for _, job := range jobs.Items {
-		if err := m.processJobStatus(ctx, &job); err != nil {
+	for _, job := range jobsToProcess {
+		if err := m.processJobStatus(ctx, job); err != nil {
 			klog.ErrorS(err, "Failed to process job status", "job", job.Name, "namespace", job.Namespace)
 			// Continue processing other jobs
 		}
 	}
 
 	m.logger.Debug(ctx, "Completed job status check",
-		"jobCount", len(jobs.Items),
+		"jobCount", len(jobsToProcess),
 		"duration", time.Since(startTime),
 	)
 
@@ -423,6 +477,11 @@ func (m *GenericJobMonitor[T]) processJobStatus(ctx context.Context, job *batchv
 			"resource", resourceName,
 		)
 		m.cleanupArtifactPVCIfNeeded(ctx, unstrObj, resourceName)
+	}
+
+	// Notify controller that capacity may have been freed
+	if completed && m.requeueFunc != nil {
+		m.requeueFunc(job.Namespace)
 	}
 
 	return nil

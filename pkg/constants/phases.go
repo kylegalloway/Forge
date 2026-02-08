@@ -26,4 +26,7 @@ const (
 
 	// PhaseRetrying indicates a job or operation failed but will be retried.
 	PhaseRetrying = "Retrying"
+
+	// PhaseQueued indicates a resource has been accepted but is waiting for capacity.
+	PhaseQueued = "Queued"
 )

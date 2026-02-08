@@ -47,6 +47,11 @@ type Metrics struct {
 	zarfPackageJobsActive metric.Int64UpDownCounter
 	udsPackageJobsActive  metric.Int64UpDownCounter
 
+	// Concurrency metrics
+	concurrentJobsActive metric.Int64UpDownCounter
+	queuedJobs           metric.Int64UpDownCounter
+	backpressureEvents   metric.Int64Counter
+
 	// Histogram metrics
 	actionDuration    metric.Float64Histogram
 	reconcileDuration metric.Float64Histogram
@@ -328,6 +333,33 @@ func NewMetrics() (*Metrics, error) {
 		return nil, err
 	}
 
+	concurrentJobsActive, err := meter.Int64UpDownCounter(
+		"forge.jobs.concurrent_active",
+		metric.WithDescription("Current number of active concurrent jobs"),
+		metric.WithUnit("{job}"),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	queuedJobs, err := meter.Int64UpDownCounter(
+		"forge.controller.queued_jobs",
+		metric.WithDescription("Current number of queued jobs waiting for capacity"),
+		metric.WithUnit("{resource}"),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	backpressureEvents, err := meter.Int64Counter(
+		"forge.controller.backpressure_events",
+		metric.WithDescription("Total number of backpressure events where jobs were queued due to capacity limits"),
+		metric.WithUnit("{event}"),
+	)
+	if err != nil {
+		return nil, err
+	}
+
 	return &Metrics{
 		zarfPackageJobsCreated:   zarfPackageJobsCreated,
 		zarfPackageJobsActive:    zarfPackageJobsActive,
@@ -354,6 +386,9 @@ func NewMetrics() (*Metrics, error) {
 		bundleDeploysFailed:      bundleDeploysFailed,
 		bundleJobsCreated:        bundleJobsCreated,
 		udsPackageJobsActive:     udsPackageJobsActive,
+		concurrentJobsActive:     concurrentJobsActive,
+		queuedJobs:               queuedJobs,
+		backpressureEvents:       backpressureEvents,
 		reconcileErrors:          reconcileErrors,
 		webhookValidations:       webhookValidations,
 		actionDuration:           actionDuration,
@@ -623,5 +658,23 @@ func (metrics *Metrics) RecordUDSBundleJobCreated(ctx context.Context, namespace
 // RecordUDSBundleJobDeleted decrements the active UDSBundleJob counter
 func (metrics *Metrics) RecordUDSBundleJobDeleted(ctx context.Context, namespace string) {
 	metrics.udsPackageJobsActive.Add(ctx, -1,
+		metric.WithAttributes(attribute.String("namespace", namespace)))
+}
+
+// RecordBackpressureEvent increments the backpressure event counter
+func (metrics *Metrics) RecordBackpressureEvent(ctx context.Context, namespace string) {
+	metrics.backpressureEvents.Add(ctx, 1,
+		metric.WithAttributes(attribute.String("namespace", namespace)))
+}
+
+// RecordQueuedJobsChange records a change in the number of queued jobs
+func (metrics *Metrics) RecordQueuedJobsChange(ctx context.Context, namespace string, delta int64) {
+	metrics.queuedJobs.Add(ctx, delta,
+		metric.WithAttributes(attribute.String("namespace", namespace)))
+}
+
+// RecordConcurrentJobsChange records a change in the number of concurrent active jobs
+func (metrics *Metrics) RecordConcurrentJobsChange(ctx context.Context, namespace string, delta int64) {
+	metrics.concurrentJobsActive.Add(ctx, delta,
 		metric.WithAttributes(attribute.String("namespace", namespace)))
 }

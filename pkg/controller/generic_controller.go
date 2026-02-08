@@ -17,6 +17,8 @@ import (
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/cache"
+	"k8s.io/client-go/util/workqueue"
 	"k8s.io/klog/v2"
 
 	"github.com/kylegalloway/forge/pkg/actions/common"
@@ -30,6 +32,9 @@ import (
 const (
 	// DefaultArtifactStorageSize is the default size for artifact PVCs
 	DefaultArtifactStorageSize = "10Gi"
+
+	// numWorkers is the number of worker goroutines processing the work queue
+	numWorkers = 2
 )
 
 // ControllerConfig holds configuration for the generic controller
@@ -51,6 +56,9 @@ type ControllerConfig struct {
 
 	// StatusFieldName is the status field name for primary action
 	StatusFieldName string
+
+	// Concurrency holds concurrency limit configuration
+	Concurrency ConcurrencyConfig
 }
 
 // GenericController is a unified controller for package resources
@@ -73,6 +81,12 @@ type GenericController[T apiscommon.PackageResource] struct {
 	// Job monitor
 	monitor *GenericJobMonitor[T]
 
+	// Informer and work queue
+	informer           cache.SharedIndexInformer
+	jobInformer        cache.SharedIndexInformer
+	queue              workqueue.TypedRateLimitingInterface[string]
+	concurrencyLimiter *ConcurrencyLimiter
+
 	// Health and readiness
 	healthy atomic.Bool
 	ready   atomic.Bool
@@ -90,6 +104,7 @@ func NewGenericController[T apiscommon.PackageResource](
 	publishHandler common.ActionHandler[T],
 	deployHandler common.ActionHandler[T],
 	metricsRecorder MetricsRecorder[T],
+	opts ...ControllerOption[T],
 ) *GenericController[T] {
 	policyEngine := policy.NewEngine(kubeClient)
 
@@ -106,6 +121,14 @@ func NewGenericController[T apiscommon.PackageResource](
 		primaryHandler: primaryHandler,
 		publishHandler: publishHandler,
 		deployHandler:  deployHandler,
+		queue: workqueue.NewTypedRateLimitingQueue(
+			workqueue.DefaultTypedControllerRateLimiter[string](),
+		),
+	}
+
+	// Apply options
+	for _, opt := range opts {
+		opt(ctrl)
 	}
 
 	// Set initial health/ready state
@@ -121,6 +144,10 @@ func NewGenericController[T apiscommon.PackageResource](
 		SupportsPVC:        config.SupportsPVC,
 	}
 
+	// Build monitor options
+	var monitorOpts []MonitorOption[T]
+	// jobStore and requeueFunc will be wired in factories.go via options
+
 	// Initialize generic job monitor
 	ctrl.monitor = NewGenericJobMonitor[T](
 		kubeClient,
@@ -133,15 +160,114 @@ func NewGenericController[T apiscommon.PackageResource](
 		publishHandler,
 		deployHandler,
 		ctrl.updateStatus,
+		monitorOpts...,
 	)
 
 	return ctrl
+}
+
+// ControllerOption is a functional option for configuring the GenericController.
+type ControllerOption[T apiscommon.PackageResource] func(*GenericController[T])
+
+// WithInformer sets the shared informer for the CRD resources.
+func WithInformer[T apiscommon.PackageResource](informer cache.SharedIndexInformer) ControllerOption[T] {
+	return func(ctrl *GenericController[T]) {
+		ctrl.informer = informer
+	}
+}
+
+// WithConcurrencyLimiter sets the concurrency limiter for job creation.
+func WithConcurrencyLimiter[T apiscommon.PackageResource](limiter *ConcurrencyLimiter) ControllerOption[T] {
+	return func(ctrl *GenericController[T]) {
+		ctrl.concurrencyLimiter = limiter
+	}
+}
+
+// WithMonitorJobStore sets the job cache store on the monitor.
+func WithMonitorJobStore[T apiscommon.PackageResource](store cache.Store) ControllerOption[T] {
+	return func(ctrl *GenericController[T]) {
+		ctrl.monitor.jobStore = store
+	}
+}
+
+// WithMonitorRequeueFunc sets the requeue function on the monitor.
+func WithMonitorRequeueFunc[T apiscommon.PackageResource](fn func(namespace string)) ControllerOption[T] {
+	return func(ctrl *GenericController[T]) {
+		ctrl.monitor.requeueFunc = fn
+	}
+}
+
+// WithJobInformer sets the job informer that will be started alongside the CRD informer.
+func WithJobInformer[T apiscommon.PackageResource](informer cache.SharedIndexInformer) ControllerOption[T] {
+	return func(ctrl *GenericController[T]) {
+		ctrl.jobInformer = informer
+	}
 }
 
 // Run starts the controller's main reconciliation loop
 func (ctrl *GenericController[T]) Run(ctx context.Context) error {
 	klog.InfoS("Starting controller", "resourceType", ctrl.config.ResourceType)
 
+	if ctrl.informer != nil {
+		return ctrl.runWithInformer(ctx)
+	}
+	return ctrl.runWithWatch(ctx)
+}
+
+// runWithInformer runs the controller using a shared informer and work queue.
+func (ctrl *GenericController[T]) runWithInformer(ctx context.Context) error {
+	// Register event handlers that enqueue keys
+	if _, err := ctrl.informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc: func(obj interface{}) {
+			key, err := cache.MetaNamespaceKeyFunc(obj)
+			if err == nil {
+				ctrl.queue.Add(key)
+			}
+		},
+		UpdateFunc: func(_, newObj interface{}) {
+			key, err := cache.MetaNamespaceKeyFunc(newObj)
+			if err == nil {
+				ctrl.queue.Add(key)
+			}
+		},
+	}); err != nil {
+		return fmt.Errorf("adding event handler: %w", err)
+	}
+
+	// Start informers
+	go ctrl.informer.Run(ctx.Done())
+	syncFuncs := []cache.InformerSynced{ctrl.informer.HasSynced}
+	if ctrl.jobInformer != nil {
+		go ctrl.jobInformer.Run(ctx.Done())
+		syncFuncs = append(syncFuncs, ctrl.jobInformer.HasSynced)
+	}
+
+	// Wait for cache sync
+	klog.InfoS("Waiting for informer cache sync", "resourceType", ctrl.config.ResourceType)
+	if !cache.WaitForCacheSync(ctx.Done(), syncFuncs...) {
+		return fmt.Errorf("failed to sync informer cache for %s", ctrl.config.ResourceType)
+	}
+	klog.InfoS("Informer cache synced", "resourceType", ctrl.config.ResourceType)
+
+	ctrl.ready.Store(true)
+	klog.InfoS("Controller is ready", "resourceType", ctrl.config.ResourceType)
+
+	// Start job monitoring in background
+	go ctrl.monitor.Start(ctx)
+
+	// Start worker goroutines
+	for i := 0; i < numWorkers; i++ {
+		go ctrl.runWorker(ctx)
+	}
+
+	<-ctx.Done()
+	klog.InfoS("Context canceled, stopping controller", "resourceType", ctrl.config.ResourceType)
+	ctrl.queue.ShutDown()
+	return nil
+}
+
+// runWithWatch runs the controller using the legacy watch pattern (when no informer is provided).
+func (ctrl *GenericController[T]) runWithWatch(ctx context.Context) error {
 	// Start job monitoring in background
 	go ctrl.monitor.Start(ctx)
 
@@ -150,6 +276,7 @@ func (ctrl *GenericController[T]) Run(ctx context.Context) error {
 		select {
 		case <-ctx.Done():
 			klog.InfoS("Context canceled, stopping controller", "resourceType", ctrl.config.ResourceType)
+			ctrl.queue.ShutDown()
 			return nil
 		default:
 			if err := ctrl.watchResources(ctx); err != nil {
@@ -160,7 +287,7 @@ func (ctrl *GenericController[T]) Run(ctx context.Context) error {
 	}
 }
 
-// watchResources establishes a watch on resources
+// watchResources establishes a watch on resources (legacy path used when no informer is configured)
 func (ctrl *GenericController[T]) watchResources(ctx context.Context) error {
 	klog.V(2).InfoS("Starting watch", "resourceType", ctrl.config.ResourceType)
 
@@ -203,7 +330,7 @@ func (ctrl *GenericController[T]) watchResources(ctx context.Context) error {
 	}
 }
 
-// handleEvent processes a single watch event
+// handleEvent processes a single watch event (legacy path)
 func (ctrl *GenericController[T]) handleEvent(ctx context.Context, event watch.Event) error {
 	switch event.Type {
 	case watch.Added:
@@ -211,7 +338,6 @@ func (ctrl *GenericController[T]) handleEvent(ctx context.Context, event watch.E
 	case watch.Modified:
 		return ctrl.handleObject(ctx, event.Object)
 	case watch.Deleted:
-		// Cleanup handled by owner references
 		obj, ok := event.Object.(*unstructured.Unstructured)
 		if !ok {
 			return fmt.Errorf("unexpected object type in deleted event")
@@ -226,17 +352,76 @@ func (ctrl *GenericController[T]) handleEvent(ctx context.Context, event watch.E
 	}
 }
 
-// handleObject processes a resource object
-func (ctrl *GenericController[T]) handleObject(ctx context.Context, obj interface{}) error {
-	startTime := time.Now()
+// runWorker runs the work queue processing loop.
+func (ctrl *GenericController[T]) runWorker(ctx context.Context) {
+	for ctrl.processNextWorkItem(ctx) {
+	}
+}
 
-	unstrObj, ok := obj.(*unstructured.Unstructured)
-	if !ok {
-		return fmt.Errorf("unexpected object type: %T", obj)
+// processNextWorkItem dequeues a key and reconciles the resource.
+func (ctrl *GenericController[T]) processNextWorkItem(ctx context.Context) bool {
+	key, shutdown := ctrl.queue.Get()
+	if shutdown {
+		return false
+	}
+	defer ctrl.queue.Done(key)
+
+	namespace, name, err := cache.SplitMetaNamespaceKey(key)
+	if err != nil {
+		klog.ErrorS(err, "Invalid key", "key", key)
+		ctrl.queue.Forget(key)
+		return true
 	}
 
-	name := unstrObj.GetName()
-	namespace := unstrObj.GetNamespace()
+	if err := ctrl.reconcile(ctx, namespace, name); err != nil {
+		klog.ErrorS(err, "Reconcile error, requeuing", "key", key)
+		ctrl.queue.AddRateLimited(key)
+		return true
+	}
+
+	ctrl.queue.Forget(key)
+	return true
+}
+
+// reconcile processes a single resource by namespace/name.
+func (ctrl *GenericController[T]) reconcile(ctx context.Context, namespace, name string) error {
+	startTime := time.Now()
+
+	// Fetch object from informer cache if available, otherwise from API
+	var unstrObj *unstructured.Unstructured
+	if ctrl.informer != nil {
+		key := keyFunc(namespace, name)
+		item, exists, err := ctrl.informer.GetStore().GetByKey(key)
+		if err != nil {
+			return fmt.Errorf("failed to get object from cache: %w", err)
+		}
+		if !exists {
+			klog.V(4).InfoS("Resource not found in cache, skipping", "name", name, "namespace", namespace)
+			return nil
+		}
+		var ok bool
+		unstrObj, ok = item.(*unstructured.Unstructured)
+		if !ok {
+			return fmt.Errorf("unexpected object type in cache: %T", item)
+		}
+	} else {
+		// Legacy: fetch directly from API
+		var resourceInterface dynamic.ResourceInterface
+		if namespace == "" {
+			resourceInterface = ctrl.dynamicClient.Resource(ctrl.resourceGVR)
+		} else {
+			resourceInterface = ctrl.dynamicClient.Resource(ctrl.resourceGVR).Namespace(namespace)
+		}
+		var err error
+		unstrObj, err = resourceInterface.Get(ctx, name, metav1.GetOptions{})
+		if err != nil {
+			if errors.IsNotFound(err) {
+				klog.V(4).InfoS("Resource not found, skipping", "name", name, "namespace", namespace)
+				return nil
+			}
+			return fmt.Errorf("failed to get resource: %w", err)
+		}
+	}
 
 	// Convert unstructured to typed resource first to get action
 	var resource T
@@ -286,6 +471,9 @@ func (ctrl *GenericController[T]) handleObject(ctx context.Context, obj interfac
 			ctrl.logger.Debug(ctx, "Skipping terminal resource", "status", phase, "reason", "already_completed")
 			klog.V(4).InfoS("Resource already in terminal state, skipping", "name", name, "phase", phase)
 			return nil
+		case constants.PhaseQueued:
+			// Re-check concurrency on queued resources (they were requeued)
+			ctrl.logger.Debug(ctx, "Re-evaluating queued resource", "phase", phase)
 		}
 	}
 
@@ -297,6 +485,27 @@ func (ctrl *GenericController[T]) handleObject(ctx context.Context, obj interfac
 		return ctrl.updateResourceStatus(ctx, unstrObj, constants.PhaseFailed, fmt.Sprintf("Policy validation failed: %v", err))
 	}
 	ctrl.logger.Debug(ctx, "Policy validation passed")
+
+	// Concurrency check before dispatch
+	if ctrl.concurrencyLimiter != nil {
+		allowed, reason := ctrl.concurrencyLimiter.CanCreateJob(namespace)
+		if !allowed {
+			ctrl.logger.Debug(ctx, "Backpressure: queuing resource", "reason", reason)
+			klog.InfoS("Backpressure: queuing resource", "name", name, "namespace", namespace, "reason", reason)
+			if ctrl.metrics != nil {
+				ctrl.metrics.RecordBackpressureEvent(ctx, namespace)
+			}
+			// Update status to Queued
+			if err := ctrl.updateResourceStatus(ctx, unstrObj, constants.PhaseQueued,
+				fmt.Sprintf("Waiting for capacity: %s", reason)); err != nil {
+				return err
+			}
+			// Requeue with delay
+			key := keyFunc(namespace, name)
+			ctrl.queue.AddAfter(key, 5*time.Second)
+			return nil
+		}
+	}
 
 	// Action dispatch
 	ctrl.logger.Debug(ctx, "Dispatching to handler",
@@ -313,14 +522,47 @@ func (ctrl *GenericController[T]) handleObject(ctx context.Context, obj interfac
 	return nil
 }
 
+// handleObject processes a resource object (used by legacy watch path)
+func (ctrl *GenericController[T]) handleObject(ctx context.Context, obj interface{}) error {
+	unstrObj, ok := obj.(*unstructured.Unstructured)
+	if !ok {
+		return fmt.Errorf("unexpected object type: %T", obj)
+	}
+	return ctrl.reconcile(ctx, unstrObj.GetNamespace(), unstrObj.GetName())
+}
+
+// RequeueQueuedResources re-enqueues all resources in PhaseQueued state from the given namespace.
+// This is called by the monitor's requeueFunc when a job completes and frees capacity.
+func (ctrl *GenericController[T]) RequeueQueuedResources(namespace string) {
+	if ctrl.informer == nil {
+		return
+	}
+
+	for _, item := range ctrl.informer.GetStore().List() {
+		obj, ok := item.(*unstructured.Unstructured)
+		if !ok {
+			continue
+		}
+		if namespace != "" && obj.GetNamespace() != namespace {
+			continue
+		}
+		status, ok := obj.Object["status"].(map[string]interface{})
+		if !ok {
+			continue
+		}
+		phase, ok := status["phase"].(string)
+		if !ok {
+			continue
+		}
+		if phase == constants.PhaseQueued {
+			key := keyFunc(obj.GetNamespace(), obj.GetName())
+			ctrl.queue.Add(key)
+		}
+	}
+}
+
 // validatePolicy validates the resource against ServiceAccount policies
 func (ctrl *GenericController[T]) validatePolicy(ctx context.Context, resource T) error {
-	// Policy validation is handled by the policy engine
-	// Type-specific validation methods will be called based on the actual resource type
-	// For now, use a simple interface-based approach
-
-	// Check if resource implements a PolicyValidatable interface (future enhancement)
-	// For now, return nil to allow policy engine to be called separately if needed
 	_ = ctx
 	_ = resource
 	return nil
@@ -332,9 +574,7 @@ func (ctrl *GenericController[T]) dispatchAction(ctx context.Context, resource T
 	opts := common.ExecuteOptions{}
 
 	// Create PVC for all primary actions (Build/Create) unless explicitly disabled
-	// PVC is always attached to build/create jobs for artifact storage and persistence
 	if ctrl.config.SupportsPVC && ctrl.isPrimaryAction(action) && resource.GetUseArtifactPVC() {
-		// Create PVC for artifact sharing
 		pvcName := fmt.Sprintf("%s-artifacts", resource.GetName())
 		ctrl.logger.Debug(ctx, "Ensuring artifact PVC", "pvcName", pvcName)
 		if err := ctrl.ensureArtifactPVC(ctx, resource.GetNamespace(), pvcName, resource); err != nil {
@@ -346,14 +586,13 @@ func (ctrl *GenericController[T]) dispatchAction(ctx context.Context, resource T
 	}
 
 	// Execute primary action based on the action type
-	// The monitor will handle chaining for compound actions
 	if ctrl.isPrimaryAction(action) {
 		ctrl.logger.Debug(ctx, "Executing primary handler", "handler", ctrl.config.PrimaryAction)
 		_, err := ctrl.primaryHandler.Execute(ctx, resource, opts)
 		return err
 	}
 
-	// Single publish or deploy action (standalone, not part of a compound action)
+	// Single publish or deploy action (standalone)
 	switch action {
 	case constants.SpecActionPublish:
 		ctrl.logger.Debug(ctx, "Executing publish handler")
@@ -370,19 +609,13 @@ func (ctrl *GenericController[T]) dispatchAction(ctx context.Context, resource T
 }
 
 // isPrimaryAction checks if this is the primary action (Build or Create).
-// action is the spec.action value (PascalCase, e.g., "Build" or "BuildPublish").
 func (ctrl *GenericController[T]) isPrimaryAction(action string) bool {
-	// Check if action is a primary action or compound action starting with a primary action.
-	// Uses PascalCase SpecAction* constants to match the CRD enum values.
 	primaryActions := []string{
-		// Standalone primary actions
 		constants.SpecActionBuild,
 		constants.SpecActionCreate,
-		// Zarf compound actions starting with Build
 		constants.SpecActionBuildPublish,
 		constants.SpecActionBuildDeploy,
 		constants.SpecActionBuildPublishDeploy,
-		// UDS compound actions starting with Create
 		constants.SpecActionCreatePublish,
 		constants.SpecActionCreateDeploy,
 		constants.SpecActionCreatePublishDeploy,
@@ -399,7 +632,6 @@ func (ctrl *GenericController[T]) isPrimaryAction(action string) bool {
 
 // ensureArtifactPVC creates or verifies the artifact PVC exists
 func (ctrl *GenericController[T]) ensureArtifactPVC(ctx context.Context, namespace, pvcName string, resource T) error {
-	// Use the existing PVC creation logic
 	return EnsureArtifactPVC(ctx, ctrl.kubeClient, namespace, pvcName, resource)
 }
 
@@ -488,7 +720,6 @@ func (ctrl *GenericController[T]) ReadyzHandler() http.HandlerFunc {
 
 // EnsureArtifactPVC creates or ensures a PVC for artifact sharing exists
 func EnsureArtifactPVC(ctx context.Context, kubeClient kubernetes.Interface, namespace, pvcName string, res apiscommon.PackageResource) error {
-	// Check if it exists and create if needed
 	_, err := kubeClient.CoreV1().PersistentVolumeClaims(namespace).Get(ctx, pvcName, metav1.GetOptions{})
 	if err == nil {
 		klog.V(2).InfoS("Artifact PVC already exists", "pvc", pvcName, "namespace", namespace)
@@ -504,7 +735,6 @@ func EnsureArtifactPVC(ctx context.Context, kubeClient kubernetes.Interface, nam
 		storageSize = *vs.ArtifactStorage
 	}
 
-	// Create PVC
 	pvc := &corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      pvcName,
@@ -538,7 +768,6 @@ func EnsureArtifactPVC(ctx context.Context, kubeClient kubernetes.Interface, nam
 
 // shouldRetryNow checks if the retry time has been reached for any operation in retry state
 func (ctrl *GenericController[T]) shouldRetryNow(status map[string]interface{}) bool {
-	// Check each operation status field for retry timing
 	statusFields := []string{constants.StatusFieldBuild, constants.StatusFieldCreate, constants.StatusFieldPublish, constants.StatusFieldDeploy}
 
 	for _, field := range statusFields {
@@ -547,27 +776,22 @@ func (ctrl *GenericController[T]) shouldRetryNow(status map[string]interface{}) 
 			continue
 		}
 
-		// Check if this operation is in retrying state
 		state, ok := opStatus[constants.StatusKeyState].(string)
 		if !ok || state != constants.PhaseRetrying {
 			continue
 		}
 
-		// Get next retry time
 		nextRetryTimeStr, ok := opStatus[constants.StatusKeyNextRetryTime].(string)
 		if !ok {
-			// No specific time set, retry immediately
 			return true
 		}
 
-		// Parse the retry time
 		nextRetryTime, err := time.Parse(time.RFC3339, nextRetryTimeStr)
 		if err != nil {
 			klog.V(4).InfoS("Failed to parse nextRetryTime, retrying immediately", "field", field, "time", nextRetryTimeStr)
 			return true
 		}
 
-		// Check if retry time has passed
 		if time.Now().After(nextRetryTime) {
 			return true
 		}

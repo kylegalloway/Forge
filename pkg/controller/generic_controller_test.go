@@ -20,9 +20,13 @@ import (
 	"github.com/kylegalloway/forge/pkg/telemetry"
 )
 
-// TestHandleObject_ConversionError tests error handling when converting unstructured to typed resource
-func TestHandleObject_ConversionError(t *testing.T) {
-	ctrl := createTestController(t)
+// TestReconcile_ConversionError tests error handling when converting unstructured to typed resource
+func TestReconcile_ConversionError(t *testing.T) {
+	kubeClient := fake.NewClientset()
+	scheme := runtime.NewScheme()
+	_ = zarfv1alpha3.AddToScheme(scheme)
+	dynamicClient := dynamicfake.NewSimpleDynamicClient(scheme)
+	gvr := zarfv1alpha3.SchemeGroupVersion.WithResource("zarfpackagejobs")
 
 	// Create invalid unstructured object that can't be converted
 	invalidObj := &unstructured.Unstructured{
@@ -37,16 +41,22 @@ func TestHandleObject_ConversionError(t *testing.T) {
 		},
 	}
 
-	err := ctrl.handleObject(context.Background(), invalidObj)
+	// Create the resource in the fake client so reconcile can GET it
+	_, err := dynamicClient.Resource(gvr).Namespace("default").Create(context.Background(), invalidObj, metav1.CreateOptions{})
+	if err != nil {
+		t.Fatalf("Failed to create test resource: %v", err)
+	}
+
+	ctrl := createTestControllerWithClients(t, kubeClient, dynamicClient)
+
+	err = ctrl.reconcile(context.Background(), "default", "test-pkg")
 	if err == nil {
 		t.Error("Expected error when converting invalid unstructured object")
 	}
 }
 
-// TestHandleObject_SkipsTerminalState tests that completed/failed resources are skipped
-func TestHandleObject_SkipsTerminalState(t *testing.T) {
-	ctrl := createTestController(t)
-
+// TestReconcile_SkipsTerminalState tests that completed/failed resources are skipped
+func TestReconcile_SkipsTerminalState(t *testing.T) {
 	tests := []struct {
 		name  string
 		phase string
@@ -57,12 +67,25 @@ func TestHandleObject_SkipsTerminalState(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			kubeClient := fake.NewClientset()
+			scheme := runtime.NewScheme()
+			_ = zarfv1alpha3.AddToScheme(scheme)
+			dynamicClient := dynamicfake.NewSimpleDynamicClient(scheme)
+			gvr := zarfv1alpha3.SchemeGroupVersion.WithResource("zarfpackagejobs")
+
 			obj := createTestUnstructuredZarfJob("test-pkg", "default")
 			obj.Object["status"] = map[string]interface{}{
 				"phase": tt.phase,
 			}
 
-			err := ctrl.handleObject(context.Background(), obj)
+			_, err := dynamicClient.Resource(gvr).Namespace("default").Create(context.Background(), obj, metav1.CreateOptions{})
+			if err != nil {
+				t.Fatalf("Failed to create test resource: %v", err)
+			}
+
+			ctrl := createTestControllerWithClients(t, kubeClient, dynamicClient)
+
+			err = ctrl.reconcile(context.Background(), "default", "test-pkg")
 			if err != nil {
 				t.Errorf("Expected no error for %s resource, got: %v", tt.phase, err)
 			}
@@ -70,8 +93,8 @@ func TestHandleObject_SkipsTerminalState(t *testing.T) {
 	}
 }
 
-// TestHandleObject_ActionDispatchError tests error handling when action dispatch fails
-func TestHandleObject_ActionDispatchError(t *testing.T) {
+// TestReconcile_ActionDispatchError tests error handling when action dispatch fails
+func TestReconcile_ActionDispatchError(t *testing.T) {
 	kubeClient := fake.NewClientset()
 	scheme := runtime.NewScheme()
 	_ = zarfv1alpha3.AddToScheme(scheme)
@@ -108,15 +131,15 @@ func TestHandleObject_ActionDispatchError(t *testing.T) {
 
 	obj := createTestUnstructuredZarfJob("test-pkg", "default")
 
-	// Create the resource first so status update can succeed
+	// Create the resource first so reconcile and status update can succeed
 	_, err := dynamicClient.Resource(gvr).Namespace("default").Create(context.Background(), obj, metav1.CreateOptions{})
 	if err != nil {
 		t.Fatalf("Failed to create test resource: %v", err)
 	}
 
-	err = ctrl.handleObject(context.Background(), obj)
+	err = ctrl.reconcile(context.Background(), "default", "test-pkg")
 	// When action dispatch fails, the controller updates status to "Failed"
-	// With the resource created, status update should succeed, so handleObject returns nil
+	// With the resource created, status update should succeed, so reconcile returns nil
 	if err != nil {
 		t.Errorf("Expected no error after successful status update, got: %v", err)
 	}
@@ -176,12 +199,15 @@ func TestHandleEvent_UnexpectedType(t *testing.T) {
 	}
 }
 
-// TestEnsureArtifactPVC_CreateError tests PVC creation error handling
-func TestEnsureArtifactPVC_CreateError(t *testing.T) {
-	// This test would require a fake client that can simulate creation failures
-	// For now, we test the happy path is covered by integration tests
-	// TODO: Add test with client that fails on Create()
-	t.Skip("Requires fake client with controlled failures")
+// TestReconcile_ResourceNotFound tests that reconcile handles deleted resources gracefully
+func TestReconcile_ResourceNotFound(t *testing.T) {
+	ctrl := createTestController(t)
+
+	// Reconcile a resource that doesn't exist - should return nil
+	err := ctrl.reconcile(context.Background(), "default", "nonexistent")
+	if err != nil {
+		t.Errorf("Expected no error for nonexistent resource, got: %v", err)
+	}
 }
 
 // TestUpdateStatus_NotFoundError tests that NotFound errors during status update are handled gracefully
@@ -225,6 +251,34 @@ func TestUpdateStatus_NotFoundError(t *testing.T) {
 	}
 }
 
+// TestReconcile_QueuedPhase tests that resources in Queued phase are re-evaluated
+func TestReconcile_QueuedPhase(t *testing.T) {
+	kubeClient := fake.NewClientset()
+	scheme := runtime.NewScheme()
+	_ = zarfv1alpha3.AddToScheme(scheme)
+	dynamicClient := dynamicfake.NewSimpleDynamicClient(scheme)
+	gvr := zarfv1alpha3.SchemeGroupVersion.WithResource("zarfpackagejobs")
+
+	obj := createTestUnstructuredZarfJob("test-pkg", "default")
+	obj.Object["status"] = map[string]interface{}{
+		"phase":   constants.PhaseQueued,
+		"message": "Waiting for capacity",
+	}
+
+	_, err := dynamicClient.Resource(gvr).Namespace("default").Create(context.Background(), obj, metav1.CreateOptions{})
+	if err != nil {
+		t.Fatalf("Failed to create test resource: %v", err)
+	}
+
+	ctrl := createTestControllerWithClients(t, kubeClient, dynamicClient)
+
+	// Without a concurrency limiter, Queued resources should proceed to dispatch
+	err = ctrl.reconcile(context.Background(), "default", "test-pkg")
+	if err != nil {
+		t.Errorf("Expected no error for queued resource, got: %v", err)
+	}
+}
+
 // Helper functions
 
 func createTestController(t *testing.T) *GenericController[*zarfv1alpha3.ZarfPackageJob] {
@@ -234,6 +288,12 @@ func createTestController(t *testing.T) *GenericController[*zarfv1alpha3.ZarfPac
 	scheme := runtime.NewScheme()
 	_ = zarfv1alpha3.AddToScheme(scheme)
 	dynamicClient := dynamicfake.NewSimpleDynamicClient(scheme)
+
+	return createTestControllerWithClients(t, kubeClient, dynamicClient)
+}
+
+func createTestControllerWithClients(t *testing.T, kubeClient *fake.Clientset, dynamicClient *dynamicfake.FakeDynamicClient) *GenericController[*zarfv1alpha3.ZarfPackageJob] {
+	t.Helper()
 
 	gvr := zarfv1alpha3.SchemeGroupVersion.WithResource("zarfpackagejobs")
 

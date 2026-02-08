@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.11.18] - 2026-02-08
+
 ### Added
 - CRD-first architecture for kubectl-forge: all commands now query ZarfPackageJob/UDSBundleJob CRDs directly instead of only operating on batch/v1 Jobs, surfacing operation phases, retry counts, artifact locations, and messages from CRD status
 - Dynamic Kubernetes client in `pkg/kubectl` for querying CRDs via unstructured objects (`GetForgeResource`, `ListForgeResources`, `GetActiveJob`, `ResolveJobForAction`)
@@ -709,7 +711,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial project setup and build infrastructure
 - CI/CD pipeline configuration for automated testing and releases
 
-[Unreleased]: https://github.com/kylegalloway/forge/compare/v0.11.17...HEAD
+[Unreleased]: https://github.com/kylegalloway/forge/compare/v0.11.18...HEAD
+[0.11.18]: https://github.com/kylegalloway/forge/compare/v0.11.17...v0.11.18
 [0.11.17]: https://github.com/kylegalloway/forge/compare/v0.11.16...v0.11.17
 [0.11.16]: https://github.com/kylegalloway/forge/compare/v0.11.15...v0.11.16
 [0.11.15]: https://github.com/kylegalloway/forge/compare/v0.11.14...v0.11.15

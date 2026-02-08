@@ -29,12 +29,14 @@ import (
 )
 
 var (
-	masterURL            string
-	kubeconfig           string
-	namespace            string
-	healthAddr           string
-	metricsAddr          string
-	enableLeaderElection bool
+	masterURL                     string
+	kubeconfig                    string
+	namespace                     string
+	healthAddr                    string
+	metricsAddr                   string
+	enableLeaderElection          bool
+	maxConcurrentJobsPerNamespace int
+	maxConcurrentJobsGlobal       int
 )
 
 func main() {
@@ -50,9 +52,15 @@ func main() {
 
 	metrics, tracer := initializeTelemetry(logger)
 
+	// Build concurrency config from flags
+	concurrencyConfig := controller.ConcurrencyConfig{
+		MaxConcurrentJobsPerNamespace: maxConcurrentJobsPerNamespace,
+		MaxConcurrentJobsGlobal:       maxConcurrentJobsGlobal,
+	}
+
 	// Create both Zarf and UDS controllers using generic controller pattern
-	zarfCtrl := controller.NewGenericZarfController(kubeClient, dynamicClient, watchNamespace, metrics, tracer)
-	udsCtrl := controller.NewGenericUDSController(kubeClient, dynamicClient, watchNamespace, metrics, tracer)
+	zarfCtrl := controller.NewGenericZarfController(kubeClient, dynamicClient, watchNamespace, metrics, tracer, concurrencyConfig)
+	udsCtrl := controller.NewGenericUDSController(kubeClient, dynamicClient, watchNamespace, metrics, tracer, concurrencyConfig)
 
 	healthServer := startHealthServer(zarfCtrl, udsCtrl, logger)
 	meterProvider, metricsServer := startMetricsServer(ctx, logger)
@@ -70,6 +78,8 @@ func parseFlags() {
 	flag.StringVar(&healthAddr, "health-addr", ":8081", "The address for health check endpoints.")
 	flag.StringVar(&metricsAddr, "metrics-addr", ":8080", "The address for metrics endpoints.")
 	flag.BoolVar(&enableLeaderElection, "enable-leader-election", false, "Enable leader election for high availability.")
+	flag.IntVar(&maxConcurrentJobsPerNamespace, "max-concurrent-jobs-per-namespace", 0, "Maximum concurrent jobs per namespace (0 = unlimited).")
+	flag.IntVar(&maxConcurrentJobsGlobal, "max-concurrent-jobs-global", 0, "Maximum concurrent jobs globally (0 = unlimited).")
 	flag.Parse()
 }
 

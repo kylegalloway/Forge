@@ -43,17 +43,16 @@ helm repo update
 
 ```bash
 helm install forge forge/forge \
-  --version 0.6.0 \
   --namespace forge-system \
   --create-namespace
 ```
 
 **Container Images Used**:
 
-- `ghcr.io/kylegalloway/forge/forge-controller:v0.6.0`
-- `ghcr.io/kylegalloway/forge/forge-webhook:v0.6.0`
-- `ghcr.io/kylegalloway/forge/zarfpackagejob:v0.11.1` (used by ZarfPackageJobs)
-- `ghcr.io/kylegalloway/forge/udsbundlejob:v0.11.1` (used by UDSBundleJobs)
+- `ghcr.io/kylegalloway/forge/forge-controller:v0.11.17`
+- `ghcr.io/kylegalloway/forge/forge-webhook:v0.11.17`
+- `ghcr.io/kylegalloway/forge/zarfpackagejob:v0.11.17` (used by ZarfPackageJobs)
+- `ghcr.io/kylegalloway/forge/udsbundlejob:v0.11.17` (used by UDSBundleJobs)
 
 **CLI Image Configuration**:
 
@@ -121,7 +120,6 @@ Override values using `--set`:
 
 ```bash
 helm install forge forge/forge \
-  --version 0.6.0 \
   --namespace forge-system \
   --create-namespace \
   --set controller.replicaCount=2 \
@@ -135,7 +133,6 @@ For production environments:
 
 ```bash
 helm install forge forge/forge \
-  --version 0.6.0 \
   --namespace forge-system \
   --create-namespace \
   --set controller.replicaCount=3 \
@@ -149,7 +146,6 @@ For enhanced security:
 
 ```bash
 helm install forge forge/forge \
-  --version 0.6.0 \
   --namespace forge-system \
   --create-namespace \
   --set networkPolicies.enabled=true
@@ -250,7 +246,6 @@ Create dashboards in your existing Grafana instance to visualize Forge metrics:
 
 ```bash
 helm upgrade forge forge/forge \
-  --version 0.6.0 \
   --namespace forge-system
 ```
 
@@ -303,7 +298,7 @@ cd forge
 zarf package create . --confirm
 ```
 
-This creates `zarf-package-forge-<arch>-v0.6.0.tar.zst` containing:
+This creates `zarf-package-forge-<arch>-<version>.tar.zst` containing:
 
 - **forge** component: Controller, webhook, Helm chart, and CRDs
 - **zarfpackagejob** component: Zarf Package Job image for running ZarfPackageJobs

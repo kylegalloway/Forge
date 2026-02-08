@@ -27,7 +27,6 @@ Contributing to Forge or extending its functionality? These guides cover develop
 - [Attestation Verification](development/ATTESTATION_VERIFICATION.md) - SLSA provenance and package signing
 - [Logging](development/LOGGING.md) - Logging conventions and practices
 - [Structured Logging](development/STRUCTURED-LOGGING.md) - Structured logging implementation details
-- [Tool Versions](development/TOOL_VERSIONS.md) - Dependency version tracking
 
 ## Operations
 

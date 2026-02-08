@@ -37,16 +37,16 @@ helm install forge forge/forge \
 
 # Or install specific version
 helm install forge forge/forge \
-  --version 0.6.0 \
+  --version 0.11.17 \
   --namespace forge-system \
   --create-namespace
 ```
 
 **Available Images**:
 
-- Controller: `ghcr.io/kylegalloway/forge/forge-controller:v0.6.0`
-- Webhook: `ghcr.io/kylegalloway/forge/forge-webhook:v0.6.0`
-- Zarf Package Job: `ghcr.io/kylegalloway/forge/zarfpackagejob:v0.11.1` (used by ZarfPackageJobs)
+- Controller: `ghcr.io/kylegalloway/forge/forge-controller:v0.11.17`
+- Webhook: `ghcr.io/kylegalloway/forge/forge-webhook:v0.11.17`
+- Zarf Package Job: `ghcr.io/kylegalloway/forge/zarfpackagejob:v0.11.17` (used by ZarfPackageJobs)
 
 ### For Developers (Local Chart)
 
@@ -105,7 +105,7 @@ controller:
   replicaCount: 1              # Number of controller replicas
   image:
     repository: ghcr.io/kylegalloway/forge/forge-controller
-    tag: "v0.6.0"
+    tag: "v0.11.17"
   resources:
     limits:
       cpu: 500m
@@ -123,7 +123,7 @@ webhook:
   replicaCount: 2              # Number of webhook replicas (recommend 2+ for HA)
   image:
     repository: ghcr.io/kylegalloway/forge/forge-webhook
-    tag: "v0.6.0"
+    tag: "v0.11.17"
   tls:
     autoGenerate: true         # Auto-generate self-signed certs
 ```
@@ -138,7 +138,7 @@ Forge uses containerized CLI tools for build and deploy operations. These can be
 zarfCLI:
   image:
     repository: ghcr.io/kylegalloway/forge/zarfpackagejob
-    tag: v0.69.0
+    tag: v0.11.17
     pullPolicy: IfNotPresent
 ```
 
@@ -147,8 +147,8 @@ zarfCLI:
 ```yaml
 udsCLI:
   image:
-    repository: ghcr.io/defenseunicorns/uds-cli
-    tag: v0.27.21
+    repository: ghcr.io/kylegalloway/forge/udsbundlejob
+    tag: v0.11.17
     pullPolicy: IfNotPresent
 ```
 

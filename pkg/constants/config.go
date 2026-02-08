@@ -47,10 +47,10 @@ const (
 	DefaultUDSUID = 65532
 
 	// DefaultZarfCLIImage is the default container image for Zarf CLI operations.
-	DefaultZarfCLIImage = "ghcr.io/kylegalloway/forge/zarfpackagejob:v0.11.1"
+	DefaultZarfCLIImage = "ghcr.io/kylegalloway/forge/zarfpackagejob:v0.11.17"
 
 	// DefaultUDSCLIImage is the default container image for UDS CLI operations.
-	DefaultUDSCLIImage = "ghcr.io/kylegalloway/forge/udsbundlejob:v0.11.1"
+	DefaultUDSCLIImage = "ghcr.io/kylegalloway/forge/udsbundlejob:v0.11.17"
 
 	// VolumeNameWorkspace is the name of the workspace volume.
 	VolumeNameWorkspace = "workspace"

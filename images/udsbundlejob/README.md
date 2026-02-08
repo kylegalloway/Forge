@@ -12,16 +12,16 @@ all required dependencies for running UDS bundle operations in Kubernetes Jobs.
 
 ```bash
 # Build for your local architecture
-docker build -t localhost/udsbundlejob:v0.11.1 images/udsbundlejob/
+docker build -t localhost/udsbundlejob:v0.11.17 images/udsbundlejob/
 
 # Or build for a specific UDS version
-docker build -t localhost/udsbundlejob:v0.11.1 \
+docker build -t localhost/udsbundlejob:v0.11.17 \
   --build-arg UDS_VERSION=v0.28.0 \
   images/udsbundlejob/
 
 # Build multi-arch (requires docker buildx)
 docker buildx build --platform linux/amd64,linux/arm64 \
-  -t localhost/udsbundlejob:v0.11.1 \
+  -t localhost/udsbundlejob:v0.11.17 \
   images/udsbundlejob/ --push
 ```
 
@@ -29,10 +29,10 @@ docker buildx build --platform linux/amd64,linux/arm64 \
 
 ```bash
 # Build the image
-docker build -t localhost/udsbundlejob:v0.11.1 images/udsbundlejob/
+docker build -t localhost/udsbundlejob:v0.11.17 images/udsbundlejob/
 
 # Load into Kind cluster
-kind load docker-image localhost/udsbundlejob:v0.11.1 --name forge-demo
+kind load docker-image localhost/udsbundlejob:v0.11.17 --name forge-demo
 ```
 
 ## For Production

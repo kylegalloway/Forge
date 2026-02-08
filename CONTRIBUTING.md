@@ -8,15 +8,15 @@ Thank you for your interest in contributing to Forge! This guide will help you s
 
 ### Prerequisites
 
-1. **Go** (1.24 or later)
+1. **Go** (1.25 or later)
 
    ```bash
    # macOS
    brew install go
 
    # Linux
-   wget https://go.dev/dl/go1.24.0.linux-amd64.tar.gz
-   sudo tar -C /usr/local -xzf go1.24.0.linux-amd64.tar.gz
+   wget https://go.dev/dl/go1.25.5.linux-amd64.tar.gz
+   sudo tar -C /usr/local -xzf go1.25.5.linux-amd64.tar.gz
    ```
 
 2. **Podman or Docker**
@@ -117,7 +117,7 @@ kubectl apply -f examples/samples/zarf/01-git-to-oci/zarfpackagejob.yaml
 
 # Check status
 kubectl get zarfpackagejobs
-kubectl get zp  # shortname
+kubectl get zpj  # shortname
 
 # View logs
 kubectl logs -n forge-system -l app=forge-controller -f
@@ -143,7 +143,7 @@ kubectl apply -f examples/samples/zarf/01-git-to-oci/zarfpackagejob.yaml
 
 # 5. Check logs and status
 kubectl logs -n forge-system -l app=forge-controller -f
-kubectl get zp -w
+kubectl get zpj -w
 ```
 
 ## Modifying the CRD
@@ -246,10 +246,10 @@ kubectl apply -f examples/samples/zarf/01-git-to-oci/zarfpackagejob.yaml
 kubectl wait --for=condition=BuildComplete --timeout=300s ZarfPackageJob/git-to-oci-example
 
 # Check status
-kubectl get zp git-to-oci-example -o yaml
+kubectl get zpj git-to-oci-example -o yaml
 
 # Cleanup
-kubectl delete zp git-to-oci-example
+kubectl delete zpj git-to-oci-example
 ```
 
 ## Code Style and Standards

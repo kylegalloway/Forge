@@ -146,8 +146,8 @@ cosign verify-attestation \
 
 1. **Tag a Release**:
    ```bash
-   git tag -s v0.6.0 -m "Release v0.6.0"
-   git push origin v0.6.0
+   git tag -s v0.X.Y -m "Release v0.X.Y"
+   git push origin v0.X.Y
    ```
 
 2. **Workflow Triggers**:
@@ -251,7 +251,7 @@ This provides additional metadata for Artifact Hub listings.
 
 Use this checklist to verify everything is working after a release:
 
-### After Creating a Release (e.g., v0.6.0)
+### After Creating a Release (e.g., v0.X.Y)
 
 - [ ] **Workflow Succeeded**
   ```bash
@@ -260,8 +260,8 @@ Use this checklist to verify everything is working after a release:
 
 - [ ] **Images Published to GHCR**
   ```bash
-  docker pull ghcr.io/kylegalloway/forge/forge-controller:0.6.0
-  docker pull ghcr.io/kylegalloway/forge/forge-webhook:0.6.0
+  docker pull ghcr.io/kylegalloway/forge/forge-controller:0.X.Y
+  docker pull ghcr.io/kylegalloway/forge/forge-webhook:0.X.Y
   ```
 
 - [ ] **Images Signed**
@@ -269,31 +269,31 @@ Use this checklist to verify everything is working after a release:
   cosign verify \
     --certificate-identity-regexp="https://github.com/kylegalloway/Forge" \
     --certificate-oidc-issuer="https://token.actions.githubusercontent.com" \
-    ghcr.io/kylegalloway/forge/forge-controller:0.6.0
+    ghcr.io/kylegalloway/forge/forge-controller:0.X.Y
   ```
 
 - [ ] **SBOM Attached**
   ```bash
-  cosign download sbom ghcr.io/kylegalloway/forge/forge-controller:0.6.0 | jq .
+  cosign download sbom ghcr.io/kylegalloway/forge/forge-controller:0.X.Y | jq .
   ```
 
 - [ ] **GitHub Release Created**
   ```bash
-  gh release view v0.6.0 --repo kylegalloway/Forge
+  gh release view v0.X.Y --repo kylegalloway/Forge
   ```
 
 - [ ] **Helm Chart Available**
   ```bash
   helm repo add forge https://kylegalloway.github.io/Forge
   helm repo update
-  helm search repo forge --versions | grep 0.6.0
+  helm search repo forge --versions | grep 0.X.Y
   ```
 
 - [ ] **Helm Chart Installable**
   ```bash
   # In a test cluster
   helm install forge-test forge/forge \
-    --version 0.6.0 \
+    --version 0.X.Y \
     --namespace forge-test \
     --create-namespace \
     --dry-run
@@ -438,8 +438,8 @@ When updating Go dependencies, controller code, or Dockerfile:
 
 4. **Create release when ready**:
    ```bash
-   git tag -s v0.6.0 -m "Release v0.6.0"
-   git push origin v0.6.0
+   git tag -s v0.X.Y -m "Release v0.X.Y"
+   git push origin v0.X.Y
    ```
 
 ## Cost Summary

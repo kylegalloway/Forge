@@ -310,8 +310,8 @@ kind-setup: kind-create kind-deploy ## Complete setup: create kind cluster and d
 .PHONY: kind-zarfpackagejob
 kind-zarfpackagejob: ## Build and load the Zarf Package Job image into kind.
 	@echo "Building and loading Zarf Package Job image into kind cluster '$(KIND_CLUSTER_NAME)'..."
-	podman build -t localhost/zarfpackagejob:v0.11.1 images/zarfpackagejob/
-	podman save localhost/zarfpackagejob:v0.11.1 -o /tmp/zarfpackagejob.tar
+	podman build -t localhost/zarfpackagejob:v0.11.17 images/zarfpackagejob/
+	podman save localhost/zarfpackagejob:v0.11.17 -o /tmp/zarfpackagejob.tar
 	kind load image-archive /tmp/zarfpackagejob.tar --name $(KIND_CLUSTER_NAME)
 	rm /tmp/zarfpackagejob.tar
 

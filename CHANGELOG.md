@@ -11,6 +11,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Comprehensive unit test coverage for action chaining logic, JobBuilder features (debug mode, extra mounts, volume sizes, in-cluster kubeconfig, security context, tolerations, affinity), job monitor status tracking, webhook validators (Zarf and UDS), source handlers (Git, S3, OCI, Local), and destination handlers (S3, OCI, Local)
 - E2E test fixtures for multi-action chains (BuildPublishDeploy, CreatePublish, CreatePublishDeploy), extra mounts, volume sizes, and debug mode
 
+### Fixed
+- Default CLI image constants (`DefaultZarfCLIImage`, `DefaultUDSCLIImage`) referenced `v0.11.1` instead of `v0.11.17`
+- Stale version references across documentation: `v0.6.0` and `v0.11.1` updated to `v0.11.17` in deployment guide, chart README, troubleshooting guide, image READMEs, and Makefile
+- CRD short name `zp` corrected to `zpj` in CONTRIBUTING.md examples
+- Go version updated from 1.24 to 1.25 in CONTRIBUTING.md to match `go.mod`
+- UDS CLI image repository in chart README corrected from `ghcr.io/defenseunicorns/uds-cli` to `ghcr.io/kylegalloway/forge/udsbundlejob`
+- Hardcoded version examples in HOSTING_SETUP.md replaced with `v0.X.Y` generic placeholders
+
+### Removed
+- `docs/development/TOOL_VERSIONS.md` - Stale within a month of creation; all version information already lives in machine-readable sources (`go.mod`, Dockerfiles, `values.yaml`, `.pre-commit-config.yaml`)
+
 ## [0.11.17] - 2026-02-04
 
 ### Fixed

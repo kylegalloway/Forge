@@ -103,10 +103,10 @@
 ### Testing & Quality
 
 * **Integration test suite expansion** - Limited end-to-end testing coverage:
-  * Full lifecycle tests (Build → Publish → Deploy in real cluster)
-  * Multi-action job testing
-  * Policy enforcement integration tests
-  * Webhook validation test coverage
+  * ~~Full lifecycle tests (Build → Publish → Deploy in real cluster)~~
+  * ~~Multi-action job testing~~
+  * ~~Policy enforcement integration tests~~
+  * ~~Webhook validation test coverage~~
   * Upgrade/downgrade testing (n-1 version compatibility)
   * Cross-platform testing (different Kubernetes versions)
 

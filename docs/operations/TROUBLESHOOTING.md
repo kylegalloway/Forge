@@ -295,7 +295,7 @@ kubectl get pods -n default
 ```
 
 ```text
-Failed to pull image "ghcr.io/kylegalloway/forge/zarfpackagejob:v0.11.1":
+Failed to pull image "ghcr.io/kylegalloway/forge/zarfpackagejob:v0.11.17":
 failed to pull and unpack image: pull access denied
 ```
 
@@ -310,12 +310,12 @@ The Zarf CLI image cannot be pulled. This could be due to network issues, regist
 
    ```bash
    # Using Docker
-   docker pull ghcr.io/kylegalloway/forge/zarfpackagejob:v0.11.1
-   kind load docker-image ghcr.io/kylegalloway/forge/zarfpackagejob:v0.11.1 --name <cluster-name>
+   docker pull ghcr.io/kylegalloway/forge/zarfpackagejob:v0.11.17
+   kind load docker-image ghcr.io/kylegalloway/forge/zarfpackagejob:v0.11.17 --name <cluster-name>
 
    # Using Podman
-   podman pull ghcr.io/kylegalloway/forge/zarfpackagejob:v0.11.1
-   podman save ghcr.io/kylegalloway/forge/zarfpackagejob:v0.11.1 -o /tmp/zarfpackagejob.tar
+   podman pull ghcr.io/kylegalloway/forge/zarfpackagejob:v0.11.17
+   podman save ghcr.io/kylegalloway/forge/zarfpackagejob:v0.11.17 -o /tmp/zarfpackagejob.tar
    kind load image-archive /tmp/zarfpackagejob.tar --name <cluster-name>
    rm /tmp/zarfpackagejob.tar
    ```
@@ -333,7 +333,7 @@ The Zarf CLI image cannot be pulled. This could be due to network issues, regist
    Forge includes a Dockerfile to build custom versions:
 
    ```bash
-   docker build -t ghcr.io/kylegalloway/forge/zarfpackagejob:v0.11.1 images/zarfpackagejob/
+   docker build -t ghcr.io/kylegalloway/forge/zarfpackagejob:v0.11.17 images/zarfpackagejob/
    ```
 
 4. **Configure imagePullSecrets (for private registries):**

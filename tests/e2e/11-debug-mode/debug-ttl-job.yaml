@@ -1,0 +1,24 @@
+apiVersion: forge.dev/v1alpha3
+kind: ZarfPackageJob
+metadata:
+  name: test-debug-ttl
+  namespace: default
+  labels:
+    app: forge-test
+    test: e2e
+    feature: debug-mode
+spec:
+  serviceAccountName: test-debug-mode
+  action: Build
+  source:
+    type: Git
+    git:
+      url: https://github.com/kylegalloway/forge
+      ref: main
+      path: examples/samples/zarf/03-git-build-deploy
+
+  # Debug mode pauses execution
+  debug: true
+
+  # Short TTL to auto-cleanup after debugging
+  ttlSecondsAfterFinished: 300  # 5 minutes

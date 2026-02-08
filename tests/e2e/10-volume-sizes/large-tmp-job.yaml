@@ -1,0 +1,22 @@
+apiVersion: forge.dev/v1alpha3
+kind: ZarfPackageJob
+metadata:
+  name: test-large-tmp
+  namespace: default
+  labels:
+    app: forge-test
+    test: e2e
+    feature: volume-sizes
+spec:
+  serviceAccountName: test-volume-sizes
+  action: Build
+  source:
+    type: Git
+    git:
+      url: https://github.com/kylegalloway/forge
+      ref: main
+      path: examples/samples/zarf/03-git-build-deploy
+
+  # Custom tmp size for intermediate build files
+  volumeSizes:
+    tmp: "2Gi"  # Large tmp for build intermediates

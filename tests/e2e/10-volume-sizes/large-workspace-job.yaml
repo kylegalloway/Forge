@@ -1,0 +1,22 @@
+apiVersion: forge.dev/v1alpha3
+kind: ZarfPackageJob
+metadata:
+  name: test-large-workspace
+  namespace: default
+  labels:
+    app: forge-test
+    test: e2e
+    feature: volume-sizes
+spec:
+  serviceAccountName: test-volume-sizes
+  action: Build
+  source:
+    type: Git
+    git:
+      url: https://github.com/kylegalloway/forge
+      ref: main
+      path: examples/samples/zarf/03-git-build-deploy
+
+  # Custom workspace size for large builds
+  volumeSizes:
+    workspace: "5Gi"  # Large workspace for build artifacts

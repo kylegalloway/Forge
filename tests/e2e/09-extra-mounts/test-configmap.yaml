@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test-app-config
+  namespace: default
+  labels:
+    app: forge-test
+    test: e2e
+data:
+  settings.yaml: |
+    debug: true
+    log_level: info
+    features:
+      - feature_a
+      - feature_b
+  database.conf: |
+    host: localhost
+    port: 5432
+    pool_size: 10

@@ -1,0 +1,37 @@
+apiVersion: forge.dev/v1alpha3
+kind: UDSBundleJob
+metadata:
+  name: test-create-publish
+  namespace: default
+  labels:
+    app: forge-test
+    test: e2e
+    action-chain: "true"
+spec:
+  serviceAccountName: test-uds-cp
+  # Multi-action job - will execute Create, then Publish
+  action: CreatePublish
+
+  # Use the public UDS bundle example from forge repo
+  source:
+    type: Git
+    git:
+      url: https://github.com/kylegalloway/forge
+      ref: main
+      path: examples/samples/uds/05-oci-only-create
+
+  publish:
+    type: OCI
+    oci:
+      destination: "localhost:5000/test-uds-bundles"
+      # In real deployments: insecureSkipTLSVerify: true
+
+  # Configuration for action chaining
+  ttlSecondsAfterFinished: 3600
+  timeout: 900s  # 15 minute timeout for Create + Publish
+
+  # Volume sizing for bundle creation
+  volumeSizes:
+    workspace: "2Gi"
+    output: "1Gi"
+    tmp: "512Mi"

@@ -4,6 +4,8 @@ Simple, automated tests for Forge functionality that work on both local Kind clu
 
 ## Test Suite
 
+### Basic Functionality Tests
+
 | Test | Description | Duration | Prerequisites |
 |------|-------------|----------|---------------|
 | **01-simple-build** | Build Zarf package from Git | ~2 min | None (public repo) |
@@ -11,6 +13,22 @@ Simple, automated tests for Forge functionality that work on both local Kind clu
 | **03-health-check** | Verify controller health/metrics | ~10 sec | Controller deployed |
 | **04-uds-create** | Create UDS bundle from Git | ~2-3 min | None (public repo) |
 | **05-uds-deploy** | Create and deploy UDS bundle | ~3-5 min | Sufficient cluster resources |
+
+### Action Chaining Tests (Phase 4)
+
+| Test | Description | Duration | Prerequisites |
+|------|-------------|----------|---------------|
+| **06-zarf-build-publish-deploy** | Multi-action Zarf BuildPublishDeploy chain | ~5-8 min | OCI registry or storage backend |
+| **07-uds-create-publish** | Multi-action UDS CreatePublish chain | ~3-5 min | OCI registry or storage backend |
+| **08-uds-create-publish-deploy** | Full UDS CreatePublishDeploy chain | ~8-10 min | Cluster resources for deployment |
+
+### Feature Validation Tests (Phase 4)
+
+| Test | Description | Duration | Prerequisites |
+|------|-------------|----------|---------------|
+| **09-extra-mounts** | ConfigMap/Secret mounting (ExtraMounts feature) | ~3 min | ConfigMaps and Secrets in cluster |
+| **10-volume-sizes** | Custom volume sizing (VolumeSizes feature) | ~4 min | Sufficient cluster storage |
+| **11-debug-mode** | Debug mode and pod introspection | ~2 min | kubectl exec capability |
 
 ## Quick Start
 
@@ -46,6 +64,30 @@ kubectl get zarfpackagejobs -w
 3. **Self-contained**: All required resources included
 4. **Documented**: Clear success criteria and troubleshooting steps
 5. **Automated**: Can be run via `make e2e-test`
+
+## Test Categories
+
+### Basic Tests (01-05)
+Fundamental Forge functionality: building, deploying, health checks.
+
+**Start here:** Ensures core Forge operations work correctly.
+
+### Action Chaining Tests (06-08)
+Multi-action jobs where multiple operations execute sequentially in a single job.
+
+**Key validations:**
+- Build → Publish → Deploy orchestration
+- State preservation between actions
+- Artifact passing through action chains
+- Status updates for multiple actions
+- Action chaining failure handling
+
+### Feature Tests (09-11)
+New and advanced Forge features validated in integrated scenarios.
+
+**ExtraMounts (09):** ConfigMap and Secret mounting into job containers
+**VolumeSizes (10):** Custom volume capacity configuration
+**Debug Mode (11):** Interactive debugging and pod introspection
 
 ## Prerequisites
 
@@ -96,7 +138,9 @@ cd 03-health-check && ./test.sh
 
 ## Troubleshooting
 
-### Test 01 (Simple Build) Fails
+### Basic Tests (01-05)
+
+#### Test 01 (Simple Build) Fails
 
 **Symptom**: Job fails or times out
 
@@ -111,7 +155,7 @@ kubectl logs -l forge.dev/package=test-simple-build
 - Insufficient CPU/memory resources
 - ServiceAccount policy too restrictive
 
-### Test 02 (Simple Deploy) Fails
+#### Test 02 (Simple Deploy) Fails
 
 **Symptom**: Package doesn't deploy
 
@@ -127,7 +171,7 @@ kubectl get pods -n zarf
 - RBAC permissions insufficient for deployment
 - Package incompatible with cluster version
 
-### Test 03 (Health Check) Fails
+#### Test 03 (Health Check) Fails
 
 **Symptom**: Endpoints return errors
 
@@ -142,7 +186,7 @@ kubectl logs -n forge-system -l app=forge-controller
 - Port forwarding failed (check firewall)
 - Service not created correctly
 
-### Test 04 (UDS Bundle Create) Fails
+#### Test 04 (UDS Bundle Create) Fails
 
 **Symptom**: Job fails or times out
 
@@ -158,7 +202,7 @@ kubectl logs -l forge.dev/bundle=test-uds-create
 - UDS CLI image not available in cluster
 - ServiceAccount policy too restrictive
 
-### Test 05 (UDS Bundle Deploy) Fails
+#### Test 05 (UDS Bundle Deploy) Fails
 
 **Symptom**: Bundle doesn't deploy
 
@@ -174,6 +218,51 @@ kubectl get pods -n headlamp
 - Cluster doesn't have required resources for Headlamp
 - RBAC permissions insufficient for deployment
 - Image pull failures (Headlamp images)
+
+### Action Chaining Tests (06-08)
+
+#### Test 06 (Zarf BuildPublishDeploy) Fails
+
+**Common Issues**:
+- Build phase: See Test 01 issues
+- Publish phase: OCI registry inaccessible or invalid credentials
+- Deploy phase: Insufficient cluster resources or RBAC
+
+#### Test 07 (UDS CreatePublish) Fails
+
+**Common Issues**:
+- Create phase: UDS CLI not available or package sources inaccessible
+- Publish phase: Registry credentials missing or registry unreachable
+
+#### Test 08 (UDS CreatePublishDeploy) Fails
+
+**Common Issues**:
+- Create phase: Same as Test 04
+- Publish phase: Same as Test 07
+- Deploy phase: Same as Test 05
+
+### Feature Tests (09-11)
+
+#### Test 09 (ExtraMounts) Fails
+
+**Common Issues**:
+- ConfigMap/Secret not found in cluster
+- ServiceAccount lacks permissions to read ConfigMap/Secret
+- Reserved path conflict (e.g., /workspace, /output)
+
+#### Test 10 (VolumeSizes) Fails
+
+**Common Issues**:
+- Requested volume sizes exceed available cluster storage
+- Invalid size format (not valid Kubernetes resource quantity)
+- Storage class not available for requested sizes
+
+#### Test 11 (Debug Mode) Fails
+
+**Common Issues**:
+- Pod doesn't remain running (verify debug: true in spec)
+- Can't exec into pod (RBAC or container shell issues)
+- TTL too short (job deleted before debugging)
 
 ## Cleanup
 

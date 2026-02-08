@@ -1,0 +1,31 @@
+apiVersion: forge.dev/v1alpha3
+kind: ZarfPackageJob
+metadata:
+  name: test-debug-per-action
+  namespace: default
+  labels:
+    app: forge-test
+    test: e2e
+    feature: debug-mode
+spec:
+  serviceAccountName: test-debug-mode
+  action: BuildDeploy
+  source:
+    type: Git
+    git:
+      url: https://github.com/kylegalloway/forge
+      ref: main
+      path: examples/samples/zarf/03-git-build-deploy
+
+  deploy:
+    target: InCluster
+
+  # Per-action debug control
+  actions:
+    - name: Build
+      debug: true  # Only build action is debugged
+    - name: Deploy
+      debug: false # Deploy runs to completion
+
+  # Keep pod around for debugging
+  ttlSecondsAfterFinished: 3600

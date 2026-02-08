@@ -1,0 +1,25 @@
+apiVersion: forge.dev/v1alpha3
+kind: ZarfPackageJob
+metadata:
+  name: test-all-custom-sizes
+  namespace: default
+  labels:
+    app: forge-test
+    test: e2e
+    feature: volume-sizes
+spec:
+  serviceAccountName: test-volume-sizes
+  action: BuildPublishDeploy
+  source:
+    type: Git
+    git:
+      url: https://github.com/kylegalloway/forge
+      ref: main
+      path: examples/samples/zarf/03-git-build-deploy
+
+  # Custom sizes for all volumes - comprehensive test
+  volumeSizes:
+    workspace: "3Gi"  # For source checkout and build
+    output: "1.5Gi"   # For package artifacts
+    tmp: "1Gi"        # For build intermediates
+    home: "256Mi"     # For home directory

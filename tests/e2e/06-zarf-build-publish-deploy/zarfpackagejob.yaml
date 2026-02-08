@@ -1,0 +1,43 @@
+apiVersion: forge.dev/v1alpha3
+kind: ZarfPackageJob
+metadata:
+  name: test-build-publish-deploy
+  namespace: default
+  labels:
+    app: forge-test
+    test: e2e
+    action-chain: "true"
+spec:
+  serviceAccountName: test-zarf-bpd
+  # Multi-action job - will execute Build, then Publish, then Deploy
+  action: BuildPublishDeploy
+
+  source:
+    type: Git
+    git:
+      url: https://github.com/kylegalloway/forge
+      ref: main
+      path: examples/samples/zarf/03-git-build-deploy
+
+  publish:
+    # Use OCI destination (compatible with in-cluster registries)
+    type: OCI
+    oci:
+      destination: "localhost:5000/test-packages"
+      # In real deployments, credentials would be in service account secret
+      # insecureSkipTLSVerify: true
+
+  deploy:
+    target: InCluster
+    # Optional: deploy to specific cluster
+    # kubeconfig: <external cluster kubeconfig>
+
+  # Configuration for action chaining
+  ttlSecondsAfterFinished: 3600  # Keep job for 1 hour for inspection
+  timeout: 1200s  # 20 minute timeout for all three actions
+
+  # Optional: volume sizing for large builds
+  volumeSizes:
+    workspace: "2Gi"
+    output: "1Gi"
+    tmp: "512Mi"

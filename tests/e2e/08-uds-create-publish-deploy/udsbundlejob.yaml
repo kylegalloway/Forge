@@ -1,0 +1,42 @@
+apiVersion: forge.dev/v1alpha3
+kind: UDSBundleJob
+metadata:
+  name: test-create-publish-deploy
+  namespace: default
+  labels:
+    app: forge-test
+    test: e2e
+    action-chain: "true"
+spec:
+  serviceAccountName: test-uds-cpd
+  # Multi-action job - will execute Create, Publish, then Deploy
+  action: CreatePublishDeploy
+
+  # Use the public UDS bundle example from forge repo
+  source:
+    type: Git
+    git:
+      url: https://github.com/kylegalloway/forge
+      ref: main
+      path: examples/samples/uds/05-oci-only-create
+
+  publish:
+    type: OCI
+    oci:
+      destination: "localhost:5000/test-uds-full-stack"
+      # In real deployments: insecureSkipTLSVerify: true
+
+  deploy:
+    target: InCluster
+    # Optional: deploy to specific cluster
+    # kubeconfig: <external cluster kubeconfig>
+
+  # Configuration for all three actions
+  ttlSecondsAfterFinished: 3600
+  timeout: 1500s  # 25 minute timeout for all three actions
+
+  # Volume sizing for bundle creation and deployment
+  volumeSizes:
+    workspace: "2Gi"
+    output: "1Gi"
+    tmp: "512Mi"

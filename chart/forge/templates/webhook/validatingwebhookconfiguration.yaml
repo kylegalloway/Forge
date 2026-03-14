@@ -6,6 +6,10 @@ metadata:
   labels:
     {{- include "forge.labels" . | nindent 4 }}
     app.kubernetes.io/component: webhook
+  {{- if eq .Values.webhook.tls.mode "certManager" }}
+  annotations:
+    cert-manager.io/inject-ca-from: {{ include "forge.namespace" . }}/{{ .Values.webhook.tls.secretName }}
+  {{- end }}
 webhooks:
 - name: zarfpackagejob.forge.dev
   clientConfig:
@@ -13,7 +17,7 @@ webhooks:
       name: {{ include "forge.fullname" . }}-webhook
       namespace: {{ include "forge.namespace" . }}
       path: /validate
-    {{- if .Values.webhook.tls.caBundle }}
+    {{- if and (ne .Values.webhook.tls.mode "certManager") .Values.webhook.tls.caBundle }}
     caBundle: {{ .Values.webhook.tls.caBundle }}
     {{- end }}
   rules:

@@ -703,7 +703,7 @@ If the secret is missing or cert-generator job failed:
 helm upgrade forge forge/forge \
   --namespace forge-system \
   --reuse-values \
-  --set webhook.tls.autoGenerate=true
+  --set webhook.tls.mode=autoGenerate
 ```
 
 **Note**: Forge uses the latest webhook cert generator image (`registry.k8s.io/ingress-nginx/kube-webhook-certgen:v20231226-1a7112e06`) which runs properly as non-root. If you see `apk` permission errors, the chart may be using an outdated image.

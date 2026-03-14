@@ -150,11 +150,26 @@ webhook:
 
   # TLS configuration for admission webhook
   tls:
-    # Auto-generate self-signed certs (dev only) or provide via secret
-    autoGenerate: true
+    # TLS mode:
+    #   autoGenerate - self-signed cert generated via helm hook (dev/simple installs)
+    #   certManager  - cert-manager issues and rotates the cert (recommended for production)
+    #   external     - bring your own pre-existing secret (Crossplane, Vault, manual)
+    mode: autoGenerate
     secretName: forge-webhook-tls  # pragma: allowlist secret
-    # CA bundle (base64 encoded) - leave empty for auto-generated certs
+    # CA bundle (base64 encoded) - used by external mode; ignored by autoGenerate (patched
+    # automatically) and certManager (injected via cert-manager.io/inject-ca-from annotation)
     caBundle: ""
+
+    # cert-manager mode settings (only used when mode: certManager)
+    certManager:
+      # Reference to a cert-manager Issuer or ClusterIssuer
+      issuerRef:
+        name: ""         # required: name of the issuer
+        kind: ClusterIssuer
+        group: cert-manager.io
+      # Certificate duration and renewal window
+      duration: 8760h    # 1 year
+      renewBefore: 720h  # 30 days
 
   # Webhook reliability configuration
   reliability:

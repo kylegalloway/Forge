@@ -149,7 +149,7 @@ webhook:
     repository: ghcr.io/kylegalloway/forge/forge-webhook
     tag: "v0.11.17"
   tls:
-    autoGenerate: true         # Auto-generate self-signed certs
+    mode: autoGenerate         # TLS mode: autoGenerate, certManager, or external
 ```
 
 #### CLI Images

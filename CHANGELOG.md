@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- cert-manager integration for webhook TLS: new `webhook.tls.mode` field replaces the old boolean `autoGenerate` flag, supporting three modes — `autoGenerate` (self-signed via Helm hook, default), `certManager` (cert-manager `Certificate` resource with configurable issuer, duration, and renewal window), and `external` (bring-your-own secret)
+- New `chart/forge/templates/webhook/certificate.yaml` that renders a cert-manager `Certificate` object pointing at the configured issuer when `mode: certManager`
+- `cert-manager.io/inject-ca-from` annotation on `ValidatingWebhookConfiguration` when `mode: certManager`, enabling automatic CA bundle injection without manual patching
+
 ### Fixed
 - Corrected `forge.forge.dev/` annotation prefix to `forge.dev/` throughout UDS_TROUBLESHOOTING.md (15 occurrences were silently creating wrong annotations)
 - Fixed `.status.buildStatus.state` → `.status.buildStatus.phase` (and publish/deploy) in TROUBLESHOOTING.md custom-columns command

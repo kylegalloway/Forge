@@ -1,0 +1,21 @@
+{{- if and .Values.webhook.enabled (eq .Values.webhook.tls.mode "certManager") -}}
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ .Values.webhook.tls.secretName }}
+  namespace: {{ include "forge.namespace" . }}
+  labels:
+    {{- include "forge.labels" . | nindent 4 }}
+    app.kubernetes.io/component: webhook
+spec:
+  secretName: {{ .Values.webhook.tls.secretName }}
+  dnsNames:
+    - {{ include "forge.fullname" . }}-webhook.{{ include "forge.namespace" . }}.svc
+    - {{ include "forge.fullname" . }}-webhook.{{ include "forge.namespace" . }}.svc.{{ .Values.clusterDomain | default "cluster.local" }}
+  duration: {{ .Values.webhook.tls.certManager.duration }}
+  renewBefore: {{ .Values.webhook.tls.certManager.renewBefore }}
+  issuerRef:
+    name: {{ required "webhook.tls.certManager.issuerRef.name is required when tls.mode is certManager" .Values.webhook.tls.certManager.issuerRef.name }}
+    kind: {{ .Values.webhook.tls.certManager.issuerRef.kind }}
+    group: {{ .Values.webhook.tls.certManager.issuerRef.group }}
+{{- end }}

@@ -111,7 +111,6 @@
 
 ### Low Priority (Polish)
 
-* **Webhook TLS certificate rotation** - Automated cert-manager integration for seamless certificate rotation without webhook downtime (partially covered in Production Readiness - secrets management)
 * **Structured event streaming** - CloudEvents format for integration with external systems:
   * Emit CloudEvents for job state transitions
   * Kafka/NATS streaming integration

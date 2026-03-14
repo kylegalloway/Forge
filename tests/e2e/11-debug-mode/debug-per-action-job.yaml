@@ -21,11 +21,5 @@ spec:
     target: InCluster
 
   # Per-action debug control
-  actions:
-    - name: Build
-      debug: true  # Only build action is debugged
-    - name: Deploy
-      debug: false # Deploy runs to completion
-
-  # Keep pod around for debugging
-  ttlSecondsAfterFinished: 3600
+  debugMode: true
+  debugActions: ["build"]

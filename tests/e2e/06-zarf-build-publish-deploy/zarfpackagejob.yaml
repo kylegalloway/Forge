@@ -21,20 +21,19 @@ spec:
 
   publish:
     # Use OCI destination (compatible with in-cluster registries)
-    type: OCI
-    oci:
-      destination: "localhost:5000/test-packages"
-      # In real deployments, credentials would be in service account secret
-      # insecureSkipTLSVerify: true
+    destination:
+      type: OCI
+      oci:
+        registry: "localhost:5000"
+        repository: "test-packages"
+        tag: "latest"
+        # In real deployments, credentials would be in service account secret
+        # insecureSkipTLSVerify: true
 
   deploy:
     target: InCluster
     # Optional: deploy to specific cluster
     # kubeconfig: <external cluster kubeconfig>
-
-  # Configuration for action chaining
-  ttlSecondsAfterFinished: 3600  # Keep job for 1 hour for inspection
-  timeout: 1200s  # 20 minute timeout for all three actions
 
   # Optional: volume sizing for large builds
   volumeSizes:

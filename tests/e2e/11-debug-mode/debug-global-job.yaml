@@ -18,7 +18,4 @@ spec:
       path: examples/samples/zarf/03-git-build-deploy
 
   # Global debug mode - pauses job execution
-  debug: true
-
-  # Keep pod around for debugging (1 hour)
-  ttlSecondsAfterFinished: 3600
+  debugMode: true

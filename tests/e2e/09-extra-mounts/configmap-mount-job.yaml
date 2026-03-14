@@ -19,8 +19,6 @@ spec:
 
   # Extra mounts - mount ConfigMap into job
   extraMounts:
-    - source:
-        type: ConfigMap
-        configMap:
-          name: test-app-config
-      destination: /workspace/config
+    - configMapRef:
+        name: test-app-config
+      mountPath: /workspace/config

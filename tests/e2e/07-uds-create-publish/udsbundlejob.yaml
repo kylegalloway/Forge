@@ -21,14 +21,13 @@ spec:
       path: examples/samples/uds/05-oci-only-create
 
   publish:
-    type: OCI
-    oci:
-      destination: "localhost:5000/test-uds-bundles"
-      # In real deployments: insecureSkipTLSVerify: true
-
-  # Configuration for action chaining
-  ttlSecondsAfterFinished: 3600
-  timeout: 900s  # 15 minute timeout for Create + Publish
+    destination:
+      type: OCI
+      oci:
+        registry: "localhost:5000"
+        repository: "test-uds-bundles"
+        tag: "latest"
+        # In real deployments: insecureSkipTLSVerify: true
 
   # Volume sizing for bundle creation
   volumeSizes:

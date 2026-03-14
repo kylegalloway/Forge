@@ -19,21 +19,16 @@ spec:
       path: examples/samples/zarf/03-git-build-deploy
 
   publish:
-    type: OCI
-    oci:
-      destination: "localhost:5000/debug-test"
+    destination:
+      type: OCI
+      oci:
+        registry: "localhost:5000"
+        repository: "debug-test"
+        tag: "latest"
 
   deploy:
     target: InCluster
 
   # Per-action debug control in action chain
-  actions:
-    - name: Build
-      debug: true  # Debug the build phase
-    - name: Publish
-      debug: false # Publish runs automatically
-    - name: Deploy
-      debug: false # Deploy runs automatically
-
-  # Keep for debugging
-  ttlSecondsAfterFinished: 3600
+  debugMode: true
+  debugActions: ["build"]

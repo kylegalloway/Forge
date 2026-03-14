@@ -21,19 +21,18 @@ spec:
       path: examples/samples/uds/05-oci-only-create
 
   publish:
-    type: OCI
-    oci:
-      destination: "localhost:5000/test-uds-full-stack"
-      # In real deployments: insecureSkipTLSVerify: true
+    destination:
+      type: OCI
+      oci:
+        registry: "localhost:5000"
+        repository: "test-uds-full-stack"
+        tag: "latest"
+        # In real deployments: insecureSkipTLSVerify: true
 
   deploy:
     target: InCluster
     # Optional: deploy to specific cluster
     # kubeconfig: <external cluster kubeconfig>
-
-  # Configuration for all three actions
-  ttlSecondsAfterFinished: 3600
-  timeout: 1500s  # 25 minute timeout for all three actions
 
   # Volume sizing for bundle creation and deployment
   volumeSizes:

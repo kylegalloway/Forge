@@ -19,13 +19,9 @@ spec:
 
   # Extra mounts - mount both ConfigMap and Secret
   extraMounts:
-    - source:
-        type: ConfigMap
-        configMap:
-          name: test-app-config
-      destination: /workspace/config
-    - source:
-        type: Secret
-        secret:
-          name: test-app-secrets
-      destination: /workspace/secrets
+    - configMapRef:
+        name: test-app-config
+      mountPath: /workspace/config
+    - secretRef:
+        name: test-app-secrets
+      mountPath: /workspace/secrets

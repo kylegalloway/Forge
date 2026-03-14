@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.11.19] - 2026-03-14
+
 ### Added
 - cert-manager integration for webhook TLS: new `webhook.tls.mode` field replaces the old boolean `autoGenerate` flag, supporting three modes — `autoGenerate` (self-signed via Helm hook, default), `certManager` (cert-manager `Certificate` resource with configurable issuer, duration, and renewal window), and `external` (bring-your-own secret)
 - New `chart/forge/templates/webhook/certificate.yaml` that renders a cert-manager `Certificate` object pointing at the configured issuer when `mode: certManager`
@@ -737,7 +739,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial project setup and build infrastructure
 - CI/CD pipeline configuration for automated testing and releases
 
-[Unreleased]: https://github.com/kylegalloway/forge/compare/v0.11.18...HEAD
+[Unreleased]: https://github.com/kylegalloway/forge/compare/v0.11.19...HEAD
+[0.11.19]: https://github.com/kylegalloway/forge/compare/v0.11.18...v0.11.19
 [0.11.18]: https://github.com/kylegalloway/forge/compare/v0.11.17...v0.11.18
 [0.11.17]: https://github.com/kylegalloway/forge/compare/v0.11.16...v0.11.17
 [0.11.16]: https://github.com/kylegalloway/forge/compare/v0.11.15...v0.11.16

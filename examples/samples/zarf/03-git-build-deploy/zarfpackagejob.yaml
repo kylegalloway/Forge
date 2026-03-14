@@ -23,9 +23,6 @@ metadata:
     # Allow deploying to the cluster where the controller is running
     forge.dev/allowed-deploy-targets: "InCluster"
 
-    # Allow deploying to headlamp namespace
-    forge.dev/allowed-deploy-namespaces: "headlamp"
-
 ---
 apiVersion: forge.dev/v1alpha3
 kind: ZarfPackageJob

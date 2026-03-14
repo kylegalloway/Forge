@@ -20,7 +20,7 @@ metadata:
     forge.dev/allowed-source-repos: "https://github.com/kylegalloway/forge/*"
 
     # Allow deploying to local cluster
-    forge.dev/allowed-deploy-targets: "local,*"
+    forge.dev/allowed-deploy-targets: "InCluster"
 
 ---
 apiVersion: forge.dev/v1alpha3

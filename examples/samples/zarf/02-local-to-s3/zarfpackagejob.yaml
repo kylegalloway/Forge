@@ -17,10 +17,10 @@ metadata:
     forge.dev/allowed-actions: "Build,Publish,BuildPublish"
 
     # Allow local sources
-    forge.dev/allowed-source-types: "Local"
+    forge.dev/allow-local-sources: "true"
 
     # Allow publishing to S3 buckets
-    forge.dev/allowed-publish-s3-buckets: "my-zarf-packages/*"
+    forge.dev/allowed-publish-buckets: "my-zarf-packages"
 
 ---
 # Secret containing AWS credentials for S3

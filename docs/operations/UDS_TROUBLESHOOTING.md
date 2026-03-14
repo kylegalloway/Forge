@@ -89,10 +89,10 @@ action "create" not allowed by ServiceAccount annotations
 
 **Common causes:**
 
-1. **Action not allowed**: `action` not in `forge.forge.dev/allowed-actions`
-2. **Repository not allowed**: Git URL doesn't match `forge.forge.dev/allowed-git-repos` pattern
-3. **Registry not allowed**: OCI registry doesn't match `forge.forge.dev/allowed-oci-registries` pattern
-4. **Namespace not allowed**: Deploy namespace doesn't match `forge.forge.dev/allowed-deploy-namespaces`
+1. **Action not allowed**: `action` not in `forge.dev/allowed-actions`
+2. **Repository not allowed**: Git URL doesn't match `forge.dev/allowed-git-repos` pattern
+3. **Registry not allowed**: OCI registry doesn't match `forge.dev/allowed-oci-registries` pattern
+4. **Namespace not allowed**: Deploy namespace doesn't match `forge.dev/allowed-deploy-namespaces`
 
 **Solution:** Check ServiceAccount annotations:
 
@@ -110,7 +110,7 @@ Verify the annotations include the required permissions. See [Policy Validation 
 Error: no matches for kind "UDSBundleJob" in version "forge.dev/v1alpha3"
 ```
 
-**Solution:** The v1alpha1 API has been completely removed. Migrate to v1alpha2 API. See [API Version Migration Issues](#api-version-migration-issues) and [V1ALPHA2_MIGRATION.md](V1ALPHA2_MIGRATION.md).
+**Solution:** The v1alpha1 API has been completely removed. Migrate to v1alpha3 API. See [API Version Migration Issues](#api-version-migration-issues) and [V1ALPHA2_MIGRATION.md](V1ALPHA2_MIGRATION.md).
 
 ---
 
@@ -449,7 +449,7 @@ kubectl get sa uds-bundle-operator -n forge-system -o yaml
 
 # Look for allowed-actions annotation
 annotations:
-  forge.forge.dev/allowed-actions: "publish,deploy"  # ❌ "create" missing
+  forge.dev/allowed-actions: "publish,deploy"  # ❌ "create" missing
 ```
 
 **Solution:** Add missing action to ServiceAccount:
@@ -457,7 +457,7 @@ annotations:
 ```bash
 kubectl annotate sa uds-bundle-operator \
   -n forge-system \
-  forge.forge.dev/allowed-actions="create,publish,deploy" \
+  forge.dev/allowed-actions="create,publish,deploy" \
   --overwrite
 ```
 
@@ -485,7 +485,7 @@ kubectl get sa uds-bundle-operator -n forge-system -o jsonpath='{.metadata.annot
 ```bash
 kubectl annotate sa uds-bundle-operator \
   -n forge-system \
-  forge.forge.dev/allowed-git-repos="github.com/myorg/*,github.com/external/*" \
+  forge.dev/allowed-git-repos="github.com/myorg/*,github.com/external/*" \
   --overwrite
 ```
 
@@ -503,7 +503,7 @@ Error: OCI registry "docker.io" is not allowed
 ```bash
 kubectl annotate sa uds-bundle-cicd \
   -n forge-system \
-  forge.forge.dev/allowed-oci-registries="ghcr.io/*,docker.io/*" \
+  forge.dev/allowed-oci-registries="ghcr.io/*,docker.io/*" \
   --overwrite
 ```
 
@@ -524,7 +524,7 @@ Error: deployment to namespace "production" is not allowed
 ```bash
 kubectl annotate sa uds-bundle-operator \
   -n forge-system \
-  forge.forge.dev/allowed-deploy-namespaces="dev,staging,production" \
+  forge.dev/allowed-deploy-namespaces="dev,staging,production" \
   --overwrite
 ```
 
@@ -635,7 +635,7 @@ spec:
   source:
     type: OCI
     oci:
-      ref: ghcr.io/myorg/bundle:v1.0.0  # Instead of docker.io
+      reference: ghcr.io/myorg/bundle:v1.0.0  # Instead of docker.io
 ```
 
 ---
@@ -662,22 +662,22 @@ kubectl get secret aws-s3-creds
 
 ```bash
 kubectl get secret aws-s3-creds -o jsonpath='{.data}' | jq
-# Should have: aws_access_key_id, aws_secret_access_key
+# Should have: access-key-id, secret-access-key
 ```
 
 3. **Decode and verify credentials**:
 
 ```bash
-kubectl get secret aws-s3-creds -o jsonpath='{.data.aws_access_key_id}' | base64 -d
-kubectl get secret aws-s3-creds -o jsonpath='{.data.aws_secret_access_key}' | base64 -d
+kubectl get secret aws-s3-creds -o jsonpath='{.data.access-key-id}' | base64 -d
+kubectl get secret aws-s3-creds -o jsonpath='{.data.secret-access-key}' | base64 -d
 ```
 
 **Solution:** Create Secret with correct credentials:
 
 ```bash
 kubectl create secret generic aws-s3-creds \
-  --from-literal=aws_access_key_id=AKIAIOSFODNN7EXAMPLE \  # pragma: allowlist secret
-  --from-literal=aws_secret_access_key=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY  # pragma: allowlist secret
+  --from-literal=access-key-id=AKIAIOSFODNN7EXAMPLE \  # pragma: allowlist secret
+  --from-literal=secret-access-key=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY  # pragma: allowlist secret
 ```
 
 ### Bucket not found
@@ -1030,7 +1030,7 @@ kubectl get events --field-selector involvedObject.name=<name>
 kubectl get jobs -l app=forge,resource-type=udsbundlejob
 
 # Find jobs for specific bundle
-kubectl get jobs -l forge.forge.dev/package=<bundle-name>
+kubectl get jobs -l forge.dev/package=<bundle-name>
 
 # Get job logs
 kubectl logs job/<bundle-name>-create
@@ -1118,10 +1118,10 @@ kubectl get udsbundlejob "$BUNDLE_NAME" -o yaml > "$OUTPUT_DIR/udsbundlejob.yaml
 kubectl describe udsbundlejob "$BUNDLE_NAME" > "$OUTPUT_DIR/udsbundlejob-describe.txt"
 
 # Job details
-kubectl get jobs -l forge.forge.dev/package="$BUNDLE_NAME" -o yaml > "$OUTPUT_DIR/jobs.yaml"
+kubectl get jobs -l forge.dev/package="$BUNDLE_NAME" -o yaml > "$OUTPUT_DIR/jobs.yaml"
 
 # Pod logs
-for pod in $(kubectl get pods -l forge.forge.dev/package="$BUNDLE_NAME" -o name); do
+for pod in $(kubectl get pods -l forge.dev/package="$BUNDLE_NAME" -o name); do
   kubectl logs "$pod" > "$OUTPUT_DIR/${pod##*/}.log" 2>&1
 done
 

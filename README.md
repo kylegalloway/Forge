@@ -45,7 +45,7 @@ spec:
     timeout: 60m
 ```
 
-> **Note**: For UDS bundles, use `UDSBundleJob` with the v1alpha2 API. The v1alpha1 `UDSBundleJob` API has been removed.
+> **Note**: For UDS bundles, use `UDSBundleJob` with the v1alpha3 API. The v1alpha1 `UDSBundleJob` API has been removed.
 
 ## Architecture
 
@@ -358,8 +358,8 @@ See [.github/workflows/README.md](.github/workflows/README.md) for details.
 forge/
 ├── pkg/
 │   ├── apis/
-│   │   ├── zarf/v1alpha1/       # ZarfPackageJob CRD types
-│   │   └── uds/v1alpha2/        # UDSBundleJob CRD types
+│   │   ├── zarf/v1alpha3/       # ZarfPackageJob CRD types
+│   │   └── uds/v1alpha3/        # UDSBundleJob CRD types
 │   ├── controller/              # Main controller
 │   ├── actions/
 │   │   ├── common/              # Shared action code (~610 lines)

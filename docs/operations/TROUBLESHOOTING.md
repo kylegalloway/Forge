@@ -116,9 +116,9 @@ kubectl get zarfpackagejob <name> -o custom-columns=\
 NAME:.metadata.name,\
 ACTION:.spec.action,\
 PHASE:.status.phase,\
-BUILD:.status.buildStatus.state,\
-PUBLISH:.status.publishStatus.state,\
-DEPLOY:.status.deployStatus.state \
+BUILD:.status.buildStatus.phase,\
+PUBLISH:.status.publishStatus.phase,\
+DEPLOY:.status.deployStatus.phase \
 -w
 ```
 

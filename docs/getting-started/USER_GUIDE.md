@@ -391,7 +391,7 @@ Expected output:
 NAME            PHASE      AGE
 build-example   Pending    2s
 build-example   Running    5s
-build-example   Succeeded  45s
+build-example   Completed  45s
 ```
 
 ### 2. Build and Publish to OCI
@@ -446,7 +446,7 @@ Expected output:
 
 ```text
 NAME                 PHASE      AGE
-build-publish-oci    Succeeded  2m15s
+build-publish-oci    Completed  2m15s
 ```
 
 ### 3. Deploy from S3
@@ -499,7 +499,7 @@ Expected output (relevant sections):
 Name:         deploy-s3
 Namespace:    default
 Status:
-  Phase:             Succeeded
+  Phase:             Completed
   Completion Time:   2025-12-19T10:05:30Z
   Message:          Package deployed successfully to namespace games
 ```
@@ -550,7 +550,7 @@ Expected output:
 NAME             PHASE      AGE
 create-bundle    Pending    2s
 create-bundle    Running    10s
-create-bundle    Succeeded  3m45s
+create-bundle    Completed  3m45s
 ```
 
 ### 2. Create and Publish to OCI
@@ -561,7 +561,7 @@ Creates a bundle and immediately publishes it to an OCI registry.
 apiVersion: forge.dev/v1alpha3
 kind: UDSBundleJob
 metadata:
-  name: build-publish-bundle
+  name: create-publish-bundle
   namespace: default
 spec:
   serviceAccountName: uds-bundle-cicd
@@ -585,26 +585,26 @@ spec:
 Apply with:
 
 ```bash
-kubectl apply -f build-publish-bundle.yaml
+kubectl apply -f create-publish-bundle.yaml
 ```
 
 Expected output:
 
 ```text
-udsbundlejob.forge.dev/build-publish-bundle created
+udsbundlejob.forge.dev/create-publish-bundle created
 ```
 
 Check status:
 
 ```bash
-kubectl get udsbundlejob build-publish-bundle -n default
+kubectl get udsbundlejob create-publish-bundle -n default
 ```
 
 Expected output:
 
 ```text
 NAME                   PHASE      AGE
-build-publish-bundle   Succeeded  5m30s
+create-publish-bundle   Completed  5m30s
 ```
 
 ### 3. Deploy from OCI Registry
@@ -654,7 +654,7 @@ Expected output:
 NAME            PHASE      AGE
 deploy-bundle   Pending    2s
 deploy-bundle   Running    15s
-deploy-bundle   Succeeded  8m30s
+deploy-bundle   Completed  8m30s
 ```
 
 ### 4. Deploy to External Cluster

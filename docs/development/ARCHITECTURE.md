@@ -122,7 +122,7 @@ kind: UDSBundleJob
 metadata:
   name: create-publish-deploy
 spec:
-  action: createpublishdeploy
+  action: CreatePublishDeploy
   # ...
 ```
 

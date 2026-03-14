@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Corrected `forge.forge.dev/` annotation prefix to `forge.dev/` throughout UDS_TROUBLESHOOTING.md (15 occurrences were silently creating wrong annotations)
+- Fixed `.status.buildStatus.state` → `.status.buildStatus.phase` (and publish/deploy) in TROUBLESHOOTING.md custom-columns command
+- Fixed S3 secret key names `aws_access_key_id`/`aws_secret_access_key` → `access-key-id`/`secret-access-key` in UDS_TROUBLESHOOTING.md
+- Fixed OCI source field `ref:` → `reference:` in UDS_TROUBLESHOOTING.md
+- Corrected migration guide reference from v1alpha2 to v1alpha3 in UDS_TROUBLESHOOTING.md
+- Removed false claim that `volumeSizes.artifactStorage` is not exposed in OPERATOR_GUIDE.md
+- Fixed action casing `createpublishdeploy` → `CreatePublishDeploy` in ARCHITECTURE.md
+- Updated README.md API version references from v1alpha1/v1alpha2 to v1alpha3
+- Updated DEPLOYMENT.md container image tags to v0.11.18
+- Fixed phase display `Succeeded` → `Completed` in USER_GUIDE.md expected output blocks (5 occurrences)
+- Renamed UDSBundleJob example `build-publish-bundle` → `create-publish-bundle` in USER_GUIDE.md
+- Fixed invalid ServiceAccount annotation keys in zarf/02-local-to-s3 example (`allowed-source-types` → `allow-local-sources`, `allowed-publish-s3-buckets` → `allowed-publish-buckets`)
+- Removed non-existent `forge.dev/allowed-deploy-namespaces` annotation from zarf/03-git-build-deploy example
+- Fixed `allowed-deploy-targets: "local,*"` → `"InCluster"` in uds/03-git-build-deploy example
+- Fixed `publish.type`/`publish.oci.destination` → `publish.destination.{type,oci.{registry,repository,tag}}` in e2e tests 06–08 and 11
+- Fixed ExtraMount structure (`source.type/configMap/destination` → `configMapRef/mountPath`) in e2e test 09
+- Fixed `debug: true` → `debugMode: true` and removed non-existent `ttlSecondsAfterFinished`/`timeout` top-level spec fields in e2e test 11
+- Fixed non-existent `actions[]` per-item debug structure → `debugMode`/`debugActions` pattern in e2e test 11
+- Added missing `forge.dev/*` policy annotations to ServiceAccounts in e2e tests 06–11
+
 ## [0.11.18] - 2026-02-08
 
 ### Added

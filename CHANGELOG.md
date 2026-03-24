@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+- Pinned `aquasecurity/trivy-action` from `@master` to `@0.35.0` in CI and release workflows to mitigate the March 2026 trivy supply chain attack (TeamPCP tag-poisoning incident)
+
 ## [0.11.19] - 2026-03-14
 
 ### Added

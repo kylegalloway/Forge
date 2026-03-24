@@ -384,7 +384,7 @@ jobs:
           esac
 
       - name: Scan image
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@0.35.0
         continue-on-error: true
         env:
           TRIVY_USERNAME: ${{ github.actor }}

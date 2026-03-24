@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.11.20] - 2026-03-23
+
 ### Security
 - Pinned `aquasecurity/trivy-action` from `@master` to `@0.35.0` in CI and release workflows to mitigate the March 2026 trivy supply chain attack (TeamPCP tag-poisoning incident)
 - Upgraded all `go.opentelemetry.io/otel` modules from `v1.38.0` to `v1.42.0` to fix CVE-2026-24051 (arbitrary code execution via PATH hijacking in the OTel SDK)
@@ -744,7 +746,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial project setup and build infrastructure
 - CI/CD pipeline configuration for automated testing and releases
 
-[Unreleased]: https://github.com/kylegalloway/forge/compare/v0.11.19...HEAD
+[Unreleased]: https://github.com/kylegalloway/forge/compare/v0.11.20...HEAD
+[0.11.20]: https://github.com/kylegalloway/forge/compare/v0.11.19...v0.11.20
 [0.11.19]: https://github.com/kylegalloway/forge/compare/v0.11.18...v0.11.19
 [0.11.18]: https://github.com/kylegalloway/forge/compare/v0.11.17...v0.11.18
 [0.11.17]: https://github.com/kylegalloway/forge/compare/v0.11.16...v0.11.17

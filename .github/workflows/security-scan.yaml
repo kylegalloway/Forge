@@ -1,0 +1,162 @@
+name: Security Scan
+
+on:
+  schedule:
+    - cron: '0 9 * * 1'  # Every Monday at 9am UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  govulncheck:
+    name: Go Vulnerability Check
+    runs-on: ubuntu-latest
+    outputs:
+      found: ${{ steps.scan.outputs.found }}
+      report: ${{ steps.scan.outputs.report }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Install govulncheck
+        run: go install golang.org/x/vuln/cmd/govulncheck@latest
+
+      - name: Run govulncheck
+        id: scan
+        run: |
+          set +e
+          OUTPUT=$(govulncheck ./... 2>&1)
+          EXIT_CODE=$?
+          set -e
+
+          echo "Output:"
+          echo "$OUTPUT"
+
+          # govulncheck exits 3 when vulnerabilities are found
+          if [ $EXIT_CODE -eq 3 ]; then
+            echo "found=true" >> $GITHUB_OUTPUT
+            {
+              echo "report<<EOF"
+              echo "$OUTPUT"
+              echo "EOF"
+            } >> $GITHUB_OUTPUT
+          else
+            echo "found=false" >> $GITHUB_OUTPUT
+          fi
+
+  trivy-fs:
+    name: Trivy Filesystem Scan
+    runs-on: ubuntu-latest
+    outputs:
+      found: ${{ steps.scan.outputs.found }}
+      report: ${{ steps.scan.outputs.report }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Run Trivy vulnerability scanner
+        id: scan
+        uses: aquasecurity/trivy-action@0.35.0
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'table'
+          output: 'trivy-results.txt'
+          severity: 'CRITICAL,HIGH'
+          exit-code: '1'
+        continue-on-error: true
+
+      - name: Check results
+        id: check
+        run: |
+          if [ -s trivy-results.txt ] && grep -qE "CRITICAL|HIGH" trivy-results.txt; then
+            echo "found=true" >> $GITHUB_OUTPUT
+            {
+              echo "report<<EOF"
+              cat trivy-results.txt
+              echo "EOF"
+            } >> $GITHUB_OUTPUT
+          else
+            echo "found=false" >> $GITHUB_OUTPUT
+          fi
+
+  create-issue:
+    name: Create Issue on Findings
+    runs-on: ubuntu-latest
+    needs: [govulncheck, trivy-fs]
+    if: needs.govulncheck.outputs.found == 'true' || needs.trivy-fs.outputs.found == 'true'
+    steps:
+      - name: Build issue body
+        id: body
+        run: |
+          {
+            echo "body<<EOF"
+            echo "## Weekly Security Scan Findings"
+            echo ""
+            echo "The scheduled security scan found vulnerabilities that need attention."
+            echo ""
+            echo "**Scan date:** $(date -u '+%Y-%m-%d')"
+            echo "**Workflow run:** ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            echo ""
+
+            if [ "${{ needs.govulncheck.outputs.found }}" == "true" ]; then
+              echo "### govulncheck (Go Vulnerability Database)"
+              echo ""
+              echo '```'
+              echo "${{ needs.govulncheck.outputs.report }}"
+              echo '```'
+              echo ""
+            fi
+
+            if [ "${{ needs.trivy-fs.outputs.found }}" == "true" ]; then
+              echo "### Trivy Filesystem Scan (CRITICAL/HIGH)"
+              echo ""
+              echo '```'
+              echo "${{ needs.trivy-fs.outputs.report }}"
+              echo '```'
+              echo ""
+            fi
+
+            echo "EOF"
+          } >> $GITHUB_OUTPUT
+
+      - name: Check for existing open issue
+        id: existing
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          ISSUE_NUMBER=$(gh issue list \
+            --repo "${{ github.repository }}" \
+            --label "security" \
+            --state open \
+            --json number \
+            --jq '.[0].number // empty')
+          echo "number=${ISSUE_NUMBER}" >> $GITHUB_OUTPUT
+
+      - name: Create new issue
+        if: steps.existing.outputs.number == ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh issue create \
+            --repo "${{ github.repository }}" \
+            --title "Security: vulnerabilities found in weekly scan ($(date -u '+%Y-%m-%d'))" \
+            --body "${{ steps.body.outputs.body }}" \
+            --label "security"
+
+      - name: Comment on existing issue
+        if: steps.existing.outputs.number != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh issue comment "${{ steps.existing.outputs.number }}" \
+            --repo "${{ github.repository }}" \
+            --body "${{ steps.body.outputs.body }}"

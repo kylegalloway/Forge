@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 - Pinned `aquasecurity/trivy-action` from `@master` to `@0.35.0` in CI and release workflows to mitigate the March 2026 trivy supply chain attack (TeamPCP tag-poisoning incident)
+- Upgraded all `go.opentelemetry.io/otel` modules from `v1.38.0` to `v1.42.0` to fix CVE-2026-24051 (arbitrary code execution via PATH hijacking in the OTel SDK)
+- Added weekly security scan workflow (`.github/workflows/security-scan.yaml`) running govulncheck and Trivy, auto-creating a GitHub issue when vulnerabilities are found
 
 ## [0.11.19] - 2026-03-14
 

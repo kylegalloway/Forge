@@ -13,8 +13,9 @@ import (
 	"k8s.io/klog/v2"
 
 	"github.com/kylegalloway/forge/pkg/actions"
+	"github.com/kylegalloway/forge/pkg/actions/common"
 	"github.com/kylegalloway/forge/pkg/actions/validation"
-	"github.com/kylegalloway/forge/pkg/apis/common"
+	apiscommon "github.com/kylegalloway/forge/pkg/apis/common"
 	udsv1alpha3 "github.com/kylegalloway/forge/pkg/apis/uds/v1alpha3"
 	"github.com/kylegalloway/forge/pkg/constants"
 	"github.com/kylegalloway/forge/pkg/sources"
@@ -39,12 +40,11 @@ func NewCreateHandler(kubeClient kubernetes.Interface, metrics *telemetry.Metric
 
 // Execute performs a Create action for the given UDSBundleJob
 //
-// The artifactPVCName parameter enables multi-action job support (CreatePublish, CreateDeploy, etc.)
+// The opts.ArtifactPVCName field enables multi-action job support (CreatePublish, CreateDeploy, etc.)
 // by providing a shared PersistentVolumeClaim for artifacts. When set, create outputs are stored
 // in the PVC so subsequent actions (Publish/Deploy) can access them without re-creating.
-//
-// This matches the Zarf Build handler pattern and enables efficient action chaining.
-func (handler *CreateHandler) Execute(ctx context.Context, bundle *udsv1alpha3.UDSBundleJob, artifactPVCName string) (*actions.ActionResult, error) {
+func (handler *CreateHandler) Execute(ctx context.Context, bundle *udsv1alpha3.UDSBundleJob, opts common.ExecuteOptions) (*actions.ActionResult, error) {
+	artifactPVCName := opts.ArtifactPVCName
 	klog.InfoS("Executing UDS Bundle Create action", "name", bundle.Name, "namespace", bundle.Namespace, "artifactPVC", artifactPVCName)
 
 	handler.metrics.RecordBundleCreateStarted(ctx, bundle.Namespace, bundle.Name)
@@ -81,7 +81,7 @@ func (handler *CreateHandler) Execute(ctx context.Context, bundle *udsv1alpha3.U
 		regCredMount = constants.VolumeMountPathDockerConfigUDS
 	}
 
-	var createActionExtraMounts []common.ExtraMount
+	var createActionExtraMounts []apiscommon.ExtraMount
 	if bundle.Spec.Create != nil {
 		createActionExtraMounts = bundle.Spec.Create.ExtraMounts
 	}

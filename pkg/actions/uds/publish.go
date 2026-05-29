@@ -9,8 +9,9 @@ import (
 	"k8s.io/klog/v2"
 
 	"github.com/kylegalloway/forge/pkg/actions"
+	"github.com/kylegalloway/forge/pkg/actions/common"
 	"github.com/kylegalloway/forge/pkg/actions/validation"
-	"github.com/kylegalloway/forge/pkg/apis/common"
+	apiscommon "github.com/kylegalloway/forge/pkg/apis/common"
 	udsv1alpha3 "github.com/kylegalloway/forge/pkg/apis/uds/v1alpha3"
 	"github.com/kylegalloway/forge/pkg/constants"
 	"github.com/kylegalloway/forge/pkg/destinations"
@@ -36,10 +37,12 @@ func NewPublishHandler(kubeClient kubernetes.Interface, metrics *telemetry.Metri
 
 // Execute performs a Publish action for the given UDSBundleJob
 //
-// The artifactPath and artifactPVCName parameters enable multi-action job support (CreatePublish, etc.)
-// When artifactPVCName is set, the PVC is mounted and artifactPath specifies where to find the bundle.
+// opts.ArtifactPVCName enables multi-action job support (CreatePublish, etc.).
+// When set, the PVC is mounted and opts.ArtifactPath specifies where to find the bundle.
 // When empty, assumes standalone publish with bundle source in workspace or from spec.
-func (handler *PublishHandler) Execute(ctx context.Context, bundle *udsv1alpha3.UDSBundleJob, artifactPath, artifactPVCName string) (*actions.ActionResult, error) {
+func (handler *PublishHandler) Execute(ctx context.Context, bundle *udsv1alpha3.UDSBundleJob, opts common.ExecuteOptions) (*actions.ActionResult, error) {
+	artifactPath := opts.ArtifactPath
+	artifactPVCName := opts.ArtifactPVCName
 	klog.InfoS("Executing UDS Bundle Publish action", "name", bundle.Name, "namespace", bundle.Namespace, "artifactPath", artifactPath, "artifactPVC", artifactPVCName)
 
 	handler.metrics.RecordBundlePublishStarted(ctx, bundle.Namespace, bundle.Name)
@@ -80,7 +83,7 @@ func (handler *PublishHandler) Execute(ctx context.Context, bundle *udsv1alpha3.
 		}
 	}
 
-	var publishActionExtraMounts []common.ExtraMount
+	var publishActionExtraMounts []apiscommon.ExtraMount
 	if bundle.Spec.Publish != nil {
 		publishActionExtraMounts = bundle.Spec.Publish.ExtraMounts
 	}

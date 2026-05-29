@@ -39,7 +39,7 @@ jobs:
               "${{ github.event.pull_request.head.sha }}")
           else
             BEFORE="${{ github.event.before }}"
-            if [ "$BEFORE" = "0000000000000000000000000000000000000000" ]; then
+            if [ "$BEFORE" = "0000000000000000000000000000000000000000" ] || ! git cat-file -e "$BEFORE" 2>/dev/null; then
               FILES=$(git ls-tree -r --name-only HEAD)
             else
               FILES=$(git diff --name-only "$BEFORE" "${{ github.sha }}")

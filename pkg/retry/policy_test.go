@@ -4,9 +4,6 @@ import (
 	"regexp"
 	"testing"
 	"time"
-
-	udsv1alpha3 "github.com/kylegalloway/forge/pkg/apis/uds/v1alpha3"
-	zarfv1alpha3 "github.com/kylegalloway/forge/pkg/apis/zarf/v1alpha3"
 )
 
 // ptr32 returns a pointer to an int32 value.
@@ -303,22 +300,21 @@ func TestCompileGlobPattern_ValidPattern(t *testing.T) {
 }
 
 // -------------------------
-// ParseZarfPolicy
+// ParsePolicy
 // -------------------------
 
-// TestParseZarfPolicy_Nil verifies that a nil API policy returns nil, nil.
-func TestParseZarfPolicy_Nil(t *testing.T) {
-	p, err := ParseZarfPolicy(nil)
+// TestParsePolicy_Nil verifies that a nil spec returns nil, nil.
+func TestParsePolicy_Nil(t *testing.T) {
+	p, err := ParsePolicy(nil)
 	if err != nil || p != nil {
-		t.Errorf("ParseZarfPolicy(nil): got (%v, %v), want (nil, nil)", p, err)
+		t.Errorf("ParsePolicy(nil): got (%v, %v), want (nil, nil)", p, err)
 	}
 }
 
-// TestParseZarfPolicy_Defaults verifies that an empty API policy populates
+// TestParsePolicy_Defaults verifies that an empty PolicySpec populates
 // the expected default values.
-func TestParseZarfPolicy_Defaults(t *testing.T) {
-	apiPolicy := &zarfv1alpha3.RetryPolicy{}
-	p, err := ParseZarfPolicy(apiPolicy)
+func TestParsePolicy_Defaults(t *testing.T) {
+	p, err := ParsePolicy(&PolicySpec{})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -340,19 +336,16 @@ func TestParseZarfPolicy_Defaults(t *testing.T) {
 	}
 }
 
-// TestParseZarfPolicy_CustomValues verifies that explicit API fields override
-// the defaults.
-func TestParseZarfPolicy_CustomValues(t *testing.T) {
+// TestParsePolicy_CustomValues verifies that explicit fields override defaults.
+func TestParsePolicy_CustomValues(t *testing.T) {
 	multiplier := int32(300) // 3.0x (value / 100)
-	apiPolicy := &zarfv1alpha3.RetryPolicy{
+	p, err := ParsePolicy(&PolicySpec{
 		MaxRetries:        ptr32(5),
 		InitialBackoff:    "10s",
 		MaxBackoff:        "2m",
 		BackoffMultiplier: &multiplier,
 		RetryableErrors:   []string{"*timeout*", "*throttl*"},
-	}
-
-	p, err := ParseZarfPolicy(apiPolicy)
+	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -374,34 +367,29 @@ func TestParseZarfPolicy_CustomValues(t *testing.T) {
 	}
 }
 
-// TestParseZarfPolicy_InvalidInitialBackoff verifies that a malformed
+// TestParsePolicy_InvalidInitialBackoff verifies that a malformed
 // initialBackoff duration string surfaces as an error.
-func TestParseZarfPolicy_InvalidInitialBackoff(t *testing.T) {
-	apiPolicy := &zarfv1alpha3.RetryPolicy{InitialBackoff: "not-a-duration"}
-	_, err := ParseZarfPolicy(apiPolicy)
+func TestParsePolicy_InvalidInitialBackoff(t *testing.T) {
+	_, err := ParsePolicy(&PolicySpec{InitialBackoff: "not-a-duration"})
 	if err == nil {
 		t.Error("expected error for invalid initialBackoff duration")
 	}
 }
 
-// TestParseZarfPolicy_InvalidMaxBackoff verifies that a malformed maxBackoff
+// TestParsePolicy_InvalidMaxBackoff verifies that a malformed maxBackoff
 // duration string surfaces as an error.
-func TestParseZarfPolicy_InvalidMaxBackoff(t *testing.T) {
-	apiPolicy := &zarfv1alpha3.RetryPolicy{MaxBackoff: "???"}
-	_, err := ParseZarfPolicy(apiPolicy)
+func TestParsePolicy_InvalidMaxBackoff(t *testing.T) {
+	_, err := ParsePolicy(&PolicySpec{MaxBackoff: "???"})
 	if err == nil {
 		t.Error("expected error for invalid maxBackoff duration")
 	}
 }
 
-// TestParseZarfPolicy_RetryableErrors_Compiled verifies that compiled error
-// patterns actually work end-to-end: a timeout error is retryable but a
-// permission error is not.
-func TestParseZarfPolicy_RetryableErrors_Compiled(t *testing.T) {
-	apiPolicy := &zarfv1alpha3.RetryPolicy{
-		RetryableErrors: []string{"*timeout*"},
-	}
-	p, err := ParseZarfPolicy(apiPolicy)
+// TestParsePolicy_RetryableErrors_Compiled verifies that compiled error
+// patterns work end-to-end: a timeout error is retryable but a permission
+// error is not.
+func TestParsePolicy_RetryableErrors_Compiled(t *testing.T) {
+	p, err := ParsePolicy(&PolicySpec{RetryableErrors: []string{"*timeout*"}})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -414,47 +402,17 @@ func TestParseZarfPolicy_RetryableErrors_Compiled(t *testing.T) {
 	}
 }
 
-// -------------------------
-// ParseUDSPolicy
-// -------------------------
-
-// TestParseUDSPolicy_Nil verifies that a nil UDS policy returns nil, nil.
-func TestParseUDSPolicy_Nil(t *testing.T) {
-	p, err := ParseUDSPolicy(nil)
-	if err != nil || p != nil {
-		t.Errorf("ParseUDSPolicy(nil): got (%v, %v), want (nil, nil)", p, err)
-	}
-}
-
-// TestParseUDSPolicy_Defaults mirrors the Zarf defaults test for the UDS path.
-func TestParseUDSPolicy_Defaults(t *testing.T) {
-	apiPolicy := &udsv1alpha3.RetryPolicy{}
-	p, err := ParseUDSPolicy(apiPolicy)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	if p.MaxRetries != 3 {
-		t.Errorf("MaxRetries: got %d, want 3", p.MaxRetries)
-	}
-	if p.BackoffMultiplier != 2.0 {
-		t.Errorf("BackoffMultiplier: got %v, want 2.0", p.BackoffMultiplier)
-	}
-}
-
-// TestParseUDSPolicy_CustomValues verifies that UDS-specific policy fields
-// are parsed with the same logic as the Zarf path.
-func TestParseUDSPolicy_CustomValues(t *testing.T) {
+// TestParsePolicy_LowMultiplier verifies that a 1.5x multiplier (int32(150))
+// is parsed correctly for the UDS use case.
+func TestParsePolicy_LowMultiplier(t *testing.T) {
 	multiplier := int32(150) // 1.5x
-	apiPolicy := &udsv1alpha3.RetryPolicy{
+	p, err := ParsePolicy(&PolicySpec{
 		MaxRetries:        ptr32(2),
 		InitialBackoff:    "5s",
 		MaxBackoff:        "1m",
 		BackoffMultiplier: &multiplier,
 		RetryableErrors:   []string{"*timeout*"},
-	}
-
-	p, err := ParseUDSPolicy(apiPolicy)
+	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -467,15 +425,5 @@ func TestParseUDSPolicy_CustomValues(t *testing.T) {
 	}
 	if p.BackoffMultiplier != 1.5 {
 		t.Errorf("BackoffMultiplier: got %v, want 1.5", p.BackoffMultiplier)
-	}
-}
-
-// TestParseUDSPolicy_InvalidBackoff verifies that malformed durations in the
-// UDS path surface as errors.
-func TestParseUDSPolicy_InvalidBackoff(t *testing.T) {
-	apiPolicy := &udsv1alpha3.RetryPolicy{InitialBackoff: "not-a-duration"}
-	_, err := ParseUDSPolicy(apiPolicy)
-	if err == nil {
-		t.Error("expected error for invalid initialBackoff duration")
 	}
 }

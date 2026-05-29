@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Tests for `pkg/retry/`: 41 new test cases covering `Policy.ShouldRetry` (count gating, pattern matching, zero-retries boundary), `Policy.CalculateBackoff` (initial value, multiplier progression, max cap), `ParseZarfPolicy` and `ParseUDSPolicy` (nil, defaults, custom values, invalid durations), glob-to-regex compilation (`*`, `?`, special characters, dot literals, case-insensitivity), `Tracker` state transitions (nil policy, fresh tracker, max retries, non-retryable errors), `BuildRetryStatus`, `ShouldRetryNow`, and `ExtractRetryCount`
+
 ### Changed
 - Extracted shared job-construction logic from six action handlers into `pkg/actions/executor.go`; each handler now supplies only the four values that vary (CLI image, container UID, CLI verb, timeout/retry source) and delegates the full Job-building pipeline to `BuildActionJob`
 - Absorbed constant `JobParams` fields into `BuildActionJob` defaults: `Command` is always `["/bin/sh", "-c"]` (override via `CommandOverride`), `WorkingDir` always defaults to the workspace mount path (override via `WorkingDirOverride`), TTL is always 3600 seconds, and `Resources` falls back to `DefaultResourceRequirements()` when unset; callers no longer copy-paste these constants

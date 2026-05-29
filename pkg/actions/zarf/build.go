@@ -8,9 +8,7 @@ import (
 	"context"
 	"fmt"
 
-	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog/v2"
 
@@ -51,159 +49,117 @@ func NewBuildHandler(kubeClient kubernetes.Interface, metrics *telemetry.Metrics
 // For the rationale behind this signature divergence, see:
 // docs/development/ARCHITECTURE.md#handler-signature-divergence
 func (handler *BuildHandler) Execute(ctx context.Context, pkg *zarfv1alpha3.ZarfPackageJob, artifactPVCName string) (*actions.ActionResult, error) {
-
 	klog.InfoS("Executing Zarf Package Build action", "name", pkg.Name, "namespace", pkg.Namespace, "artifactPVC", artifactPVCName)
 
-	// Record build started
 	handler.metrics.RecordPackageBuildStarted(ctx, pkg.Namespace, pkg.Name)
 
-	// Validate source is provided
 	if pkg.Spec.Source.Type == "" {
 		handler.metrics.RecordPackageBuildFailed(ctx, pkg.Namespace, pkg.Name)
 		return nil, fmt.Errorf("source type is required for Build action")
 	}
 
-	// Create Kubernetes Job to build the package
-	job, err := handler.createBuildJob(ctx, pkg, artifactPVCName)
+	zarfCmd, workingDir, err := handler.buildZarfCommand(pkg, artifactPVCName)
+	if err != nil {
+		handler.metrics.RecordPackageBuildFailed(ctx, pkg.Namespace, pkg.Name)
+		return nil, fmt.Errorf("failed to build zarf command: %w", err)
+	}
+
+	initContainers, err := buildZarfInitContainers(pkg)
+	if err != nil {
+		handler.metrics.RecordPackageBuildFailed(ctx, pkg.Namespace, pkg.Name)
+		return nil, fmt.Errorf("failed to build init containers: %w", err)
+	}
+
+	timeoutStr := ""
+	var maxRetries *int32
+	if pkg.Spec.Build != nil {
+		timeoutStr = pkg.Spec.Build.Timeout
+		if pkg.Spec.Build.Retry != nil {
+			maxRetries = pkg.Spec.Build.Retry.MaxRetries
+		}
+	}
+
+	var regCredSecret, regCredMount string                                    // pragma: allowlist secret
+	if pkg.Spec.Build != nil && pkg.Spec.Build.RegistryCredentialRef != nil { // pragma: allowlist secret
+		regCredSecret = pkg.Spec.Build.RegistryCredentialRef.Name // pragma: allowlist secret
+		regCredMount = constants.VolumeMountPathDockerConfig
+	}
+
+	var buildActionExtraMounts []common.ExtraMount
+	if pkg.Spec.Build != nil {
+		buildActionExtraMounts = pkg.Spec.Build.ExtraMounts
+	}
+	extraMounts, err := validation.MergeExtraMounts(pkg.Spec.ExtraMounts, buildActionExtraMounts)
+	if err != nil {
+		handler.metrics.RecordPackageBuildFailed(ctx, pkg.Namespace, pkg.Name)
+		return nil, fmt.Errorf("invalid extraMounts: %w", err)
+	}
+
+	ociCredSecret, s3CredVol, gitCredVol := zarfSourceCredentialVolumes(pkg.Spec.Source)
+
+	params := actions.JobParams{
+		JobName:       fmt.Sprintf("%s-build", pkg.Name),
+		Namespace:     pkg.Namespace,
+		CLIImage:      constants.ZarfCLIImage,
+		ContainerUID:  constants.DefaultZarfUID,
+		ContainerName: constants.ContainerNameZarfBuild,
+		Command:       []string{"/bin/sh", "-c"},
+		Args:          []string{zarfCmd},
+		WorkingDir:    workingDir,
+		Labels: map[string]string{
+			constants.LabelApp:     constants.LabelAppValueZarf,
+			"resource-type":        "zarfpackagejob",
+			constants.LabelPackage: pkg.Name,
+			constants.LabelAction:  constants.ActionBuild,
+		},
+		OwnerRef:              pkg,
+		OwnerGVK:              zarfv1alpha3.SchemeGroupVersion.WithKind("ZarfPackageJob"),
+		NodeSelector:          pkg.Spec.NodeSelector,
+		Affinity:              pkg.Spec.Affinity,
+		Tolerations:           pkg.Spec.Tolerations,
+		Resources:             getResources(pkg.Spec.Resources, actions.BuildResourceRequirements),
+		MaxRetries:            maxRetries,
+		Timeout:               actions.ParseTimeoutWithDefault(timeoutStr, constants.DefaultBuildTimeout),
+		VolumeSizes:           pkg.Spec.VolumeSizes,
+		ArtifactPVCName:       artifactPVCName,
+		InitContainers:        initContainers,
+		SourceOCICredSecret:   ociCredSecret,
+		SourceS3CredVol:       s3CredVol,
+		SourceGitCredVol:      gitCredVol,
+		RegistryCredSecret:    regCredSecret, // pragma: allowlist secret
+		RegistryCredMountPath: regCredMount,
+		ExtraMounts:           extraMounts,
+		ServiceAccountName:    pkg.Spec.ServiceAccountName,
+		DebugMode:             actions.ShouldDebugAction(pkg.GetDebugMode() || constants.DebugMode, pkg.GetDebugActions(), constants.ActionBuild),
+		KubeClient:            handler.kubeClient,
+	}
+
+	job, err := actions.BuildActionJob(ctx, params)
 	if err != nil {
 		handler.metrics.RecordPackageBuildFailed(ctx, pkg.Namespace, pkg.Name)
 		return nil, fmt.Errorf("failed to create build job: %w", err)
 	}
 
-	// Record Job creation
 	handler.metrics.RecordJobCreated(ctx, pkg.Namespace, pkg.Name, "build")
-
 	klog.InfoS("Zarf package build job created", "name", pkg.Name, "job", job.Name)
 
-	result := &actions.ActionResult{
-		JobName:   job.Name,
-		Phase:     constants.PhaseRunning,
-		Message:   fmt.Sprintf("Build job %s created", job.Name),
-		StartTime: metav1.Now(),
-		Completed: false,
-	}
-
-	return result, nil
-}
-
-// createBuildJob creates a Kubernetes Job to build a Zarf package
-func (handler *BuildHandler) createBuildJob(ctx context.Context, pkg *zarfv1alpha3.ZarfPackageJob, artifactPVCName string) (*batchv1.Job, error) {
-	jobName := fmt.Sprintf("%s-build", pkg.Name)
-
-	// Build zarf command based on source type and artifact PVC
-	zarfCmd, workingDir, err := handler.buildZarfCommand(pkg, artifactPVCName)
-	if err != nil {
-		return nil, fmt.Errorf("failed to build zarf command: %w", err)
-	}
-
-	// Build init containers
-	initContainers, err := handler.buildInitContainers(pkg)
-	if err != nil {
-		return nil, fmt.Errorf("failed to build init containers: %w", err)
-	}
-
-	// Determine timeout and retry policy
-	timeoutStr := ""
-	var retryPolicy *zarfv1alpha3.RetryPolicy
-	if pkg.Spec.Build != nil {
-		timeoutStr = pkg.Spec.Build.Timeout
-		retryPolicy = pkg.Spec.Build.Retry
-	}
-	activeDeadlineSeconds := actions.ParseTimeoutWithDefault(timeoutStr, constants.DefaultBuildTimeout)
-
-	// Build Job using JobBuilder
-	builder := actions.NewJobBuilder(jobName, pkg.Namespace).
-		WithKubeClient(handler.kubeClient).
-		WithOwnerReference(pkg, zarfv1alpha3.SchemeGroupVersion.WithKind("ZarfPackageJob")).
-		WithLabels(map[string]string{
-			constants.LabelApp:     constants.LabelAppValueZarf,
-			"resource-type":        "zarfpackagejob",
-			constants.LabelPackage: pkg.Name,
-			constants.LabelAction:  constants.ActionBuild,
-		}).
-		WithContainerImage(constants.ZarfCLIImage).
-		WithContainerName(constants.ContainerNameZarfBuild).
-		WithCommand([]string{"/bin/sh", "-c"}).
-		WithArgs([]string{zarfCmd}).
-		WithWorkingDir(workingDir).
-		WithUserConfig(constants.DefaultZarfUID).
-		WithResources(handler.getResources(pkg)).
-		WithNodeSelector(pkg.Spec.NodeSelector).
-		WithAffinity(pkg.Spec.Affinity).
-		WithTolerations(pkg.Spec.Tolerations).
-		WithZarfRetryPolicy(retryPolicy).
-		WithActiveDeadlineSeconds(activeDeadlineSeconds).
-		WithTTLSecondsAfterFinished(3600).
-		WithInitContainers(initContainers).
-		WithWorkspaceVolume(pkg.Spec.VolumeSizes).
-		WithArtifactPVC(artifactPVCName).
-		WithServiceAccountName(pkg.Spec.ServiceAccountName).
-		WithDebugMode(actions.ShouldDebugAction(pkg.GetDebugMode() || constants.DebugMode, pkg.GetDebugActions(), constants.ActionBuild))
-
-	// Add docker-config volume if OCI source with credentials
-	if pkg.Spec.Source.Type == zarfv1alpha3.SourceTypeOCI && pkg.Spec.Source.OCI != nil && pkg.Spec.Source.OCI.CredentialRef != nil { // pragma: allowlist secret
-		builder.WithDockerConfigSecret(pkg.Spec.Source.OCI.CredentialRef.Name) // pragma: allowlist secret
-	}
-
-	// Add S3 credentials volume if S3 source with file credentials
-	if pkg.Spec.Source.Type == zarfv1alpha3.SourceTypeS3 && pkg.Spec.Source.S3 != nil {
-		if vol := sources.GetS3CredentialVolume(pkg.Spec.Source.S3.CredentialRef); vol != nil { // pragma: allowlist secret
-			builder.WithCustomVolume(*vol)
-		}
-	}
-
-	// Add git credentials volume if Git source with credentials
-	if pkg.Spec.Source.Type == zarfv1alpha3.SourceTypeGit && pkg.Spec.Source.Git != nil {
-		if vol := sources.GetGitCredentialVolume(pkg.Spec.Source.Git.CredentialRef, pkg.Spec.Source.Git.DisableCloneCredentials); vol != nil { // pragma: allowlist secret
-			builder.WithCustomVolume(*vol)
-		}
-	}
-
-	// Add registry credentials for pulling images during build
-	if pkg.Spec.Build != nil && pkg.Spec.Build.RegistryCredentialRef != nil { // pragma: allowlist secret
-		builder.WithRegistryCredentials(pkg.Spec.Build.RegistryCredentialRef.Name, constants.VolumeMountPathDockerConfig) // pragma: allowlist secret
-	}
-
-	// Add extra mounts (merged: spec-level + build-level)
-	var buildExtraMounts []common.ExtraMount
-	if pkg.Spec.Build != nil {
-		buildExtraMounts = pkg.Spec.Build.ExtraMounts
-	}
-	extraMounts, err := validation.MergeExtraMounts(pkg.Spec.ExtraMounts, buildExtraMounts)
-	if err != nil {
-		return nil, fmt.Errorf("invalid extraMounts: %w", err)
-	}
-	builder.WithExtraMounts(extraMounts)
-
-	// Create or get the job
-	job, err := builder.CreateOrGet(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create job: %w", err)
-	}
-
-	return job, nil
+	return actions.ActionResultFromJob(job, fmt.Sprintf("Build job %s created", job.Name)), nil
 }
 
 // buildZarfCommand builds the zarf CLI command based on package source
 func (handler *BuildHandler) buildZarfCommand(pkg *zarfv1alpha3.ZarfPackageJob, artifactPVCName string) (string, string, error) {
 	workingDir := constants.VolumeMountPathWorkspace
 
-	// Build command - output to /artifacts if PVC exists, otherwise /output
 	var cmd string
 	if artifactPVCName != "" {
-		// Multi-action job: output to shared PVC directory
-		// Zarf will generate filename based on package metadata
 		cmd = "zarf package create . --confirm --output-directory " + constants.VolumeMountPathArtifacts
 	} else {
-		// Standalone build: output to EmptyDir
 		cmd = "zarf package create . --confirm --output-directory " + constants.VolumeMountPathOutput
 	}
 
-	// Add structured flags and variables if specified in Build config
 	if pkg.Spec.Build != nil {
 		build := pkg.Spec.Build
 
-		// Structured flags
 		if build.Flavor != "" {
 			cmd = fmt.Sprintf("%s --flavor %s", cmd, build.Flavor)
 		}
@@ -214,12 +170,10 @@ func (handler *BuildHandler) buildZarfCommand(pkg *zarfv1alpha3.ZarfPackageJob, 
 			cmd = fmt.Sprintf("%s --skip-sbom", cmd)
 		}
 
-		// Variables
 		for key, value := range build.Variables {
 			cmd = fmt.Sprintf("%s --set %s=%s", cmd, key, value)
 		}
 
-		// ExtraArgs (validated and shell-escaped)
 		if len(build.ExtraArgs) > 0 {
 			var err error
 			cmd, err = validation.AppendExtraArgs(cmd, build.ExtraArgs)
@@ -232,8 +186,8 @@ func (handler *BuildHandler) buildZarfCommand(pkg *zarfv1alpha3.ZarfPackageJob, 
 	return cmd, workingDir, nil
 }
 
-// buildInitContainers creates init containers for source artifact retrieval
-func (handler *BuildHandler) buildInitContainers(pkg *zarfv1alpha3.ZarfPackageJob) ([]corev1.Container, error) {
+// buildZarfInitContainers creates init containers for Zarf source artifact retrieval
+func buildZarfInitContainers(pkg *zarfv1alpha3.ZarfPackageJob) ([]corev1.Container, error) {
 	sourceHandler, err := sources.New(pkg)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create source handler: %w", err)
@@ -251,15 +205,36 @@ func (handler *BuildHandler) buildInitContainers(pkg *zarfv1alpha3.ZarfPackageJo
 	return []corev1.Container{*container}, nil
 }
 
-// getResources returns resource requirements for the job pod
-// Uses spec.resources if provided, otherwise falls back to sensible defaults
-func (handler *BuildHandler) getResources(pkg *zarfv1alpha3.ZarfPackageJob) corev1.ResourceRequirements {
-	// If custom resources specified, use them
-	if pkg.Spec.Resources != nil {
-		return *pkg.Spec.Resources
+// zarfSourceCredentialVolumes returns the source credential volumes for a Zarf package source.
+// Returns (ociCredSecret, s3CredVol, gitCredVol).
+func zarfSourceCredentialVolumes(src zarfv1alpha3.PackageSource) (string, *corev1.Volume, *corev1.Volume) {
+	var ociCredSecret string
+	var s3CredVol, gitCredVol *corev1.Volume
+
+	if src.Type == zarfv1alpha3.SourceTypeOCI && src.OCI != nil && src.OCI.CredentialRef != nil { // pragma: allowlist secret
+		ociCredSecret = src.OCI.CredentialRef.Name // pragma: allowlist secret
 	}
 
-	// Default resources for build jobs
-	// Standardized with UDS Create (both create artifacts)
-	return actions.BuildResourceRequirements()
+	if src.Type == zarfv1alpha3.SourceTypeS3 && src.S3 != nil {
+		if vol := sources.GetS3CredentialVolume(src.S3.CredentialRef); vol != nil { // pragma: allowlist secret
+			s3CredVol = vol
+		}
+	}
+
+	if src.Type == zarfv1alpha3.SourceTypeGit && src.Git != nil {
+		if vol := sources.GetGitCredentialVolume(src.Git.CredentialRef, src.Git.DisableCloneCredentials); vol != nil { // pragma: allowlist secret
+			gitCredVol = vol
+		}
+	}
+
+	return ociCredSecret, s3CredVol, gitCredVol
+}
+
+// getResources returns resource requirements, using spec-provided resources if set,
+// or falling back to the provided default function.
+func getResources(specResources *corev1.ResourceRequirements, defaultFn func() corev1.ResourceRequirements) corev1.ResourceRequirements {
+	if specResources != nil {
+		return *specResources
+	}
+	return defaultFn()
 }

@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - Extracted shared job-construction logic from six action handlers into `pkg/actions/executor.go`; each handler now supplies only the four values that vary (CLI image, container UID, CLI verb, timeout/retry source) and delegates the full Job-building pipeline to `BuildActionJob`
+- Webhook validators (`ZarfPackageJobValidator`, `UDSBundleJobValidator`) now accept `audit.Trail` as a constructor parameter instead of constructing `AuditTrail` internally; adds `audit.NoopAuditTrail` for unit tests that removes the live Kubernetes API server requirement
 
 ## [0.11.20] - 2026-03-23
 

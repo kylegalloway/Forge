@@ -23,6 +23,7 @@ import (
 
 	udsv1alpha3 "github.com/kylegalloway/forge/pkg/apis/uds/v1alpha3"
 	zarfv1alpha3 "github.com/kylegalloway/forge/pkg/apis/zarf/v1alpha3"
+	"github.com/kylegalloway/forge/pkg/audit"
 	"github.com/kylegalloway/forge/pkg/constants"
 	"github.com/kylegalloway/forge/pkg/logging"
 	"github.com/kylegalloway/forge/pkg/webhook"
@@ -70,9 +71,10 @@ func main() {
 		klog.Fatalf("Failed to create Kubernetes client: %v", err)
 	}
 
-	// Create validators
-	zarfValidator := webhook.NewZarfPackageJobValidator(kubeClient)
-	udsValidator := webhook.NewUDSBundleJobValidator(kubeClient)
+	// Create shared audit trail and validators
+	auditTrail := audit.NewAuditTrail(kubeClient, audit.DefaultConfig())
+	zarfValidator := webhook.NewZarfPackageJobValidator(kubeClient, auditTrail)
+	udsValidator := webhook.NewUDSBundleJobValidator(kubeClient, auditTrail)
 
 	// Create webhook server
 	server := &WebhookServer{

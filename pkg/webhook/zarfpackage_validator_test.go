@@ -18,8 +18,8 @@ func TestNewZarfPackageJobValidator(t *testing.T) {
 	if validator == nil {
 		t.Fatal("NewZarfPackageJobValidator returned nil")
 	}
-	if validator.kubeClient == nil {
-		t.Error("kubeClient not set")
+	if validator.pv == nil {
+		t.Error("permission validator not set")
 	}
 }
 
@@ -126,7 +126,7 @@ func TestValidateAction(t *testing.T) {
 			annotations:   map[string]string{},
 			action:        zarfv1alpha3.ActionBuild,
 			wantErr:       true,
-			errorContains: "no allowed-actions annotation",
+			errorContains: "no forge.dev/allowed-actions annotation",
 		},
 		{
 			name: "compound action allowed",
@@ -376,7 +376,7 @@ func TestValidateDeploy(t *testing.T) {
 				Target: zarfv1alpha3.DeployTargetInCluster,
 			},
 			wantErr:       true,
-			errorContains: "no allowed-deploy-targets annotation",
+			errorContains: "no forge.dev/allowed-deploy-targets annotation",
 		},
 	}
 
@@ -427,9 +427,9 @@ func TestGetAnnotation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := getAnnotation(sa, tt.key)
+			result := GetAnnotation(sa, tt.key)
 			if result != tt.expected {
-				t.Errorf("getAnnotation() = %q, want %q", result, tt.expected)
+				t.Errorf("GetAnnotation() = %q, want %q", result, tt.expected)
 			}
 		})
 	}
@@ -441,9 +441,9 @@ func TestGetAnnotation(t *testing.T) {
 			Namespace: "default",
 		},
 	}
-	result := getAnnotation(saNil, "key1")
+	result := GetAnnotation(saNil, "key1")
 	if result != "" {
-		t.Errorf("getAnnotation() with nil annotations = %q, want empty string", result)
+		t.Errorf("GetAnnotation() with nil annotations = %q, want empty string", result)
 	}
 }
 
@@ -467,9 +467,9 @@ func TestMatchesGlob(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := matchesGlob(tt.value, tt.patterns)
+			result := MatchesGlob(tt.value, tt.patterns)
 			if result != tt.want {
-				t.Errorf("matchesGlob(%q, %q) = %v, want %v", tt.value, tt.patterns, result, tt.want)
+				t.Errorf("MatchesGlob(%q, %q) = %v, want %v", tt.value, tt.patterns, result, tt.want)
 			}
 		})
 	}
@@ -570,10 +570,10 @@ func TestValidateSource_UnknownType(t *testing.T) {
 
 func TestMatchesGlob_InvalidPattern(t *testing.T) {
 	// Test with an invalid glob pattern (malformed bracket expression)
-	result := matchesGlob("test-value", "[invalid")
+	result := MatchesGlob("test-value", "[invalid")
 	// Invalid patterns should not match
 	if result {
-		t.Error("matchesGlob() with invalid pattern should return false")
+		t.Error("MatchesGlob() with invalid pattern should return false")
 	}
 }
 

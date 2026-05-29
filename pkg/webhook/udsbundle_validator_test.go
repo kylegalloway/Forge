@@ -18,8 +18,8 @@ func TestNewUDSBundleJobValidator(t *testing.T) {
 	if validator == nil {
 		t.Fatal("NewUDSBundleJobValidator returned nil")
 	}
-	if validator.kubeClient == nil {
-		t.Error("kubeClient not set")
+	if validator.pv == nil {
+		t.Error("permission validator not set")
 	}
 }
 
@@ -126,7 +126,7 @@ func TestValidateUDSAction(t *testing.T) {
 			annotations:   map[string]string{},
 			action:        udsv1alpha3.ActionCreate,
 			wantErr:       true,
-			errorContains: "no allowed-actions annotation",
+			errorContains: "no forge.dev/allowed-actions annotation",
 		},
 		{
 			name: "compound action allowed",
@@ -376,7 +376,7 @@ func TestValidateUDSBundleDeploy(t *testing.T) {
 				Target: udsv1alpha3.DeployTargetInCluster,
 			},
 			wantErr:       true,
-			errorContains: "no allowed-deploy-targets annotation",
+			errorContains: "no forge.dev/allowed-deploy-targets annotation",
 		},
 	}
 

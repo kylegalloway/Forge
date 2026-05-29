@@ -7,7 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Tests for `pkg/retry/`: 37 new test cases covering `Policy.ShouldRetry` (count gating, pattern matching, zero-retries boundary), `Policy.CalculateBackoff` (initial value, multiplier progression, max cap), `ParsePolicy` (nil, defaults, custom values, invalid durations), glob-to-regex compilation (`*`, `?`, special characters, dot literals, case-insensitivity), `Tracker` state transitions (nil policy, fresh tracker, max retries, non-retryable errors), `BuildRetryStatus`, `ShouldRetryNow`, and `ExtractRetryCount`
+
 ### Changed
+- Extracted shared permission-validation chain from `ZarfPackageJobValidator` and `UDSBundleJobValidator` into a single `PermissionValidator` in `pkg/webhook/permission_validator.go`; each CRD-specific validator is now a thin adapter that supplies a `SpecFacade` interface and a `ValidateExtraArgs` hook for type-specific fields (UDS `preTasks`); the ~400 lines of duplicated validation logic (action → source → extraArgs → publish → deploy) now live in one place
+- Replaced `ParseZarfPolicy` and `ParseUDSPolicy` in `pkg/retry/policy.go` with a single `ParsePolicy(*PolicySpec)` function; callers in `pkg/controller/generic_monitor.go` now build a `retry.PolicySpec` directly from the unstructured map, eliminating the duplicate resource-type branch and the two CRD-specific imports from the retry package
 - Extracted shared job-construction logic from six action handlers into `pkg/actions/executor.go`; each handler now supplies only the four values that vary (CLI image, container UID, CLI verb, timeout/retry source) and delegates the full Job-building pipeline to `BuildActionJob`
 - Absorbed constant `JobParams` fields into `BuildActionJob` defaults: `Command` is always `["/bin/sh", "-c"]` (override via `CommandOverride`), `WorkingDir` always defaults to the workspace mount path (override via `WorkingDirOverride`), TTL is always 3600 seconds, and `Resources` falls back to `DefaultResourceRequirements()` when unset; callers no longer copy-paste these constants
 - Webhook validators (`ZarfPackageJobValidator`, `UDSBundleJobValidator`) now accept `audit.Trail` as a constructor parameter instead of constructing `AuditTrail` internally; adds `audit.NoopAuditTrail` for unit tests that removes the live Kubernetes API server requirement

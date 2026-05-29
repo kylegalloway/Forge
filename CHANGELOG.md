@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - `pkg/retry/policy_test.go` referenced the deleted `ParseZarfPolicy` and `ParseUDSPolicy` functions; updated all test cases to use the unified `ParsePolicy(*PolicySpec)` introduced in the PR 8 refactor; removed the now-unnecessary `zarfv1alpha3` and `udsv1alpha3` imports from the test file
+- CI workflow no longer triggers on every push to `main`/`develop`; post-merge runs were duplicating the pre-merge PR check since branch protection enforces up-to-date branches; CI now runs on `pull_request` and on `v*` tag pushes (releases) only
 
 ### Changed
 - Extracted shared permission-validation chain from `ZarfPackageJobValidator` and `UDSBundleJobValidator` into a single `PermissionValidator` in `pkg/webhook/permission_validator.go`; each CRD-specific validator is now a thin adapter that supplies a `SpecFacade` interface and a `ValidateExtraArgs` hook for type-specific fields (UDS `preTasks`); the ~400 lines of duplicated validation logic (action → source → extraArgs → publish → deploy) now live in one place

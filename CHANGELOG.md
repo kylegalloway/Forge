@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Extracted shared job-construction logic from six action handlers into `pkg/actions/executor.go`; each handler now supplies only the four values that vary (CLI image, container UID, CLI verb, timeout/retry source) and delegates the full Job-building pipeline to `BuildActionJob`
+
 ## [0.11.20] - 2026-03-23
 
 ### Security

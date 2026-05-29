@@ -52,13 +52,19 @@ func (handler *PublishHandler) Execute(ctx context.Context, bundle *udsv1alpha3.
 		return nil, fmt.Errorf("publish destination is required for Publish action")
 	}
 
-	udsCmd, err := handler.buildPublishCommand(bundle, artifactPath)
+	destParams, err := destinations.DestinationParamsFromUDS(bundle)
+	if err != nil {
+		handler.metrics.RecordBundlePublishFailed(ctx, bundle.Namespace, bundle.Name)
+		return nil, fmt.Errorf("failed to build destination params: %w", err)
+	}
+
+	udsCmd, err := handler.buildPublishCommand(destParams, artifactPath)
 	if err != nil {
 		handler.metrics.RecordBundlePublishFailed(ctx, bundle.Namespace, bundle.Name)
 		return nil, fmt.Errorf("failed to build publish command: %w", err)
 	}
 
-	jobConfig, err := destinations.GetUDSJobConfiguration(bundle)
+	jobConfig, err := destinations.GetJobConfiguration(destParams)
 	if err != nil {
 		handler.metrics.RecordBundlePublishFailed(ctx, bundle.Namespace, bundle.Name)
 		return nil, fmt.Errorf("failed to get job configuration: %w", err)
@@ -146,19 +152,23 @@ func (handler *PublishHandler) Execute(ctx context.Context, bundle *udsv1alpha3.
 	return actions.ActionResultFromJob(job, fmt.Sprintf("Bundle publish job %s created", job.Name)), nil
 }
 
-// buildPublishCommand builds the UDS CLI publish command
-func (handler *PublishHandler) buildPublishCommand(bundle *udsv1alpha3.UDSBundleJob, artifactPath string) (string, error) {
+// buildPublishCommand builds the UDS CLI publish command from pre-built destination params.
+func (handler *PublishHandler) buildPublishCommand(destParams destinations.DestinationParams, artifactPath string) (string, error) {
 	bundlePath := artifactPath
 	if bundlePath == "" {
 		bundlePath = constants.VolumeMountPathWorkspace + "/*.tar.zst"
 	}
-
-	return destinations.GetUDSPublishCommand(bundle, bundlePath)
+	return destinations.GetPublishCommand(destParams, bundlePath)
 }
 
 // buildInitContainers creates init containers for artifact retrieval (for standalone publish)
 func (handler *PublishHandler) buildInitContainers(bundle *udsv1alpha3.UDSBundleJob) ([]corev1.Container, error) {
-	container, err := sources.GetUDSInitContainer(bundle)
+	params, err := sources.SourceParamsFromUDS(bundle)
+	if err != nil {
+		return nil, fmt.Errorf("failed to build source params: %w", err)
+	}
+
+	container, err := sources.GetInitContainer(params)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get init container: %w", err)
 	}

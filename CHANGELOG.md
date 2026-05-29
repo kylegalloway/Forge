@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-05-29
+
 ### Added
 - Tests for `pkg/retry/`: 41 new test cases covering `Policy.ShouldRetry` (count gating, pattern matching, zero-retries boundary), `Policy.CalculateBackoff` (initial value, multiplier progression, max cap), `ParsePolicy` (nil, defaults, custom values, invalid durations, 1.5x multiplier), glob-to-regex compilation (`*`, `?`, special characters, dot literals, case-insensitivity), `Tracker` state transitions (nil policy, fresh tracker, max retries, non-retryable errors), `BuildRetryStatus`, `ShouldRetryNow`, and `ExtractRetryCount`
 
@@ -765,7 +767,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial project setup and build infrastructure
 - CI/CD pipeline configuration for automated testing and releases
 
-[Unreleased]: https://github.com/kylegalloway/forge/compare/v0.11.20...HEAD
+[Unreleased]: https://github.com/kylegalloway/forge/compare/v0.12.0...HEAD
+[0.12.0]: https://github.com/kylegalloway/forge/compare/v0.11.20...v0.12.0
 [0.11.20]: https://github.com/kylegalloway/forge/compare/v0.11.19...v0.11.20
 [0.11.19]: https://github.com/kylegalloway/forge/compare/v0.11.18...v0.11.19
 [0.11.18]: https://github.com/kylegalloway/forge/compare/v0.11.17...v0.11.18

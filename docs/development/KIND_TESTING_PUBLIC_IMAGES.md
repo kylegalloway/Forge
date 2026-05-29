@@ -116,7 +116,7 @@ Expected output:
 
 ```text
 NAME            CHART VERSION   APP VERSION     DESCRIPTION
-forge/forge     0.1.2           v0.11.20          A Helm chart for deploying Forge - a Kubernetes...
+forge/forge     0.1.2           v0.12.0          A Helm chart for deploying Forge - a Kubernetes...
 ```
 
 ### 3. Install Forge
@@ -152,8 +152,8 @@ This installs Forge using the latest published images from `ghcr.io/kylegalloway
 **Images used:**
 - Controller: `ghcr.io/kylegalloway/forge/forge-controller:latest`
 - Webhook: `ghcr.io/kylegalloway/forge/forge-webhook:latest`
-- Zarf Package Job: `ghcr.io/kylegalloway/forge/zarfpackagejob:v0.11.20` (used by ZarfPackageJobs)
-- UDS Bundle Job: `ghcr.io/kylegalloway/forge/udsbundlejob:v0.11.20` (used by UDSBundleJobs)
+- Zarf Package Job: `ghcr.io/kylegalloway/forge/zarfpackagejob:v0.12.0` (used by ZarfPackageJobs)
+- UDS Bundle Job: `ghcr.io/kylegalloway/forge/udsbundlejob:v0.12.0` (used by UDSBundleJobs)
 
 **To install a specific version:**
 
@@ -163,11 +163,11 @@ helm search repo forge/forge --versions
 
 # Install specific version
 helm install forge forge/forge \
-  --version 0.11.20 \
+  --version 0.12.0 \
   --namespace forge-system \
   --create-namespace \
-  --set controller.image.tag=v0.11.20 \
-  --set webhook.image.tag=v0.11.20 \
+  --set controller.image.tag=v0.12.0 \
+  --set webhook.image.tag=v0.12.0 \
   --wait
 ```
 
@@ -224,16 +224,16 @@ Forge requires containerized CLI images for build and deploy operations:
 
 ```bash
 # Using Docker
-docker pull ghcr.io/kylegalloway/forge/zarfpackagejob:v0.11.20
-docker pull ghcr.io/kylegalloway/forge/udsbundlejob:v0.11.20
-kind load docker-image ghcr.io/kylegalloway/forge/zarfpackagejob:v0.11.20 --name forge-test
-kind load docker-image ghcr.io/kylegalloway/forge/udsbundlejob:v0.11.20 --name forge-test
+docker pull ghcr.io/kylegalloway/forge/zarfpackagejob:v0.12.0
+docker pull ghcr.io/kylegalloway/forge/udsbundlejob:v0.12.0
+kind load docker-image ghcr.io/kylegalloway/forge/zarfpackagejob:v0.12.0 --name forge-test
+kind load docker-image ghcr.io/kylegalloway/forge/udsbundlejob:v0.12.0 --name forge-test
 
 # OR using Podman
-podman pull ghcr.io/kylegalloway/forge/zarfpackagejob:v0.11.20
-podman pull ghcr.io/kylegalloway/forge/udsbundlejob:v0.11.20
-podman save ghcr.io/kylegalloway/forge/zarfpackagejob:v0.11.20 -o /tmp/zarfpackagejob.tar
-podman save ghcr.io/kylegalloway/forge/udsbundlejob:v0.11.20 -o /tmp/udsbundlejob.tar
+podman pull ghcr.io/kylegalloway/forge/zarfpackagejob:v0.12.0
+podman pull ghcr.io/kylegalloway/forge/udsbundlejob:v0.12.0
+podman save ghcr.io/kylegalloway/forge/zarfpackagejob:v0.12.0 -o /tmp/zarfpackagejob.tar
+podman save ghcr.io/kylegalloway/forge/udsbundlejob:v0.12.0 -o /tmp/udsbundlejob.tar
 kind load image-archive /tmp/zarfpackagejob.tar --name forge-test
 kind load image-archive /tmp/udsbundlejob.tar --name forge-test
 rm /tmp/zarfpackagejob.tar /tmp/udsbundlejob.tar
@@ -248,16 +248,16 @@ git clone https://github.com/kylegalloway/forge.git
 cd forge
 
 # Using Docker
-docker build -t ghcr.io/kylegalloway/forge/zarfpackagejob:v0.11.20 images/zarfpackagejob/
-docker build -t ghcr.io/kylegalloway/forge/udsbundlejob:v0.11.20 images/udsbundlejob/
-kind load docker-image ghcr.io/kylegalloway/forge/zarfpackagejob:v0.11.20 --name forge-test
-kind load docker-image ghcr.io/kylegalloway/forge/udsbundlejob:v0.11.20 --name forge-test
+docker build -t ghcr.io/kylegalloway/forge/zarfpackagejob:v0.12.0 images/zarfpackagejob/
+docker build -t ghcr.io/kylegalloway/forge/udsbundlejob:v0.12.0 images/udsbundlejob/
+kind load docker-image ghcr.io/kylegalloway/forge/zarfpackagejob:v0.12.0 --name forge-test
+kind load docker-image ghcr.io/kylegalloway/forge/udsbundlejob:v0.12.0 --name forge-test
 
 # OR using Podman
-podman build -t ghcr.io/kylegalloway/forge/zarfpackagejob:v0.11.20 images/zarfpackagejob/
-podman build -t ghcr.io/kylegalloway/forge/udsbundlejob:v0.11.20 images/udsbundlejob/
-podman save ghcr.io/kylegalloway/forge/zarfpackagejob:v0.11.20 -o /tmp/zarfpackagejob.tar
-podman save ghcr.io/kylegalloway/forge/udsbundlejob:v0.11.20 -o /tmp/udsbundlejob.tar
+podman build -t ghcr.io/kylegalloway/forge/zarfpackagejob:v0.12.0 images/zarfpackagejob/
+podman build -t ghcr.io/kylegalloway/forge/udsbundlejob:v0.12.0 images/udsbundlejob/
+podman save ghcr.io/kylegalloway/forge/zarfpackagejob:v0.12.0 -o /tmp/zarfpackagejob.tar
+podman save ghcr.io/kylegalloway/forge/udsbundlejob:v0.12.0 -o /tmp/udsbundlejob.tar
 kind load image-archive /tmp/zarfpackagejob.tar --name forge-test
 kind load image-archive /tmp/udsbundlejob.tar --name forge-test
 rm /tmp/zarfpackagejob.tar /tmp/udsbundlejob.tar
@@ -290,8 +290,8 @@ docker exec -it forge-test-control-plane crictl images | grep -E "zarf|uds"
 Expected output:
 
 ```text
-ghcr.io/kylegalloway/forge/zarfpackagejob    v0.11.20    e8c96af1c3cbd    45MB
-ghcr.io/kylegalloway/forge/udsbundlejob    v0.11.20   a1b2c3d4e5f6g    50MB
+ghcr.io/kylegalloway/forge/zarfpackagejob    v0.12.0    e8c96af1c3cbd    45MB
+ghcr.io/kylegalloway/forge/udsbundlejob    v0.12.0   a1b2c3d4e5f6g    50MB
 ```
 
 ### 6. Run a Test Job
@@ -663,12 +663,12 @@ docker exec -it forge-test-control-plane crictl images | grep zarf
 
 # If missing, pull and load it
 # Using Docker
-docker pull ghcr.io/kylegalloway/forge/zarfpackagejob:v0.11.20
-kind load docker-image ghcr.io/kylegalloway/forge/zarfpackagejob:v0.11.20 --name forge-test
+docker pull ghcr.io/kylegalloway/forge/zarfpackagejob:v0.12.0
+kind load docker-image ghcr.io/kylegalloway/forge/zarfpackagejob:v0.12.0 --name forge-test
 
 # OR using Podman
-podman pull ghcr.io/kylegalloway/forge/zarfpackagejob:v0.11.20
-podman save ghcr.io/kylegalloway/forge/zarfpackagejob:v0.11.20 -o /tmp/zarfpackagejob.tar
+podman pull ghcr.io/kylegalloway/forge/zarfpackagejob:v0.12.0
+podman save ghcr.io/kylegalloway/forge/zarfpackagejob:v0.12.0 -o /tmp/zarfpackagejob.tar
 kind load image-archive /tmp/zarfpackagejob.tar --name forge-test
 rm /tmp/zarfpackagejob.tar
 ```

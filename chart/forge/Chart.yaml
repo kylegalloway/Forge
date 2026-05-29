@@ -2,8 +2,8 @@ apiVersion: v2
 name: forge
 description: A Helm chart for deploying Forge - a Kubernetes controller for managing Zarf package build and deployment jobs
 type: application
-version: 0.11.20
-appVersion: "v0.11.20"
+version: 0.12.0
+appVersion: "v0.12.0"
 keywords:
   - kubernetes
   - controller

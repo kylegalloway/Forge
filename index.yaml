@@ -3,7 +3,7 @@ entries:
   forge:
   - apiVersion: v2
     appVersion: v0.12.1
-    created: "2026-05-29T17:05:16.815532-05:00"
+    created: "2026-05-29T22:49:41.522208582Z"
     description: A Helm chart for deploying Forge - a Kubernetes controller for managing
       Zarf package build and deployment jobs
     digest: 5614e0066cc162eb14dc7e541788e7c97b23bf8772f1ec1fd3bf082fc9186fc2
@@ -20,14 +20,14 @@ entries:
     name: forge
     type: application
     urls:
-    - https://kylegalloway.github.io/forge/forge-0.12.1.tgz
+    - https://kylegalloway.github.io/Forge/forge-0.12.1.tgz
     version: 0.12.1
   - apiVersion: v2
     appVersion: 0.12.0
-    created: "2026-05-29T17:05:16.813879-05:00"
+    created: "2026-05-29T22:49:41.519914468Z"
     description: A Helm chart for deploying Forge - a Kubernetes controller for managing
       Zarf package build and deployment jobs
-    digest: 190e7d0ae714977b62e3ba5b154ef6da3d961102f5091a2e37615150b756102c
+    digest: 7a25b267a27bfbc45a02dfa8c40bcd29e6e3eb474392466e81d93afb7f66e938
     home: https://github.com/kylegalloway/forge
     keywords:
     - kubernetes
@@ -41,11 +41,11 @@ entries:
     name: forge
     type: application
     urls:
-    - https://kylegalloway.github.io/forge/forge-0.12.0.tgz
+    - https://kylegalloway.github.io/Forge/forge-0.12.0.tgz
     version: 0.12.0
   - apiVersion: v2
     appVersion: 0.11.20
-    created: "2026-05-29T17:05:16.805666-05:00"
+    created: "2026-05-29T22:49:41.506944759Z"
     description: A Helm chart for deploying Forge - a Kubernetes controller for managing
       Zarf package build and deployment jobs
     digest: 2fae8e0992801005b4b8371cfb000eb327aad0306cf45c5965b0b8e598b507f7
@@ -62,11 +62,11 @@ entries:
     name: forge
     type: application
     urls:
-    - https://kylegalloway.github.io/forge/forge-0.11.20.tgz
+    - https://kylegalloway.github.io/Forge/forge-0.11.20.tgz
     version: 0.11.20
   - apiVersion: v2
     appVersion: 0.11.19
-    created: "2026-05-29T17:05:16.804055-05:00"
+    created: "2026-05-29T22:49:41.504028961Z"
     description: A Helm chart for deploying Forge - a Kubernetes controller for managing
       Zarf package build and deployment jobs
     digest: e93482d5b3244b0e1fe86b97f9d20f2cb91d6b0545f4f018146aa55e3ab7d5a9
@@ -83,11 +83,11 @@ entries:
     name: forge
     type: application
     urls:
-    - https://kylegalloway.github.io/forge/forge-0.11.19.tgz
+    - https://kylegalloway.github.io/Forge/forge-0.11.19.tgz
     version: 0.11.19
   - apiVersion: v2
     appVersion: 0.11.18
-    created: "2026-05-29T17:05:16.8032-05:00"
+    created: "2026-05-29T22:49:41.501935822Z"
     description: A Helm chart for deploying Forge - a Kubernetes controller for managing
       Zarf package build and deployment jobs
     digest: faa584d4ce0ec25ccc6c8c8f36b68b7cd15cca825d0e5c0dc1ec62504c11aa1c
@@ -104,11 +104,11 @@ entries:
     name: forge
     type: application
     urls:
-    - https://kylegalloway.github.io/forge/forge-0.11.18.tgz
+    - https://kylegalloway.github.io/Forge/forge-0.11.18.tgz
     version: 0.11.18
   - apiVersion: v2
     appVersion: 0.11.17
-    created: "2026-05-29T17:05:16.801968-05:00"
+    created: "2026-05-29T22:49:41.500290414Z"
     description: A Helm chart for deploying Forge - a Kubernetes controller for managing
       Zarf package build and deployment jobs
     digest: 6ac790b25874eb6fdb0d075cc5a2d0b5ef821e9845a99ab9549a33bbf90b00f0
@@ -125,11 +125,11 @@ entries:
     name: forge
     type: application
     urls:
-    - https://kylegalloway.github.io/forge/forge-0.11.17.tgz
+    - https://kylegalloway.github.io/Forge/forge-0.11.17.tgz
     version: 0.11.17
   - apiVersion: v2
     appVersion: 0.11.16
-    created: "2026-05-29T17:05:16.801141-05:00"
+    created: "2026-05-29T22:49:41.498883127Z"
     description: A Helm chart for deploying Forge - a Kubernetes controller for managing
       Zarf package build and deployment jobs
     digest: f7bf1ae831001ccfdeb96d1c44f1765d3dd4a8e907430f26b00469c3957a34ee
@@ -146,11 +146,11 @@ entries:
     name: forge
     type: application
     urls:
-    - https://kylegalloway.github.io/forge/forge-0.11.16.tgz
+    - https://kylegalloway.github.io/Forge/forge-0.11.16.tgz
     version: 0.11.16
   - apiVersion: v2
     appVersion: 0.11.15
-    created: "2026-05-29T17:05:16.800279-05:00"
+    created: "2026-05-29T22:49:41.497446394Z"
     description: A Helm chart for deploying Forge - a Kubernetes controller for managing
       Zarf package build and deployment jobs
     digest: 163fc6e45c21ee360b92a94c6e28fb3e9a01b84aff4cadabc88936cb51cf2205
@@ -167,11 +167,11 @@ entries:
     name: forge
     type: application
     urls:
-    - https://kylegalloway.github.io/forge/forge-0.11.15.tgz
+    - https://kylegalloway.github.io/Forge/forge-0.11.15.tgz
     version: 0.11.15
   - apiVersion: v2
     appVersion: 0.11.14
-    created: "2026-05-29T17:05:16.799342-05:00"
+    created: "2026-05-29T22:49:41.4952277Z"
     description: A Helm chart for deploying Forge - a Kubernetes controller for managing
       Zarf package build and deployment jobs
     digest: 6990334aaf5c4ae1f316c12f283dfaaa06e734e9cf011ce2b54738ed0622f47b
@@ -188,11 +188,11 @@ entries:
     name: forge
     type: application
     urls:
-    - https://kylegalloway.github.io/forge/forge-0.11.14.tgz
+    - https://kylegalloway.github.io/Forge/forge-0.11.14.tgz
     version: 0.11.14
   - apiVersion: v2
     appVersion: 0.11.13
-    created: "2026-05-29T17:05:16.797861-05:00"
+    created: "2026-05-29T22:49:41.493818579Z"
     description: A Helm chart for deploying Forge - a Kubernetes controller for managing
       Zarf package build and deployment jobs
     digest: 629e09fc5098db14b63d233d0347c204554092e4a46754c959a879d24538737e
@@ -209,11 +209,11 @@ entries:
     name: forge
     type: application
     urls:
-    - https://kylegalloway.github.io/forge/forge-0.11.13.tgz
+    - https://kylegalloway.github.io/Forge/forge-0.11.13.tgz
     version: 0.11.13
   - apiVersion: v2
     appVersion: 0.11.12
-    created: "2026-05-29T17:05:16.797017-05:00"
+    created: "2026-05-29T22:49:41.492409248Z"
     description: A Helm chart for deploying Forge - a Kubernetes controller for managing
       Zarf package build and deployment jobs
     digest: 0822c2308596548f21e09db14d5b9cfcc1ad6a06a6181ba19ff11546bb12f694
@@ -230,11 +230,11 @@ entries:
     name: forge
     type: application
     urls:
-    - https://kylegalloway.github.io/forge/forge-0.11.12.tgz
+    - https://kylegalloway.github.io/Forge/forge-0.11.12.tgz
     version: 0.11.12
   - apiVersion: v2
     appVersion: 0.11.11
-    created: "2026-05-29T17:05:16.796078-05:00"
+    created: "2026-05-29T22:49:41.490693645Z"
     description: A Helm chart for deploying Forge - a Kubernetes controller for managing
       Zarf package build and deployment jobs
     digest: bb7884710c86b98471f350b8096562265ac82d12d259a143871afa0cd82c8763
@@ -251,11 +251,11 @@ entries:
     name: forge
     type: application
     urls:
-    - https://kylegalloway.github.io/forge/forge-0.11.11.tgz
+    - https://kylegalloway.github.io/Forge/forge-0.11.11.tgz
     version: 0.11.11
   - apiVersion: v2
     appVersion: 0.11.10
-    created: "2026-05-29T17:05:16.795215-05:00"
+    created: "2026-05-29T22:49:41.48858717Z"
     description: A Helm chart for deploying Forge - a Kubernetes controller for managing
       Zarf package build and deployment jobs
     digest: ece470d4742822c9b1e9d4dd64db4ee87578e63aecf430fae096830f1c5c0bcd
@@ -272,11 +272,11 @@ entries:
     name: forge
     type: application
     urls:
-    - https://kylegalloway.github.io/forge/forge-0.11.10.tgz
+    - https://kylegalloway.github.io/Forge/forge-0.11.10.tgz
     version: 0.11.10
   - apiVersion: v2
     appVersion: 0.11.9
-    created: "2026-05-29T17:05:16.812863-05:00"
+    created: "2026-05-29T22:49:41.518407049Z"
     description: A Helm chart for deploying Forge - a Kubernetes controller for managing
       Zarf package build and deployment jobs
     digest: e735d7e09b970c84a2b0a8756e8cf1a6cccde7d304b9a8ddc37bb324a1dcc2c1
@@ -293,11 +293,11 @@ entries:
     name: forge
     type: application
     urls:
-    - https://kylegalloway.github.io/forge/forge-0.11.9.tgz
+    - https://kylegalloway.github.io/Forge/forge-0.11.9.tgz
     version: 0.11.9
   - apiVersion: v2
     appVersion: 0.11.8
-    created: "2026-05-29T17:05:16.811924-05:00"
+    created: "2026-05-29T22:49:41.517039011Z"
     description: A Helm chart for deploying Forge - a Kubernetes controller for managing
       Zarf package build and deployment jobs
     digest: 3498859b2c8d5cee81c4c96ff32d237f50b16e12ca0654988b951fd90403cb3e
@@ -314,11 +314,11 @@ entries:
     name: forge
     type: application
     urls:
-    - https://kylegalloway.github.io/forge/forge-0.11.8.tgz
+    - https://kylegalloway.github.io/Forge/forge-0.11.8.tgz
     version: 0.11.8
   - apiVersion: v2
     appVersion: 0.11.7
-    created: "2026-05-29T17:05:16.810459-05:00"
+    created: "2026-05-29T22:49:41.515588418Z"
     description: A Helm chart for deploying Forge - a Kubernetes controller for managing
       Zarf package build and deployment jobs
     digest: 045c5c9a1a8f2efe51a7c4170a2a7e498aa5485b8399f301c4d2965d11b3fad1
@@ -335,11 +335,11 @@ entries:
     name: forge
     type: application
     urls:
-    - https://kylegalloway.github.io/forge/forge-0.11.7.tgz
+    - https://kylegalloway.github.io/Forge/forge-0.11.7.tgz
     version: 0.11.7
   - apiVersion: v2
     appVersion: 0.11.6
-    created: "2026-05-29T17:05:16.809288-05:00"
+    created: "2026-05-29T22:49:41.513302257Z"
     description: A Helm chart for deploying Forge - a Kubernetes controller for managing
       Zarf package build and deployment jobs
     digest: c172abd37d7f80a50d729bff90852dcdd522e96d553726d3dfb3cac201b77fb7
@@ -356,11 +356,11 @@ entries:
     name: forge
     type: application
     urls:
-    - https://kylegalloway.github.io/forge/forge-0.11.6.tgz
+    - https://kylegalloway.github.io/Forge/forge-0.11.6.tgz
     version: 0.11.6
   - apiVersion: v2
     appVersion: 0.11.5
-    created: "2026-05-29T17:05:16.808437-05:00"
+    created: "2026-05-29T22:49:41.511938374Z"
     description: A Helm chart for deploying Forge - a Kubernetes controller for managing
       Zarf package build and deployment jobs
     digest: 12e5e3c787ad36c5f66680fc41c1642b199c4ed5bf813920cfb2613c9d22cad4
@@ -377,11 +377,11 @@ entries:
     name: forge
     type: application
     urls:
-    - https://kylegalloway.github.io/forge/forge-0.11.5.tgz
+    - https://kylegalloway.github.io/Forge/forge-0.11.5.tgz
     version: 0.11.5
   - apiVersion: v2
     appVersion: 0.11.4
-    created: "2026-05-29T17:05:16.807597-05:00"
+    created: "2026-05-29T22:49:41.510557116Z"
     description: A Helm chart for deploying Forge - a Kubernetes controller for managing
       Zarf package build and deployment jobs
     digest: a0a9e04897e99bd7f2b3a8bbf8dd0e5573a60f441f06386c772eb2b0e2a2855e
@@ -398,11 +398,11 @@ entries:
     name: forge
     type: application
     urls:
-    - https://kylegalloway.github.io/forge/forge-0.11.4.tgz
+    - https://kylegalloway.github.io/Forge/forge-0.11.4.tgz
     version: 0.11.4
   - apiVersion: v2
     appVersion: 0.11.3
-    created: "2026-05-29T17:05:16.806741-05:00"
+    created: "2026-05-29T22:49:41.508771346Z"
     description: A Helm chart for deploying Forge - a Kubernetes controller for managing
       Zarf package build and deployment jobs
     digest: 2cf0a2c9a661708a669927c098b39873f11bd8369620a2120c273d66120cadab
@@ -419,11 +419,11 @@ entries:
     name: forge
     type: application
     urls:
-    - https://kylegalloway.github.io/forge/forge-0.11.3.tgz
+    - https://kylegalloway.github.io/Forge/forge-0.11.3.tgz
     version: 0.11.3
   - apiVersion: v2
     appVersion: 0.11.2
-    created: "2026-05-29T17:05:16.804821-05:00"
+    created: "2026-05-29T22:49:41.505455147Z"
     description: A Helm chart for deploying Forge - a Kubernetes controller for managing
       Zarf package build and deployment jobs
     digest: a1b0a151bf7abf9a7d39fd8b03f5f8f2ec85ec8ceb232f8c56003752f0b3252c
@@ -440,11 +440,11 @@ entries:
     name: forge
     type: application
     urls:
-    - https://kylegalloway.github.io/forge/forge-0.11.2.tgz
+    - https://kylegalloway.github.io/Forge/forge-0.11.2.tgz
     version: 0.11.2
   - apiVersion: v2
     appVersion: 0.11.1
-    created: "2026-05-29T17:05:16.793974-05:00"
+    created: "2026-05-29T22:49:41.487148956Z"
     description: A Helm chart for deploying Forge - a Kubernetes controller for managing
       Zarf package build and deployment jobs
     digest: c18076f8a89856611694ffe5dc3efa2af9441fdb26474ee70b09c7965a62ca9d
@@ -461,11 +461,11 @@ entries:
     name: forge
     type: application
     urls:
-    - https://kylegalloway.github.io/forge/forge-0.11.1.tgz
+    - https://kylegalloway.github.io/Forge/forge-0.11.1.tgz
     version: 0.11.1
   - apiVersion: v2
     appVersion: 0.11.0
-    created: "2026-05-29T17:05:16.792848-05:00"
+    created: "2026-05-29T22:49:41.485765935Z"
     description: A Helm chart for deploying Forge - a Kubernetes controller for managing
       Zarf package build and deployment jobs
     digest: 5caf71c6c0862e5877264eecb37b7cd65b59d18b7f061a00564d165b5519107c
@@ -482,11 +482,11 @@ entries:
     name: forge
     type: application
     urls:
-    - https://kylegalloway.github.io/forge/forge-0.11.0.tgz
+    - https://kylegalloway.github.io/Forge/forge-0.11.0.tgz
     version: 0.11.0
   - apiVersion: v2
     appVersion: 0.10.0
-    created: "2026-05-29T17:05:16.791874-05:00"
+    created: "2026-05-29T22:49:41.483934896Z"
     description: A Helm chart for deploying Forge - a Kubernetes controller for managing
       Zarf package build and deployment jobs
     digest: c4d29bf44a0d1bf1d9ba2ea22da82f5f524b397d3c7b1a060038636ac9d5ab44
@@ -503,11 +503,11 @@ entries:
     name: forge
     type: application
     urls:
-    - https://kylegalloway.github.io/forge/forge-0.10.0.tgz
+    - https://kylegalloway.github.io/Forge/forge-0.10.0.tgz
     version: 0.10.0
   - apiVersion: v2
     appVersion: 0.9.13
-    created: "2026-05-29T17:05:16.833544-05:00"
+    created: "2026-05-29T22:49:41.555090937Z"
     description: A Helm chart for deploying Forge - a Kubernetes controller for managing
       Zarf package build and deployment jobs
     digest: cc646ff4b708fc3493527c1dadf93e3a5b506fab22a699e2d3ec6d1d209e58f5
@@ -524,11 +524,11 @@ entries:
     name: forge
     type: application
     urls:
-    - https://kylegalloway.github.io/forge/forge-0.9.13.tgz
+    - https://kylegalloway.github.io/Forge/forge-0.9.13.tgz
     version: 0.9.13
   - apiVersion: v2
     appVersion: 0.9.12
-    created: "2026-05-29T17:05:16.832755-05:00"
+    created: "2026-05-29T22:49:41.553794627Z"
     description: A Helm chart for deploying Forge - a Kubernetes controller for managing
       Zarf package build and deployment jobs
     digest: a7bc979ab0b147853ad14ec5c2cb55423c1d20a163af1eb7b05e978f8cd95e6f
@@ -545,11 +545,11 @@ entries:
     name: forge
     type: application
     urls:
-    - https://kylegalloway.github.io/forge/forge-0.9.12.tgz
+    - https://kylegalloway.github.io/Forge/forge-0.9.12.tgz
     version: 0.9.12
   - apiVersion: v2
     appVersion: 0.9.11
-    created: "2026-05-29T17:05:16.831766-05:00"
+    created: "2026-05-29T22:49:41.552463365Z"
     description: A Helm chart for deploying Forge - a Kubernetes controller for managing
       Zarf package build and deployment jobs
     digest: 32d56b16d46fefe93a95493af3b5e4268df36ea4d0121e9c0d26b8f730a087eb
@@ -566,11 +566,11 @@ entries:
     name: forge
     type: application
     urls:
-    - https://kylegalloway.github.io/forge/forge-0.9.11.tgz
+    - https://kylegalloway.github.io/Forge/forge-0.9.11.tgz
     version: 0.9.11
   - apiVersion: v2
     appVersion: 0.9.10
-    created: "2026-05-29T17:05:16.83108-05:00"
+    created: "2026-05-29T22:49:41.551099362Z"
     description: A Helm chart for deploying Forge - a Kubernetes controller for managing
       Zarf package build and deployment jobs
     digest: 8b5fd4ed3d1b2beebbe210c1f4aa799e4e76e5c846b7e0afbd45b57ad0ee38a5
@@ -587,11 +587,11 @@ entries:
     name: forge
     type: application
     urls:
-    - https://kylegalloway.github.io/forge/forge-0.9.10.tgz
+    - https://kylegalloway.github.io/Forge/forge-0.9.10.tgz
     version: 0.9.10
   - apiVersion: v2
     appVersion: 0.9.9
-    created: "2026-05-29T17:05:16.83989-05:00"
+    created: "2026-05-29T22:49:41.566821012Z"
     description: A Helm chart for deploying Forge - a Kubernetes controller for managing
       Zarf package build and deployment jobs
     digest: 6130ed0623e7f0069e54a80e2e5566534d1be990528093fd1e5b60a72c57708f
@@ -608,11 +608,11 @@ entries:
     name: forge
     type: application
     urls:
-    - https://kylegalloway.github.io/forge/forge-0.9.9.tgz
+    - https://kylegalloway.github.io/Forge/forge-0.9.9.tgz
     version: 0.9.9
   - apiVersion: v2
     appVersion: 0.9.8
-    created: "2026-05-29T17:05:16.838884-05:00"
+    created: "2026-05-29T22:49:41.565538062Z"
     description: A Helm chart for deploying Forge - a Kubernetes controller for managing
       Zarf package build and deployment jobs
     digest: d3f3e423eefe30ea96b15bdb156246c07a2915a9e9e51ffc0519aa1c6e96025e
@@ -629,11 +629,11 @@ entries:
     name: forge
     type: application
     urls:
-    - https://kylegalloway.github.io/forge/forge-0.9.8.tgz
+    - https://kylegalloway.github.io/Forge/forge-0.9.8.tgz
     version: 0.9.8
   - apiVersion: v2
     appVersion: 0.9.7
-    created: "2026-05-29T17:05:16.838188-05:00"
+    created: "2026-05-29T22:49:41.564225588Z"
     description: A Helm chart for deploying Forge - a Kubernetes controller for managing
       Zarf package build and deployment jobs
     digest: 1f9486b6340fcbf36851001f0ae4174cb9556c9aa74ab9c88975983291664016
@@ -650,11 +650,11 @@ entries:
     name: forge
     type: application
     urls:
-    - https://kylegalloway.github.io/forge/forge-0.9.7.tgz
+    - https://kylegalloway.github.io/Forge/forge-0.9.7.tgz
     version: 0.9.7
   - apiVersion: v2
     appVersion: 0.9.6
-    created: "2026-05-29T17:05:16.837403-05:00"
+    created: "2026-05-29T22:49:41.562873944Z"
     description: A Helm chart for deploying Forge - a Kubernetes controller for managing
       Zarf package build and deployment jobs
     digest: 7291743f90354a7d4a4f9c07829220c24b5f255e18fe9c558eb8822bddefce4c
@@ -671,11 +671,11 @@ entries:
     name: forge
     type: application
     urls:
-    - https://kylegalloway.github.io/forge/forge-0.9.6.tgz
+    - https://kylegalloway.github.io/Forge/forge-0.9.6.tgz
     version: 0.9.6
   - apiVersion: v2
     appVersion: 0.9.5
-    created: "2026-05-29T17:05:16.83666-05:00"
+    created: "2026-05-29T22:49:41.560805968Z"
     description: A Helm chart for deploying Forge - a Kubernetes controller for managing
       Zarf package build and deployment jobs
     digest: 1407ca30e88e52722a1c30e6150d4f0cb13a76df864a2f99f9331e86c1e63eec
@@ -692,11 +692,11 @@ entries:
     name: forge
     type: application
     urls:
-    - https://kylegalloway.github.io/forge/forge-0.9.5.tgz
+    - https://kylegalloway.github.io/Forge/forge-0.9.5.tgz
     version: 0.9.5
   - apiVersion: v2
     appVersion: 0.9.4
-    created: "2026-05-29T17:05:16.8358-05:00"
+    created: "2026-05-29T22:49:41.559547235Z"
     description: A Helm chart for deploying Forge - a Kubernetes controller for managing
       Zarf package build and deployment jobs
     digest: 900aa08055b10254c5410b1d35d25fe3278b1f01e4e65cc7349ad58449971ca5
@@ -713,11 +713,11 @@ entries:
     name: forge
     type: application
     urls:
-    - https://kylegalloway.github.io/forge/forge-0.9.4.tgz
+    - https://kylegalloway.github.io/Forge/forge-0.9.4.tgz
     version: 0.9.4
   - apiVersion: v2
     appVersion: 0.9.3
-    created: "2026-05-29T17:05:16.834918-05:00"
+    created: "2026-05-29T22:49:41.558284396Z"
     description: A Helm chart for deploying Forge - a Kubernetes controller for managing
       Zarf package build and deployment jobs
     digest: 819a0cfb1c9dddf6e5d760e32907b7670b57efd194f82a064041e0edd5914f56
@@ -734,11 +734,11 @@ entries:
     name: forge
     type: application
     urls:
-    - https://kylegalloway.github.io/forge/forge-0.9.3.tgz
+    - https://kylegalloway.github.io/Forge/forge-0.9.3.tgz
     version: 0.9.3
   - apiVersion: v2
     appVersion: 0.9.2
-    created: "2026-05-29T17:05:16.834238-05:00"
+    created: "2026-05-29T22:49:41.557005001Z"
     description: A Helm chart for deploying Forge - a Kubernetes controller for managing
       Zarf package build and deployment jobs
     digest: 5840fcff1115bae55f7050fd06ca5b8caf9f886eb009f82ed760ee9693ac45b3
@@ -755,11 +755,11 @@ entries:
     name: forge
     type: application
     urls:
-    - https://kylegalloway.github.io/forge/forge-0.9.2.tgz
+    - https://kylegalloway.github.io/Forge/forge-0.9.2.tgz
     version: 0.9.2
   - apiVersion: v2
     appVersion: 0.9.1
-    created: "2026-05-29T17:05:16.83037-05:00"
+    created: "2026-05-29T22:49:41.548975976Z"
     description: A Helm chart for deploying Forge - a Kubernetes controller for managing
       Zarf package build and deployment jobs
     digest: 0ad50d3cd6f37849606bb99f9567b9c34770e93a77816cb96c4f2965e0ca9d6d
@@ -776,11 +776,11 @@ entries:
     name: forge
     type: application
     urls:
-    - https://kylegalloway.github.io/forge/forge-0.9.1.tgz
+    - https://kylegalloway.github.io/Forge/forge-0.9.1.tgz
     version: 0.9.1
   - apiVersion: v2
     appVersion: 0.9.0
-    created: "2026-05-29T17:05:16.829628-05:00"
+    created: "2026-05-29T22:49:41.54771501Z"
     description: A Helm chart for deploying Forge - a Kubernetes controller for managing
       Zarf package build and deployment jobs
     digest: 6aed5633238d30794d1fca1e32e46d62ce747a2a91f871b9f757637859958612
@@ -797,11 +797,11 @@ entries:
     name: forge
     type: application
     urls:
-    - https://kylegalloway.github.io/forge/forge-0.9.0.tgz
+    - https://kylegalloway.github.io/Forge/forge-0.9.0.tgz
     version: 0.9.0
   - apiVersion: v2
     appVersion: 0.8.1
-    created: "2026-05-29T17:05:16.828649-05:00"
+    created: "2026-05-29T22:49:41.546495426Z"
     description: A Helm chart for deploying Forge - a Kubernetes controller for managing
       Zarf package build and deployment jobs
     digest: f255203ff0fc1510920a8a92cfe643f0c4a01188ad4b0d048c1ff6f61ee7e074
@@ -818,11 +818,11 @@ entries:
     name: forge
     type: application
     urls:
-    - https://kylegalloway.github.io/forge/forge-0.8.1.tgz
+    - https://kylegalloway.github.io/Forge/forge-0.8.1.tgz
     version: 0.8.1
   - apiVersion: v2
     appVersion: 0.8.0
-    created: "2026-05-29T17:05:16.827954-05:00"
+    created: "2026-05-29T22:49:41.545185505Z"
     description: A Helm chart for deploying Forge - a Kubernetes controller for managing
       Zarf package build and deployment jobs
     digest: 336f05ef4bcb7bdba4b9ceb535c0bba311919c577dadbd4c367cf089857e8643
@@ -839,11 +839,11 @@ entries:
     name: forge
     type: application
     urls:
-    - https://kylegalloway.github.io/forge/forge-0.8.0.tgz
+    - https://kylegalloway.github.io/Forge/forge-0.8.0.tgz
     version: 0.8.0
   - apiVersion: v2
     appVersion: 0.7.3
-    created: "2026-05-29T17:05:16.827285-05:00"
+    created: "2026-05-29T22:49:41.543157665Z"
     description: A Helm chart for deploying Forge - a Kubernetes controller for managing
       Zarf package build and deployment jobs
     digest: 043d6c7744f07ba0dfc5c38ae82a585d16d00a278ddfcd9c2e489a7f0ded99e3
@@ -860,11 +860,11 @@ entries:
     name: forge
     type: application
     urls:
-    - https://kylegalloway.github.io/forge/forge-0.7.3.tgz
+    - https://kylegalloway.github.io/Forge/forge-0.7.3.tgz
     version: 0.7.3
   - apiVersion: v2
     appVersion: 0.7.2
-    created: "2026-05-29T17:05:16.826571-05:00"
+    created: "2026-05-29T22:49:41.541918131Z"
     description: A Helm chart for deploying Forge - a Kubernetes controller for managing
       Zarf package build and deployment jobs
     digest: 2b3d6422bf086c4cdd8544db6f9d17ff1faf297e8685702edc22637452d857a4
@@ -881,11 +881,11 @@ entries:
     name: forge
     type: application
     urls:
-    - https://kylegalloway.github.io/forge/forge-0.7.2.tgz
+    - https://kylegalloway.github.io/Forge/forge-0.7.2.tgz
     version: 0.7.2
   - apiVersion: v2
     appVersion: 0.7.1
-    created: "2026-05-29T17:05:16.825514-05:00"
+    created: "2026-05-29T22:49:41.540676905Z"
     description: A Helm chart for deploying Forge - a Kubernetes controller for managing
       Zarf package build and deployment jobs
     digest: 71aadab695193760dd6910862354a7a618dd5266c426fd295177f274babfc56d
@@ -902,11 +902,11 @@ entries:
     name: forge
     type: application
     urls:
-    - https://kylegalloway.github.io/forge/forge-0.7.1.tgz
+    - https://kylegalloway.github.io/Forge/forge-0.7.1.tgz
     version: 0.7.1
   - apiVersion: v2
     appVersion: 0.7.0
-    created: "2026-05-29T17:05:16.824763-05:00"
+    created: "2026-05-29T22:49:41.539376589Z"
     description: A Helm chart for deploying Forge - a Kubernetes controller for managing
       Zarf package build and deployment jobs
     digest: c428977be9397599bd42836e9ce99694ea8f8fbd0135c96421e877b132c6e7b9
@@ -923,11 +923,11 @@ entries:
     name: forge
     type: application
     urls:
-    - https://kylegalloway.github.io/forge/forge-0.7.0.tgz
+    - https://kylegalloway.github.io/Forge/forge-0.7.0.tgz
     version: 0.7.0
   - apiVersion: v2
     appVersion: 0.6.2
-    created: "2026-05-29T17:05:16.824006-05:00"
+    created: "2026-05-29T22:49:41.537242843Z"
     description: A Helm chart for deploying Forge - a Kubernetes controller for managing
       Zarf package build and deployment jobs
     digest: 8c70530905e450b7fc85644be2fc70bf5f16bfe5e627f11714da6926b63cec3e
@@ -944,11 +944,11 @@ entries:
     name: forge
     type: application
     urls:
-    - https://kylegalloway.github.io/forge/forge-0.6.2.tgz
+    - https://kylegalloway.github.io/Forge/forge-0.6.2.tgz
     version: 0.6.2
   - apiVersion: v2
     appVersion: 0.6.1
-    created: "2026-05-29T17:05:16.823292-05:00"
+    created: "2026-05-29T22:49:41.535889096Z"
     description: A Helm chart for deploying Forge - a Kubernetes controller for managing
       Zarf package build and deployment jobs
     digest: 5c2084ba50ebc1c12b76f2f1429d207765b20f84f09aef66d075c855d6151a16
@@ -965,11 +965,11 @@ entries:
     name: forge
     type: application
     urls:
-    - https://kylegalloway.github.io/forge/forge-0.6.1.tgz
+    - https://kylegalloway.github.io/Forge/forge-0.6.1.tgz
     version: 0.6.1
   - apiVersion: v2
     appVersion: 0.6.0
-    created: "2026-05-29T17:05:16.821955-05:00"
+    created: "2026-05-29T22:49:41.534623703Z"
     description: A Helm chart for deploying Forge - a Kubernetes controller for managing
       Zarf package build and deployment jobs
     digest: 1953aac150495a18d22452c6c149e16217d948a5e0fde687c48d0d29fba3f5b4
@@ -986,11 +986,11 @@ entries:
     name: forge
     type: application
     urls:
-    - https://kylegalloway.github.io/forge/forge-0.6.0.tgz
+    - https://kylegalloway.github.io/Forge/forge-0.6.0.tgz
     version: 0.6.0
   - apiVersion: v2
     appVersion: 0.5.0
-    created: "2026-05-29T17:05:16.821256-05:00"
+    created: "2026-05-29T22:49:41.533285299Z"
     description: A Helm chart for deploying Forge - a Kubernetes controller for managing
       Zarf package build and deployment jobs
     digest: 14f13670b59ac0d14c2eedc400430d112a3a9d37712f2c6fe73100d25b9d87db
@@ -1007,11 +1007,11 @@ entries:
     name: forge
     type: application
     urls:
-    - https://kylegalloway.github.io/forge/forge-0.5.0.tgz
+    - https://kylegalloway.github.io/Forge/forge-0.5.0.tgz
     version: 0.5.0
   - apiVersion: v2
     appVersion: 0.4.6
-    created: "2026-05-29T17:05:16.820596-05:00"
+    created: "2026-05-29T22:49:41.531133777Z"
     description: A Helm chart for deploying Forge - a Kubernetes controller for managing
       Zarf package build and deployment jobs
     digest: 4d58154115965ee7b86a6652091e7950ec74d927a8e22b903a44906b40b5c109
@@ -1028,11 +1028,11 @@ entries:
     name: forge
     type: application
     urls:
-    - https://kylegalloway.github.io/forge/forge-0.4.6.tgz
+    - https://kylegalloway.github.io/Forge/forge-0.4.6.tgz
     version: 0.4.6
   - apiVersion: v2
     appVersion: 0.4.5
-    created: "2026-05-29T17:05:16.819897-05:00"
+    created: "2026-05-29T22:49:41.529814171Z"
     description: A Helm chart for deploying Forge - a Kubernetes controller for managing
       Zarf package build and deployment jobs
     digest: d4547197a04b53eec544395296dd36a1d525664eff95ebb467aedd126621e793
@@ -1049,11 +1049,11 @@ entries:
     name: forge
     type: application
     urls:
-    - https://kylegalloway.github.io/forge/forge-0.4.5.tgz
+    - https://kylegalloway.github.io/Forge/forge-0.4.5.tgz
     version: 0.4.5
   - apiVersion: v2
     appVersion: 0.4.4
-    created: "2026-05-29T17:05:16.819033-05:00"
+    created: "2026-05-29T22:49:41.528886599Z"
     description: A Helm chart for deploying Forge - a Kubernetes controller for managing
       Zarf package build and deployment jobs
     digest: e691bf219722b9667b05890a69ae41398098d30c27457b315a7c7fbac27b6cd6
@@ -1070,11 +1070,11 @@ entries:
     name: forge
     type: application
     urls:
-    - https://kylegalloway.github.io/forge/forge-0.4.4.tgz
+    - https://kylegalloway.github.io/Forge/forge-0.4.4.tgz
     version: 0.4.4
   - apiVersion: v2
     appVersion: 0.4.3
-    created: "2026-05-29T17:05:16.818537-05:00"
+    created: "2026-05-29T22:49:41.528042873Z"
     description: A Helm chart for deploying Forge - a Kubernetes controller for managing
       Zarf package build and deployment jobs
     digest: 97d8edca4b5c8f9cb680aee06c5c5322386a028636639c3b97203856ed651127
@@ -1091,11 +1091,11 @@ entries:
     name: forge
     type: application
     urls:
-    - https://kylegalloway.github.io/forge/forge-0.4.3.tgz
+    - https://kylegalloway.github.io/Forge/forge-0.4.3.tgz
     version: 0.4.3
   - apiVersion: v2
     appVersion: 0.4.2
-    created: "2026-05-29T17:05:16.818019-05:00"
+    created: "2026-05-29T22:49:41.526970552Z"
     description: A Helm chart for deploying Forge - a Kubernetes controller for managing
       Zarf package build and deployment jobs
     digest: 7bd986073ac30afc5a8aa8f432d3b8d3eb899e982b498d71b424d4dd1ee3fcca
@@ -1112,11 +1112,11 @@ entries:
     name: forge
     type: application
     urls:
-    - https://kylegalloway.github.io/forge/forge-0.4.2.tgz
+    - https://kylegalloway.github.io/Forge/forge-0.4.2.tgz
     version: 0.4.2
   - apiVersion: v2
     appVersion: 0.4.1
-    created: "2026-05-29T17:05:16.817564-05:00"
+    created: "2026-05-29T22:49:41.525518917Z"
     description: A Helm chart for deploying Forge - a Kubernetes controller for managing
       Zarf package build and deployment jobs
     digest: 55da184d1e80e5859e7d0f3b128c674c97a9a6ad151c2dd9f418806b1c4d3b9e
@@ -1133,11 +1133,11 @@ entries:
     name: forge
     type: application
     urls:
-    - https://kylegalloway.github.io/forge/forge-0.4.1.tgz
+    - https://kylegalloway.github.io/Forge/forge-0.4.1.tgz
     version: 0.4.1
   - apiVersion: v2
     appVersion: 0.4.0
-    created: "2026-05-29T17:05:16.817079-05:00"
+    created: "2026-05-29T22:49:41.524648201Z"
     description: A Helm chart for deploying Forge - a Kubernetes controller for managing
       Zarf package build and deployment jobs
     digest: 88a14acf53f60330a4e9f7c93a4aaf96bf28957d384e633e5cf8f02ea6fee989
@@ -1154,11 +1154,11 @@ entries:
     name: forge
     type: application
     urls:
-    - https://kylegalloway.github.io/forge/forge-0.4.0.tgz
+    - https://kylegalloway.github.io/Forge/forge-0.4.0.tgz
     version: 0.4.0
   - apiVersion: v2
     appVersion: 0.3.0
-    created: "2026-05-29T17:05:16.816577-05:00"
+    created: "2026-05-29T22:49:41.523855402Z"
     description: A Helm chart for deploying Forge - a Kubernetes controller for managing
       Zarf package build and deployment jobs
     digest: 86329d8635fadfaf4a862c551fdadc3cc7bde3e037b1be1f880a1fdc692984cf
@@ -1175,11 +1175,11 @@ entries:
     name: forge
     type: application
     urls:
-    - https://kylegalloway.github.io/forge/forge-0.3.0.tgz
+    - https://kylegalloway.github.io/Forge/forge-0.3.0.tgz
     version: 0.3.0
   - apiVersion: v2
     appVersion: 0.2.0
-    created: "2026-05-29T17:05:16.816102-05:00"
+    created: "2026-05-29T22:49:41.52304054Z"
     description: A Helm chart for deploying Forge - a Kubernetes controller for managing
       Zarf package build and deployment jobs
     digest: b3e06f942d2f2277c37bba4fd169ad4361a6ddbd4e43ec4cdcea4c3125a1d3b1
@@ -1196,11 +1196,11 @@ entries:
     name: forge
     type: application
     urls:
-    - https://kylegalloway.github.io/forge/forge-0.2.0.tgz
+    - https://kylegalloway.github.io/Forge/forge-0.2.0.tgz
     version: 0.2.0
   - apiVersion: v2
     appVersion: 0.1.2
-    created: "2026-05-29T17:05:16.790962-05:00"
+    created: "2026-05-29T22:49:41.482242567Z"
     description: A Helm chart for deploying Forge - a Kubernetes controller for managing
       Zarf package build and deployment jobs
     digest: 65a4395fc8fc140f8636d77a0d9c6d7399aeaead51c3fe04bc5648c22af6bc9b
@@ -1217,11 +1217,11 @@ entries:
     name: forge
     type: application
     urls:
-    - https://kylegalloway.github.io/forge/forge-0.1.2.tgz
+    - https://kylegalloway.github.io/Forge/forge-0.1.2.tgz
     version: 0.1.2
   - apiVersion: v2
     appVersion: 0.1.1
-    created: "2026-05-29T17:05:16.789634-05:00"
+    created: "2026-05-29T22:49:41.481379553Z"
     description: A Helm chart for deploying Forge - a Kubernetes controller for managing
       Zarf package build and deployment jobs
     digest: c7020a33e3ca3bde828b6eed3c3fea709fa15fe00f332600fa27bae6d22e8c05
@@ -1238,11 +1238,11 @@ entries:
     name: forge
     type: application
     urls:
-    - https://kylegalloway.github.io/forge/forge-0.1.1.tgz
+    - https://kylegalloway.github.io/Forge/forge-0.1.1.tgz
     version: 0.1.1
   - apiVersion: v2
     appVersion: 0.1.0
-    created: "2026-05-29T17:05:16.788975-05:00"
+    created: "2026-05-29T22:49:41.480504039Z"
     description: A Helm chart for deploying Forge - a Kubernetes controller for managing
       Zarf package build and deployment jobs
     digest: c476e1c34a46a35593f74b519be9603a827065d53a52728398d97eac575b9b13
@@ -1259,6 +1259,6 @@ entries:
     name: forge
     type: application
     urls:
-    - https://kylegalloway.github.io/forge/forge-0.1.0.tgz
+    - https://kylegalloway.github.io/Forge/forge-0.1.0.tgz
     version: 0.1.0
-generated: "2026-05-29T17:05:16.787865-05:00"
+generated: "2026-05-29T22:49:41.479491368Z"

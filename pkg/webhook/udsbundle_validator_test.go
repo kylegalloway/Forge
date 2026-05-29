@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	udsv1alpha3 "github.com/kylegalloway/forge/pkg/apis/uds/v1alpha3"
+	"github.com/kylegalloway/forge/pkg/audit"
 	"github.com/kylegalloway/forge/pkg/constants"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -13,7 +14,7 @@ import (
 
 func TestNewUDSBundleJobValidator(t *testing.T) {
 	kubeClient := fake.NewClientset()
-	validator := NewUDSBundleJobValidator(kubeClient)
+	validator := NewUDSBundleJobValidator(kubeClient, &audit.NoopAuditTrail{})
 	if validator == nil {
 		t.Fatal("NewUDSBundleJobValidator returned nil")
 	}
@@ -24,7 +25,7 @@ func TestNewUDSBundleJobValidator(t *testing.T) {
 
 func TestValidateUDSBundleJob_ValidCreate(t *testing.T) {
 	kubeClient := fake.NewClientset()
-	validator := NewUDSBundleJobValidator(kubeClient)
+	validator := NewUDSBundleJobValidator(kubeClient, &audit.NoopAuditTrail{})
 
 	// Create ServiceAccount with permissions
 	sa := &corev1.ServiceAccount{
@@ -68,7 +69,7 @@ func TestValidateUDSBundleJob_ValidCreate(t *testing.T) {
 
 func TestValidateUDSBundleJob_MissingServiceAccount(t *testing.T) {
 	kubeClient := fake.NewClientset()
-	validator := NewUDSBundleJobValidator(kubeClient)
+	validator := NewUDSBundleJobValidator(kubeClient, &audit.NoopAuditTrail{})
 
 	bundle := &udsv1alpha3.UDSBundleJob{
 		ObjectMeta: metav1.ObjectMeta{
@@ -411,7 +412,7 @@ func TestValidateUDSBundlePublish_LocalDestination(t *testing.T) {
 	}
 
 	client := fake.NewClientset(sa)
-	validator := NewUDSBundleJobValidator(client)
+	validator := NewUDSBundleJobValidator(client, &audit.NoopAuditTrail{})
 
 	publish := &udsv1alpha3.PublishConfig{
 		Destination: udsv1alpha3.PublishDestination{
@@ -434,7 +435,7 @@ func TestValidateUDSBundlePublish_UnknownDestination(t *testing.T) {
 	}
 
 	client := fake.NewClientset(sa)
-	validator := NewUDSBundleJobValidator(client)
+	validator := NewUDSBundleJobValidator(client, &audit.NoopAuditTrail{})
 
 	publish := &udsv1alpha3.PublishConfig{
 		Destination: udsv1alpha3.PublishDestination{
@@ -460,7 +461,7 @@ func TestValidateUDSPackageSource_UnknownType(t *testing.T) {
 	}
 
 	client := fake.NewClientset(sa)
-	validator := NewUDSBundleJobValidator(client)
+	validator := NewUDSBundleJobValidator(client, &audit.NoopAuditTrail{})
 
 	source := &udsv1alpha3.PackageSource{
 		Type: "UnknownSourceType",
@@ -477,7 +478,7 @@ func TestValidateUDSPackageSource_UnknownType(t *testing.T) {
 
 func TestValidateExtraArgs_PreTasks(t *testing.T) {
 	kubeClient := fake.NewClientset()
-	validator := NewUDSBundleJobValidator(kubeClient)
+	validator := NewUDSBundleJobValidator(kubeClient, &audit.NoopAuditTrail{})
 
 	// Create ServiceAccount with permissions
 	sa := &corev1.ServiceAccount{
@@ -610,7 +611,7 @@ func TestValidateExtraArgs_PreTasks(t *testing.T) {
 
 func TestValidateUDSBundleJob_CompleteWorkflow(t *testing.T) {
 	kubeClient := fake.NewClientset()
-	validator := NewUDSBundleJobValidator(kubeClient)
+	validator := NewUDSBundleJobValidator(kubeClient, &audit.NoopAuditTrail{})
 
 	// Create ServiceAccount with full permissions
 	sa := &corev1.ServiceAccount{

@@ -36,15 +36,17 @@ import (
 // UDSBundleJobValidator validates UDSBundleJob resources against ServiceAccount permissions
 type UDSBundleJobValidator struct {
 	kubeClient kubernetes.Interface
-	auditTrail *audit.AuditTrail
+	auditTrail audit.Trail
 	logger     *logging.Logger
 }
 
-// NewUDSBundleJobValidator creates a new UDSBundleJob validator
-func NewUDSBundleJobValidator(kubeClient kubernetes.Interface) *UDSBundleJobValidator {
+// NewUDSBundleJobValidator creates a new UDSBundleJob validator.
+// The caller supplies the audit trail so that tests can pass a noop without
+// requiring a live Kubernetes API server.
+func NewUDSBundleJobValidator(kubeClient kubernetes.Interface, auditTrail audit.Trail) *UDSBundleJobValidator {
 	return &UDSBundleJobValidator{
 		kubeClient: kubeClient,
-		auditTrail: audit.NewAuditTrail(kubeClient, audit.DefaultConfig()),
+		auditTrail: auditTrail,
 		logger:     logging.NewLogger("uds-validator"),
 	}
 }

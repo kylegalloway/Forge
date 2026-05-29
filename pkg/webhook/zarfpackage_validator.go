@@ -37,15 +37,17 @@ import (
 // ZarfPackageJobValidator validates ZarfPackageJob resources against ServiceAccount permissions
 type ZarfPackageJobValidator struct {
 	kubeClient kubernetes.Interface
-	auditTrail *audit.AuditTrail
+	auditTrail audit.Trail
 	logger     *logging.Logger
 }
 
-// NewZarfPackageJobValidator creates a new ZarfPackageJob validator
-func NewZarfPackageJobValidator(kubeClient kubernetes.Interface) *ZarfPackageJobValidator {
+// NewZarfPackageJobValidator creates a new ZarfPackageJob validator.
+// The caller supplies the audit trail so that tests can pass a noop without
+// requiring a live Kubernetes API server.
+func NewZarfPackageJobValidator(kubeClient kubernetes.Interface, auditTrail audit.Trail) *ZarfPackageJobValidator {
 	return &ZarfPackageJobValidator{
 		kubeClient: kubeClient,
-		auditTrail: audit.NewAuditTrail(kubeClient, audit.DefaultConfig()),
+		auditTrail: auditTrail,
 		logger:     logging.NewLogger("zarf-validator"),
 	}
 }

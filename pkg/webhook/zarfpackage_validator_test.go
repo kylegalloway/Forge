@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	zarfv1alpha3 "github.com/kylegalloway/forge/pkg/apis/zarf/v1alpha3"
+	"github.com/kylegalloway/forge/pkg/audit"
 	"github.com/kylegalloway/forge/pkg/constants"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -13,7 +14,7 @@ import (
 
 func TestNewZarfPackageJobValidator(t *testing.T) {
 	kubeClient := fake.NewClientset()
-	validator := NewZarfPackageJobValidator(kubeClient)
+	validator := NewZarfPackageJobValidator(kubeClient, &audit.NoopAuditTrail{})
 	if validator == nil {
 		t.Fatal("NewZarfPackageJobValidator returned nil")
 	}
@@ -24,7 +25,7 @@ func TestNewZarfPackageJobValidator(t *testing.T) {
 
 func TestValidateZarfPackageJob_ValidBuild(t *testing.T) {
 	kubeClient := fake.NewClientset()
-	validator := NewZarfPackageJobValidator(kubeClient)
+	validator := NewZarfPackageJobValidator(kubeClient, &audit.NoopAuditTrail{})
 
 	// Create ServiceAccount with permissions
 	sa := &corev1.ServiceAccount{
@@ -68,7 +69,7 @@ func TestValidateZarfPackageJob_ValidBuild(t *testing.T) {
 
 func TestValidateZarfPackageJob_MissingServiceAccount(t *testing.T) {
 	kubeClient := fake.NewClientset()
-	validator := NewZarfPackageJobValidator(kubeClient)
+	validator := NewZarfPackageJobValidator(kubeClient, &audit.NoopAuditTrail{})
 
 	pkg := &zarfv1alpha3.ZarfPackageJob{
 		ObjectMeta: metav1.ObjectMeta{
@@ -499,7 +500,7 @@ func TestValidatePublish_LocalDestination(t *testing.T) {
 	}
 
 	client := fake.NewClientset(sa)
-	validator := NewZarfPackageJobValidator(client)
+	validator := NewZarfPackageJobValidator(client, &audit.NoopAuditTrail{})
 
 	publish := &zarfv1alpha3.PublishConfig{
 		Destination: zarfv1alpha3.PublishDestination{
@@ -526,7 +527,7 @@ func TestValidatePublish_UnknownDestination(t *testing.T) {
 	}
 
 	client := fake.NewClientset(sa)
-	validator := NewZarfPackageJobValidator(client)
+	validator := NewZarfPackageJobValidator(client, &audit.NoopAuditTrail{})
 
 	publish := &zarfv1alpha3.PublishConfig{
 		Destination: zarfv1alpha3.PublishDestination{
@@ -552,7 +553,7 @@ func TestValidateSource_UnknownType(t *testing.T) {
 	}
 
 	client := fake.NewClientset(sa)
-	validator := NewZarfPackageJobValidator(client)
+	validator := NewZarfPackageJobValidator(client, &audit.NoopAuditTrail{})
 
 	source := &zarfv1alpha3.PackageSource{
 		Type: "UnknownSourceType",

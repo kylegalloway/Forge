@@ -96,6 +96,13 @@ type AuditEvent struct {
 	Checksum string `json:"checksum,omitempty"`
 }
 
+// Trail is the interface that validators depend on for recording audit events.
+// Production code uses *AuditTrail; tests may substitute a NoopAuditTrail.
+type Trail interface {
+	RecordJobValidated(ctx context.Context, resourceKind, namespace, name, user string, details map[string]string) error
+	RecordJobValidationFailed(ctx context.Context, resourceKind, namespace, name, user, reason string) error
+}
+
 // AuditTrail manages audit logging for job execution
 type AuditTrail struct {
 	kubeClient kubernetes.Interface
@@ -487,4 +494,18 @@ func GetObjectReference(_ runtime.Object, kind, name, namespace, uid string) cor
 		Namespace: namespace,
 		UID:       types.UID(uid),
 	}
+}
+
+// NoopAuditTrail is a Trail implementation that discards all events.
+// It is intended for use in unit tests where a live Kubernetes API server is unavailable.
+type NoopAuditTrail struct{}
+
+// RecordJobValidated implements Trail; it is a no-op.
+func (n *NoopAuditTrail) RecordJobValidated(_ context.Context, _, _, _, _ string, _ map[string]string) error {
+	return nil
+}
+
+// RecordJobValidationFailed implements Trail; it is a no-op.
+func (n *NoopAuditTrail) RecordJobValidationFailed(_ context.Context, _, _, _, _, _ string) error {
+	return nil
 }

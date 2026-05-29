@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- CI umbrella job (`ci-complete`) added so non-Go PRs (tool-version bumps, config changes) are no longer blocked by phantom-pending matrix checks; branch protection now requires only `CI Complete` and `Run pre-commit hooks` instead of individual matrix job names that GitHub never reports when a matrix is skipped
+
+### Added
+- Dependabot version updates for Go modules and GitHub Actions (`.github/dependabot.yml`), running weekly on Mondays
+- Scheduled workflow (`.github/workflows/update-tool-versions.yaml`) that runs `scripts/update-tool-versions.sh` every Monday and opens a PR when `ZARF_VERSION` or `UDS_VERSION` change upstream; fills the gap Dependabot leaves since its Docker ecosystem only tracks `FROM` lines, not `ARG` values
+
 ## [0.12.0] - 2026-05-29
 
 ### Added

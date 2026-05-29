@@ -11,8 +11,9 @@ import (
 	"k8s.io/klog/v2"
 
 	"github.com/kylegalloway/forge/pkg/actions"
+	"github.com/kylegalloway/forge/pkg/actions/common"
 	"github.com/kylegalloway/forge/pkg/actions/validation"
-	"github.com/kylegalloway/forge/pkg/apis/common"
+	apiscommon "github.com/kylegalloway/forge/pkg/apis/common"
 	udsv1alpha3 "github.com/kylegalloway/forge/pkg/apis/uds/v1alpha3"
 	"github.com/kylegalloway/forge/pkg/constants"
 	"github.com/kylegalloway/forge/pkg/resources"
@@ -40,10 +41,12 @@ func NewDeployHandler(kubeClient kubernetes.Interface, dynamicClient dynamic.Int
 
 // Execute performs a Deploy action for the given UDSBundleJob
 //
-// The artifactPath and artifactPVCName parameters enable multi-action job support (CreateDeploy, etc.)
-// When artifactPVCName is set, the PVC is mounted and artifactPath specifies where to find the bundle.
+// opts.ArtifactPVCName enables multi-action job support (CreateDeploy, etc.).
+// When set, the PVC is mounted and opts.ArtifactPath specifies where to find the bundle.
 // When empty, assumes standalone deploy with bundle source in workspace or from spec.
-func (handler *DeployHandler) Execute(ctx context.Context, bundle *udsv1alpha3.UDSBundleJob, artifactPath, artifactPVCName string) (*actions.ActionResult, error) {
+func (handler *DeployHandler) Execute(ctx context.Context, bundle *udsv1alpha3.UDSBundleJob, opts common.ExecuteOptions) (*actions.ActionResult, error) {
+	artifactPath := opts.ArtifactPath
+	artifactPVCName := opts.ArtifactPVCName
 	klog.InfoS("Executing UDS Bundle Deploy action", "name", bundle.Name, "namespace", bundle.Namespace, "artifactPath", artifactPath, "artifactPVC", artifactPVCName)
 
 	handler.metrics.RecordBundleDeployStarted(ctx, bundle.Namespace, bundle.Name)
@@ -83,7 +86,7 @@ func (handler *DeployHandler) Execute(ctx context.Context, bundle *udsv1alpha3.U
 		}
 	}
 
-	var deployActionExtraMounts []common.ExtraMount
+	var deployActionExtraMounts []apiscommon.ExtraMount
 	if bundle.Spec.Deploy != nil {
 		deployActionExtraMounts = bundle.Spec.Deploy.ExtraMounts
 	}

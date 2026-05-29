@@ -10,8 +10,9 @@ import (
 	"k8s.io/klog/v2"
 
 	"github.com/kylegalloway/forge/pkg/actions"
+	"github.com/kylegalloway/forge/pkg/actions/common"
 	"github.com/kylegalloway/forge/pkg/actions/validation"
-	"github.com/kylegalloway/forge/pkg/apis/common"
+	apiscommon "github.com/kylegalloway/forge/pkg/apis/common"
 	zarfv1alpha3 "github.com/kylegalloway/forge/pkg/apis/zarf/v1alpha3"
 	"github.com/kylegalloway/forge/pkg/constants"
 	"github.com/kylegalloway/forge/pkg/resources"
@@ -37,7 +38,9 @@ func NewDeployHandler(kubeClient kubernetes.Interface, dynamicClient dynamic.Int
 }
 
 // Execute performs a Deploy action for the given ZarfPackageJob
-func (handler *DeployHandler) Execute(ctx context.Context, pkg *zarfv1alpha3.ZarfPackageJob, artifactPath string, artifactPVCName string) (*actions.ActionResult, error) {
+func (handler *DeployHandler) Execute(ctx context.Context, pkg *zarfv1alpha3.ZarfPackageJob, opts common.ExecuteOptions) (*actions.ActionResult, error) {
+	artifactPath := opts.ArtifactPath
+	artifactPVCName := opts.ArtifactPVCName
 	klog.InfoS("Executing Zarf Package Deploy action", "name", pkg.Name, "namespace", pkg.Namespace, "artifactPVC", artifactPVCName)
 
 	handler.metrics.RecordPackageDeployStarted(ctx, pkg.Namespace, pkg.Name)
@@ -82,7 +85,7 @@ func (handler *DeployHandler) Execute(ctx context.Context, pkg *zarfv1alpha3.Zar
 		}
 	}
 
-	var deployActionExtraMounts []common.ExtraMount
+	var deployActionExtraMounts []apiscommon.ExtraMount
 	if pkg.Spec.Deploy != nil {
 		deployActionExtraMounts = pkg.Spec.Deploy.ExtraMounts
 	}

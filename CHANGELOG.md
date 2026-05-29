@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Extracted shared job-construction logic from six action handlers into `pkg/actions/executor.go`; each handler now supplies only the four values that vary (CLI image, container UID, CLI verb, timeout/retry source) and delegates the full Job-building pipeline to `BuildActionJob`
 - Absorbed constant `JobParams` fields into `BuildActionJob` defaults: `Command` is always `["/bin/sh", "-c"]` (override via `CommandOverride`), `WorkingDir` always defaults to the workspace mount path (override via `WorkingDirOverride`), TTL is always 3600 seconds, and `Resources` falls back to `DefaultResourceRequirements()` when unset; callers no longer copy-paste these constants
 - Webhook validators (`ZarfPackageJobValidator`, `UDSBundleJobValidator`) now accept `audit.Trail` as a constructor parameter instead of constructing `AuditTrail` internally; adds `audit.NoopAuditTrail` for unit tests that removes the live Kubernetes API server requirement
+- Aligned all six concrete handler `Execute` signatures to accept `common.ExecuteOptions` directly, satisfying `common.ActionHandler[T]` without intermediaries; deleted `pkg/controller/handler_adapters.go` (111 lines) and wired `GenericJobMonitor` straight through to the concrete handlers
 
 ### Fixed
 - UDS bundle job metrics were no-ops; `RecordBundleJobCompleted`, `RecordBundleJobFailed`, and `RecordBundleActionDuration` are now fully implemented in `telemetry.Metrics` and wired into `UDSMetricsRecorder`

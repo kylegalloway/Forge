@@ -10,7 +10,8 @@ import (
 	"k8s.io/client-go/dynamic/fake"
 	kubefake "k8s.io/client-go/kubernetes/fake"
 
-	"github.com/kylegalloway/forge/pkg/apis/common"
+	actionscommon "github.com/kylegalloway/forge/pkg/actions/common"
+	apiscommon "github.com/kylegalloway/forge/pkg/apis/common"
 	zarfv1alpha3 "github.com/kylegalloway/forge/pkg/apis/zarf/v1alpha3"
 	"github.com/kylegalloway/forge/pkg/constants"
 	testhelpers "github.com/kylegalloway/forge/pkg/controller/testing"
@@ -117,7 +118,7 @@ func TestBuildHandlerExecute(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := handler.Execute(context.Background(), tt.pkg, "")
+			_, err := handler.Execute(context.Background(), tt.pkg, actionscommon.ExecuteOptions{})
 			if (err != nil) != tt.wantErr {
 				t.Errorf("BuildHandler.Execute() error = %v, wantErr %v", err, tt.wantErr)
 			}
@@ -188,7 +189,7 @@ func TestPublishHandlerExecute(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := handler.Execute(context.Background(), tt.pkg, "/workspace/test.tar.zst", "")
+			_, err := handler.Execute(context.Background(), tt.pkg, actionscommon.ExecuteOptions{ArtifactPath: "/workspace/test.tar.zst"})
 			if (err != nil) != tt.wantErr {
 				t.Errorf("PublishHandler.Execute() error = %v, wantErr %v", err, tt.wantErr)
 			}
@@ -254,7 +255,7 @@ func TestDeployHandlerExecute(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := handler.Execute(context.Background(), tt.pkg, "/workspace/test.tar.zst", "")
+			_, err := handler.Execute(context.Background(), tt.pkg, actionscommon.ExecuteOptions{ArtifactPath: "/workspace/test.tar.zst"})
 			if (err != nil) != tt.wantErr {
 				t.Errorf("DeployHandler.Execute() error = %v, wantErr %v", err, tt.wantErr)
 			}
@@ -280,8 +281,8 @@ func TestDeployHandlerExecute_ExternalCluster(t *testing.T) {
 			},
 			Deploy: &zarfv1alpha3.DeployConfig{
 				Target: zarfv1alpha3.DeployTargetExternalCluster,
-				ExternalCluster: &common.ExternalClusterConfig{
-					SecretRef: common.SecretReference{
+				ExternalCluster: &apiscommon.ExternalClusterConfig{
+					SecretRef: apiscommon.SecretReference{
 						Name: "external-kubeconfig",
 					},
 				},
@@ -289,7 +290,7 @@ func TestDeployHandlerExecute_ExternalCluster(t *testing.T) {
 		},
 	}
 
-	result, err := handler.Execute(context.Background(), pkg, "/workspace/test.tar.zst", "")
+	result, err := handler.Execute(context.Background(), pkg, actionscommon.ExecuteOptions{ArtifactPath: "/workspace/test.tar.zst"})
 	if err != nil {
 		t.Errorf("DeployHandler.Execute() with external cluster failed: %v", err)
 	}
@@ -360,7 +361,7 @@ func TestDeployHandlerExecute_MissingDeployConfig(t *testing.T) {
 		},
 	}
 
-	_, err := handler.Execute(context.Background(), pkg, "/workspace/test.tar.zst", "")
+	_, err := handler.Execute(context.Background(), pkg, actionscommon.ExecuteOptions{ArtifactPath: "/workspace/test.tar.zst"})
 	if err == nil {
 		t.Error("Expected error for missing deploy config")
 	}
@@ -385,7 +386,7 @@ func TestPublishHandlerExecute_MissingPublishConfig(t *testing.T) {
 		},
 	}
 
-	_, err := handler.Execute(context.Background(), pkg, "/workspace/test.tar.zst", "")
+	_, err := handler.Execute(context.Background(), pkg, actionscommon.ExecuteOptions{ArtifactPath: "/workspace/test.tar.zst"})
 	if err == nil {
 		t.Error("Expected error for missing publish config")
 	}
@@ -413,7 +414,7 @@ func TestBuildHandlerExecute_LocalSource(t *testing.T) {
 		},
 	}
 
-	result, err := handler.Execute(context.Background(), pkg, "")
+	result, err := handler.Execute(context.Background(), pkg, actionscommon.ExecuteOptions{})
 	if err != nil {
 		t.Errorf("BuildHandler.Execute() with local source failed: %v", err)
 	}
@@ -469,7 +470,7 @@ func TestPublishHandlerExecute_LocalSource(t *testing.T) {
 		},
 	}
 
-	result, err := handler.Execute(context.Background(), pkg, "/workspace/test.tar.zst", "")
+	result, err := handler.Execute(context.Background(), pkg, actionscommon.ExecuteOptions{ArtifactPath: "/workspace/test.tar.zst"})
 	if err != nil {
 		t.Errorf("PublishHandler.Execute() with local source failed: %v", err)
 	}
@@ -520,7 +521,7 @@ func TestDeployHandlerExecute_LocalSource(t *testing.T) {
 		},
 	}
 
-	result, err := handler.Execute(context.Background(), pkg, "/workspace/test.tar.zst", "")
+	result, err := handler.Execute(context.Background(), pkg, actionscommon.ExecuteOptions{ArtifactPath: "/workspace/test.tar.zst"})
 	if err != nil {
 		t.Errorf("DeployHandler.Execute() with local source failed: %v", err)
 	}
@@ -579,7 +580,7 @@ func TestDeployHandlerExecute_WithComponentsAndVariables(t *testing.T) {
 		},
 	}
 
-	result, err := handler.Execute(context.Background(), pkg, "/workspace/test.tar.zst", "")
+	result, err := handler.Execute(context.Background(), pkg, actionscommon.ExecuteOptions{ArtifactPath: "/workspace/test.tar.zst"})
 	if err != nil {
 		t.Errorf("DeployHandler.Execute() with components and variables failed: %v", err)
 	}
@@ -633,8 +634,8 @@ func TestDeployHandlerExecute_ExternalClusterWithContext(t *testing.T) {
 			},
 			Deploy: &zarfv1alpha3.DeployConfig{
 				Target: zarfv1alpha3.DeployTargetExternalCluster,
-				ExternalCluster: &common.ExternalClusterConfig{
-					SecretRef: common.SecretReference{ // pragma: allowlist secret
+				ExternalCluster: &apiscommon.ExternalClusterConfig{
+					SecretRef: apiscommon.SecretReference{ // pragma: allowlist secret
 						Name: "external-kubeconfig",
 					},
 					Context: "production-cluster",
@@ -643,7 +644,7 @@ func TestDeployHandlerExecute_ExternalClusterWithContext(t *testing.T) {
 		},
 	}
 
-	result, err := handler.Execute(context.Background(), pkg, "/workspace/test.tar.zst", "")
+	result, err := handler.Execute(context.Background(), pkg, actionscommon.ExecuteOptions{ArtifactPath: "/workspace/test.tar.zst"})
 	if err != nil {
 		t.Errorf("DeployHandler.Execute() with external cluster context failed: %v", err)
 	}
@@ -824,16 +825,16 @@ func TestBuildHandlerExecute_WithExtraMounts(t *testing.T) {
 					URL: "https://github.com/test/repo",
 				},
 			},
-			ExtraMounts: []common.ExtraMount{
+			ExtraMounts: []apiscommon.ExtraMount{
 				{
-					ConfigMapRef: &common.LocalObjectReference{Name: "my-configmap"},
+					ConfigMapRef: &apiscommon.LocalObjectReference{Name: "my-configmap"},
 					MountPath:    "/etc/config",
 				},
 			},
 			Build: &zarfv1alpha3.BuildConfig{
-				ExtraMounts: []common.ExtraMount{
+				ExtraMounts: []apiscommon.ExtraMount{
 					{
-						SecretRef: &common.LocalObjectReference{Name: "my-secret"},
+						SecretRef: &apiscommon.LocalObjectReference{Name: "my-secret"},
 						MountPath: "/etc/secret",
 					},
 				},
@@ -841,7 +842,7 @@ func TestBuildHandlerExecute_WithExtraMounts(t *testing.T) {
 		},
 	}
 
-	result, err := handler.Execute(context.Background(), pkg, "")
+	result, err := handler.Execute(context.Background(), pkg, actionscommon.ExecuteOptions{})
 	if err != nil {
 		t.Fatalf("BuildHandler.Execute() with extra mounts failed: %v", err)
 	}
@@ -927,16 +928,16 @@ func TestBuildHandlerExecute_WithExtraMountsConflict(t *testing.T) {
 					URL: "https://github.com/test/repo",
 				},
 			},
-			ExtraMounts: []common.ExtraMount{
+			ExtraMounts: []apiscommon.ExtraMount{
 				{
-					ConfigMapRef: &common.LocalObjectReference{Name: "spec-configmap"},
+					ConfigMapRef: &apiscommon.LocalObjectReference{Name: "spec-configmap"},
 					MountPath:    "/etc/custom",
 				},
 			},
 			Build: &zarfv1alpha3.BuildConfig{
-				ExtraMounts: []common.ExtraMount{
+				ExtraMounts: []apiscommon.ExtraMount{
 					{
-						SecretRef: &common.LocalObjectReference{Name: "build-secret"},
+						SecretRef: &apiscommon.LocalObjectReference{Name: "build-secret"},
 						MountPath: "/etc/custom",
 					},
 				},
@@ -944,7 +945,7 @@ func TestBuildHandlerExecute_WithExtraMountsConflict(t *testing.T) {
 		},
 	}
 
-	_, err := handler.Execute(context.Background(), pkg, "")
+	_, err := handler.Execute(context.Background(), pkg, actionscommon.ExecuteOptions{})
 	if err == nil {
 		t.Fatal("Expected error for conflicting extraMounts, got nil")
 	}

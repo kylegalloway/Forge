@@ -39,11 +39,6 @@ func NewGenericZarfController(
 	publishHandler := zarf.NewPublishHandler(kubeClient, metrics, tracer)
 	deployHandler := zarf.NewDeployHandler(kubeClient, dynamicClient, metrics, tracer)
 
-	// Create handler adapters
-	primaryAdapter := NewZarfBuildHandlerAdapter(buildHandler)
-	publishAdapter := NewZarfPublishHandlerAdapter(publishHandler)
-	deployAdapter := NewZarfDeployHandlerAdapter(deployHandler)
-
 	// Create metrics recorder
 	metricsRecorder := NewZarfMetricsRecorder(metrics)
 
@@ -82,9 +77,9 @@ func NewGenericZarfController(
 		metrics,
 		tracer,
 		config,
-		primaryAdapter,
-		publishAdapter,
-		deployAdapter,
+		buildHandler,
+		publishHandler,
+		deployHandler,
 		metricsRecorder,
 		opts...,
 	)
@@ -109,11 +104,6 @@ func NewGenericUDSController(
 	createHandler := uds.NewCreateHandler(kubeClient, metrics, tracer)
 	publishHandler := uds.NewPublishHandler(kubeClient, metrics, tracer)
 	deployHandler := uds.NewDeployHandler(kubeClient, dynamicClient, metrics, tracer)
-
-	// Create handler adapters
-	primaryAdapter := NewUDSCreateHandlerAdapter(createHandler)
-	publishAdapter := NewUDSPublishHandlerAdapter(publishHandler)
-	deployAdapter := NewUDSDeployHandlerAdapter(deployHandler)
 
 	// Create metrics recorder
 	metricsRecorder := NewUDSMetricsRecorder(metrics)
@@ -153,9 +143,9 @@ func NewGenericUDSController(
 		metrics,
 		tracer,
 		config,
-		primaryAdapter,
-		publishAdapter,
-		deployAdapter,
+		createHandler,
+		publishHandler,
+		deployHandler,
 		metricsRecorder,
 		opts...,
 	)

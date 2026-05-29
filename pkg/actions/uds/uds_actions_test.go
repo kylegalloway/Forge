@@ -13,7 +13,8 @@ import (
 	kubefake "k8s.io/client-go/kubernetes/fake"
 
 	"github.com/kylegalloway/forge/pkg/actions"
-	"github.com/kylegalloway/forge/pkg/apis/common"
+	actionscommon "github.com/kylegalloway/forge/pkg/actions/common"
+	apiscommon "github.com/kylegalloway/forge/pkg/apis/common"
 	udsv1alpha3 "github.com/kylegalloway/forge/pkg/apis/uds/v1alpha3"
 	"github.com/kylegalloway/forge/pkg/constants"
 	testhelpers "github.com/kylegalloway/forge/pkg/controller/testing"
@@ -179,7 +180,7 @@ func TestCreateHandlerExecute(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Test without PVC (standalone create)
-			result, err := handler.Execute(context.Background(), tt.bundle, "")
+			result, err := handler.Execute(context.Background(), tt.bundle, actionscommon.ExecuteOptions{})
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Execute() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -298,7 +299,7 @@ func TestPublishHandlerExecute(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Test without PVC (standalone publish)
-			result, err := handler.Execute(context.Background(), tt.bundle, "", "")
+			result, err := handler.Execute(context.Background(), tt.bundle, actionscommon.ExecuteOptions{})
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Execute() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -399,7 +400,7 @@ func TestDeployHandlerExecute(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Test without PVC (standalone deploy)
-			result, err := handler.Execute(context.Background(), tt.bundle, "", "")
+			result, err := handler.Execute(context.Background(), tt.bundle, actionscommon.ExecuteOptions{})
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Execute() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -621,7 +622,7 @@ func TestGetUDSJobConfiguration(t *testing.T) {
 						Registry:   "registry.example.com",
 						Repository: "test/bundle",
 						Tag:        "v1.0.0",
-						CredentialRef: &common.SecretReference{
+						CredentialRef: &apiscommon.SecretReference{
 							Name: "oci-creds",
 						},
 					},
@@ -651,7 +652,7 @@ func TestGetUDSJobConfiguration(t *testing.T) {
 						Bucket:    "my-bucket",
 						KeyPrefix: "bundles/",
 						Region:    "us-west-2",
-						CredentialRef: &common.AWSCredentialRef{
+						CredentialRef: &apiscommon.AWSCredentialRef{
 							Name: "s3-creds",
 						},
 					},
@@ -716,7 +717,7 @@ func TestBuildInitContainers(t *testing.T) {
 						Git: &udsv1alpha3.GitSource{
 							URL: "https://github.com/test/private-repo",
 							Ref: "main",
-							CredentialRef: &common.SecretReference{
+							CredentialRef: &apiscommon.SecretReference{
 								Name: "git-creds",
 							},
 						},
@@ -736,7 +737,7 @@ func TestBuildInitContainers(t *testing.T) {
 						Git: &udsv1alpha3.GitSource{
 							URL: "https://github.com/test/public-repo",
 							Ref: "main",
-							CredentialRef: &common.SecretReference{
+							CredentialRef: &apiscommon.SecretReference{
 								Name: "git-creds",
 							},
 							DisableCloneCredentials: true,
@@ -848,7 +849,7 @@ func TestBuildVolumes(t *testing.T) {
 						Git: &udsv1alpha3.GitSource{
 							URL: "https://github.com/test/private-repo",
 							Ref: "main",
-							CredentialRef: &common.SecretReference{
+							CredentialRef: &apiscommon.SecretReference{
 								Name: "git-creds",
 							},
 						},
@@ -867,7 +868,7 @@ func TestBuildVolumes(t *testing.T) {
 						Git: &udsv1alpha3.GitSource{
 							URL: "https://github.com/test/public-repo",
 							Ref: "main",
-							CredentialRef: &common.SecretReference{
+							CredentialRef: &apiscommon.SecretReference{
 								Name: "git-creds",
 							},
 							DisableCloneCredentials: true,
@@ -936,8 +937,8 @@ func TestDeployHandlerExecute_ExternalClusterWithContext(t *testing.T) {
 			},
 			Deploy: &udsv1alpha3.DeployConfig{
 				Target: udsv1alpha3.DeployTargetExternalCluster,
-				ExternalCluster: &common.ExternalClusterConfig{
-					SecretRef: common.SecretReference{ // pragma: allowlist secret
+				ExternalCluster: &apiscommon.ExternalClusterConfig{
+					SecretRef: apiscommon.SecretReference{ // pragma: allowlist secret
 						Name: "external-kubeconfig",
 					},
 					Context: "production-cluster",
@@ -946,7 +947,7 @@ func TestDeployHandlerExecute_ExternalClusterWithContext(t *testing.T) {
 		},
 	}
 
-	result, err := handler.Execute(context.Background(), bundle, "", "")
+	result, err := handler.Execute(context.Background(), bundle, actionscommon.ExecuteOptions{})
 	if err != nil {
 		t.Fatalf("Execute() unexpected error = %v", err)
 	}
@@ -1035,16 +1036,16 @@ func TestCreateHandlerExecute_WithExtraMounts(t *testing.T) {
 					Ref: "main",
 				},
 			},
-			ExtraMounts: []common.ExtraMount{
+			ExtraMounts: []apiscommon.ExtraMount{
 				{
-					ConfigMapRef: &common.LocalObjectReference{Name: "shared-config"},
+					ConfigMapRef: &apiscommon.LocalObjectReference{Name: "shared-config"},
 					MountPath:    "/etc/shared",
 				},
 			},
 			Create: &udsv1alpha3.CreateConfig{
-				ExtraMounts: []common.ExtraMount{
+				ExtraMounts: []apiscommon.ExtraMount{
 					{
-						SecretRef: &common.LocalObjectReference{Name: "override-secret"},
+						SecretRef: &apiscommon.LocalObjectReference{Name: "override-secret"},
 						MountPath: "/workspace/overrides",
 					},
 				},
@@ -1052,7 +1053,7 @@ func TestCreateHandlerExecute_WithExtraMounts(t *testing.T) {
 		},
 	}
 
-	result, err := handler.Execute(context.Background(), bundle, "")
+	result, err := handler.Execute(context.Background(), bundle, actionscommon.ExecuteOptions{})
 	if err != nil {
 		t.Fatalf("Execute() unexpected error: %v", err)
 	}
@@ -1129,16 +1130,16 @@ func TestCreateHandlerExecute_WithExtraMountsConflict(t *testing.T) {
 					Ref: "main",
 				},
 			},
-			ExtraMounts: []common.ExtraMount{
+			ExtraMounts: []apiscommon.ExtraMount{
 				{
-					ConfigMapRef: &common.LocalObjectReference{Name: "custom-config"},
+					ConfigMapRef: &apiscommon.LocalObjectReference{Name: "custom-config"},
 					MountPath:    "/etc/custom",
 				},
 			},
 			Create: &udsv1alpha3.CreateConfig{
-				ExtraMounts: []common.ExtraMount{
+				ExtraMounts: []apiscommon.ExtraMount{
 					{
-						SecretRef: &common.LocalObjectReference{Name: "custom-secret"},
+						SecretRef: &apiscommon.LocalObjectReference{Name: "custom-secret"},
 						MountPath: "/etc/custom",
 					},
 				},
@@ -1146,7 +1147,7 @@ func TestCreateHandlerExecute_WithExtraMountsConflict(t *testing.T) {
 		},
 	}
 
-	_, err := handler.Execute(context.Background(), bundle, "")
+	_, err := handler.Execute(context.Background(), bundle, actionscommon.ExecuteOptions{})
 	if err == nil {
 		t.Fatal("Execute() expected error for duplicate mountPath, got nil")
 	}

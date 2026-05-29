@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+- Bump Go from 1.26.0 to 1.26.3 to fix 7 stdlib vulnerabilities: two XSS bugs in `html/template` (GO-2026-4982, GO-2026-4980), DoS via `crypto/x509` cert chain building and policy validation (GO-2026-4947, GO-2026-4946), DoS in `crypto/tls` TLS 1.3 KeyUpdate (GO-2026-4870), HTTP/2 infinite loop in `net/http` (GO-2026-4918), and Windows panic in `net.Dial` (GO-2026-4971)
+
 ### Fixed
 - CI umbrella job (`ci-complete`) added so non-Go PRs (tool-version bumps, config changes) are no longer blocked by phantom-pending matrix checks; branch protection now requires only `CI Complete` and `Run pre-commit hooks` instead of individual matrix job names that GitHub never reports when a matrix is skipped
 

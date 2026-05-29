@@ -54,3 +54,6 @@ dist/
 # Test coverage
 cover.out
 coverage.out
+
+# Local scratch / agent work-in-progress
+.scratch/

@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- Replaced `ParseZarfPolicy` and `ParseUDSPolicy` in `pkg/retry/policy.go` with a single `ParsePolicy(*PolicySpec)` function; callers in `pkg/controller/generic_monitor.go` now build a `retry.PolicySpec` directly from the unstructured map, eliminating the duplicate resource-type branch and the two CRD-specific imports from the retry package
 - Extracted shared job-construction logic from six action handlers into `pkg/actions/executor.go`; each handler now supplies only the four values that vary (CLI image, container UID, CLI verb, timeout/retry source) and delegates the full Job-building pipeline to `BuildActionJob`
 - Absorbed constant `JobParams` fields into `BuildActionJob` defaults: `Command` is always `["/bin/sh", "-c"]` (override via `CommandOverride`), `WorkingDir` always defaults to the workspace mount path (override via `WorkingDirOverride`), TTL is always 3600 seconds, and `Resources` falls back to `DefaultResourceRequirements()` when unset; callers no longer copy-paste these constants
 - Webhook validators (`ZarfPackageJobValidator`, `UDSBundleJobValidator`) now accept `audit.Trail` as a constructor parameter instead of constructing `AuditTrail` internally; adds `audit.NoopAuditTrail` for unit tests that removes the live Kubernetes API server requirement

@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- UDS bundle job metrics were no-ops; `RecordBundleJobCompleted`, `RecordBundleJobFailed`, and `RecordBundleActionDuration` are now fully implemented in `telemetry.Metrics` and wired into `UDSMetricsRecorder`
+
 ## [0.11.20] - 2026-03-23
 
 ### Security

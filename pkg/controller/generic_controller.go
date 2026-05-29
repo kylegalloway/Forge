@@ -644,28 +644,39 @@ func (ctrl *GenericController[T]) updateResourceStatus(ctx context.Context, obj 
 	return ctrl.updateStatus(ctx, obj, phase, message, nil)
 }
 
-// updateStatus updates the resource status
+// updateStatus updates the resource status.
+// It merges into the existing status (preserving prior operation fields across
+// chained actions) and derives standard conditions from the resulting phase.
 func (ctrl *GenericController[T]) updateStatus(ctx context.Context, obj *unstructured.Unstructured, phase, message string, operationStatus map[string]interface{}) error {
 	name := obj.GetName()
 	namespace := obj.GetNamespace()
 
-	// Build status object
-	status := map[string]interface{}{
-		"phase":              phase,
-		"message":            message,
-		"lastUpdateTime":     metav1.Now().Format(time.RFC3339),
-		"observedGeneration": obj.GetGeneration(),
+	// Start from existing status so chained actions don't lose prior operation fields.
+	existing, _, err := unstructured.NestedMap(obj.Object, "status")
+	if err != nil {
+		return fmt.Errorf("failed to read existing status: %w", err)
+	}
+	if existing == nil {
+		existing = map[string]interface{}{}
 	}
 
-	// Add operation-specific status if provided
+	existingConditions := conditionsFromUnstructured(existing["conditions"])
+
+	existing["phase"] = phase
+	existing["message"] = message
+	existing["lastUpdateTime"] = metav1.Now().Format(time.RFC3339)
+	existing["observedGeneration"] = obj.GetGeneration()
+
 	for key, value := range operationStatus {
-		status[key] = value
+		existing[key] = value
 	}
 
-	// Update status subresource
-	obj.Object["status"] = status
+	conditions := DeriveConditions(phase, existing, existingConditions, obj.GetGeneration())
+	existing["conditions"] = conditionsToUnstructured(conditions)
 
-	_, err := ctrl.dynamicClient.Resource(ctrl.resourceGVR).Namespace(namespace).UpdateStatus(ctx, obj, metav1.UpdateOptions{})
+	obj.Object["status"] = existing
+
+	_, err = ctrl.dynamicClient.Resource(ctrl.resourceGVR).Namespace(namespace).UpdateStatus(ctx, obj, metav1.UpdateOptions{})
 	if err != nil {
 		if errors.IsNotFound(err) {
 			klog.V(4).InfoS("Resource not found during status update", "name", name, "namespace", namespace)

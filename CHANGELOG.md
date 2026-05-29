@@ -13,6 +13,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Dependabot version updates for Go modules and GitHub Actions (`.github/dependabot.yml`), running weekly on Mondays
 - Scheduled workflow (`.github/workflows/update-tool-versions.yaml`) that runs `scripts/update-tool-versions.sh` every Monday and opens a PR when `ZARF_VERSION` or `UDS_VERSION` change upstream; fills the gap Dependabot leaves since its Docker ecosystem only tracks `FROM` lines, not `ARG` values
+### Added
+- `TestDeriveConditions_ReconcilingReason`: covers all six phases to verify the `Reconciling` reason is correct for terminal vs in-progress states
+- `TestDeriveConditions_DeterministicOrder`: asserts two `DeriveConditions` calls with identical input produce identical condition order
+
+### Fixed
+- `Reconciling` condition `Reason` was always `Progressing` even when `Status=False` (terminal); now correctly reflects the outcome — `Succeeded` when `PhaseCompleted`, `Failed` when `PhaseFailed`
+- Per-operation conditions in the status slice had non-deterministic order (map iteration); `OperationConditionTypes` is now an ordered slice so conditions appear in stable order (`build → create → publish → deploy`)
+
+### Changed
+- `ConditionReasonSuspended` comment updated to clearly mark it as a forward declaration for a future `spec.suspend` feature
+- `conditionsToUnstructured` now logs via `klog.ErrorS` when a condition cannot be converted rather than silently dropping it
 
 ## [0.12.0] - 2026-05-29
 

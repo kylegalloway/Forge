@@ -120,7 +120,7 @@ jobs:
       - name: Run golangci-lint
         uses: golangci/golangci-lint-action@v9
         with:
-          version: v2.7.2
+          version: v2.12.2
           args: --config=.config/golangci.yaml --timeout=10m
 
       - name: Run go fmt

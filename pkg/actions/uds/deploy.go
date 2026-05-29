@@ -120,9 +120,7 @@ func (handler *DeployHandler) Execute(ctx context.Context, bundle *udsv1alpha3.U
 		CLIImage:      constants.UDSCLIImage,
 		ContainerUID:  constants.DefaultUDSUID,
 		ContainerName: constants.ContainerNameUDSDeploy,
-		Command:       []string{"/bin/sh", "-c"},
 		Args:          []string{udsCmd},
-		WorkingDir:    constants.VolumeMountPathWorkspace,
 		Labels: map[string]string{
 			constants.LabelApp:     constants.LabelAppValueUDS,
 			"resource-type":        "udsbundlejob",

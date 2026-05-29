@@ -29,9 +29,7 @@ func TestBuildActionJob_Basic(t *testing.T) {
 		CLIImage:      "test-image:latest",
 		ContainerUID:  1000,
 		ContainerName: "test-container",
-		Command:       []string{"/bin/sh", "-c"},
 		Args:          []string{"echo hello"},
-		WorkingDir:    "/workspace",
 		Labels: map[string]string{
 			"app": "test",
 		},
@@ -326,9 +324,7 @@ func minimalJobParams(kubeClient *kubefake.Clientset, jobName string) JobParams 
 		CLIImage:      "test-image:latest",
 		ContainerUID:  1000,
 		ContainerName: "test-container",
-		Command:       []string{"/bin/sh", "-c"},
 		Args:          []string{"echo hello"},
-		WorkingDir:    "/workspace",
 		Labels:        map[string]string{"app": "test"},
 		OwnerRef:      owner,
 		OwnerGVK: schema.GroupVersionKind{

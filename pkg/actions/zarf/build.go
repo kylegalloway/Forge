@@ -58,7 +58,7 @@ func (handler *BuildHandler) Execute(ctx context.Context, pkg *zarfv1alpha3.Zarf
 		return nil, fmt.Errorf("source type is required for Build action")
 	}
 
-	zarfCmd, workingDir, err := handler.buildZarfCommand(pkg, artifactPVCName)
+	zarfCmd, err := handler.buildZarfCommand(pkg, artifactPVCName)
 	if err != nil {
 		handler.metrics.RecordPackageBuildFailed(ctx, pkg.Namespace, pkg.Name)
 		return nil, fmt.Errorf("failed to build zarf command: %w", err)
@@ -103,9 +103,7 @@ func (handler *BuildHandler) Execute(ctx context.Context, pkg *zarfv1alpha3.Zarf
 		CLIImage:      constants.ZarfCLIImage,
 		ContainerUID:  constants.DefaultZarfUID,
 		ContainerName: constants.ContainerNameZarfBuild,
-		Command:       []string{"/bin/sh", "-c"},
 		Args:          []string{zarfCmd},
-		WorkingDir:    workingDir,
 		Labels: map[string]string{
 			constants.LabelApp:     constants.LabelAppValueZarf,
 			"resource-type":        "zarfpackagejob",
@@ -146,10 +144,10 @@ func (handler *BuildHandler) Execute(ctx context.Context, pkg *zarfv1alpha3.Zarf
 	return actions.ActionResultFromJob(job, fmt.Sprintf("Build job %s created", job.Name)), nil
 }
 
-// buildZarfCommand builds the zarf CLI command based on package source
-func (handler *BuildHandler) buildZarfCommand(pkg *zarfv1alpha3.ZarfPackageJob, artifactPVCName string) (string, string, error) {
-	workingDir := constants.VolumeMountPathWorkspace
-
+// buildZarfCommand builds the zarf CLI command based on package source.
+// The working directory is always the workspace volume mount; that default is
+// absorbed by BuildActionJob and does not need to be returned here.
+func (handler *BuildHandler) buildZarfCommand(pkg *zarfv1alpha3.ZarfPackageJob, artifactPVCName string) (string, error) {
 	var cmd string
 	if artifactPVCName != "" {
 		cmd = "zarf package create . --confirm --output-directory " + constants.VolumeMountPathArtifacts
@@ -178,12 +176,12 @@ func (handler *BuildHandler) buildZarfCommand(pkg *zarfv1alpha3.ZarfPackageJob, 
 			var err error
 			cmd, err = validation.AppendExtraArgs(cmd, build.ExtraArgs)
 			if err != nil {
-				return "", "", fmt.Errorf("invalid extraArgs: %w", err)
+				return "", fmt.Errorf("invalid extraArgs: %w", err)
 			}
 		}
 	}
 
-	return cmd, workingDir, nil
+	return cmd, nil
 }
 
 // buildZarfInitContainers creates init containers for Zarf source artifact retrieval

@@ -103,9 +103,7 @@ func (handler *PublishHandler) Execute(ctx context.Context, bundle *udsv1alpha3.
 		CLIImage:      constants.UDSCLIImage,
 		ContainerUID:  constants.DefaultUDSUID,
 		ContainerName: constants.ContainerNameUDSPublish,
-		Command:       []string{"/bin/sh", "-c"},
 		Args:          []string{udsCmd},
-		WorkingDir:    constants.VolumeMountPathWorkspace,
 		Labels: map[string]string{
 			constants.LabelApp:     constants.LabelAppValueUDS,
 			"resource-type":        "udsbundlejob",

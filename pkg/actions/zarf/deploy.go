@@ -119,9 +119,7 @@ func (handler *DeployHandler) Execute(ctx context.Context, pkg *zarfv1alpha3.Zar
 		CLIImage:      constants.ZarfCLIImage,
 		ContainerUID:  constants.DefaultZarfUID,
 		ContainerName: constants.ContainerNameZarfDeploy,
-		Command:       []string{"/bin/sh", "-c"},
 		Args:          []string{deployCmd},
-		WorkingDir:    constants.VolumeMountPathWorkspace,
 		Labels: map[string]string{
 			constants.LabelApp:     constants.LabelAppValueZarf,
 			"resource-type":        "zarfpackagejob",

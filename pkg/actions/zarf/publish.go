@@ -109,9 +109,7 @@ func (handler *PublishHandler) Execute(ctx context.Context, pkg *zarfv1alpha3.Za
 		CLIImage:      constants.ZarfCLIImage,
 		ContainerUID:  constants.DefaultZarfUID,
 		ContainerName: constants.ContainerNameZarfPublish,
-		Command:       []string{"/bin/sh", "-c"},
 		Args:          []string{publishCmd},
-		WorkingDir:    constants.VolumeMountPathWorkspace,
 		Labels: map[string]string{
 			constants.LabelApp:     constants.LabelAppValueZarf,
 			"resource-type":        "zarfpackagejob",

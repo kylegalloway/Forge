@@ -10,13 +10,21 @@ import (
 	"k8s.io/client-go/kubernetes"
 
 	"github.com/kylegalloway/forge/pkg/apis/common"
+	"github.com/kylegalloway/forge/pkg/constants"
 	"github.com/kylegalloway/forge/pkg/destinations"
 )
 
-// JobParams holds all the per-action parameters needed to build a Kubernetes Job.
+// JobParams holds the per-action parameters needed to build a Kubernetes Job.
 // The six action handlers (zarf/build, uds/create, zarf/publish, uds/publish,
 // zarf/deploy, uds/deploy) populate this struct and call BuildActionJob, which
 // owns the full JobBuilder chain.
+//
+// Constant fields absorbed by BuildActionJob (callers do NOT need to set these):
+//   - Command defaults to ["/bin/sh", "-c"] — set CommandOverride only when non-standard
+//   - WorkingDir defaults to constants.VolumeMountPathWorkspace — set WorkingDirOverride only when non-standard
+//   - TTLSecondsAfterFinished is always 3600 — never exposed to callers
+//   - Resources falls back to DefaultResourceRequirements() when zero-value — callers should
+//     supply action-appropriate requirements (BuildResourceRequirements, etc.) or leave unset
 type JobParams struct {
 	// Job identity
 	JobName   string
@@ -27,10 +35,15 @@ type JobParams struct {
 	ContainerUID  int64
 	ContainerName string
 
-	// Job command
-	Command    []string // e.g. []string{"/bin/sh", "-c"}
-	Args       []string // the actual shell command
-	WorkingDir string
+	// Args is the actual shell command passed to /bin/sh -c.
+	// Command defaults to ["/bin/sh", "-c"]; use CommandOverride only when a
+	// different entrypoint is required.
+	Args            []string
+	CommandOverride []string // overrides the default ["/bin/sh", "-c"] when set
+
+	// WorkingDirOverride overrides the default working directory
+	// (constants.VolumeMountPathWorkspace).  Leave empty for all standard actions.
+	WorkingDirOverride string
 
 	// Labels and owner
 	Labels   map[string]string
@@ -42,7 +55,9 @@ type JobParams struct {
 	Affinity     *corev1.Affinity
 	Tolerations  []corev1.Toleration
 
-	// Resources
+	// Resources: action-specific requirements (BuildResourceRequirements,
+	// PublishResourceRequirements, DeployResourceRequirements, etc.).
+	// When zero-value, BuildActionJob falls back to DefaultResourceRequirements().
 	Resources corev1.ResourceRequirements
 
 	// Retry/timeout
@@ -89,21 +104,47 @@ type JobParams struct {
 	KubeClient kubernetes.Interface
 }
 
+// defaultCommand is the entrypoint used by every action job.
+// Callers that need a different entrypoint may set JobParams.CommandOverride.
+var defaultCommand = []string{"/bin/sh", "-c"}
+
 // BuildActionJob constructs and creates (or retrieves an existing) Kubernetes Job
 // from the supplied JobParams. All job-construction logic is centralized here;
 // the six action handlers are thin adapters that populate JobParams and call this.
+//
+// Defaults applied when the corresponding JobParams field is zero/nil:
+//   - Command → ["/bin/sh", "-c"]  (override via CommandOverride)
+//   - WorkingDir → constants.VolumeMountPathWorkspace  (override via WorkingDirOverride)
+//   - Resources → DefaultResourceRequirements()
+//   - TTLSecondsAfterFinished → 3600 (always; not configurable per-caller)
 func BuildActionJob(ctx context.Context, p JobParams) (*batchv1.Job, error) {
+	// Apply defaults for constant fields
+	cmd := defaultCommand
+	if len(p.CommandOverride) > 0 {
+		cmd = p.CommandOverride
+	}
+
+	workingDir := constants.VolumeMountPathWorkspace
+	if p.WorkingDirOverride != "" {
+		workingDir = p.WorkingDirOverride
+	}
+
+	resources := p.Resources
+	if resources.Requests == nil && resources.Limits == nil {
+		resources = DefaultResourceRequirements()
+	}
+
 	builder := NewJobBuilder(p.JobName, p.Namespace).
 		WithKubeClient(p.KubeClient).
 		WithOwnerReference(p.OwnerRef, p.OwnerGVK).
 		WithLabels(p.Labels).
 		WithContainerImage(p.CLIImage).
 		WithContainerName(p.ContainerName).
-		WithCommand(p.Command).
+		WithCommand(cmd).
 		WithArgs(p.Args).
-		WithWorkingDir(p.WorkingDir).
+		WithWorkingDir(workingDir).
 		WithUserConfig(p.ContainerUID).
-		WithResources(p.Resources).
+		WithResources(resources).
 		WithNodeSelector(p.NodeSelector).
 		WithAffinity(p.Affinity).
 		WithTolerations(p.Tolerations).

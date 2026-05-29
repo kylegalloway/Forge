@@ -8,7 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- Tests for `pkg/retry/`: 41 new test cases covering `Policy.ShouldRetry` (count gating, pattern matching, zero-retries boundary), `Policy.CalculateBackoff` (initial value, multiplier progression, max cap), `ParseZarfPolicy` and `ParseUDSPolicy` (nil, defaults, custom values, invalid durations), glob-to-regex compilation (`*`, `?`, special characters, dot literals, case-insensitivity), `Tracker` state transitions (nil policy, fresh tracker, max retries, non-retryable errors), `BuildRetryStatus`, `ShouldRetryNow`, and `ExtractRetryCount`
+- Tests for `pkg/retry/`: 41 new test cases covering `Policy.ShouldRetry` (count gating, pattern matching, zero-retries boundary), `Policy.CalculateBackoff` (initial value, multiplier progression, max cap), `ParsePolicy` (nil, defaults, custom values, invalid durations, 1.5x multiplier), glob-to-regex compilation (`*`, `?`, special characters, dot literals, case-insensitivity), `Tracker` state transitions (nil policy, fresh tracker, max retries, non-retryable errors), `BuildRetryStatus`, `ShouldRetryNow`, and `ExtractRetryCount`
+
+### Fixed
+- `pkg/retry/policy_test.go` referenced the deleted `ParseZarfPolicy` and `ParseUDSPolicy` functions; updated all test cases to use the unified `ParsePolicy(*PolicySpec)` introduced in the PR 8 refactor; removed the now-unnecessary `zarfv1alpha3` and `udsv1alpha3` imports from the test file
 
 ### Changed
 - Extracted shared permission-validation chain from `ZarfPackageJobValidator` and `UDSBundleJobValidator` into a single `PermissionValidator` in `pkg/webhook/permission_validator.go`; each CRD-specific validator is now a thin adapter that supplies a `SpecFacade` interface and a `ValidateExtraArgs` hook for type-specific fields (UDS `preTasks`); the ~400 lines of duplicated validation logic (action → source → extraArgs → publish → deploy) now live in one place

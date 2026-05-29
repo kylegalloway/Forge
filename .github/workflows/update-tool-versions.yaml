@@ -1,0 +1,46 @@
+name: Update Tool Versions
+
+on:
+  schedule:
+    - cron: '0 8 * * 1'  # Mondays at 08:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update:
+    name: Check and Update Zarf/UDS Versions
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Run update script
+        run: bash scripts/update-tool-versions.sh
+
+      - name: Check for changes
+        id: changes
+        run: |
+          if git diff --quiet; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            git diff --stat
+          fi
+
+      - name: Open PR if versions changed
+        if: steps.changes.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: automated/update-tool-versions
+          commit-message: "chore: bump zarf/uds tool versions"
+          title: "chore: bump zarf/uds tool versions"
+          body: |
+            Automated version bump from `scripts/update-tool-versions.sh`.
+
+            Updates `ZARF_VERSION` and/or `UDS_VERSION` in the Forge job images
+            to the latest upstream releases.
+          labels: dependencies
+          delete-branch: true

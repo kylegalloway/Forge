@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.12.2] - 2026-05-29
+
 ### Security
 - Bump Go from 1.26.0 to 1.26.3 to fix 7 stdlib vulnerabilities: two XSS bugs in `html/template` (GO-2026-4982, GO-2026-4980), DoS via `crypto/x509` cert chain building and policy validation (GO-2026-4947, GO-2026-4946), DoS in `crypto/tls` TLS 1.3 KeyUpdate (GO-2026-4870), HTTP/2 infinite loop in `net/http` (GO-2026-4918), and Windows panic in `net.Dial` (GO-2026-4971)
 ## [0.12.1] - 2026-05-29
@@ -789,7 +791,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial project setup and build infrastructure
 - CI/CD pipeline configuration for automated testing and releases
 
-[Unreleased]: https://github.com/kylegalloway/forge/compare/v0.12.1...HEAD
+[Unreleased]: https://github.com/kylegalloway/forge/compare/v0.12.2...HEAD
+[0.12.2]: https://github.com/kylegalloway/forge/compare/v0.12.1...v0.12.2
 [0.12.1]: https://github.com/kylegalloway/forge/compare/v0.12.0...v0.12.1
 [0.12.0]: https://github.com/kylegalloway/forge/compare/v0.11.20...v0.12.0
 [0.11.20]: https://github.com/kylegalloway/forge/compare/v0.11.19...v0.11.20

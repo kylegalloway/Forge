@@ -425,7 +425,6 @@ func TestCreateHandlerBuildUDSCommand(t *testing.T) {
 		name       string
 		bundle     *udsv1alpha3.UDSBundleJob
 		wantCmd    []string
-		wantDir    string
 		wantErr    bool
 		checkFlags []string // flags that should be present
 	}{
@@ -441,7 +440,6 @@ func TestCreateHandlerBuildUDSCommand(t *testing.T) {
 					},
 				},
 			},
-			wantDir:    "/workspace",
 			wantErr:    false,
 			checkFlags: []string{"create"},
 		},
@@ -457,7 +455,6 @@ func TestCreateHandlerBuildUDSCommand(t *testing.T) {
 					},
 				},
 			},
-			wantDir:    "/workspace",
 			wantErr:    false,
 			checkFlags: []string{"create"},
 		},
@@ -473,7 +470,6 @@ func TestCreateHandlerBuildUDSCommand(t *testing.T) {
 					},
 				},
 			},
-			wantDir:    "/workspace",
 			wantErr:    false,
 			checkFlags: []string{"create"},
 		},
@@ -482,12 +478,9 @@ func TestCreateHandlerBuildUDSCommand(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Test without PVC (standalone create)
-			cmd, workingDir, err := handler.buildUDSCommand(tt.bundle, "")
+			cmd, err := handler.buildUDSCommand(tt.bundle, "")
 			if err != nil {
 				t.Fatalf("buildUDSCommand() unexpected error: %v", err)
-			}
-			if workingDir != tt.wantDir {
-				t.Errorf("buildUDSCommand() workingDir = %v, want %v", workingDir, tt.wantDir)
 			}
 			if cmd == "" {
 				t.Error("buildUDSCommand() returned empty command")
@@ -1005,13 +998,9 @@ func TestCreateHandlerBuildUDSCommandNoSetFlags(t *testing.T) {
 		},
 	}
 
-	cmd, workingDir, err := handler.buildUDSCommand(bundle, "")
+	cmd, err := handler.buildUDSCommand(bundle, "")
 	if err != nil {
 		t.Fatalf("buildUDSCommand() unexpected error: %v", err)
-	}
-
-	if workingDir != "/workspace" {
-		t.Errorf("buildUDSCommand() workingDir = %v, want /workspace", workingDir)
 	}
 
 	wantContains := []string{"uds create", "--confirm", "mv uds-bundle-*.tar.zst"}

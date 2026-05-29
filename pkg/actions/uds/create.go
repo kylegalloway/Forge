@@ -54,7 +54,7 @@ func (handler *CreateHandler) Execute(ctx context.Context, bundle *udsv1alpha3.U
 		return nil, fmt.Errorf("source type is required for Create action")
 	}
 
-	udsCmd, workingDir, err := handler.buildUDSCommand(bundle, artifactPVCName)
+	udsCmd, err := handler.buildUDSCommand(bundle, artifactPVCName)
 	if err != nil {
 		handler.metrics.RecordBundleCreateFailed(ctx, bundle.Namespace, bundle.Name)
 		return nil, fmt.Errorf("failed to build UDS command: %w", err)
@@ -99,9 +99,7 @@ func (handler *CreateHandler) Execute(ctx context.Context, bundle *udsv1alpha3.U
 		CLIImage:      constants.UDSCLIImage,
 		ContainerUID:  constants.DefaultUDSUID,
 		ContainerName: constants.ContainerNameUDSCreate,
-		Command:       []string{"/bin/sh", "-c"},
 		Args:          []string{udsCmd},
-		WorkingDir:    workingDir,
 		Labels: map[string]string{
 			constants.LabelApp:     constants.LabelAppValueUDS,
 			"resource-type":        "udsbundlejob",
@@ -142,10 +140,10 @@ func (handler *CreateHandler) Execute(ctx context.Context, bundle *udsv1alpha3.U
 	return actions.ActionResultFromJob(job, fmt.Sprintf("Bundle create job %s created", job.Name)), nil
 }
 
-// buildUDSCommand builds the UDS CLI command for bundle creation
-func (handler *CreateHandler) buildUDSCommand(bundle *udsv1alpha3.UDSBundleJob, artifactPVCName string) (string, string, error) {
-	workingDir := constants.VolumeMountPathWorkspace
-
+// buildUDSCommand builds the UDS CLI command for bundle creation.
+// The working directory is always the workspace volume mount; that default is
+// absorbed by BuildActionJob and does not need to be returned here.
+func (handler *CreateHandler) buildUDSCommand(bundle *udsv1alpha3.UDSBundleJob, artifactPVCName string) (string, error) {
 	var outputDir string
 	if artifactPVCName != "" {
 		outputDir = constants.VolumeMountPathArtifacts
@@ -172,7 +170,7 @@ func (handler *CreateHandler) buildUDSCommand(bundle *udsv1alpha3.UDSBundleJob, 
 			var err error
 			cmd, err = validation.AppendExtraArgs(cmd, create.ExtraArgs)
 			if err != nil {
-				return "", "", fmt.Errorf("invalid extraArgs: %w", err)
+				return "", fmt.Errorf("invalid extraArgs: %w", err)
 			}
 		}
 	}
@@ -184,7 +182,7 @@ func (handler *CreateHandler) buildUDSCommand(bundle *udsv1alpha3.UDSBundleJob, 
 		cmd = preTaskCmd + " && " + cmd
 	}
 
-	return cmd, workingDir, nil
+	return cmd, nil
 }
 
 // buildInitContainers creates init containers for source retrieval

@@ -147,24 +147,18 @@ func (r *UDSMetricsRecorder) RecordJobCreated(ctx context.Context, namespace, na
 }
 
 // RecordJobCompleted records when a job completes
-// TODO: Add RecordBundleJobCompleted to telemetry.Metrics
-func (r *UDSMetricsRecorder) RecordJobCompleted(_ context.Context, _, _, _ string) {
-	// UDS metrics don't currently have a generic job completion metric
-	// Action-specific metrics are recorded via RecordPrimaryActionCompleted, etc.
+func (r *UDSMetricsRecorder) RecordJobCompleted(ctx context.Context, namespace, name, action string) {
+	r.metrics.RecordBundleJobCompleted(ctx, namespace, name, action)
 }
 
 // RecordJobFailed records when a job fails
-// TODO: Add RecordBundleJobFailed to telemetry.Metrics
-func (r *UDSMetricsRecorder) RecordJobFailed(_ context.Context, _, _, _ string) {
-	// UDS metrics don't currently have a generic job failure metric
-	// Action-specific metrics are recorded via RecordPrimaryActionFailed, etc.
+func (r *UDSMetricsRecorder) RecordJobFailed(ctx context.Context, namespace, name, action string) {
+	r.metrics.RecordBundleJobFailed(ctx, namespace, name, action)
 }
 
 // RecordActionDuration records the duration of an action
-// TODO: Add RecordBundleActionDuration to telemetry.Metrics
-func (r *UDSMetricsRecorder) RecordActionDuration(_ context.Context, _, _, _ string, _ float64, _ string) {
-	// UDS metrics don't currently have action duration tracking
-	// Will be added in a future iteration
+func (r *UDSMetricsRecorder) RecordActionDuration(ctx context.Context, namespace, name, action string, duration float64, status string) {
+	r.metrics.RecordBundleActionDuration(ctx, namespace, name, action, duration, status)
 }
 
 // Compile-time assertion that UDSMetricsRecorder implements MetricsRecorder

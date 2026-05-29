@@ -42,6 +42,8 @@ type Metrics struct {
 	bundleDeploysCompleted   metric.Int64Counter
 	bundleDeploysFailed      metric.Int64Counter
 	bundleJobsCreated        metric.Int64Counter
+	bundleJobsCompleted      metric.Int64Counter
+	bundleJobsFailed         metric.Int64Counter
 
 	// Gauge metrics (using UpDownCounter for current state)
 	zarfPackageJobsActive metric.Int64UpDownCounter
@@ -324,6 +326,24 @@ func NewMetrics() (*Metrics, error) {
 		return nil, err
 	}
 
+	bundleJobsCompleted, err := meter.Int64Counter(
+		"forge.bundle_jobs.completed",
+		metric.WithDescription("Total number of Jobs completed successfully for UDS bundles"),
+		metric.WithUnit("{job}"),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	bundleJobsFailed, err := meter.Int64Counter(
+		"forge.bundle_jobs.failed",
+		metric.WithDescription("Total number of Jobs that failed for UDS bundles"),
+		metric.WithUnit("{job}"),
+	)
+	if err != nil {
+		return nil, err
+	}
+
 	udsPackageJobsActive, err := meter.Int64UpDownCounter(
 		"forge.uds_bundle_jobs.active",
 		metric.WithDescription("Current number of active UDSBundleJob resources"),
@@ -385,6 +405,8 @@ func NewMetrics() (*Metrics, error) {
 		bundleDeploysCompleted:   bundleDeploysCompleted,
 		bundleDeploysFailed:      bundleDeploysFailed,
 		bundleJobsCreated:        bundleJobsCreated,
+		bundleJobsCompleted:      bundleJobsCompleted,
+		bundleJobsFailed:         bundleJobsFailed,
 		udsPackageJobsActive:     udsPackageJobsActive,
 		concurrentJobsActive:     concurrentJobsActive,
 		queuedJobs:               queuedJobs,
@@ -646,6 +668,37 @@ func (metrics *Metrics) RecordBundleJobCreated(ctx context.Context, namespace, b
 			attribute.String("namespace", namespace),
 			attribute.String("bundle", bundleName),
 			attribute.String("action", action),
+		))
+}
+
+// RecordBundleJobCompleted increments the bundle job completed counter
+func (metrics *Metrics) RecordBundleJobCompleted(ctx context.Context, namespace, bundleName, action string) {
+	metrics.bundleJobsCompleted.Add(ctx, 1,
+		metric.WithAttributes(
+			attribute.String("namespace", namespace),
+			attribute.String("bundle", bundleName),
+			attribute.String("action", action),
+		))
+}
+
+// RecordBundleJobFailed increments the bundle job failed counter
+func (metrics *Metrics) RecordBundleJobFailed(ctx context.Context, namespace, bundleName, action string) {
+	metrics.bundleJobsFailed.Add(ctx, 1,
+		metric.WithAttributes(
+			attribute.String("namespace", namespace),
+			attribute.String("bundle", bundleName),
+			attribute.String("action", action),
+		))
+}
+
+// RecordBundleActionDuration records the duration of a bundle action (create/publish/deploy)
+func (metrics *Metrics) RecordBundleActionDuration(ctx context.Context, namespace, bundleName, action string, durationSeconds float64, status string) {
+	metrics.actionDuration.Record(ctx, durationSeconds,
+		metric.WithAttributes(
+			attribute.String("namespace", namespace),
+			attribute.String("bundle", bundleName),
+			attribute.String("action", action),
+			attribute.String("status", status),
 		))
 }
 

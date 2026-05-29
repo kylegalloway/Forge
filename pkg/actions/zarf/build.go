@@ -182,12 +182,12 @@ func (handler *BuildHandler) buildZarfCommand(pkg *zarfv1alpha3.ZarfPackageJob, 
 
 // buildZarfInitContainers creates init containers for Zarf source artifact retrieval
 func buildZarfInitContainers(pkg *zarfv1alpha3.ZarfPackageJob) ([]corev1.Container, error) {
-	sourceHandler, err := sources.New(pkg)
+	params, err := sources.SourceParamsFromZarf(pkg)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create source handler: %w", err)
+		return nil, fmt.Errorf("failed to build source params: %w", err)
 	}
 
-	container, err := sourceHandler.GetInitContainer(pkg)
+	container, err := sources.GetInitContainer(params)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get init container: %w", err)
 	}

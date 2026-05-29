@@ -187,7 +187,12 @@ func (handler *CreateHandler) buildUDSCommand(bundle *udsv1alpha3.UDSBundleJob, 
 
 // buildInitContainers creates init containers for source retrieval
 func (handler *CreateHandler) buildInitContainers(bundle *udsv1alpha3.UDSBundleJob) ([]corev1.Container, error) {
-	container, err := sources.GetUDSInitContainer(bundle)
+	params, err := sources.SourceParamsFromUDS(bundle)
+	if err != nil {
+		return nil, fmt.Errorf("failed to build source params: %w", err)
+	}
+
+	container, err := sources.GetInitContainer(params)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get init container: %w", err)
 	}

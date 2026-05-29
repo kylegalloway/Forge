@@ -3,6 +3,7 @@ package controller
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	klog "k8s.io/klog/v2"
 
 	"github.com/kylegalloway/forge/pkg/constants"
 )
@@ -17,8 +18,8 @@ func DeriveConditions(phase string, status map[string]interface{}, existing []me
 	conditions = setCondition(conditions, existing, readyCondition(phase, generation, now))
 	conditions = setCondition(conditions, existing, reconcilingCondition(phase, generation, now))
 
-	for field, condType := range constants.OperationConditionTypes {
-		opStatus, ok := status[field].(map[string]interface{})
+	for _, op := range constants.OperationConditionTypes {
+		opStatus, ok := status[op.Field].(map[string]interface{})
 		if !ok {
 			continue
 		}
@@ -26,7 +27,7 @@ func DeriveConditions(phase string, status map[string]interface{}, existing []me
 		if !ok || opPhase == "" {
 			continue
 		}
-		conditions = setCondition(conditions, existing, operationCondition(condType, opPhase, generation, now))
+		conditions = setCondition(conditions, existing, operationCondition(op.CondType, opPhase, generation, now))
 	}
 
 	return conditions
@@ -53,15 +54,20 @@ func readyCondition(phase string, generation int64, now metav1.Time) metav1.Cond
 }
 
 func reconcilingCondition(phase string, generation int64, now metav1.Time) metav1.Condition {
-	terminal := phase == constants.PhaseCompleted || phase == constants.PhaseFailed
 	status := metav1.ConditionTrue
-	if terminal {
+	reason := constants.ConditionReasonProgressing
+	switch phase {
+	case constants.PhaseCompleted:
 		status = metav1.ConditionFalse
+		reason = constants.ConditionReasonSucceeded
+	case constants.PhaseFailed:
+		status = metav1.ConditionFalse
+		reason = constants.ConditionReasonFailed
 	}
 	return metav1.Condition{
 		Type:               constants.ConditionTypeReconciling,
 		Status:             status,
-		Reason:             constants.ConditionReasonProgressing,
+		Reason:             reason,
 		ObservedGeneration: generation,
 		LastTransitionTime: now,
 	}
@@ -112,6 +118,7 @@ func conditionsToUnstructured(conditions []metav1.Condition) []interface{} {
 	for i := range conditions {
 		m, err := runtime.DefaultUnstructuredConverter.ToUnstructured(&conditions[i])
 		if err != nil {
+			klog.ErrorS(err, "failed to convert condition to unstructured", "type", conditions[i].Type)
 			continue
 		}
 		out = append(out, m)

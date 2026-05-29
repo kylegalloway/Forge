@@ -28,14 +28,21 @@ const (
 	ConditionReasonFailed = "Failed"
 	// ConditionReasonProgressing is used while an operation or job is in flight.
 	ConditionReasonProgressing = "Progressing"
-	// ConditionReasonSuspended is used when reconciliation is paused via spec.suspend.
+	// ConditionReasonSuspended is reserved for when spec.suspend is added.
+	// Not yet wired; defined here so the constant is stable when that feature lands.
 	ConditionReasonSuspended = "Suspended"
 )
 
-// OperationConditionTypes maps OperationStatus field names to their condition type.
-var OperationConditionTypes = map[string]string{
-	"buildStatus":   ConditionTypeBuildSucceeded,
-	"createStatus":  ConditionTypeCreateSucceeded,
-	"publishStatus": ConditionTypePublishSucceeded,
-	"deployStatus":  ConditionTypeDeploySucceeded,
+// OperationConditionTypes maps OperationStatus JSON field names to condition types.
+// Keys must match the json tags on the status types exactly — renaming a status
+// field requires updating this list in sync.
+// Slice order determines the order conditions appear in the status output.
+var OperationConditionTypes = []struct {
+	Field    string
+	CondType string
+}{
+	{"buildStatus", ConditionTypeBuildSucceeded},
+	{"createStatus", ConditionTypeCreateSucceeded},
+	{"publishStatus", ConditionTypePublishSucceeded},
+	{"deployStatus", ConditionTypeDeploySucceeded},
 }

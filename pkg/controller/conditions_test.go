@@ -143,6 +143,51 @@ func TestConditionsRoundtrip(t *testing.T) {
 	}
 }
 
+func TestDeriveConditions_ReconcilingReason(t *testing.T) {
+	cases := []struct {
+		phase      string
+		wantReason string
+	}{
+		{constants.PhaseCompleted, constants.ConditionReasonSucceeded},
+		{constants.PhaseFailed, constants.ConditionReasonFailed},
+		{constants.PhaseRunning, constants.ConditionReasonProgressing},
+		{constants.PhasePending, constants.ConditionReasonProgressing},
+		{constants.PhaseRetrying, constants.ConditionReasonProgressing},
+		{constants.PhaseQueued, constants.ConditionReasonProgressing},
+	}
+	for _, tc := range cases {
+		t.Run(tc.phase, func(t *testing.T) {
+			conds := DeriveConditions(tc.phase, map[string]interface{}{}, nil, 1)
+			reconciling := findCondition(conds, constants.ConditionTypeReconciling)
+			if reconciling == nil {
+				t.Fatal("Reconciling condition missing")
+			}
+			if reconciling.Reason != tc.wantReason {
+				t.Errorf("Reconciling reason: got %s, want %s", reconciling.Reason, tc.wantReason)
+			}
+		})
+	}
+}
+
+func TestDeriveConditions_DeterministicOrder(t *testing.T) {
+	status := map[string]interface{}{
+		"buildStatus":   map[string]interface{}{constants.StatusKeyState: constants.PhaseCompleted},
+		"publishStatus": map[string]interface{}{constants.StatusKeyState: constants.PhaseRunning},
+		"deployStatus":  map[string]interface{}{constants.StatusKeyState: constants.PhaseFailed},
+	}
+	first := DeriveConditions(constants.PhaseRunning, status, nil, 1)
+	second := DeriveConditions(constants.PhaseRunning, status, nil, 1)
+
+	if len(first) != len(second) {
+		t.Fatalf("non-deterministic length: %d vs %d", len(first), len(second))
+	}
+	for i := range first {
+		if first[i].Type != second[i].Type {
+			t.Errorf("position %d: first=%s second=%s — order is non-deterministic", i, first[i].Type, second[i].Type)
+		}
+	}
+}
+
 func findCondition(conditions []metav1.Condition, condType string) *metav1.Condition {
 	for i := range conditions {
 		if conditions[i].Type == condType {

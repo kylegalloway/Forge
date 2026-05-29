@@ -295,3 +295,20 @@ jobs:
         if: always()
         with:
           sarif_file: 'gosec-results.sarif'
+
+  ci-complete:
+    name: CI Complete
+    runs-on: ubuntu-latest
+    needs: [verify-codegen, lint, test, build, docker, security]
+    if: always()
+    steps:
+      - name: Check all jobs
+        run: |
+          results="${{ join(needs.*.result, ' ') }}"
+          for result in $results; do
+            if [ "$result" = "failure" ] || [ "$result" = "cancelled" ]; then
+              echo "::error::One or more CI jobs failed or were cancelled"
+              exit 1
+            fi
+          done
+          echo "All CI jobs passed or were skipped"

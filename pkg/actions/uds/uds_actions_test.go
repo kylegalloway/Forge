@@ -631,15 +631,19 @@ func TestGetUDSJobConfiguration(t *testing.T) {
 		},
 	}
 
-	config, err := destinations.GetUDSJobConfiguration(bundleOCI)
+	paramsOCI, err := destinations.DestinationParamsFromUDS(bundleOCI)
 	if err != nil {
-		t.Fatalf("GetUDSJobConfiguration() error = %v", err)
+		t.Fatalf("DestinationParamsFromUDS() OCI error = %v", err)
+	}
+	config, err := destinations.GetJobConfiguration(paramsOCI)
+	if err != nil {
+		t.Fatalf("GetJobConfiguration() OCI error = %v", err)
 	}
 	if len(config.Volumes) != 1 {
-		t.Errorf("GetUDSJobConfiguration() OCI volumes = %v, want 1", len(config.Volumes))
+		t.Errorf("GetJobConfiguration() OCI volumes = %v, want 1", len(config.Volumes))
 	}
 	if len(config.VolumeMounts) != 1 {
-		t.Errorf("GetUDSJobConfiguration() OCI volume mounts = %v, want 1", len(config.VolumeMounts))
+		t.Errorf("GetJobConfiguration() OCI volume mounts = %v, want 1", len(config.VolumeMounts))
 	}
 
 	// Test S3 credentials
@@ -661,17 +665,21 @@ func TestGetUDSJobConfiguration(t *testing.T) {
 		},
 	}
 
-	configS3, err := destinations.GetUDSJobConfiguration(bundleS3)
+	paramsS3, err := destinations.DestinationParamsFromUDS(bundleS3)
 	if err != nil {
-		t.Fatalf("GetUDSJobConfiguration() S3 error = %v", err)
+		t.Fatalf("DestinationParamsFromUDS() S3 error = %v", err)
+	}
+	configS3, err := destinations.GetJobConfiguration(paramsS3)
+	if err != nil {
+		t.Fatalf("GetJobConfiguration() S3 error = %v", err)
 	}
 	// S3 credentials are added as env vars, not volumes
 	if len(configS3.Volumes) != 0 {
-		t.Errorf("GetUDSJobConfiguration() S3 volumes = %v, want 0 (S3 uses env vars)", len(configS3.Volumes))
+		t.Errorf("GetJobConfiguration() S3 volumes = %v, want 0 (S3 uses env vars)", len(configS3.Volumes))
 	}
 	// Should have AWS_REGION and 2 credential env vars
 	if len(configS3.Env) < 3 {
-		t.Errorf("GetUDSJobConfiguration() S3 env vars = %v, want >= 3", len(configS3.Env))
+		t.Errorf("GetJobConfiguration() S3 env vars = %v, want >= 3", len(configS3.Env))
 	}
 }
 

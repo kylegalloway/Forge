@@ -747,59 +747,31 @@ func (m *GenericJobMonitor[T]) getRetryPolicy(obj *unstructured.Unstructured, ac
 		return nil, nil
 	}
 
-	// Determine resource type and parse accordingly
-	resourceType := m.config.ResourceType
-	if resourceType == constants.ResourceTypeZarfPackageJob {
-		// Convert map to Zarf RetryPolicy
-		apiPolicy := &zarfv1alpha3.RetryPolicy{}
-		if maxRetries, ok := retryMap["maxRetries"].(int64); ok {
-			val := int32(maxRetries) //nolint:gosec // G115: MaxRetries is validated by API schema
-			apiPolicy.MaxRetries = &val
-		}
-		if initialBackoff, ok := retryMap["initialBackoff"].(string); ok {
-			apiPolicy.InitialBackoff = initialBackoff
-		}
-		if maxBackoff, ok := retryMap["maxBackoff"].(string); ok {
-			apiPolicy.MaxBackoff = maxBackoff
-		}
-		if backoffMultiplier, ok := retryMap["backoffMultiplier"].(int64); ok {
-			val := int32(backoffMultiplier) //nolint:gosec // G115: BackoffMultiplier is validated by API schema
-			apiPolicy.BackoffMultiplier = &val
-		}
-		if retryableErrors, ok := retryMap["retryableErrors"].([]interface{}); ok {
-			for _, err := range retryableErrors {
-				if errStr, ok := err.(string); ok {
-					apiPolicy.RetryableErrors = append(apiPolicy.RetryableErrors, errStr)
-				}
-			}
-		}
-		return retry.ParseZarfPolicy(apiPolicy)
-	}
-
-	// Convert map to UDS RetryPolicy
-	apiPolicy := &udsv1alpha3.RetryPolicy{}
+	// Both Zarf and UDS RetryPolicy carry identical fields; extract them into a
+	// shared PolicySpec and call the single ParsePolicy implementation.
+	policySpec := &retry.PolicySpec{}
 	if maxRetries, ok := retryMap["maxRetries"].(int64); ok {
 		val := int32(maxRetries) //nolint:gosec // G115: MaxRetries is validated by API schema
-		apiPolicy.MaxRetries = &val
+		policySpec.MaxRetries = &val
 	}
 	if initialBackoff, ok := retryMap["initialBackoff"].(string); ok {
-		apiPolicy.InitialBackoff = initialBackoff
+		policySpec.InitialBackoff = initialBackoff
 	}
 	if maxBackoff, ok := retryMap["maxBackoff"].(string); ok {
-		apiPolicy.MaxBackoff = maxBackoff
+		policySpec.MaxBackoff = maxBackoff
 	}
 	if backoffMultiplier, ok := retryMap["backoffMultiplier"].(int64); ok {
 		val := int32(backoffMultiplier) //nolint:gosec // G115: BackoffMultiplier is validated by API schema
-		apiPolicy.BackoffMultiplier = &val
+		policySpec.BackoffMultiplier = &val
 	}
 	if retryableErrors, ok := retryMap["retryableErrors"].([]interface{}); ok {
 		for _, err := range retryableErrors {
 			if errStr, ok := err.(string); ok {
-				apiPolicy.RetryableErrors = append(apiPolicy.RetryableErrors, errStr)
+				policySpec.RetryableErrors = append(policySpec.RetryableErrors, errStr)
 			}
 		}
 	}
-	return retry.ParseUDSPolicy(apiPolicy)
+	return retry.ParsePolicy(policySpec)
 }
 
 // extractRetryCount safely extracts retry count from operation status

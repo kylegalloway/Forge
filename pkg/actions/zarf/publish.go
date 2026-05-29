@@ -52,19 +52,19 @@ func (handler *PublishHandler) Execute(ctx context.Context, pkg *zarfv1alpha3.Za
 		artifactPath = constants.VolumeMountPathArtifacts + "/*.tar.zst"
 	}
 
-	destHandler, err := destinations.New(pkg)
+	destParams, err := destinations.DestinationParamsFromZarf(pkg)
 	if err != nil {
 		handler.metrics.RecordPackagePublishFailed(ctx, pkg.Namespace, pkg.Name)
-		return nil, fmt.Errorf("failed to create destination handler: %w", err)
+		return nil, fmt.Errorf("failed to build destination params: %w", err)
 	}
 
-	publishCmd, err := destHandler.GetPublishCommand(pkg, artifactPath)
+	publishCmd, err := destinations.GetPublishCommand(destParams, artifactPath)
 	if err != nil {
 		handler.metrics.RecordPackagePublishFailed(ctx, pkg.Namespace, pkg.Name)
 		return nil, fmt.Errorf("failed to get publish command: %w", err)
 	}
 
-	jobConfig, err := destHandler.GetJobConfiguration(pkg)
+	jobConfig, err := destinations.GetJobConfiguration(destParams)
 	if err != nil {
 		handler.metrics.RecordPackagePublishFailed(ctx, pkg.Namespace, pkg.Name)
 		return nil, fmt.Errorf("failed to get job configuration: %w", err)

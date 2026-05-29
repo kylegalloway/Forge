@@ -6,9 +6,6 @@ import (
 	"path/filepath"
 	"regexp"
 	"time"
-
-	udsv1alpha3 "github.com/kylegalloway/forge/pkg/apis/uds/v1alpha3"
-	zarfv1alpha3 "github.com/kylegalloway/forge/pkg/apis/zarf/v1alpha3"
 )
 
 // Policy encapsulates retry configuration
@@ -20,58 +17,25 @@ type Policy struct {
 	RetryableErrors   []*regexp.Regexp
 }
 
-// ParseZarfPolicy converts Zarf API RetryPolicy to internal Policy
-func ParseZarfPolicy(apiPolicy *zarfv1alpha3.RetryPolicy) (*Policy, error) {
-	if apiPolicy == nil {
-		return nil, nil
-	}
-
-	policy := &Policy{
-		MaxRetries:        3, // default
-		InitialBackoff:    30 * time.Second,
-		MaxBackoff:        5 * time.Minute,
-		BackoffMultiplier: 2.0,
-	}
-
-	if apiPolicy.MaxRetries != nil {
-		policy.MaxRetries = *apiPolicy.MaxRetries
-	}
-
-	if apiPolicy.InitialBackoff != "" {
-		duration, err := time.ParseDuration(apiPolicy.InitialBackoff)
-		if err != nil {
-			return nil, fmt.Errorf("invalid initialBackoff: %w", err)
-		}
-		policy.InitialBackoff = duration
-	}
-
-	if apiPolicy.MaxBackoff != "" {
-		duration, err := time.ParseDuration(apiPolicy.MaxBackoff)
-		if err != nil {
-			return nil, fmt.Errorf("invalid maxBackoff: %w", err)
-		}
-		policy.MaxBackoff = duration
-	}
-
-	if apiPolicy.BackoffMultiplier != nil {
-		policy.BackoffMultiplier = float64(*apiPolicy.BackoffMultiplier) / 100.0
-	}
-
-	// Compile retryable error patterns
-	for _, pattern := range apiPolicy.RetryableErrors {
-		re, err := compileGlobPattern(pattern)
-		if err != nil {
-			return nil, fmt.Errorf("invalid retryable error pattern %q: %w", pattern, err)
-		}
-		policy.RetryableErrors = append(policy.RetryableErrors, re)
-	}
-
-	return policy, nil
+// PolicySpec holds the raw field values shared by all CRD RetryPolicy types.
+// Callers convert their CRD-specific type into a PolicySpec and call ParsePolicy.
+type PolicySpec struct {
+	// MaxRetries is the maximum number of retry attempts (nil means use default of 3).
+	MaxRetries *int32
+	// InitialBackoff is the delay before the first retry (e.g., "30s", "1m"); empty means default.
+	InitialBackoff string
+	// MaxBackoff is the maximum delay between retries; empty means default.
+	MaxBackoff string
+	// BackoffMultiplier is the scaled multiplier (value * 100); nil means use default of 2.0.
+	BackoffMultiplier *int32
+	// RetryableErrors is the list of glob patterns for retryable error messages.
+	RetryableErrors []string
 }
 
-// ParseUDSPolicy converts UDS API RetryPolicy to internal Policy
-func ParseUDSPolicy(apiPolicy *udsv1alpha3.RetryPolicy) (*Policy, error) {
-	if apiPolicy == nil {
+// ParsePolicy converts a PolicySpec into an internal Policy.
+// Returns nil, nil when spec is nil.
+func ParsePolicy(spec *PolicySpec) (*Policy, error) {
+	if spec == nil {
 		return nil, nil
 	}
 
@@ -82,32 +46,32 @@ func ParseUDSPolicy(apiPolicy *udsv1alpha3.RetryPolicy) (*Policy, error) {
 		BackoffMultiplier: 2.0,
 	}
 
-	if apiPolicy.MaxRetries != nil {
-		policy.MaxRetries = *apiPolicy.MaxRetries
+	if spec.MaxRetries != nil {
+		policy.MaxRetries = *spec.MaxRetries
 	}
 
-	if apiPolicy.InitialBackoff != "" {
-		duration, err := time.ParseDuration(apiPolicy.InitialBackoff)
+	if spec.InitialBackoff != "" {
+		duration, err := time.ParseDuration(spec.InitialBackoff)
 		if err != nil {
 			return nil, fmt.Errorf("invalid initialBackoff: %w", err)
 		}
 		policy.InitialBackoff = duration
 	}
 
-	if apiPolicy.MaxBackoff != "" {
-		duration, err := time.ParseDuration(apiPolicy.MaxBackoff)
+	if spec.MaxBackoff != "" {
+		duration, err := time.ParseDuration(spec.MaxBackoff)
 		if err != nil {
 			return nil, fmt.Errorf("invalid maxBackoff: %w", err)
 		}
 		policy.MaxBackoff = duration
 	}
 
-	if apiPolicy.BackoffMultiplier != nil {
-		policy.BackoffMultiplier = float64(*apiPolicy.BackoffMultiplier) / 100.0
+	if spec.BackoffMultiplier != nil {
+		policy.BackoffMultiplier = float64(*spec.BackoffMultiplier) / 100.0
 	}
 
 	// Compile retryable error patterns
-	for _, pattern := range apiPolicy.RetryableErrors {
+	for _, pattern := range spec.RetryableErrors {
 		re, err := compileGlobPattern(pattern)
 		if err != nil {
 			return nil, fmt.Errorf("invalid retryable error pattern %q: %w", pattern, err)

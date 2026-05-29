@@ -582,6 +582,14 @@ type ZarfPackageJobStatus struct {
 	// +optional
 	Message string `json:"message,omitempty"`
 
+	// Conditions is the standard Kubernetes condition array for this job.
+	// The Ready condition reflects the overall outcome; per-operation conditions
+	// (BuildSucceeded, PublishSucceeded, DeploySucceeded) track individual steps.
+	// +optional
+	// +listType=map
+	// +listMapKey=type
+	Conditions []metav1.Condition `json:"conditions,omitempty"`
+
 	// BuildStatus contains build operation status
 	// +optional
 	BuildStatus *OperationStatus `json:"buildStatus,omitempty"`

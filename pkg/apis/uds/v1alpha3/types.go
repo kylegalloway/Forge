@@ -594,6 +594,14 @@ type UDSBundleJobStatus struct {
 	// +optional
 	Message string `json:"message,omitempty"`
 
+	// Conditions is the standard Kubernetes condition array for this job.
+	// The Ready condition reflects the overall outcome; per-operation conditions
+	// (CreateSucceeded, PublishSucceeded, DeploySucceeded) track individual steps.
+	// +optional
+	// +listType=map
+	// +listMapKey=type
+	Conditions []metav1.Condition `json:"conditions,omitempty"`
+
 	// CreateStatus tracks the create operation status
 	// +optional
 	CreateStatus *OperationStatus `json:"createStatus,omitempty"`

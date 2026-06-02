@@ -128,14 +128,14 @@ jobs:
           subject-path: 'bin/*'
 
       - name: Upload binaries artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: binaries
           path: bin/
           retention-days: 1
 
       - name: Upload SBOMs artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: sboms
           path: |
@@ -285,7 +285,7 @@ jobs:
           echo "${{ steps.meta.outputs.tags }}" > /tmp/digests/${{ matrix.image }}-tags
 
       - name: Upload digest artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: digest-${{ matrix.image }}
           path: /tmp/digests/
@@ -395,7 +395,7 @@ jobs:
           output: '${{ matrix.image }}-trivy-results.sarif'
 
       - name: Upload Trivy results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: trivy-${{ matrix.image }}
           path: ${{ matrix.image }}-trivy-results.sarif
@@ -452,7 +452,7 @@ jobs:
             --url "https://github.com/${{ github.repository }}/releases/download/${{ needs.prepare.outputs.full_version }}"
 
       - name: Upload Helm artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: helm
           path: |

@@ -114,7 +114,7 @@ jobs:
           wait
 
       - name: Install Syft
-        uses: anchore/sbom-action/download-syft@v0.15.0
+        uses: anchore/sbom-action/download-syft@v0.24.0
 
       - name: Generate SBOMs
         run: |

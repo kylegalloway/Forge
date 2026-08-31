@@ -14,7 +14,7 @@
 FROM alpine:3.20
 
 # Zarf version to install
-ARG ZARF_VERSION=v0.77.0
+ARG ZARF_VERSION=v0.84.0
 
 # Install dependencies including AWS CLI and kubectl
 # Note: aws-cli package provides full AWS CLI v2 functionality

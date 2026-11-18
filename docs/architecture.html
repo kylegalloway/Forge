@@ -1,0 +1,1704 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Forge Architecture</title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --surface: #161b22;
+      --surface2: #1c2128;
+      --border: #30363d;
+      --text: #e6edf3;
+      --text-muted: #8b949e;
+      --accent: #58a6ff;
+      --accent2: #3fb950;
+      --accent3: #d2a8ff;
+      --accent4: #ffa657;
+      --accent5: #f78166;
+      --tag-bg: #21262d;
+      --radius: 8px;
+      --radius-lg: 12px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+      font-size: 15px;
+      line-height: 1.6;
+    }
+
+    /* ── Layout ── */
+    .layout {
+      display: grid;
+      grid-template-columns: 260px 1fr;
+      min-height: 100vh;
+    }
+
+    /* ── Sidebar ── */
+    .sidebar {
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      padding: 24px 0;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border) transparent;
+    }
+
+    .sidebar-logo {
+      padding: 0 20px 20px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 16px;
+    }
+
+    .sidebar-logo h1 {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--accent);
+      letter-spacing: -0.3px;
+    }
+
+    .sidebar-logo p {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .nav-section {
+      padding: 0 12px;
+      margin-bottom: 8px;
+    }
+
+    .nav-section-label {
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--text-muted);
+      padding: 0 8px;
+      margin-bottom: 4px;
+    }
+
+    .nav-link {
+      display: block;
+      padding: 6px 8px;
+      border-radius: var(--radius);
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 13px;
+      transition: all 0.15s;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .nav-link:hover {
+      background: var(--surface2);
+      color: var(--text);
+    }
+
+    .nav-link.active {
+      background: rgba(88, 166, 255, 0.1);
+      color: var(--accent);
+    }
+
+    /* ── Main content ── */
+    .main {
+      min-width: 0;
+      padding: 48px 56px;
+      max-width: 1200px;
+    }
+
+    .page-header {
+      margin-bottom: 48px;
+      padding-bottom: 32px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .page-header h1 {
+      font-size: 36px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      color: var(--text);
+      margin-bottom: 8px;
+    }
+
+    .page-header p {
+      font-size: 16px;
+      color: var(--text-muted);
+      max-width: 680px;
+      line-height: 1.7;
+    }
+
+    .badges {
+      display: flex;
+      gap: 8px;
+      margin-top: 16px;
+      flex-wrap: wrap;
+    }
+
+    .badge {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 3px 10px;
+      border-radius: 20px;
+      border: 1px solid;
+    }
+
+    .badge-blue { background: rgba(88,166,255,0.1); border-color: rgba(88,166,255,0.3); color: var(--accent); }
+    .badge-green { background: rgba(63,185,80,0.1); border-color: rgba(63,185,80,0.3); color: var(--accent2); }
+    .badge-purple { background: rgba(210,168,255,0.1); border-color: rgba(210,168,255,0.3); color: var(--accent3); }
+    .badge-orange { background: rgba(255,166,87,0.1); border-color: rgba(255,166,87,0.3); color: var(--accent4); }
+
+    /* ── Sections ── */
+    .section {
+      margin-bottom: 72px;
+    }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .section-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: var(--radius);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+
+    .section-header h2 {
+      font-size: 22px;
+      font-weight: 600;
+      letter-spacing: -0.3px;
+      color: var(--text);
+    }
+
+    .section-desc {
+      font-size: 14px;
+      color: var(--text-muted);
+      margin-bottom: 24px;
+      max-width: 720px;
+      line-height: 1.7;
+    }
+
+    /* ── Diagram card ── */
+    .diagram-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+    }
+
+    .diagram-card-header {
+      padding: 12px 20px;
+      background: var(--surface2);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .diagram-card-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+    }
+
+    .dot-red { background: #f78166; }
+    .dot-yellow { background: #e3b341; }
+    .dot-green { background: #3fb950; }
+
+    .diagram-card-title {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-left: 4px;
+      font-family: "SF Mono", "Cascadia Code", monospace;
+    }
+
+    .diagram-card-body {
+      padding: 24px;
+      overflow: hidden;
+      background: var(--bg);
+      cursor: grab;
+      user-select: none;
+      -webkit-user-select: none;
+      min-height: 160px;
+      position: relative;
+    }
+
+    .diagram-card-body.is-dragging { cursor: grabbing; }
+
+    .diagram-card-body .mermaid {
+      display: inline-block;
+      transform-origin: 0 0;
+    }
+
+    .diagram-hint {
+      margin-left: auto;
+      font-size: 10px;
+      color: var(--text-muted);
+      opacity: 0.55;
+      font-family: "SF Mono", "Cascadia Code", monospace;
+      white-space: nowrap;
+    }
+
+    /* ── Info grid ── */
+    .info-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+
+    .info-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+    }
+
+    .info-card-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.7px;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+    }
+
+    .info-card ul {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .info-card li {
+      font-size: 13px;
+      color: var(--text);
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+    }
+
+    .info-card li::before {
+      content: "▸";
+      color: var(--accent);
+      font-size: 10px;
+      flex-shrink: 0;
+    }
+
+    .info-card code {
+      font-family: "SF Mono", "Cascadia Code", Menlo, monospace;
+      font-size: 11px;
+      background: var(--tag-bg);
+      padding: 1px 5px;
+      border-radius: 4px;
+      color: var(--accent3);
+    }
+
+    /* ── Key/value table ── */
+    .kv-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+      margin-bottom: 28px;
+    }
+
+    .kv-table th {
+      text-align: left;
+      padding: 10px 14px;
+      background: var(--surface2);
+      color: var(--text-muted);
+      font-weight: 600;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .kv-table th:first-child { border-radius: var(--radius) 0 0 0; }
+    .kv-table th:last-child  { border-radius: 0 var(--radius) 0 0; }
+
+    .kv-table td {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+    }
+
+    .kv-table tr:last-child td { border-bottom: none; }
+    .kv-table tr:hover td { background: var(--surface2); }
+
+    .kv-table code {
+      font-family: "SF Mono", "Cascadia Code", Menlo, monospace;
+      font-size: 11px;
+      background: var(--tag-bg);
+      padding: 1px 6px;
+      border-radius: 4px;
+      color: var(--accent);
+    }
+
+    .kv-table .tag {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 600;
+      padding: 2px 7px;
+      border-radius: 20px;
+      background: rgba(88,166,255,0.1);
+      color: var(--accent);
+      border: 1px solid rgba(88,166,255,0.2);
+    }
+
+    .kv-table .tag-green {
+      background: rgba(63,185,80,0.1);
+      color: var(--accent2);
+      border-color: rgba(63,185,80,0.2);
+    }
+
+    /* ── Two col ── */
+    .two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+
+    @media (max-width: 900px) {
+      .two-col { grid-template-columns: 1fr; }
+      .layout { grid-template-columns: 1fr; }
+      .sidebar { position: relative; height: auto; }
+      .main { padding: 24px 20px; }
+    }
+
+    /* ── Callout ── */
+    .callout {
+      border-left: 3px solid var(--accent);
+      background: rgba(88,166,255,0.06);
+      padding: 14px 18px;
+      border-radius: 0 var(--radius) var(--radius) 0;
+      margin-bottom: 24px;
+      font-size: 13px;
+      color: var(--text-muted);
+      line-height: 1.7;
+    }
+
+    .callout strong { color: var(--text); }
+
+    /* ── Divider ── */
+    .divider {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 48px 0;
+    }
+
+    /* ── Mermaid overrides ── */
+    .mermaid { font-size: 13px; }
+
+    /* ── Scrollbar ── */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  </style>
+</head>
+<body>
+
+<div class="layout">
+
+  <!-- ─── Sidebar ─── -->
+  <nav class="sidebar">
+    <div class="sidebar-logo">
+      <h1>⚒ Forge</h1>
+      <p>Architecture Reference</p>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-section-label">Overview</div>
+      <a href="#overview" class="nav-link">Overview</a>
+      <a href="#packages" class="nav-link">Package Map</a>
+      <a href="#key-concepts" class="nav-link">Key Concepts</a>
+    </div>
+
+    <div class="nav-section" style="margin-top:12px">
+      <div class="nav-section-label">Diagrams</div>
+      <a href="#system-context" class="nav-link">System Context</a>
+      <a href="#containers" class="nav-link">Containers (C4)</a>
+      <a href="#components" class="nav-link">Components</a>
+      <a href="#request-flow" class="nav-link">Request Flow</a>
+      <a href="#state-machine" class="nav-link">Action State Machine</a>
+      <a href="#crd-types" class="nav-link">CRD Type Hierarchy</a>
+      <a href="#volume-layout" class="nav-link">Job Volume Layout</a>
+      <a href="#webhook-model" class="nav-link">Webhook Permissions</a>
+      <a href="#plugins" class="nav-link">Source / Destination Plugins</a>
+      <a href="#deployment" class="nav-link">Deployment Architecture</a>
+    </div>
+
+    <div class="nav-section" style="margin-top:12px">
+      <div class="nav-section-label">Reference</div>
+      <a href="#crd-spec" class="nav-link">CRD Spec Fields</a>
+      <a href="#constants" class="nav-link">Constants &amp; Defaults</a>
+      <a href="#interfaces" class="nav-link">Key Interfaces</a>
+    </div>
+  </nav>
+
+  <!-- ─── Main ─── -->
+  <main class="main">
+
+    <!-- Page header -->
+    <div class="page-header">
+      <h1>Forge Architecture</h1>
+      <p>
+        Forge is a Kubernetes operator that manages <strong>ZarfPackageJob</strong> and
+        <strong>UDSBundleJob</strong> custom resources. It validates, builds, monitors,
+        and chains Kubernetes Jobs to execute package operations
+        (Build/Create → Publish → Deploy) and reports results back to the CRD status.
+      </p>
+      <div class="badges">
+        <span class="badge badge-blue">Go Generics</span>
+        <span class="badge badge-green">Kubernetes Operator</span>
+        <span class="badge badge-purple">k8s.io/api v0.36</span>
+        <span class="badge badge-orange">OpenTelemetry</span>
+        <span class="badge badge-blue">Helm Chart</span>
+      </div>
+    </div>
+
+    <!-- ─── Overview ─── -->
+    <section class="section" id="overview">
+      <div class="section-header">
+        <div class="section-icon" style="background:rgba(88,166,255,0.1)">🗺</div>
+        <h2>Overview</h2>
+      </div>
+
+      <p class="section-desc">
+        Forge runs two processes: a <strong>Controller</strong> that reconciles CRDs and manages
+        Job lifecycles, and a <strong>Webhook Server</strong> that validates admission requests
+        against ServiceAccount permission annotations. Both are deployed as Kubernetes Deployments
+        in <code>forge-system</code>.
+      </p>
+
+      <div class="info-grid">
+        <div class="info-card">
+          <div class="info-card-label">Entrypoints</div>
+          <ul>
+            <li><code>cmd/controller/main.go</code> — Operator controller</li>
+            <li><code>cmd/webhook/main.go</code> — Admission webhook (TLS :8443)</li>
+            <li><code>cmd/kubectl-forge/</code> — kubectl debug plugin</li>
+          </ul>
+        </div>
+        <div class="info-card">
+          <div class="info-card-label">CRD Types</div>
+          <ul>
+            <li><code>ZarfPackageJob</code> — Build / Publish / Deploy Zarf packages</li>
+            <li><code>UDSBundleJob</code> — Create / Publish / Deploy UDS bundles</li>
+            <li>API group: <code>forge.dev/v1alpha3</code></li>
+          </ul>
+        </div>
+        <div class="info-card">
+          <div class="info-card-label">Action Chains</div>
+          <ul>
+            <li><code>Build</code> / <code>Create</code></li>
+            <li><code>Publish</code></li>
+            <li><code>Deploy</code></li>
+            <li><code>BuildPublish</code>, <code>BuildPublishDeploy</code></li>
+            <li><code>PublishDeploy</code></li>
+          </ul>
+        </div>
+        <div class="info-card">
+          <div class="info-card-label">Observability</div>
+          <ul>
+            <li>OpenTelemetry metrics + tracing</li>
+            <li>Prometheus scrape at <code>:8080/metrics</code></li>
+            <li>Structured logging with correlation IDs</li>
+            <li>Health: <code>:8081/healthz</code> &amp; <code>/readyz</code></li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─── Package Map ─── -->
+    <section class="section" id="packages">
+      <div class="section-header">
+        <div class="section-icon" style="background:rgba(63,185,80,0.1)">📦</div>
+        <h2>Package Map</h2>
+      </div>
+
+      <table class="kv-table">
+        <thead>
+          <tr>
+            <th>Package</th>
+            <th>Purpose</th>
+            <th>Key Exports</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>pkg/apis/common</code></td>
+            <td>Shared interfaces &amp; types used by both CRDs</td>
+            <td><code>PackageResource</code>, <code>VolumeSizes</code>, <code>ExtraMount</code></td>
+          </tr>
+          <tr>
+            <td><code>pkg/apis/zarf/v1alpha3</code></td>
+            <td>ZarfPackageJob CRD types</td>
+            <td><code>ZarfPackageJob</code>, <code>ZarfPackageJobSpec</code>, <code>OperationStatus</code></td>
+          </tr>
+          <tr>
+            <td><code>pkg/apis/uds/v1alpha3</code></td>
+            <td>UDSBundleJob CRD types</td>
+            <td><code>UDSBundleJob</code>, <code>UDSBundleJobSpec</code>, <code>OperationStatus</code></td>
+          </tr>
+          <tr>
+            <td><code>pkg/actions</code></td>
+            <td>Generic <code>JobBuilder</code> fluent API &amp; <code>ActionHandler</code> interface</td>
+            <td><code>JobBuilder</code>, <code>ActionHandler[T]</code>, <code>ShouldDebugAction</code></td>
+          </tr>
+          <tr>
+            <td><code>pkg/actions/zarf</code></td>
+            <td>Zarf-specific action handlers</td>
+            <td><code>BuildHandler</code>, <code>PublishHandler</code>, <code>DeployHandler</code></td>
+          </tr>
+          <tr>
+            <td><code>pkg/actions/uds</code></td>
+            <td>UDS-specific action handlers + runner pre-tasks</td>
+            <td><code>CreateHandler</code>, <code>PublishHandler</code>, <code>DeployHandler</code>, <code>RunnerHandler</code></td>
+          </tr>
+          <tr>
+            <td><code>pkg/controller</code></td>
+            <td>Generic reconciliation loop &amp; job monitoring</td>
+            <td><code>GenericController[T]</code>, <code>GenericJobMonitor[T]</code>, <code>conditions.go</code></td>
+          </tr>
+          <tr>
+            <td><code>pkg/webhook</code></td>
+            <td>Admission validators backed by SA annotations</td>
+            <td><code>ZarfPackageJobValidator</code>, <code>UDSBundleJobValidator</code>, <code>PermissionValidator</code></td>
+          </tr>
+          <tr>
+            <td><code>pkg/sources</code></td>
+            <td>Source retrieval init container factories</td>
+            <td><code>GitSource</code>, <code>S3Source</code>, <code>OCISource</code>, <code>LocalSource</code></td>
+          </tr>
+          <tr>
+            <td><code>pkg/destinations</code></td>
+            <td>Publish target configuration</td>
+            <td><code>S3Destination</code>, <code>OCIDestination</code>, <code>LocalDestination</code></td>
+          </tr>
+          <tr>
+            <td><code>pkg/constants</code></td>
+            <td>All hardcoded constants (phases, labels, paths, defaults)</td>
+            <td>Phase/condition constants, volume names, default images, timeouts</td>
+          </tr>
+          <tr>
+            <td><code>pkg/telemetry</code></td>
+            <td>OpenTelemetry metrics &amp; tracing</td>
+            <td><code>MetricsRecorder</code>, Prometheus exporter</td>
+          </tr>
+          <tr>
+            <td><code>pkg/logging</code></td>
+            <td>Structured logging with correlation IDs</td>
+            <td><code>Logger</code></td>
+          </tr>
+          <tr>
+            <td><code>pkg/policy</code></td>
+            <td>Policy engine for RBAC enforcement</td>
+            <td><code>Engine</code></td>
+          </tr>
+          <tr>
+            <td><code>pkg/audit</code></td>
+            <td>Audit trail recording for permission decisions</td>
+            <td><code>Trail</code></td>
+          </tr>
+          <tr>
+            <td><code>pkg/credentials</code></td>
+            <td>Kubernetes Secret lookup helpers</td>
+            <td><code>Manager</code></td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- ─── Key Concepts ─── -->
+    <section class="section" id="key-concepts">
+      <div class="section-header">
+        <div class="section-icon" style="background:rgba(210,168,255,0.1)">💡</div>
+        <h2>Key Concepts</h2>
+      </div>
+
+      <div class="info-grid">
+        <div class="info-card">
+          <div class="info-card-label">Go Generics</div>
+          <ul>
+            <li><code>GenericController[T]</code> works for both Zarf and UDS</li>
+            <li><code>GenericJobMonitor[T]</code> shared monitoring loop</li>
+            <li><code>ActionHandler[T]</code> typed handler interface</li>
+            <li>Eliminates duplication between Zarf/UDS paths</li>
+          </ul>
+        </div>
+        <div class="info-card">
+          <div class="info-card-label">JobBuilder Pattern</div>
+          <ul>
+            <li>Fluent API building <code>batchv1.Job</code> specs</li>
+            <li>Manages init containers for source retrieval</li>
+            <li>Enforces non-root security contexts</li>
+            <li>Handles all volume wiring automatically</li>
+          </ul>
+        </div>
+        <div class="info-card">
+          <div class="info-card-label">Annotation RBAC</div>
+          <ul>
+            <li>ServiceAccount annotations define per-user capabilities</li>
+            <li>Glob pattern matching on repos, registries, buckets</li>
+            <li>Webhook validates on every CREATE / UPDATE</li>
+            <li>No cluster-wide RBAC needed for individual devs</li>
+          </ul>
+        </div>
+        <div class="info-card">
+          <div class="info-card-label">Action Chaining</div>
+          <ul>
+            <li>Artifact PVC persists between steps in a chain</li>
+            <li>Monitor triggers next action on Job success</li>
+            <li>Each step is an independent K8s Job</li>
+            <li>Failure stops the chain and marks CRD Failed</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <hr class="divider" />
+
+    <!-- ─── System Context ─── -->
+    <section class="section" id="system-context">
+      <div class="section-header">
+        <div class="section-icon" style="background:rgba(88,166,255,0.1)">🌐</div>
+        <h2>System Context</h2>
+      </div>
+      <p class="section-desc">
+        How Forge relates to the people and external systems around it. Platform Admins configure
+        permissions; Developers submit jobs; Forge orchestrates all external systems.
+      </p>
+      <div class="diagram-card">
+        <div class="diagram-card-header">
+          <div class="diagram-card-dot dot-red"></div>
+          <div class="diagram-card-dot dot-yellow"></div>
+          <div class="diagram-card-dot dot-green"></div>
+          <span class="diagram-card-title">C4 — System Context</span>
+        </div>
+        <div class="diagram-card-body">
+          <div class="mermaid">
+C4Context
+    title Forge Operator — System Context
+
+    Person(admin, "Platform Admin", "Configures ServiceAccounts with permission annotations")
+    Person(dev, "Developer", "Submits ZarfPackageJob / UDSBundleJob manifests")
+
+    System(forge, "Forge Operator", "Builds, publishes, and deploys Zarf packages and UDS bundles via Kubernetes Jobs")
+
+    System_Ext(k8s, "Kubernetes API Server", "Stores CRDs, Jobs, Secrets")
+    System_Ext(git, "Git Repositories", "Package source code")
+    System_Ext(registry, "OCI Registries", "Built package artifacts")
+    System_Ext(s3, "S3 / Object Storage", "Package artifacts &amp; credentials")
+    System_Ext(cluster, "Target Clusters", "Zarf/UDS deployment targets")
+
+    Rel(admin, k8s, "Creates ServiceAccounts with forge.dev/* annotations")
+    Rel(dev, k8s, "kubectl apply ZarfPackageJob / UDSBundleJob")
+    Rel(forge, k8s, "Watches CRDs, creates/monitors Jobs, updates status")
+    Rel(forge, git, "Clone source (via init containers)")
+    Rel(forge, registry, "Push/pull OCI artifacts")
+    Rel(forge, s3, "Push/pull S3 artifacts")
+    Rel(forge, cluster, "Deploy packages (in-cluster or external)")
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─── Containers ─── -->
+    <section class="section" id="containers">
+      <div class="section-header">
+        <div class="section-icon" style="background:rgba(63,185,80,0.1)">🗃</div>
+        <h2>Containers (C4)</h2>
+      </div>
+      <p class="section-desc">
+        The three deployable units inside the Forge system: the Controller, the Webhook Server,
+        and the kubectl plugin.
+      </p>
+      <div class="diagram-card">
+        <div class="diagram-card-header">
+          <div class="diagram-card-dot dot-red"></div>
+          <div class="diagram-card-dot dot-yellow"></div>
+          <div class="diagram-card-dot dot-green"></div>
+          <span class="diagram-card-title">C4 — Containers</span>
+        </div>
+        <div class="diagram-card-body">
+          <div class="mermaid">
+C4Container
+    title Forge Operator — Containers
+
+    System_Boundary(forge, "Forge Operator (forge-system namespace)") {
+        Container(controller, "Controller", "Go binary", "Reconciles CRDs; creates, monitors, and chains Kubernetes Jobs")
+        Container(webhook, "Webhook Server", "Go binary / TLS :8443", "Validates CRDs against ServiceAccount permission annotations before admission")
+        Container(plugin, "kubectl-forge", "Go CLI plugin", "Debugging: logs, pods, cancel, retry, diagnose, download")
+    }
+
+    System_Ext(k8s_api, "Kubernetes API Server")
+    System_Ext(etcd, "etcd", "CRD + Job state persistence")
+    System_Ext(prometheus, "Prometheus", "Scrapes /metrics :8080")
+
+    Rel(controller, k8s_api, "List/Watch/Update CRDs &amp; Jobs")
+    Rel(webhook, k8s_api, "AdmissionReview validation")
+    Rel(controller, prometheus, "Exposes OpenTelemetry metrics")
+    Rel(plugin, k8s_api, "kubectl extension queries")
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─── Components ─── -->
+    <section class="section" id="components">
+      <div class="section-header">
+        <div class="section-icon" style="background:rgba(210,168,255,0.1)">🔩</div>
+        <h2>Component Diagram</h2>
+      </div>
+      <p class="section-desc">
+        All Go packages and their wiring. The <code>GenericController</code> sits at the center,
+        delegating to action handlers which use <code>JobBuilder</code> to construct K8s Jobs
+        from source and destination plugins.
+      </p>
+      <div class="diagram-card">
+        <div class="diagram-card-header">
+          <div class="diagram-card-dot dot-red"></div>
+          <div class="diagram-card-dot dot-yellow"></div>
+          <div class="diagram-card-dot dot-green"></div>
+          <span class="diagram-card-title">Component graph</span>
+        </div>
+        <div class="diagram-card-body">
+          <div class="mermaid">
+graph TB
+    subgraph cmdctl["cmd/controller"]
+        MAIN["main.go\n─────────────\n• parse flags\n• build k8s clients\n• init telemetry\n• leader election (HA)\n• health/metrics servers\n• run Zarf + UDS controllers"]
+    end
+
+    subgraph pkgctrl["pkg/controller"]
+        GC["GenericController[T]\n─────────────\n• Informer (CRD + Job)\n• Work queue\n• Reconcile loop\n• ConcurrencyLimiter"]
+        GM["GenericJobMonitor[T]\n─────────────\n• 10s poll interval\n• label selector scan\n• status → CRD\n• trigger next action"]
+        COND["conditions.go\n─────────────\n• SetCondition\n• Ready / Reconciling\n• BuildSucceeded\n• PublishSucceeded\n• DeploySucceeded"]
+    end
+
+    subgraph pkgactions["pkg/actions"]
+        JB["JobBuilder (fluent API)\n─────────────\n• WithContainerImage\n• WithInitContainers\n• WithWorkspaceVolume\n• WithArtifactPVC\n• WithSecurity contexts\n• Build() → batchv1.Job"]
+        AH["ActionHandler[T] interface\nExecute(ctx, T) → ActionResult"]
+    end
+
+    subgraph pkgzarf["pkg/actions/zarf"]
+        ZBH["BuildHandler"]
+        ZPH["PublishHandler"]
+        ZDH["DeployHandler"]
+    end
+
+    subgraph pkguds["pkg/actions/uds"]
+        UCH["CreateHandler"]
+        UPH["PublishHandler"]
+        UDH["DeployHandler"]
+        URH["RunnerHandler (PreTasks)"]
+    end
+
+    subgraph pkgwebhook["pkg/webhook"]
+        WV["ZarfPackageJobValidator\nUDSBundleJobValidator\n─────────────\n• ServiceAccount lookup\n• Annotation-based RBAC\n• Glob pattern matching\n• ExtraArgs injection scan"]
+    end
+
+    subgraph pkgsources["pkg/sources"]
+        GIT["GitSource\ngit clone init container"]
+        S3S["S3Source\naws s3 cp init container"]
+        OCIS["OCISource\nskopeo pull init container"]
+        LOCS["LocalSource\nhostPath (dev only)"]
+    end
+
+    subgraph pkgdests["pkg/destinations"]
+        S3D["S3Destination\npublish → s3://"]
+        OCID["OCIDestination\npublish → oci://"]
+        LOCD["LocalDestination\npublish → tarball://"]
+    end
+
+    subgraph pkgapis["pkg/apis"]
+        ZPJ["ZarfPackageJob\nforge.dev/v1alpha3"]
+        UBJ["UDSBundleJob\nforge.dev/v1alpha3"]
+        CMN["pkg/apis/common\n─────────────\nPackageResource interface\nVolumeSizes / ExtraMount\nSecretReference"]
+    end
+
+    subgraph pkgconst["pkg/constants"]
+        CONST["Phase constants\nCondition types/reasons\nLabel & annotation keys\nVolume names & paths\nDefault images & UIDs"]
+    end
+
+    subgraph pkgtel["pkg/telemetry + pkg/logging"]
+        TEL["OpenTelemetry\nPrometheus export\nStructured logging\nCorrelation IDs"]
+    end
+
+    MAIN --> GC
+    GC --> GM
+    GC --> COND
+    GC --> ZBH & ZPH & ZDH
+    GC --> UCH & UPH & UDH
+    ZBH & ZPH & ZDH --> JB
+    UCH & UPH & UDH --> JB
+    JB --> GIT & S3S & OCIS & LOCS
+    ZPH & UPH --> S3D & OCID & LOCD
+    WV -.->|"validate on CREATE/UPDATE"| ZPJ & UBJ
+    GC --> ZPJ & UBJ
+    ZBH & ZPH & ZDH & UCH & UPH & UDH --> AH
+    ZPJ & UBJ --> CMN
+    GC & JB --> CONST
+    GC & GM --> TEL
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─── Request Flow ─── -->
+    <section class="section" id="request-flow">
+      <div class="section-header">
+        <div class="section-icon" style="background:rgba(255,166,87,0.1)">⏩</div>
+        <h2>End-to-End Request Flow</h2>
+      </div>
+      <p class="section-desc">
+        Sequence from <code>kubectl apply</code> through webhook validation, Job creation,
+        execution, monitoring, and final status update for a <code>BuildPublish</code> action.
+      </p>
+      <div class="diagram-card">
+        <div class="diagram-card-header">
+          <div class="diagram-card-dot dot-red"></div>
+          <div class="diagram-card-dot dot-yellow"></div>
+          <div class="diagram-card-dot dot-green"></div>
+          <span class="diagram-card-title">Sequence diagram — BuildPublish</span>
+        </div>
+        <div class="diagram-card-body">
+          <div class="mermaid">
+sequenceDiagram
+    actor Dev as Developer
+    participant K8s as K8s API Server
+    participant WH as Webhook Server
+    participant SA as ServiceAccount
+    participant CTRL as Controller
+    participant JB as JobBuilder
+    participant JOB as Kubernetes Job
+    participant MON as JobMonitor
+
+    Dev->>K8s: kubectl apply ZarfPackageJob (action: BuildPublish)
+    K8s->>WH: AdmissionReview (CREATE)
+    WH->>SA: Get ServiceAccount + annotations
+    SA-->>WH: forge.dev/allowed-actions: BuildPublish
+    WH->>WH: Validate action, sources, destinations, extraArgs
+    WH-->>K8s: Allowed
+    K8s-->>Dev: ZarfPackageJob created
+
+    loop Informer Watch
+        K8s->>CTRL: ZarfPackageJob event
+    end
+
+    CTRL->>CTRL: Enqueue reconcile key
+
+    rect rgb(30, 50, 80)
+        Note over CTRL,JOB: BUILD PHASE
+        CTRL->>JB: BuildHandler.Execute()
+        JB->>JB: Build batchv1.Job spec (init: git-clone, main: zarf build)
+        JB->>K8s: Create Job my-build-build (labels: app=forge, action=build)
+        K8s-->>JOB: Schedule pod
+        JOB->>JOB: Init: git clone repo to /workspace
+        JOB->>JOB: Main: zarf package create . --confirm
+        JOB-->>K8s: Job succeeded
+    end
+
+    loop Every 10s
+        MON->>K8s: List Jobs (label: app=forge)
+        K8s-->>MON: Jobs + statuses
+        MON->>K8s: Update ZarfPackageJob.Status (buildStatus=Completed, BuildSucceeded=True)
+        MON->>CTRL: Trigger next action: Publish
+    end
+
+    rect rgb(20, 60, 40)
+        Note over CTRL,JOB: PUBLISH PHASE
+        CTRL->>JB: PublishHandler.Execute()
+        JB->>JB: Build Job spec (main: zarf package publish oci://registry/...)
+        JB->>K8s: Create Job my-build-publish (artifact PVC attached read-only)
+        K8s-->>JOB: Schedule pod
+        JOB->>JOB: zarf package publish /artifacts/package.tar.zst
+        JOB-->>K8s: Job succeeded
+    end
+
+    loop Every 10s
+        MON->>K8s: Update ZarfPackageJob.Status (PublishSucceeded=True, Ready=True)
+    end
+
+    K8s-->>Dev: kubectl get zpj → phase: Completed
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─── State Machine ─── -->
+    <section class="section" id="state-machine">
+      <div class="section-header">
+        <div class="section-icon" style="background:rgba(247,129,102,0.1)">🔄</div>
+        <h2>Action Chain State Machine</h2>
+      </div>
+      <p class="section-desc">
+        All possible phase transitions for a CRD resource. Actions can be single-step or chained
+        (e.g. <code>BuildPublishDeploy</code>). Any failed Job terminates the chain.
+      </p>
+      <div class="diagram-card">
+        <div class="diagram-card-header">
+          <div class="diagram-card-dot dot-red"></div>
+          <div class="diagram-card-dot dot-yellow"></div>
+          <div class="diagram-card-dot dot-green"></div>
+          <span class="diagram-card-title">State machine</span>
+        </div>
+        <div class="diagram-card-body">
+          <div class="mermaid">
+stateDiagram-v2
+    [*] --> Pending : CRD created
+
+    state "Pending" as Pending
+    state "Build / Create Running" as BuildRunning
+    state "Build / Create Completed" as BuildDone
+    state "Publish Running" as PublishRunning
+    state "Publish Completed" as PublishDone
+    state "Deploy Running" as DeployRunning
+    state "Completed" as Completed
+    state "Failed" as Failed
+
+    Pending --> BuildRunning : action includes Build/Create
+    Pending --> PublishRunning : action is Publish-only
+    Pending --> DeployRunning : action is Deploy-only
+
+    BuildRunning --> BuildDone : Job succeeded
+    BuildRunning --> Failed : Job failed (backoff exhausted)
+
+    BuildDone --> PublishRunning : action includes Publish
+    BuildDone --> Completed : action is Build/Create only
+
+    PublishRunning --> PublishDone : Job succeeded
+    PublishRunning --> Failed : Job failed
+
+    PublishDone --> DeployRunning : action includes Deploy
+    PublishDone --> Completed : action is BuildPublish / Publish only
+
+    DeployRunning --> Completed : Job succeeded
+    DeployRunning --> Failed : Job failed
+
+    Completed --> [*]
+    Failed --> [*]
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─── CRD Types ─── -->
+    <section class="section" id="crd-types">
+      <div class="section-header">
+        <div class="section-icon" style="background:rgba(210,168,255,0.1)">🧬</div>
+        <h2>CRD Type Hierarchy</h2>
+      </div>
+      <p class="section-desc">
+        Both CRD types implement the <code>PackageResource</code> interface and share common
+        sub-types like <code>PackageSource</code>, <code>VolumeSizes</code>, and
+        <code>OperationStatus</code>.
+      </p>
+      <div class="diagram-card">
+        <div class="diagram-card-header">
+          <div class="diagram-card-dot dot-red"></div>
+          <div class="diagram-card-dot dot-yellow"></div>
+          <div class="diagram-card-dot dot-green"></div>
+          <span class="diagram-card-title">Class diagram</span>
+        </div>
+        <div class="diagram-card-body">
+          <div class="mermaid">
+classDiagram
+    class PackageResource {
+        &lt;&lt;interface&gt;&gt;
+        +GetName() string
+        +GetNamespace() string
+        +GetServiceAccountName() string
+        +GetAction() string
+        +GetUseArtifactPVC() bool
+        +GetRetainArtifactPVC() bool
+        +GetDebugMode() bool
+        +GetDebugActions() []string
+        +GetVolumeSizes() VolumeSizes
+    }
+
+    class ZarfPackageJob {
+        Spec ZarfPackageJobSpec
+        Status OperationStatus
+    }
+
+    class ZarfPackageJobSpec {
+        +ServiceAccountName string
+        +Action string
+        +Source PackageSource
+        +Build BuildConfig
+        +Publish PublishConfig
+        +Deploy DeployConfig
+        +Resources ResourceRequirements
+        +UseArtifactPVC bool
+        +RetainArtifactPVC bool
+        +ExtraMounts []ExtraMount
+        +VolumeSizes VolumeSizes
+        +DebugMode bool
+    }
+
+    class UDSBundleJob {
+        Spec UDSBundleJobSpec
+        Status OperationStatus
+    }
+
+    class UDSBundleJobSpec {
+        +ServiceAccountName string
+        +Action string
+        +Source PackageSource
+        +Create CreateConfig
+        +Publish PublishConfig
+        +Deploy DeployConfig
+        +PreTasks []RunnerPreTask
+        +UseArtifactPVC bool
+        +DebugMode bool
+    }
+
+    class OperationStatus {
+        +Phase string
+        +Message string
+        +Conditions []Condition
+        +BuildStatus ActionStatus
+        +PublishStatus ActionStatus
+        +DeployStatus ActionStatus
+        +ObservedGeneration int64
+    }
+
+    class ActionStatus {
+        +Phase string
+        +Message string
+        +JobName string
+        +StartTime Time
+        +CompletionTime Time
+        +RetryCount int
+    }
+
+    class PackageSource {
+        +Type string
+        +Git GitSource
+        +S3 S3Source
+        +OCI OCISource
+        +Local LocalSource
+    }
+
+    class VolumeSizes {
+        +Workspace Quantity
+        +Output Quantity
+        +Tmp Quantity
+        +Home Quantity
+        +ArtifactStorage Quantity
+    }
+
+    PackageResource <|.. ZarfPackageJob
+    PackageResource <|.. UDSBundleJob
+    ZarfPackageJob "1" --> "1" ZarfPackageJobSpec
+    ZarfPackageJob "1" --> "1" OperationStatus
+    UDSBundleJob "1" --> "1" UDSBundleJobSpec
+    UDSBundleJob "1" --> "1" OperationStatus
+    OperationStatus "1" --> "0..3" ActionStatus
+    ZarfPackageJobSpec "1" --> "1" PackageSource
+    UDSBundleJobSpec "1" --> "1" PackageSource
+    ZarfPackageJobSpec "1" --> "0..1" VolumeSizes
+    UDSBundleJobSpec "1" --> "0..1" VolumeSizes
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─── Volume Layout ─── -->
+    <section class="section" id="volume-layout">
+      <div class="section-header">
+        <div class="section-icon" style="background:rgba(255,166,87,0.1)">💾</div>
+        <h2>Job Volume Layout</h2>
+      </div>
+      <p class="section-desc">
+        Each Kubernetes Job Pod is built with a fixed set of volumes. Init containers populate
+        the workspace; the main container consumes it. The artifact PVC bridges steps in
+        multi-action chains.
+      </p>
+      <div class="diagram-card">
+        <div class="diagram-card-header">
+          <div class="diagram-card-dot dot-red"></div>
+          <div class="diagram-card-dot dot-yellow"></div>
+          <div class="diagram-card-dot dot-green"></div>
+          <span class="diagram-card-title">Volume wiring</span>
+        </div>
+        <div class="diagram-card-body">
+          <div class="mermaid">
+graph LR
+    subgraph pod["Kubernetes Job Pod"]
+        subgraph init["Init Containers"]
+            IC1["source-fetch\n(git-clone / s3-cp / skopeo-pull)"]
+            IC2["kubeconfig-init\n(SA token → kubeconfig)\ndeploy only"]
+        end
+        subgraph main["Main Container (Zarf or UDS CLI)"]
+            CMD["zarf package create|publish|deploy\nuds create|publish|deploy"]
+        end
+    end
+
+    subgraph vols["Volumes"]
+        WS["workspace EmptyDir\n/workspace (10Gi)"]
+        OUT["output EmptyDir\n/output (10Gi)"]
+        TMP["tmp EmptyDir\n/tmp (1Gi)"]
+        HOME["home EmptyDir\n/home/zarf or /home/uds (1Gi)"]
+        ART["artifacts PVC\n/artifacts\n(multi-action workflows)"]
+        GIT_CRED["git-creds Secret\n/etc/git-secret"]
+        REG_CRED["registry-creds Secret\n/home/*/.docker"]
+        AWS_CRED["aws-creds Secret\nenv vars or ~/.aws/credentials"]
+        KUBE["kubeconfig Secret or Projected\n/etc/kubeconfig"]
+        EXTRA["ExtraMounts\nConfigMap or Secret\nuser-defined paths"]
+    end
+
+    IC1 -->|writes source| WS
+    IC2 -->|writes| KUBE
+    WS -->|source code| CMD
+    ART -->|artifact input/output| CMD
+    OUT -->|build output| CMD
+    TMP --> CMD
+    HOME --> CMD
+    GIT_CRED --> IC1
+    REG_CRED --> CMD
+    AWS_CRED --> CMD
+    KUBE --> CMD
+    EXTRA --> CMD
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─── Webhook Permission Model ─── -->
+    <section class="section" id="webhook-model">
+      <div class="section-header">
+        <div class="section-icon" style="background:rgba(247,129,102,0.1)">🔐</div>
+        <h2>Webhook Permission Model</h2>
+      </div>
+      <p class="section-desc">
+        The webhook server validates every <code>CREATE</code> / <code>UPDATE</code> against the
+        submitting ServiceAccount's <code>forge.dev/*</code> annotations. All checks must pass
+        or the request is denied.
+      </p>
+
+      <div class="callout">
+        <strong>How it works:</strong> Admins annotate ServiceAccounts with glob patterns describing
+        what each identity is allowed to do. The webhook enforces these rules at admission time —
+        no cluster-level RBAC changes are needed per developer.
+      </div>
+
+      <div class="diagram-card">
+        <div class="diagram-card-header">
+          <div class="diagram-card-dot dot-red"></div>
+          <div class="diagram-card-dot dot-yellow"></div>
+          <div class="diagram-card-dot dot-green"></div>
+          <span class="diagram-card-title">Validation decision tree</span>
+        </div>
+        <div class="diagram-card-body">
+          <div class="mermaid">
+graph TD
+    subgraph admin["Platform Admin configures"]
+        SA["ServiceAccount builder-sa"]
+        ANNO["Annotations\n─────────────\nforge.dev/allowed-actions: Build,Publish,BuildPublish\nforge.dev/allowed-source-repos: github.com/myorg/*\nforge.dev/allowed-source-registries: ghcr.io/myorg/*\nforge.dev/allowed-source-buckets: my-bucket/*\nforge.dev/allowed-publish-registries: ghcr.io/myorg/*\nforge.dev/allowed-publish-buckets: my-bucket/*\nforge.dev/allowed-deploy-targets: InCluster"]
+    end
+
+    subgraph devsubmit["Developer submits"]
+        ZPJ2["ZarfPackageJob\nserviceAccountName: builder-sa\naction: BuildPublish\nsource.git.url: github.com/myorg/repo\npublish.destination: ghcr.io/myorg/pkg"]
+    end
+
+    subgraph webhookvalid["Webhook validates"]
+        CHECK1{"action in\nallowed-actions?"}
+        CHECK2{"source URL matches\nallowed-source-repos?"}
+        CHECK3{"publish destination matches\nallowed-publish-registries?"}
+        CHECK4{"extraArgs safe from\ninjection?"}
+        ALLOW["✅ ALLOW"]
+        DENY["❌ DENY 403"]
+    end
+
+    SA --> ANNO
+    ZPJ2 -->|kubectl apply| CHECK1
+    ANNO --> CHECK1
+    CHECK1 -->|yes| CHECK2
+    CHECK1 -->|no| DENY
+    CHECK2 -->|yes| CHECK3
+    CHECK2 -->|no| DENY
+    CHECK3 -->|yes| CHECK4
+    CHECK3 -->|no| DENY
+    CHECK4 -->|safe| ALLOW
+    CHECK4 -->|injection detected| DENY
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─── Source / Destination Plugins ─── -->
+    <section class="section" id="plugins">
+      <div class="section-header">
+        <div class="section-icon" style="background:rgba(63,185,80,0.1)">🔌</div>
+        <h2>Source &amp; Destination Plugins</h2>
+      </div>
+      <p class="section-desc">
+        Sources produce init containers that pull package code into <code>/workspace</code>.
+        Destinations configure the publish command and any required credential volumes/env vars.
+      </p>
+
+      <div class="two-col">
+        <div class="info-card">
+          <div class="info-card-label">Sources (pkg/sources)</div>
+          <ul>
+            <li><code>GitSource</code> — SSH key, token/password, OAuth, custom hosts</li>
+            <li><code>S3Source</code> — AWS IAM EnvVar/File/Node, MinIO, custom endpoint</li>
+            <li><code>OCISource</code> — Registry credentials, skopeo pull</li>
+            <li><code>LocalSource</code> — hostPath mount (dev mode only)</li>
+          </ul>
+        </div>
+        <div class="info-card">
+          <div class="info-card-label">Destinations (pkg/destinations)</div>
+          <ul>
+            <li><code>S3Destination</code> — <code>publish oci://s3://…</code>, AWS creds EnvVar/File/Node</li>
+            <li><code>OCIDestination</code> — <code>publish oci://registry/…</code>, Docker config secret</li>
+            <li><code>LocalDestination</code> — <code>publish tarball://…</code>, ephemeral storage</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="diagram-card">
+        <div class="diagram-card-header">
+          <div class="diagram-card-dot dot-red"></div>
+          <div class="diagram-card-dot dot-yellow"></div>
+          <div class="diagram-card-dot dot-green"></div>
+          <span class="diagram-card-title">Plugin interfaces through JobBuilder</span>
+        </div>
+        <div class="diagram-card-body">
+          <div class="mermaid">
+graph LR
+    subgraph sources["Sources (pkg/sources)"]
+        GIT2["GitSource\n─────────\nSSH key\nToken/password\nOAuth\nCustom hosts"]
+        S3SRC["S3Source\n─────────\nAWS IAM (EnvVar/File/Node)\nMinIO compatible\nCustom endpoint"]
+        OCISRC["OCISource\n─────────\nRegistry credentials\nskopeo pull"]
+        LOCSRC["LocalSource\n─────────\nhostPath mount\ndev mode only"]
+    end
+
+    subgraph jb["JobBuilder"]
+        JB2["WithInitContainers()"]
+    end
+
+    subgraph dests["Destinations (pkg/destinations)"]
+        S3DST["S3Destination\n─────────\npublish oci://s3://…\nAWS creds: EnvVar/File/Node"]
+        OCIDST["OCIDestination\n─────────\npublish oci://registry/…\nDocker config secret"]
+        LOCDST["LocalDestination\n─────────\npublish tarball://…\nephemeral storage"]
+    end
+
+    GIT2 -->|"GetInitContainer()"| JB2
+    S3SRC -->|"GetInitContainer()"| JB2
+    OCISRC -->|"GetInitContainer()"| JB2
+    LOCSRC -->|"GetInitContainer()"| JB2
+
+    JB2 --> S3DST
+    JB2 --> OCIDST
+    JB2 --> LOCDST
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─── Deployment Architecture ─── -->
+    <section class="section" id="deployment">
+      <div class="section-header">
+        <div class="section-icon" style="background:rgba(88,166,255,0.1)">☸️</div>
+        <h2>Deployment Architecture</h2>
+      </div>
+      <p class="section-desc">
+        How all Kubernetes resources relate in a running cluster. The Controller and Webhook
+        run as separate Deployments in <code>forge-system</code> with cluster-wide RBAC.
+        Leader election coordinates multi-replica Controller deployments.
+      </p>
+      <div class="diagram-card">
+        <div class="diagram-card-header">
+          <div class="diagram-card-dot dot-red"></div>
+          <div class="diagram-card-dot dot-yellow"></div>
+          <div class="diagram-card-dot dot-green"></div>
+          <span class="diagram-card-title">Helm chart resources</span>
+        </div>
+        <div class="diagram-card-body">
+          <div class="mermaid">
+graph TB
+    subgraph forgesys["forge-system namespace"]
+        subgraph ctrlns["Controller Deployment (2+ replicas)"]
+            CTRL2["forge-controller pod\n─────────────\ncmd/controller\n:8080 /metrics\n:8081 /healthz /readyz"]
+        end
+        subgraph webhookns["Webhook Deployment (2+ replicas)"]
+            WH2["forge-webhook pod\n─────────────\ncmd/webhook\n:8443 TLS (ValidatingWebhook)\n:8081 /healthz /readyz"]
+        end
+        SVC1["webhook-svc\nClusterIP :443 → :8443"]
+        SVC2["metrics-svc\nClusterIP :8080"]
+        VWC["ValidatingWebhookConfiguration\nforge.dev/*\nCABundle injected"]
+        LE["Lease (leader election)\nforge-controller-leader"]
+    end
+
+    subgraph userns["User Namespaces"]
+        ZPJ3["ZarfPackageJob"]
+        UBJ3["UDSBundleJob"]
+        SA3["ServiceAccount + Annotations"]
+        JOBS["Kubernetes Jobs\n(created per action)"]
+        PVC["Artifact PVC\n(multi-action workflows)"]
+    end
+
+    subgraph rbac["Cluster-wide RBAC"]
+        CR["ClusterRole\nget/watch/list/update CRDs\ncreate/get/watch/list Jobs\nget ServiceAccounts"]
+        CRB["ClusterRoleBinding"]
+    end
+
+    PROMETHEUS["Prometheus (external)"]
+
+    VWC --> WH2
+    WH2 --> SVC1
+    CTRL2 --> LE
+    CTRL2 -->|creates| JOBS
+    CTRL2 -->|watches| ZPJ3
+    CTRL2 -->|watches| UBJ3
+    CTRL2 --> SVC2
+    SVC2 --> PROMETHEUS
+    JOBS --> PVC
+    CR --> CRB
+    CRB --> CTRL2
+    CRB --> WH2
+    SA3 -.->|permissions checked by| WH2
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <hr class="divider" />
+
+    <!-- ─── CRD Spec Fields ─── -->
+    <section class="section" id="crd-spec">
+      <div class="section-header">
+        <div class="section-icon" style="background:rgba(63,185,80,0.1)">📋</div>
+        <h2>CRD Spec Fields</h2>
+      </div>
+
+      <p style="font-size:13px;color:var(--text-muted);margin-bottom:20px">
+        Fields shared between <code>ZarfPackageJobSpec</code> and <code>UDSBundleJobSpec</code>
+        unless noted.
+      </p>
+
+      <table class="kv-table">
+        <thead>
+          <tr><th>Field</th><th>Type</th><th>Notes</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>serviceAccountName</code></td><td>string</td><td>Required. Defines permissions via forge.dev/* annotations.</td></tr>
+          <tr><td><code>action</code></td><td>string</td><td>Required. One of: <code>Build</code>, <code>Publish</code>, <code>Deploy</code>, <code>BuildPublish</code>, <code>BuildPublishDeploy</code>, <code>PublishDeploy</code>. UDS uses <code>Create</code> instead of <code>Build</code>.</td></tr>
+          <tr><td><code>source</code></td><td>PackageSource</td><td>Required. Git, S3, OCI, or Local.</td></tr>
+          <tr><td><code>build</code> / <code>create</code></td><td>*BuildConfig / *CreateConfig</td><td>Optional. Variables, flavor, architecture, SBOM, timeout, retry policy.</td></tr>
+          <tr><td><code>publish</code></td><td>*PublishConfig</td><td>Optional. Destination (S3/OCI/Local), credentials, timeout, retry.</td></tr>
+          <tr><td><code>deploy</code></td><td>*DeployConfig</td><td>Optional. InCluster or ExternalCluster target, components, set-variables.</td></tr>
+          <tr><td><code>preTasks</code></td><td>[]RunnerPreTask</td><td>UDS only. Run <code>uds run -f &lt;file&gt;</code> before create/deploy.</td></tr>
+          <tr><td><code>resources</code></td><td>*ResourceRequirements</td><td>CPU/memory requests &amp; limits for Job pods.</td></tr>
+          <tr><td><code>nodeSelector</code></td><td>map[string]string</td><td>Node selection constraints.</td></tr>
+          <tr><td><code>affinity</code></td><td>*Affinity</td><td>Pod scheduling affinity rules.</td></tr>
+          <tr><td><code>tolerations</code></td><td>[]Toleration</td><td>Node tolerations.</td></tr>
+          <tr><td><code>useArtifactPVC</code></td><td>bool (default: true)</td><td>Create a PVC to share artifacts between chained steps.</td></tr>
+          <tr><td><code>retainArtifactPVC</code></td><td>bool (default: true)</td><td>Keep the PVC after all operations complete.</td></tr>
+          <tr><td><code>extraMounts</code></td><td>[]ExtraMount</td><td>Additional ConfigMap or Secret mounts into the Job pod.</td></tr>
+          <tr><td><code>volumeSizes</code></td><td>*VolumeSizes</td><td>Override default EmptyDir size limits for workspace, output, tmp, home, artifacts.</td></tr>
+          <tr><td><code>debugMode</code></td><td>bool</td><td>Pod sleeps instead of running the command — exec in to debug.</td></tr>
+          <tr><td><code>debugActions</code></td><td>[]string</td><td>Which chained actions to pause in debug mode (e.g. <code>["build"]</code>).</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- ─── Constants ─── -->
+    <section class="section" id="constants">
+      <div class="section-header">
+        <div class="section-icon" style="background:rgba(210,168,255,0.1)">⚙️</div>
+        <h2>Constants &amp; Defaults</h2>
+      </div>
+
+      <div class="two-col">
+        <table class="kv-table">
+          <thead><tr><th>Constant</th><th>Value</th></tr></thead>
+          <tbody>
+            <tr><td><code>DefaultZarfUID</code></td><td>1000</td></tr>
+            <tr><td><code>DefaultUDSUID</code></td><td>65532</td></tr>
+            <tr><td><code>JobMonitorInterval</code></td><td>10s</td></tr>
+            <tr><td><code>DefaultBuildTimeout</code></td><td>3600s</td></tr>
+            <tr><td><code>DefaultPublishTimeout</code></td><td>1800s</td></tr>
+            <tr><td><code>DefaultDeployTimeout</code></td><td>1800s</td></tr>
+            <tr><td><code>DefaultCreateTimeout</code></td><td>3600s</td></tr>
+          </tbody>
+        </table>
+
+        <table class="kv-table">
+          <thead><tr><th>Phase Constant</th><th>Value</th></tr></thead>
+          <tbody>
+            <tr><td><code>PhasePending</code></td><td>"Pending"</td></tr>
+            <tr><td><code>PhaseRunning</code></td><td>"Running"</td></tr>
+            <tr><td><code>PhaseCompleted</code></td><td>"Completed"</td></tr>
+            <tr><td><code>PhaseFailed</code></td><td>"Failed"</td></tr>
+            <tr><td><code>ConditionTypeReady</code></td><td>"Ready"</td></tr>
+            <tr><td><code>ConditionTypeBuildSucceeded</code></td><td>"BuildSucceeded"</td></tr>
+            <tr><td><code>ConditionTypePublishSucceeded</code></td><td>"PublishSucceeded"</td></tr>
+            <tr><td><code>ConditionTypeDeploySucceeded</code></td><td>"DeploySucceeded"</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <table class="kv-table">
+        <thead><tr><th>Volume Name</th><th>Mount Path</th><th>Type</th><th>Default Size</th></tr></thead>
+        <tbody>
+          <tr><td><code>workspace</code></td><td><code>/workspace</code></td><td>EmptyDir</td><td>10Gi</td></tr>
+          <tr><td><code>output</code></td><td><code>/output</code></td><td>EmptyDir</td><td>10Gi</td></tr>
+          <tr><td><code>artifacts</code></td><td><code>/artifacts</code></td><td>PVC (optional)</td><td>—</td></tr>
+          <tr><td><code>tmp</code></td><td><code>/tmp</code></td><td>EmptyDir</td><td>1Gi</td></tr>
+          <tr><td><code>home</code></td><td><code>/home/zarf</code> or <code>/home/uds</code></td><td>EmptyDir</td><td>1Gi</td></tr>
+          <tr><td><code>git-creds</code></td><td><code>/etc/git-secret</code></td><td>Secret</td><td>—</td></tr>
+          <tr><td><code>registry-creds</code></td><td><code>/home/*/.docker</code></td><td>Secret</td><td>—</td></tr>
+          <tr><td><code>aws-credentials</code></td><td>env vars or <code>~/.aws/credentials</code></td><td>Secret</td><td>—</td></tr>
+          <tr><td><code>kubeconfig</code></td><td><code>/etc/kubeconfig</code></td><td>Secret or Projected SA token</td><td>—</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- ─── Interfaces ─── -->
+    <section class="section" id="interfaces">
+      <div class="section-header">
+        <div class="section-icon" style="background:rgba(255,166,87,0.1)">🧩</div>
+        <h2>Key Interfaces</h2>
+      </div>
+
+      <table class="kv-table">
+        <thead><tr><th>Interface</th><th>Package</th><th>Methods</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><code>PackageResource</code></td>
+            <td><code>pkg/apis/common</code></td>
+            <td>GetName, GetNamespace, GetServiceAccountName, GetAction, GetUseArtifactPVC, GetRetainArtifactPVC, GetDebugMode, GetDebugActions, GetVolumeSizes</td>
+          </tr>
+          <tr>
+            <td><code>ActionHandler[T]</code></td>
+            <td><code>pkg/actions/common</code></td>
+            <td><code>Execute(ctx, T, ExecuteOptions) (*ActionResult, error)</code></td>
+          </tr>
+          <tr>
+            <td><code>Source</code></td>
+            <td><code>pkg/sources</code></td>
+            <td><code>GetInitContainer(pkg) (*corev1.Container, error)</code></td>
+          </tr>
+          <tr>
+            <td><code>Destination</code></td>
+            <td><code>pkg/destinations</code></td>
+            <td><code>GetPublishCommand(pkg, path) (string, error)</code> · <code>GetJobConfiguration(pkg) (*JobConfig, error)</code></td>
+          </tr>
+          <tr>
+            <td><code>MetricsRecorder[T]</code></td>
+            <td><code>pkg/telemetry</code></td>
+            <td>RecordPackageBuildStarted, RecordPackageBuildFailed, RecordJobCreated, … (many)</td>
+          </tr>
+          <tr>
+            <td><code>Trail</code></td>
+            <td><code>pkg/audit</code></td>
+            <td><code>Record(ctx, kind, action, name, ns, result string)</code></td>
+          </tr>
+          <tr>
+            <td><code>Manager</code></td>
+            <td><code>pkg/credentials</code></td>
+            <td><code>GetSecret(ctx, ns, name) (*corev1.Secret, error)</code></td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+  </main>
+</div>
+
+<script>
+  mermaid.initialize({
+    startOnLoad: false,
+    theme: 'dark',
+    themeVariables: {
+      background: '#0f1117',
+      primaryColor: '#1c2128',
+      primaryTextColor: '#e6edf3',
+      primaryBorderColor: '#30363d',
+      lineColor: '#58a6ff',
+      secondaryColor: '#21262d',
+      tertiaryColor: '#161b22',
+      edgeLabelBackground: '#161b22',
+      clusterBkg: '#161b22',
+      clusterBorder: '#30363d',
+      titleColor: '#e6edf3',
+      nodeBorder: '#30363d',
+      mainBkg: '#1c2128',
+      nodeTextColor: '#e6edf3',
+      labelTextColor: '#e6edf3',
+      loopTextColor: '#e6edf3',
+      noteBkgColor: '#21262d',
+      noteTextColor: '#e6edf3',
+      noteBorderColor: '#30363d',
+      activationBkgColor: '#21262d',
+      activationBorderColor: '#58a6ff',
+      sequenceNumberColor: '#0f1117',
+      sectionBkgColor: '#161b22',
+      altSectionBkgColor: '#1c2128',
+      sectionBkgColor2: '#21262d',
+      taskBkgColor: '#1c2128',
+      taskBorderColor: '#30363d',
+      taskTextColor: '#e6edf3',
+      taskTextLightColor: '#e6edf3',
+      taskTextOutsideColor: '#e6edf3',
+      gridColor: '#30363d',
+      doneTaskBkgColor: '#21262d',
+      doneTaskBorderColor: '#3fb950',
+      critBkgColor: 'rgba(247,129,102,0.15)',
+      critBorderColor: '#f78166',
+      todayLineColor: '#58a6ff',
+      labelColor: '#e6edf3',
+      errorBkgColor: 'rgba(247,129,102,0.1)',
+      errorTextColor: '#f78166',
+      classText: '#e6edf3',
+      fillType0: '#1c2128',
+      fillType1: '#21262d',
+      fillType2: '#161b22',
+      fillType3: '#1c2128',
+      fillType4: '#21262d',
+      fillType5: '#161b22',
+      fillType6: '#1c2128',
+      fillType7: '#21262d',
+    },
+    flowchart: { curve: 'basis', htmlLabels: true },
+    sequence: { mirrorActors: false, messageAlign: 'center' },
+    c4: { diagramMarginX: 20, diagramMarginY: 10 },
+  });
+
+  function enablePanZoom(cardBody) {
+    const mermaidDiv = cardBody.querySelector('.mermaid');
+    if (!mermaidDiv) return;
+    const svg = mermaidDiv.querySelector('svg');
+    if (!svg) return;
+
+    // Read intrinsic size from viewBox; fall back to rendered rect
+    const vb = svg.viewBox && svg.viewBox.baseVal;
+    let natW = vb && vb.width > 0 ? vb.width : svg.getBoundingClientRect().width;
+    let natH = vb && vb.height > 0 ? vb.height : svg.getBoundingClientRect().height;
+
+    // Pin the SVG at its natural pixel size so transforms are predictable
+    svg.style.width  = natW + 'px';
+    svg.style.height = natH + 'px';
+    svg.style.maxWidth = 'none';
+
+    const pad = 24;
+    const availW = cardBody.clientWidth - pad * 2;
+
+    // Start scaled to fit width (never upscale past 1×)
+    let scale = Math.min(availW / natW, 1);
+    let panX  = pad;
+    let panY  = pad;
+
+    function apply() {
+      mermaidDiv.style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`;
+    }
+    apply();
+
+    // Scroll → zoom toward cursor
+    cardBody.addEventListener('wheel', e => {
+      e.preventDefault();
+      const rect   = cardBody.getBoundingClientRect();
+      const mx     = e.clientX - rect.left;
+      const my     = e.clientY - rect.top;
+      const factor = e.deltaY < 0 ? 1.12 : 1 / 1.12;
+      const next   = Math.min(Math.max(scale * factor, 0.08), 10);
+      const ratio  = next / scale;
+      panX  = mx + (panX - mx) * ratio;
+      panY  = my + (panY - my) * ratio;
+      scale = next;
+      apply();
+    }, { passive: false });
+
+    // Drag → pan
+    let dragging = false, ox = 0, oy = 0;
+
+    cardBody.addEventListener('mousedown', e => {
+      if (e.button !== 0) return;
+      dragging = true;
+      ox = e.clientX - panX;
+      oy = e.clientY - panY;
+      cardBody.classList.add('is-dragging');
+      e.preventDefault();
+    });
+
+    window.addEventListener('mousemove', e => {
+      if (!dragging) return;
+      panX = e.clientX - ox;
+      panY = e.clientY - oy;
+      apply();
+    });
+
+    window.addEventListener('mouseup', () => {
+      if (!dragging) return;
+      dragging = false;
+      cardBody.classList.remove('is-dragging');
+    });
+
+    // Double-click → reset to fit
+    cardBody.addEventListener('dblclick', () => {
+      scale = Math.min((cardBody.clientWidth - pad * 2) / natW, 1);
+      panX  = pad;
+      panY  = pad;
+      apply();
+    });
+  }
+
+  (async () => {
+    await mermaid.run({ querySelector: '.mermaid' });
+
+    // Add interaction hint to every diagram card header
+    document.querySelectorAll('.diagram-card-header').forEach(hdr => {
+      const hint = document.createElement('span');
+      hint.className = 'diagram-hint';
+      hint.textContent = 'scroll to zoom · drag to pan · dblclick to reset';
+      hdr.appendChild(hint);
+    });
+
+    // Wire up pan/zoom on every diagram
+    document.querySelectorAll('.diagram-card-body').forEach(enablePanZoom);
+
+    // Active nav link on scroll
+    const sections = document.querySelectorAll('section[id], div[id]');
+    const navLinks = document.querySelectorAll('.nav-link');
+
+    const observer = new IntersectionObserver(entries => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          navLinks.forEach(l => l.classList.remove('active'));
+          const active = document.querySelector(`.nav-link[href="#${entry.target.id}"]`);
+          if (active) active.classList.add('active');
+        }
+      });
+    }, { rootMargin: '-20% 0px -70% 0px' });
+
+    sections.forEach(s => observer.observe(s));
+  })();
+</script>
+
+</body>
+</html>

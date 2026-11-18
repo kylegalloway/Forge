@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- `docs/architecture.md`: diagram-based architecture overview (system context, containers, components, end-to-end request flow, CRD type hierarchy, job volume layout, webhook permission model, source/destination plugin matrix, action chain state machine, Helm deployment), with a standalone `docs/architecture.html` that renders the same Mermaid diagrams in a browser
+
 ## [0.12.2] - 2026-05-29
 
 ### Security
